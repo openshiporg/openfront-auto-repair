@@ -45,7 +45,7 @@ export default async function AuditPage({ searchParams }: { searchParams?: Promi
             </div>
             <div className="text-right">
               <Meta>{when(e.at, tz)}</Meta>
-              <p className="font-mono text-[11px] text-muted-foreground">{e.hash.slice(0, 12)}</p>
+              <p className="font-mono text-xs text-muted-foreground">{e.hash.slice(0, 12)}</p>
             </div>
           </Row>
         )) : <Empty>No audit events yet.</Empty>}

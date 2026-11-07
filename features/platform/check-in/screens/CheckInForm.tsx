@@ -101,7 +101,7 @@ export function CheckInForm({ appointment: a, law }: Props) {
         <span className="font-medium">{a.customerName}</span>
         <span>{a.vehicleLabel}</span>
         <span className="break-all font-mono text-xs text-muted-foreground">{a.vin}</span>
-        {a.waiter ? <span className="rounded border border-amber-500/60 px-1.5 font-mono text-[10px] uppercase">waiting</span> : null}
+        {a.waiter ? <span className="text-sm text-muted-foreground">Waiting at the shop</span> : null}
       </div>
       {a.recall?.campaignCount ? (
         <div role="alert" className={`rounded-lg border p-3 text-sm ${a.recall.parkItAny ? 'border-red-500/60 bg-red-500/5 text-red-700 dark:text-red-400' : 'border-amber-500/60 bg-amber-500/5'}`}>

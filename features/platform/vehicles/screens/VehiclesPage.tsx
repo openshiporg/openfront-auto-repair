@@ -86,8 +86,8 @@ export default async function VehiclesPage({ searchParams }: { searchParams?: Pr
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs">{c.nhtsaCampaignNumber}</span>
                   <span className="font-medium">{c.component}</span>
-                  {c.parkIt ? <span className="rounded bg-red-600 px-1.5 font-mono text-[10px] uppercase text-white">do not drive</span> : null}
-                  {c.parkOutSide ? <span className="rounded bg-red-600 px-1.5 font-mono text-[10px] uppercase text-white">park outside</span> : null}
+                  {c.parkIt ? <span className="font-mono text-xs uppercase tracking-wide text-red-600">do not drive</span> : null}
+                  {c.parkOutSide ? <span className="font-mono text-xs uppercase tracking-wide text-red-600">park outside</span> : null}
                 </div>
                 {/* Provider text is untrusted: rendered as plain text, never as markup or instructions. */}
                 <p className="whitespace-pre-line break-words text-xs text-muted-foreground">{c.summary.slice(0, 600)}</p>

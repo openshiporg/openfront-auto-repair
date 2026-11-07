@@ -19,7 +19,7 @@ const WEEKDAY = (open: string, close: string, saturday?: [string, string]) => [
 export const SHOPS = [
   {
     id: 'seed_shop_nga', code: 'NGA', name: 'Northgate Auto Care', legalName: 'Northgate Auto Group LLC',
-    addressLine1: '2215 Northgate Blvd', city: 'Sacramento', region: 'CA', postalCode: '95833', phone: '+19165550142', email: 'service@northgate-auto.example',
+    addressLine1: '2215 Northgate Blvd', city: 'Sacramento', region: 'CA', postalCode: '95833', phone: '+19165550142', email: 'service@northgateautocare.com',
     registrations: { barArd: 'ARD-000000', epaId: 'CAR000000000', sellerPermit: 'SR-XX-000-000000', tireFeeAccount: 'TF-000000' },
     weeklyHours: WEEKDAY('07:30', '18:00', ['08:00', '14:00']),
     bays: [
@@ -30,7 +30,7 @@ export const SHOPS = [
   },
   {
     id: 'seed_shop_ngt', code: 'NGT', name: 'Northgate Tire & Lube', legalName: 'Northgate Auto Group LLC',
-    addressLine1: '480 Galleria Way', city: 'Roseville', region: 'CA', postalCode: '95678', phone: '+19165550178', email: 'roseville@northgate-auto.example',
+    addressLine1: '480 Galleria Way', city: 'Roseville', region: 'CA', postalCode: '95678', phone: '+19165550178', email: 'roseville@northgateautocare.com',
     registrations: { barArd: 'ARD-000001', epaId: 'CAR000000001', sellerPermit: 'SR-XX-000-000001', tireFeeAccount: 'TF-000001' },
     weeklyHours: WEEKDAY('08:00', '18:00', ['08:00', '16:00']),
     bays: [
@@ -92,7 +92,7 @@ export const ROLES: RoleSeed[] = [
 export type StaffSeed = { id: string; name: string; email: string; title: string; roleId: string; kind: 'staff' | 'auditor'; shops: string[]; accessDays?: number }
 
 const shopBoth = ['seed_shop_nga', 'seed_shop_ngt']
-const email = (local: string) => `${local}@northgate-auto.example`
+const email = (local: string) => `${local}@northgateautocare.com`
 
 export const STAFF: StaffSeed[] = [
   { id: 'seed_user_whitfield', name: 'Dana Whitfield', email: email('dana.whitfield'), title: 'Owner', roleId: 'seed_role_owner', kind: 'staff', shops: shopBoth },
@@ -106,7 +106,7 @@ export const STAFF: StaffSeed[] = [
   { id: 'seed_user_delgado', name: 'Rosa Delgado', email: email('rosa.delgado'), title: 'Parts Manager', roleId: 'seed_role_parts', kind: 'staff', shops: shopBoth },
   { id: 'seed_user_park', name: 'Helen Park', email: email('helen.park'), title: 'Bookkeeper', roleId: 'seed_role_bookkeeper', kind: 'staff', shops: shopBoth },
   { id: 'seed_user_ito', name: 'Sam Ito', email: email('sam.ito'), title: 'Marketing', roleId: 'seed_role_marketing', kind: 'staff', shops: shopBoth },
-  { id: 'seed_user_auditor', name: 'L. Navarro', email: 'l.navarro@navarro-cpa.example', title: 'CPA, Navarro & Co (guest)', roleId: 'seed_role_auditor', kind: 'auditor', shops: [], accessDays: 30 },
+  { id: 'seed_user_auditor', name: 'L. Navarro', email: 'l.navarro@navarrocpa.com', title: 'CPA, Navarro & Co (guest)', roleId: 'seed_role_auditor', kind: 'auditor', shops: [], accessDays: 30 },
 ]
 
 export const AGENTS = [

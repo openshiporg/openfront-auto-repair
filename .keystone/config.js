@@ -3128,8 +3128,8 @@ var LIBRARY_VEHICLES = [
   { vin: vin("1FTBR1C8", "N", "K", 3002), year: 2022, make: "Ford", model: "Transit 250", trim: "Bookmobile", color: "Blue", plate: "E123457", odometer: 19900 }
 ];
 var FLEETS = [
-  { id: "seed_acct_cvp", customerId: "seed_cust_fleet_cvp", name: "Capital Valley Plumbing", termsDays: 30, poRequired: true, creditLimitMinor: 1500000n, billingMode: "statement_monthly", email: "fleet@capitalvalleyplumbing.example", phone: "+19165550190", shop: "nga", vehicles: VANS, note: "Net 30, PO required. Approvers: $750 (fleet coordinator) and $3,000 (operations manager) - fleet approval rules arrive in Phase 6." },
-  { id: "seed_acct_sacl", customerId: "seed_cust_fleet_sacl", name: "Sac County Library Services", termsDays: 30, poRequired: false, creditLimitMinor: 500000n, billingMode: "per_invoice", email: "facilities@saclibrary.example", phone: "+19165550191", shop: "nga", vehicles: LIBRARY_VEHICLES, note: "Government account. Tax-exempt certificate on file in Phase 6." }
+  { id: "seed_acct_cvp", customerId: "seed_cust_fleet_cvp", name: "Capital Valley Plumbing", termsDays: 30, poRequired: true, creditLimitMinor: 1500000n, billingMode: "statement_monthly", email: "fleet@capitalvalleyplumbing.com", phone: "+19165550190", shop: "nga", vehicles: VANS, note: "Net 30, PO required. Approvers: $750 (fleet coordinator) and $3,000 (operations manager) - fleet approval rules arrive in Phase 6." },
+  { id: "seed_acct_sacl", customerId: "seed_cust_fleet_sacl", name: "Sac County Library Services", termsDays: 30, poRequired: false, creditLimitMinor: 500000n, billingMode: "per_invoice", email: "facilities@sacramentocountylibrary.org", phone: "+19165550191", shop: "nga", vehicles: LIBRARY_VEHICLES, note: "Government account. Tax-exempt certificate on file in Phase 6." }
 ];
 var BOOKING_RULES = {
   nga: [["slot_minutes", 30], ["max_dropoffs_per_day", 18], ["waiter_slots_per_hour", 2], ["max_bay_hours_per_day", 5700], ["no_waiters_after", "15:00"], ["lead_time_hours", 2]],
@@ -3137,7 +3137,8 @@ var BOOKING_RULES = {
 };
 var SHOP_ID = { nga: "seed_shop_nga", ngt: "seed_shop_ngt" };
 var phone = (n) => `+19165550${100 + n}`;
-var email = (c) => `${c.first}.${c.last}`.toLowerCase().replace(/[^a-z.]/g, "") + "@example.com";
+var MAIL_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "icloud.com", "comcast.net", "sbcglobal.net"];
+var email = (c, i) => `${c.first}.${c.last}`.toLowerCase().replace(/[^a-z.]/g, "") + "@" + MAIL_DOMAINS[i % MAIL_DOMAINS.length];
 var customerId = (i) => `seed_cust_${String(i + 1).padStart(2, "0")}`;
 var vehicleId = (owner, j) => `seed_veh_${owner.replace(/^seed_cust_/, "")}_${j + 1}`;
 async function seedBookingRules(uow, actor) {
@@ -3198,7 +3199,7 @@ async function seedCustomers(uow, actor, from = 0, to = CUSTOMERS.length) {
     const id = customerId(i);
     if (!await uow.tx.shop.findUnique({ where: { id: SHOP_ID[c.shop] }, select: { id: true } })) continue;
     if (!await uow.tx.customer.findUnique({ where: { id }, select: { id: true } })) {
-      const contacts = [{ kind: "mobile", value: phone(i), isPrimary: true }, ...c.email || c.consent === "marketing" || i % 3 === 0 ? [{ kind: "email", value: email(c), isPrimary: true }] : []];
+      const contacts = [{ kind: "mobile", value: phone(i), isPrimary: true }, ...c.email || c.consent === "marketing" || i % 3 === 0 ? [{ kind: "email", value: email(c, i), isPrimary: true }] : []];
       await upsertCustomer(uow, actor, {
         createId: id,
         firstName: c.first,
@@ -3316,7 +3317,7 @@ var SHOPS = [
     region: "CA",
     postalCode: "95833",
     phone: "+19165550142",
-    email: "service@northgate-auto.example",
+    email: "service@northgateautocare.com",
     registrations: { barArd: "ARD-000000", epaId: "CAR000000000", sellerPermit: "SR-XX-000-000000", tireFeeAccount: "TF-000000" },
     weeklyHours: WEEKDAY("07:30", "18:00", ["08:00", "14:00"]),
     bays: [
@@ -3335,7 +3336,7 @@ var SHOPS = [
     region: "CA",
     postalCode: "95678",
     phone: "+19165550178",
-    email: "roseville@northgate-auto.example",
+    email: "roseville@northgateautocare.com",
     registrations: { barArd: "ARD-000001", epaId: "CAR000000001", sellerPermit: "SR-XX-000-000001", tireFeeAccount: "TF-000001" },
     weeklyHours: WEEKDAY("08:00", "18:00", ["08:00", "16:00"]),
     bays: [
@@ -3466,7 +3467,7 @@ var ROLES = [
   { id: "seed_role_fleet", name: "Fleet Approver", description: "Fleet portal API session only; no dashboard.", permissions: [], dashboard: false }
 ];
 var shopBoth = ["seed_shop_nga", "seed_shop_ngt"];
-var email2 = (local) => `${local}@northgate-auto.example`;
+var email2 = (local) => `${local}@northgateautocare.com`;
 var STAFF = [
   { id: "seed_user_whitfield", name: "Dana Whitfield", email: email2("dana.whitfield"), title: "Owner", roleId: "seed_role_owner", kind: "staff", shops: shopBoth },
   { id: "seed_user_ortega", name: "Marcus Ortega", email: email2("marcus.ortega"), title: "Shop Manager, Northgate Auto Care", roleId: "seed_role_manager", kind: "staff", shops: ["seed_shop_nga"] },
@@ -3479,7 +3480,7 @@ var STAFF = [
   { id: "seed_user_delgado", name: "Rosa Delgado", email: email2("rosa.delgado"), title: "Parts Manager", roleId: "seed_role_parts", kind: "staff", shops: shopBoth },
   { id: "seed_user_park", name: "Helen Park", email: email2("helen.park"), title: "Bookkeeper", roleId: "seed_role_bookkeeper", kind: "staff", shops: shopBoth },
   { id: "seed_user_ito", name: "Sam Ito", email: email2("sam.ito"), title: "Marketing", roleId: "seed_role_marketing", kind: "staff", shops: shopBoth },
-  { id: "seed_user_auditor", name: "L. Navarro", email: "l.navarro@navarro-cpa.example", title: "CPA, Navarro & Co (guest)", roleId: "seed_role_auditor", kind: "auditor", shops: [], accessDays: 30 }
+  { id: "seed_user_auditor", name: "L. Navarro", email: "l.navarro@navarrocpa.com", title: "CPA, Navarro & Co (guest)", roleId: "seed_role_auditor", kind: "auditor", shops: [], accessDays: 30 }
 ];
 var AGENTS = [
   { id: "seed_agent_front_desk", name: "Front Desk Assistant", kind: "llm_agent", ownerId: "seed_user_ortega", shops: shopBoth },

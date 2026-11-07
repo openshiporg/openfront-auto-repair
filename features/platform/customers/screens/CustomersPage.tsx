@@ -84,7 +84,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{c.displayName}</span>
-                    {c.kind === 'business' ? <span className="rounded border px-1.5 font-mono text-[10px] uppercase">business</span> : null}
+                    {c.kind === 'business' ? <span className="text-xs text-muted-foreground">Business</span> : null}
                     {c.homeShop ? <span className="font-mono text-xs text-muted-foreground">{c.homeShop.code}</span> : null}
                     {c.noShowCount > 0 ? <span className="font-mono text-xs text-red-600">{c.noShowCount} no-show{c.noShowCount === 1 ? '' : 's'}</span> : null}
                   </div>

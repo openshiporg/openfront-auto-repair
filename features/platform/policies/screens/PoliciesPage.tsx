@@ -78,7 +78,7 @@ export default async function PoliciesPage({ searchParams }: { searchParams?: Pr
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{p.name}</span>
                     <span className="font-mono text-xs text-muted-foreground">{p.code}</span>
-                    {p.verified ? <span className="font-mono text-xs text-emerald-700 dark:text-emerald-400">VERIFIED</span> : <span className="rounded bg-amber-500/15 px-1.5 font-mono text-[10px] uppercase text-amber-700 dark:text-amber-400">draft · not checked against the regulations</span>}
+                    {p.verified ? <span className="font-mono text-xs text-emerald-700 dark:text-emerald-400">VERIFIED</span> : <span className="font-mono text-xs uppercase tracking-wide text-amber-700 dark:text-amber-400">draft · not checked against the regulations</span>}
                   </div>
                   {v ? (
                     <Meta>

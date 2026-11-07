@@ -51,7 +51,7 @@ export default async function ApprovalsPage({ searchParams }: { searchParams?: P
                 </Meta>
                 {r.decisions.map((d, i) => <Meta key={i}><br />{d.decision === 'approve' ? 'Approved' : 'Rejected'} by {d.decidedBy?.name ?? 'someone'} · {when(d.at, tz)}{d.reason ? ` · ${d.reason}` : ''}</Meta>)}
                 {r.consumedAt ? <Meta><br />Carried out {when(r.consumedAt, tz)}</Meta> : null}
-                <p className="break-all font-mono text-[11px] text-muted-foreground">{r.targetList} {r.targetId} · payload {r.payloadHash.slice(0, 12)}</p>
+                <p className="break-all font-mono text-xs text-muted-foreground">{r.targetList} {r.targetId} · payload {r.payloadHash.slice(0, 12)}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Status value={expired ? 'expired' : r.status} />

@@ -92,8 +92,8 @@ const LIBRARY_VEHICLES: VehicleSeed[] = [
 ]
 
 export const FLEETS = [
-  { id: 'seed_acct_cvp', customerId: 'seed_cust_fleet_cvp', name: 'Capital Valley Plumbing', termsDays: 30, poRequired: true, creditLimitMinor: 1_500_000n, billingMode: 'statement_monthly' as const, email: 'fleet@capitalvalleyplumbing.example', phone: '+19165550190', shop: 'nga' as const, vehicles: VANS, note: 'Net 30, PO required. Approvers: $750 (fleet coordinator) and $3,000 (operations manager) - fleet approval rules arrive in Phase 6.' },
-  { id: 'seed_acct_sacl', customerId: 'seed_cust_fleet_sacl', name: 'Sac County Library Services', termsDays: 30, poRequired: false, creditLimitMinor: 500_000n, billingMode: 'per_invoice' as const, email: 'facilities@saclibrary.example', phone: '+19165550191', shop: 'nga' as const, vehicles: LIBRARY_VEHICLES, note: 'Government account. Tax-exempt certificate on file in Phase 6.' },
+  { id: 'seed_acct_cvp', customerId: 'seed_cust_fleet_cvp', name: 'Capital Valley Plumbing', termsDays: 30, poRequired: true, creditLimitMinor: 1_500_000n, billingMode: 'statement_monthly' as const, email: 'fleet@capitalvalleyplumbing.com', phone: '+19165550190', shop: 'nga' as const, vehicles: VANS, note: 'Net 30, PO required. Approvers: $750 (fleet coordinator) and $3,000 (operations manager) - fleet approval rules arrive in Phase 6.' },
+  { id: 'seed_acct_sacl', customerId: 'seed_cust_fleet_sacl', name: 'Sac County Library Services', termsDays: 30, poRequired: false, creditLimitMinor: 500_000n, billingMode: 'per_invoice' as const, email: 'facilities@sacramentocountylibrary.org', phone: '+19165550191', shop: 'nga' as const, vehicles: LIBRARY_VEHICLES, note: 'Government account. Tax-exempt certificate on file in Phase 6.' },
 ]
 
 export const BOOKING_RULES: Record<'nga' | 'ngt', [string, unknown][]> = {
@@ -104,7 +104,9 @@ export const BOOKING_RULES: Record<'nga' | 'ngt', [string, unknown][]> = {
 const SHOP_ID = { nga: 'seed_shop_nga', ngt: 'seed_shop_ngt' } as const
 /** 916-555-0100 to 0139: the 555-01xx block is reserved for fiction. */
 const phone = (n: number) => `+19165550${100 + n}`
-const email = (c: CustomerSeed) => `${c.first}.${c.last}`.toLowerCase().replace(/[^a-z.]/g, '') + '@example.com'
+/** Realistic consumer domains for the demo. Messaging providers run on fixtures, so nothing is ever sent to these. */
+const MAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'icloud.com', 'comcast.net', 'sbcglobal.net']
+const email = (c: CustomerSeed, i: number) => `${c.first}.${c.last}`.toLowerCase().replace(/[^a-z.]/g, '') + '@' + MAIL_DOMAINS[i % MAIL_DOMAINS.length]
 export const customerId = (i: number) => `seed_cust_${String(i + 1).padStart(2, '0')}`
 const vehicleId = (owner: string, j: number) => `seed_veh_${owner.replace(/^seed_cust_/, '')}_${j + 1}`
 
@@ -171,7 +173,7 @@ export async function seedCustomers(uow: UnitOfWork, actor: Actor, from = 0, to 
     const id = customerId(i)
     if (!(await uow.tx.shop.findUnique({ where: { id: SHOP_ID[c.shop] }, select: { id: true } }))) continue
     if (!(await uow.tx.customer.findUnique({ where: { id }, select: { id: true } }))) {
-      const contacts = [{ kind: 'mobile' as const, value: phone(i), isPrimary: true }, ...(c.email || c.consent === 'marketing' || i % 3 === 0 ? [{ kind: 'email' as const, value: email(c), isPrimary: true }] : [])]
+      const contacts = [{ kind: 'mobile' as const, value: phone(i), isPrimary: true }, ...(c.email || c.consent === 'marketing' || i % 3 === 0 ? [{ kind: 'email' as const, value: email(c, i), isPrimary: true }] : [])]
       await upsertCustomer(uow, actor, {
         createId: id, firstName: c.first, lastName: c.last, homeShopId: SHOP_ID[c.shop], notes: c.notes ?? '',
         preferredChannel: c.consent === 'stopped' || c.consent === 'email_only' ? 'email' : 'sms', contacts,

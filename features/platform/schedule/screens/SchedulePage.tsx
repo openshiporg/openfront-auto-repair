@@ -68,15 +68,14 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
       <Section title={`Appointments · ${shop.code}`}>
         {data.appointments.length ? data.appointments.map(a => (
           <Row key={a.id}>
-            <div className="flex min-w-0 flex-1 items-start gap-4">
-              <span className="w-16 shrink-0 font-mono text-sm">{when(a.startsAt, shop.timeZone, 'time').replace(/ [A-Z]{2,4}$/, '')}</span>
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-[1_1_18rem] items-start gap-3 sm:gap-4">
+              <span className="w-[4.75rem] shrink-0 whitespace-nowrap font-mono text-sm">{when(a.startsAt, shop.timeZone, 'time').replace(/ [A-Z]{2,4}$/, '')}</span>
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-x-2">
                   <span className="font-medium">{a.customer?.displayName ?? a.lead?.name ?? 'Unknown'}</span>
-                  <span className={`rounded border px-1.5 font-mono text-[10px] uppercase ${a.kind === 'waiter' ? 'border-amber-500/60' : ''}`}>{label(a.kind)}</span>
                   <span className="font-mono text-xs text-muted-foreground">{a.reference}</span>
                 </div>
-                <Meta>{a.vehicle?.label ?? 'No vehicle yet'} · {hours(a.estimatedCentiHours)}{a.requestedServices?.length ? ` · ${a.requestedServices.join(', ')}` : ''}</Meta>
+                <Meta>{a.kind === 'waiter' ? 'Waiter' : 'Drop-off'} · {hours(a.estimatedCentiHours)} · {a.vehicle?.label ?? 'No vehicle yet'}{a.requestedServices?.length ? ` · ${a.requestedServices.join(', ')}` : ''}</Meta>
                 {a.concernText ? <p className="break-words text-xs">“{a.concernText}”</p> : null}
               </div>
             </div>

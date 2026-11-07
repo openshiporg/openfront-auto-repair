@@ -34,7 +34,7 @@ DATABASE_URL=postgres://… npm run seed    # loads the Northgate demo group (sa
 npm run verify                            # typecheck, lint, unit tests, node tests
 ```
 
-The demo owner signs in as `owner@northgate-auto.example` / `northgate-demo-2026`. That password is for local demos only.
+Seeded staff (for example `priya.shah@northgateautocare.com`) cannot sign in until an owner sets a password for them. Create the first owner at `/dashboard/init` before running the seed, or set staff passwords from the People screen.
 
 The database tests run when `AR_TEST_DATABASE_URL` points at a disposable Postgres schema named `vitest`.
 
