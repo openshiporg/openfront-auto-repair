@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Next x Keystone Starter",
-  description: "Next, Keystone, and Tailwind Starter Template",
+  title: "Openfront Auto Repair",
+  description: "The open-source alternative to Tekmetric: shop management for independent auto repair shops.",
 };
 
 export default function RootLayout({

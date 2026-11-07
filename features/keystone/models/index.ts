@@ -1,17 +1,15 @@
-import { User } from './User';
-import { Role } from './Role';
-import { Todo } from './Todo';
-import { TodoImage } from './TodoImage';
-import { OAuthApp } from './OAuthApp';
-import { OAuthToken } from './OAuthToken';
+import { User } from './User'
+import { Role } from './Role'
+import { OAuthApp } from './OAuthApp'
+import { OAuthToken } from './OAuthToken'
+import * as platform from './platform'
 
 export const models = {
   User,
   Role,
-  Todo,
-  TodoImage,
   OAuthApp,
   OAuthToken,
-};
+  ...platform,
+}
 
-export default models;
+export default models

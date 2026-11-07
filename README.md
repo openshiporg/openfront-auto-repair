@@ -8,7 +8,25 @@ Built on Next.js and KeystoneJS 6 with PostgreSQL.
 
 ## Status
 
-The foundation is being built. The data model and build plan are in progress.
+Early and moving fast. The foundation is in place:
+- shops, bays and hours;
+- roles with separated duties;
+- a hash-chained audit log;
+- maker-checker approvals;
+- exact money;
+- the authorized-amount ceiling.
+
+See [docs/foundation.md](./docs/foundation.md). Customers, vehicles, scheduling and check-in are next.
+
+## Development
+
+```bash
+npm install
+DATABASE_URL=postgres://… npm run dev     # runs migrations, then Next.js
+npm run verify                            # typecheck, lint, unit tests, node tests
+```
+
+The database tests run when `AR_TEST_DATABASE_URL` points at a disposable Postgres schema named `vitest`.
 
 ## License
 

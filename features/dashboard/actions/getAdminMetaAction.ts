@@ -12,7 +12,7 @@ import { getGraphQLNames } from '../lib/getGqlNames'
 // Cache the admin meta fetching to avoid repeated GraphQL calls
 // This is per-request caching using React's cache()
 const getCachedAdminMeta = cache(async (): Promise<KeystoneResponse<any>> => {
-  // Exact copy of Keystone's adminMetaQuery from admin-meta-graphql.ts
+  // Keystone's adminMetaQuery, limited to the fields @keystone-6/core 6.5.1 exposes (this repo's pinned version).
   const query = `
       query KsFetchAdminMeta {
         keystone {
@@ -25,7 +25,6 @@ const getCachedAdminMeta = cache(async (): Promise<KeystoneResponse<any>> => {
                 field
                 direction
               }
-              initialFilter
               path
               label
               singular
@@ -37,7 +36,6 @@ const getCachedAdminMeta = cache(async (): Promise<KeystoneResponse<any>> => {
               labelField
               isSingleton
               isHidden
-              hideNavigation
               hideCreate
               hideDelete
 
@@ -56,17 +54,13 @@ const getCachedAdminMeta = cache(async (): Promise<KeystoneResponse<any>> => {
                 isNonNull
                 createView {
                   fieldMode
-                  fieldPosition
-                  isRequired
                 }
                 itemView {
                   fieldMode
                   fieldPosition
-                  isRequired
                 }
                 listView {
                   fieldMode
-                  fieldPosition
                 }
               }
 
