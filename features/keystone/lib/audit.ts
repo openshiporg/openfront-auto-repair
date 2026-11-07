@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import type { Prisma } from '@prisma/client'
 import { canonicalJson, sha256, toJsonValue } from './canonical'
 import { advisoryLock, type Db, type Tx } from './db'
 
@@ -74,6 +75,7 @@ export async function appendAuditEvents(tx: Tx, events: AuditInput[], now = new 
   let seq = last?.seq ?? 0
   let prevHash = last?.hash ?? GENESIS_HASH
   const written: { id: string; seq: number; hash: string }[] = []
+  const rows: Prisma.AuditEventCreateManyInput[] = []
   for (const event of events) {
     seq += 1
     const row: StoredAudit = {
@@ -94,31 +96,32 @@ export async function appendAuditEvents(tx: Tx, events: AuditInput[], now = new 
       at: now,
     }
     const hash = auditHash(prevHash, row)
-    const created = await tx.auditEvent.create({
-      data: {
-        seq: row.seq,
-        eventKey: row.eventKey,
-        eventType: row.eventType,
-        entityType: row.entityType,
-        entityId: row.entityId,
-        actorUserId: row.actorUserId,
-        actorAgentId: row.actorAgentId,
-        approverId: row.approverId,
-        reason: row.reason ?? '',
-        // Nullable json columns: omit null (stored as SQL NULL, read back as null).
-        ...(row.before === null ? {} : { before: row.before as never }),
-        ...(row.after === null ? {} : { after: row.after as never }),
-        ...(row.metadata === null ? {} : { metadata: row.metadata as never }),
-        requestId: row.requestId ?? '',
-        prevHash,
-        hash,
-        at: row.at,
-      },
-      select: { id: true },
+    const id = randomUUID()
+    rows.push({
+      id,
+      seq: row.seq,
+      eventKey: row.eventKey,
+      eventType: row.eventType,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      actorUserId: row.actorUserId,
+      actorAgentId: row.actorAgentId,
+      approverId: row.approverId,
+      reason: row.reason ?? '',
+      // Nullable json columns: omit null (stored as SQL NULL, read back as null).
+      ...(row.before === null ? {} : { before: row.before as never }),
+      ...(row.after === null ? {} : { after: row.after as never }),
+      ...(row.metadata === null ? {} : { metadata: row.metadata as never }),
+      requestId: row.requestId ?? '',
+      prevHash,
+      hash,
+      at: row.at,
     })
-    written.push({ id: created.id, seq, hash })
+    written.push({ id, seq, hash })
     prevHash = hash
   }
+  // One insert per 200 events: a command that touches many rows stays a handful of round trips.
+  for (let i = 0; i < rows.length; i += 200) await tx.auditEvent.createMany({ data: rows.slice(i, i + 200) })
   return written
 }
 

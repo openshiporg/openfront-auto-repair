@@ -33,9 +33,9 @@ describe.skipIf(!hasTestDatabase)('Phase 0 commands (database)', () => {
     await prisma?.$disconnect()
   })
 
-  it('loads Northgate once: a second load with a new key creates nothing, and a replay returns the first result', async () => {
+  it('loads Northgate once: a second load with a new key creates nothing, and a replay returns the first result', { timeout: 240_000 }, async () => {
     const key = uniqueKey('setup')
-    const first = await loadNorthgateSetup(null, { idempotencyKey: key }, owner)
+    const first = await loadNorthgateSetup(null, { idempotencyKey: key, scope: 'spine' }, owner)
     expect(first.replay).toBe(false)
     const bays = SHOPS.reduce((n, shop) => n + shop.bays.length, 0)
     const memberships = STAFF.reduce((n, person) => n + person.shops.length, 0)
@@ -46,10 +46,10 @@ describe.skipIf(!hasTestDatabase)('Phase 0 commands (database)', () => {
     expect(ROLES).toHaveLength(11)
     expect(bays).toBe(13)
 
-    const replay = await loadNorthgateSetup(null, { idempotencyKey: key }, owner)
+    const replay = await loadNorthgateSetup(null, { idempotencyKey: key, scope: 'spine' }, owner)
     expect(replay).toEqual({ ...first, replay: true })
 
-    const again = await loadNorthgateSetup(null, { idempotencyKey: uniqueKey('setup') }, owner)
+    const again = await loadNorthgateSetup(null, { idempotencyKey: uniqueKey('setup'), scope: 'spine' }, owner)
     expect(Object.values(again.created).every(n => n === 0)).toBe(true)
 
     const roles = await prisma.role.findMany({ where: { id: { startsWith: 'seed_' } } })

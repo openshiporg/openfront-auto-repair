@@ -38,3 +38,5 @@ It also loads 12 staff, 3 agent identities and 22 approval policies. Running it 
 
 - Customer-facing pages (shop website, booking, estimate approval, payment, portals). The root URL redirects to the staff dashboard.
 - The APIs those pages will use arrive phase by phase.
+
+Customers, vehicles, scheduling and check-in: see [customers-and-scheduling.md](./customers-and-scheduling.md).

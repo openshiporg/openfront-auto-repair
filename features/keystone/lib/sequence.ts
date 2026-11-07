@@ -15,6 +15,15 @@ export async function nextReference(tx: Tx, prefix: string, now = new Date(), wi
   return `${key}-${String(value).padStart(width, '0')}`
 }
 
+/** A per-shop reference: APT-NGA-2026-000004, CI-NGT-2026-000012 (SCHEMA G10). */
+export async function nextShopReference(tx: Tx, prefix: string, shopCode: string, now = new Date(), width = 6) {
+  if (!/^[A-Z]{2,5}$/.test(prefix) || !/^[A-Z]{2,5}$/.test(shopCode)) throw new Error('Reference prefix and shop code must be 2-5 capital letters')
+  const key = `${prefix}-${shopCode}-${now.getUTCFullYear()}`
+  await advisoryLock(tx, `sequence:${key}`)
+  const row = await tx.sequence.upsert({ where: { key }, create: { key, nextValue: 2 }, update: { nextValue: { increment: 1 } } })
+  return `${key}-${String(row.nextValue - 1).padStart(width, '0')}`
+}
+
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 
 /** Random Crockford base32 code with a prefix, e.g. INV-7K2Q-9MXD. */

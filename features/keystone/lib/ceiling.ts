@@ -1,4 +1,4 @@
-import { dec, Decimal } from './decimal'
+import { dec, toScale } from './decimal'
 import { DomainError, Codes } from './errors'
 
 /**
@@ -47,7 +47,7 @@ export function parseToleranceRule(input: unknown): ToleranceRule {
   return rule
 }
 
-const percentOf = (amountMinor: bigint, percent: string): bigint => BigInt(dec(amountMinor).times(dec(percent)).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN).toFixed(0))
+const percentOf = (amountMinor: bigint, percent: string): bigint => BigInt(toScale(dec(amountMinor).times(dec(percent)), 0))
 
 /** Tolerance in cents for an authorized amount. */
 export function toleranceMinor(ruleInput: ToleranceRule | unknown, authorizedMinor: bigint): bigint {

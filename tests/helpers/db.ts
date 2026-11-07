@@ -15,17 +15,19 @@ export function testPrisma(connectionLimit = 12) {
   return new PrismaClient({ datasourceUrl: url.toString(), log: [] })
 }
 
-/** Empties every application table in the test schema. Append-only tables need their triggers off. */
+/** Empties every application table in the test schema. Tables with append-only or immutability triggers have them off for the truncate only. */
 export async function resetDatabase(prisma: PrismaClient) {
   const tables = await prisma.$queryRaw<{ tablename: string }[]>`SELECT tablename FROM pg_tables WHERE schemaname = current_schema() AND tablename <> '_prisma_migrations'`
   if (!tables.length) return
-  const list = tables.map(t => `"${t.tablename.replaceAll('"', '')}"`).join(', ')
+  const guarded = await prisma.$queryRaw<{ table: string }[]>`
+    SELECT DISTINCT c.relname AS "table" FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = current_schema() AND NOT t.tgisinternal`
+  const quote = (name: string) => `"${name.replaceAll('"', '')}"`
+  const list = tables.map(t => quote(t.tablename)).join(', ')
   await prisma.$transaction([
-    prisma.$executeRawUnsafe(`ALTER TABLE "AuditEvent" DISABLE TRIGGER USER`),
-    prisma.$executeRawUnsafe(`ALTER TABLE "ApprovalDecision" DISABLE TRIGGER USER`),
+    ...guarded.map(g => prisma.$executeRawUnsafe(`ALTER TABLE ${quote(g.table)} DISABLE TRIGGER USER`)),
     prisma.$executeRawUnsafe(`TRUNCATE ${list} CASCADE`),
-    prisma.$executeRawUnsafe(`ALTER TABLE "AuditEvent" ENABLE TRIGGER USER`),
-    prisma.$executeRawUnsafe(`ALTER TABLE "ApprovalDecision" ENABLE TRIGGER USER`),
+    ...guarded.map(g => prisma.$executeRawUnsafe(`ALTER TABLE ${quote(g.table)} ENABLE TRIGGER USER`)),
   ])
 }
 

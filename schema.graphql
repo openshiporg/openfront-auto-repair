@@ -2016,6 +2016,15 @@ type Shop {
   timeZone: String
   registrations: JSON
   calendar: ShopCalendar
+  jurisdictionPack: JurisdictionPack
+  jurisdictionPolicy: JurisdictionPolicyVersion
+  shopPolicy: ShopPolicyVersion
+  laborRateClassSet: LaborRateClassSetVersion
+  laborMatrix: LaborMatrixVersion
+  partsMatrix: PartsMatrixVersion
+  feePolicy: FeePolicyVersion
+  taxRuleSet: TaxRuleSetVersion
+  warrantyTermSet: WarrantyTermSetVersion
   bays(where: BayWhereInput! = {}, orderBy: [BayOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BayWhereUniqueInput): [Bay!]
   baysCount(where: BayWhereInput! = {}): Int
   memberships(where: ShopMembershipWhereInput! = {}, orderBy: [ShopMembershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopMembershipWhereUniqueInput): [ShopMembership!]
@@ -2053,6 +2062,15 @@ input ShopWhereInput {
   website: StringFilter
   timeZone: StringFilter
   calendar: ShopCalendarWhereInput
+  jurisdictionPack: JurisdictionPackWhereInput
+  jurisdictionPolicy: JurisdictionPolicyVersionWhereInput
+  shopPolicy: ShopPolicyVersionWhereInput
+  laborRateClassSet: LaborRateClassSetVersionWhereInput
+  laborMatrix: LaborMatrixVersionWhereInput
+  partsMatrix: PartsMatrixVersionWhereInput
+  feePolicy: FeePolicyVersionWhereInput
+  taxRuleSet: TaxRuleSetVersionWhereInput
+  warrantyTermSet: WarrantyTermSetVersionWhereInput
   bays: BayManyRelationFilter
   memberships: ShopMembershipManyRelationFilter
   isPublished: BooleanFilter
@@ -2106,6 +2124,15 @@ input ShopUpdateInput {
   timeZone: String
   registrations: JSON
   calendar: ShopCalendarRelateToOneForUpdateInput
+  jurisdictionPack: JurisdictionPackRelateToOneForUpdateInput
+  jurisdictionPolicy: JurisdictionPolicyVersionRelateToOneForUpdateInput
+  shopPolicy: ShopPolicyVersionRelateToOneForUpdateInput
+  laborRateClassSet: LaborRateClassSetVersionRelateToOneForUpdateInput
+  laborMatrix: LaborMatrixVersionRelateToOneForUpdateInput
+  partsMatrix: PartsMatrixVersionRelateToOneForUpdateInput
+  feePolicy: FeePolicyVersionRelateToOneForUpdateInput
+  taxRuleSet: TaxRuleSetVersionRelateToOneForUpdateInput
+  warrantyTermSet: WarrantyTermSetVersionRelateToOneForUpdateInput
   bays: BayRelateToManyForUpdateInput
   memberships: ShopMembershipRelateToManyForUpdateInput
   publicProfile: JSON
@@ -2119,6 +2146,60 @@ input ShopUpdateInput {
 input ShopCalendarRelateToOneForUpdateInput {
   create: ShopCalendarCreateInput
   connect: ShopCalendarWhereUniqueInput
+  disconnect: Boolean
+}
+
+input JurisdictionPackRelateToOneForUpdateInput {
+  create: JurisdictionPackCreateInput
+  connect: JurisdictionPackWhereUniqueInput
+  disconnect: Boolean
+}
+
+input JurisdictionPolicyVersionRelateToOneForUpdateInput {
+  create: JurisdictionPolicyVersionCreateInput
+  connect: JurisdictionPolicyVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ShopPolicyVersionRelateToOneForUpdateInput {
+  create: ShopPolicyVersionCreateInput
+  connect: ShopPolicyVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input LaborRateClassSetVersionRelateToOneForUpdateInput {
+  create: LaborRateClassSetVersionCreateInput
+  connect: LaborRateClassSetVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input LaborMatrixVersionRelateToOneForUpdateInput {
+  create: LaborMatrixVersionCreateInput
+  connect: LaborMatrixVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input PartsMatrixVersionRelateToOneForUpdateInput {
+  create: PartsMatrixVersionCreateInput
+  connect: PartsMatrixVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input FeePolicyVersionRelateToOneForUpdateInput {
+  create: FeePolicyVersionCreateInput
+  connect: FeePolicyVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input TaxRuleSetVersionRelateToOneForUpdateInput {
+  create: TaxRuleSetVersionCreateInput
+  connect: TaxRuleSetVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input WarrantyTermSetVersionRelateToOneForUpdateInput {
+  create: WarrantyTermSetVersionCreateInput
+  connect: WarrantyTermSetVersionWhereUniqueInput
   disconnect: Boolean
 }
 
@@ -2150,6 +2231,15 @@ input ShopCreateInput {
   timeZone: String
   registrations: JSON
   calendar: ShopCalendarRelateToOneForCreateInput
+  jurisdictionPack: JurisdictionPackRelateToOneForCreateInput
+  jurisdictionPolicy: JurisdictionPolicyVersionRelateToOneForCreateInput
+  shopPolicy: ShopPolicyVersionRelateToOneForCreateInput
+  laborRateClassSet: LaborRateClassSetVersionRelateToOneForCreateInput
+  laborMatrix: LaborMatrixVersionRelateToOneForCreateInput
+  partsMatrix: PartsMatrixVersionRelateToOneForCreateInput
+  feePolicy: FeePolicyVersionRelateToOneForCreateInput
+  taxRuleSet: TaxRuleSetVersionRelateToOneForCreateInput
+  warrantyTermSet: WarrantyTermSetVersionRelateToOneForCreateInput
   bays: BayRelateToManyForCreateInput
   memberships: ShopMembershipRelateToManyForCreateInput
   publicProfile: JSON
@@ -2163,6 +2253,51 @@ input ShopCreateInput {
 input ShopCalendarRelateToOneForCreateInput {
   create: ShopCalendarCreateInput
   connect: ShopCalendarWhereUniqueInput
+}
+
+input JurisdictionPackRelateToOneForCreateInput {
+  create: JurisdictionPackCreateInput
+  connect: JurisdictionPackWhereUniqueInput
+}
+
+input JurisdictionPolicyVersionRelateToOneForCreateInput {
+  create: JurisdictionPolicyVersionCreateInput
+  connect: JurisdictionPolicyVersionWhereUniqueInput
+}
+
+input ShopPolicyVersionRelateToOneForCreateInput {
+  create: ShopPolicyVersionCreateInput
+  connect: ShopPolicyVersionWhereUniqueInput
+}
+
+input LaborRateClassSetVersionRelateToOneForCreateInput {
+  create: LaborRateClassSetVersionCreateInput
+  connect: LaborRateClassSetVersionWhereUniqueInput
+}
+
+input LaborMatrixVersionRelateToOneForCreateInput {
+  create: LaborMatrixVersionCreateInput
+  connect: LaborMatrixVersionWhereUniqueInput
+}
+
+input PartsMatrixVersionRelateToOneForCreateInput {
+  create: PartsMatrixVersionCreateInput
+  connect: PartsMatrixVersionWhereUniqueInput
+}
+
+input FeePolicyVersionRelateToOneForCreateInput {
+  create: FeePolicyVersionCreateInput
+  connect: FeePolicyVersionWhereUniqueInput
+}
+
+input TaxRuleSetVersionRelateToOneForCreateInput {
+  create: TaxRuleSetVersionCreateInput
+  connect: TaxRuleSetVersionWhereUniqueInput
+}
+
+input WarrantyTermSetVersionRelateToOneForCreateInput {
+  create: WarrantyTermSetVersionCreateInput
+  connect: WarrantyTermSetVersionWhereUniqueInput
 }
 
 input BayRelateToManyForCreateInput {
@@ -2479,6 +2614,3301 @@ input WorkerScheduleCreateInput {
   updatedAt: DateTime
 }
 
+type FeePolicyVersion {
+  id: ID!
+  shop: Shop
+  rules(where: FeeRuleWhereInput! = {}, orderBy: [FeeRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FeeRuleWhereUniqueInput): [FeeRule!]
+  rulesCount(where: FeeRuleWhereInput! = {}): Int
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FeePolicyVersionWhereUniqueInput {
+  id: ID
+}
+
+input FeePolicyVersionWhereInput {
+  AND: [FeePolicyVersionWhereInput!]
+  OR: [FeePolicyVersionWhereInput!]
+  NOT: [FeePolicyVersionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  rules: FeeRuleManyRelationFilter
+  versionNumber: IntFilter
+  status: StringFilter
+  notes: StringFilter
+  basedOnId: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  effectiveFrom: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input FeeRuleManyRelationFilter {
+  every: FeeRuleWhereInput
+  some: FeeRuleWhereInput
+  none: FeeRuleWhereInput
+}
+
+input FeePolicyVersionOrderByInput {
+  id: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  notes: OrderDirection
+  basedOnId: OrderDirection
+  publishedAt: OrderDirection
+  effectiveFrom: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input FeePolicyVersionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  rules: FeeRuleRelateToManyForUpdateInput
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FeeRuleRelateToManyForUpdateInput {
+  disconnect: [FeeRuleWhereUniqueInput!]
+  set: [FeeRuleWhereUniqueInput!]
+  create: [FeeRuleCreateInput!]
+  connect: [FeeRuleWhereUniqueInput!]
+}
+
+input FeePolicyVersionUpdateArgs {
+  where: FeePolicyVersionWhereUniqueInput!
+  data: FeePolicyVersionUpdateInput!
+}
+
+input FeePolicyVersionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  rules: FeeRuleRelateToManyForCreateInput
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FeeRuleRelateToManyForCreateInput {
+  create: [FeeRuleCreateInput!]
+  connect: [FeeRuleWhereUniqueInput!]
+}
+
+type FeeRule {
+  id: ID!
+  policy: FeePolicyVersion
+  code: String
+  kind: String
+  base: String
+  percent: Decimal
+  flatMinor: BigInt
+  perUnitMinor: BigInt
+  minMinor: BigInt
+  maxMinor: BigInt
+  itemCategory: String
+  taxTreatment: String
+  separatelyStated: Boolean
+  refundable: Boolean
+  refundWindowDays: Int
+  invoiceText: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+scalar Decimal
+
+input FeeRuleWhereUniqueInput {
+  id: ID
+}
+
+input FeeRuleWhereInput {
+  AND: [FeeRuleWhereInput!]
+  OR: [FeeRuleWhereInput!]
+  NOT: [FeeRuleWhereInput!]
+  id: IDFilter
+  policy: FeePolicyVersionWhereInput
+  code: StringFilter
+  kind: StringFilter
+  base: StringFilter
+  percent: DecimalNullableFilter
+  flatMinor: BigIntNullableFilter
+  perUnitMinor: BigIntNullableFilter
+  minMinor: BigIntNullableFilter
+  maxMinor: BigIntNullableFilter
+  itemCategory: StringFilter
+  taxTreatment: StringFilter
+  separatelyStated: BooleanFilter
+  refundable: BooleanFilter
+  refundWindowDays: IntNullableFilter
+  invoiceText: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input DecimalNullableFilter {
+  equals: Decimal
+  in: [Decimal!]
+  notIn: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  gt: Decimal
+  gte: Decimal
+  not: DecimalNullableFilter
+}
+
+input FeeRuleOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  kind: OrderDirection
+  base: OrderDirection
+  percent: OrderDirection
+  flatMinor: OrderDirection
+  perUnitMinor: OrderDirection
+  minMinor: OrderDirection
+  maxMinor: OrderDirection
+  itemCategory: OrderDirection
+  taxTreatment: OrderDirection
+  separatelyStated: OrderDirection
+  refundable: OrderDirection
+  refundWindowDays: OrderDirection
+  invoiceText: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input FeeRuleUpdateInput {
+  policy: FeePolicyVersionRelateToOneForUpdateInput
+  code: String
+  kind: String
+  base: String
+  percent: Decimal
+  flatMinor: BigInt
+  perUnitMinor: BigInt
+  minMinor: BigInt
+  maxMinor: BigInt
+  itemCategory: String
+  taxTreatment: String
+  separatelyStated: Boolean
+  refundable: Boolean
+  refundWindowDays: Int
+  invoiceText: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FeeRuleUpdateArgs {
+  where: FeeRuleWhereUniqueInput!
+  data: FeeRuleUpdateInput!
+}
+
+input FeeRuleCreateInput {
+  policy: FeePolicyVersionRelateToOneForCreateInput
+  code: String
+  kind: String
+  base: String
+  percent: Decimal
+  flatMinor: BigInt
+  perUnitMinor: BigInt
+  minMinor: BigInt
+  maxMinor: BigInt
+  itemCategory: String
+  taxTreatment: String
+  separatelyStated: Boolean
+  refundable: Boolean
+  refundWindowDays: Int
+  invoiceText: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type JurisdictionPack {
+  id: ID!
+  code: String
+  name: String
+  country: String
+  region: String
+  verified: Boolean
+  sourceRefs: JSON
+  versions(where: JurisdictionPolicyVersionWhereInput! = {}, orderBy: [JurisdictionPolicyVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JurisdictionPolicyVersionWhereUniqueInput): [JurisdictionPolicyVersion!]
+  versionsCount(where: JurisdictionPolicyVersionWhereInput! = {}): Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JurisdictionPackWhereUniqueInput {
+  id: ID
+  code: String
+}
+
+input JurisdictionPackWhereInput {
+  AND: [JurisdictionPackWhereInput!]
+  OR: [JurisdictionPackWhereInput!]
+  NOT: [JurisdictionPackWhereInput!]
+  id: IDFilter
+  code: StringFilter
+  name: StringFilter
+  country: StringFilter
+  region: StringFilter
+  verified: BooleanFilter
+  versions: JurisdictionPolicyVersionManyRelationFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JurisdictionPolicyVersionManyRelationFilter {
+  every: JurisdictionPolicyVersionWhereInput
+  some: JurisdictionPolicyVersionWhereInput
+  none: JurisdictionPolicyVersionWhereInput
+}
+
+input JurisdictionPackOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  name: OrderDirection
+  country: OrderDirection
+  region: OrderDirection
+  verified: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input JurisdictionPackUpdateInput {
+  code: String
+  name: String
+  country: String
+  region: String
+  verified: Boolean
+  sourceRefs: JSON
+  versions: JurisdictionPolicyVersionRelateToManyForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JurisdictionPolicyVersionRelateToManyForUpdateInput {
+  disconnect: [JurisdictionPolicyVersionWhereUniqueInput!]
+  set: [JurisdictionPolicyVersionWhereUniqueInput!]
+  create: [JurisdictionPolicyVersionCreateInput!]
+  connect: [JurisdictionPolicyVersionWhereUniqueInput!]
+}
+
+input JurisdictionPackUpdateArgs {
+  where: JurisdictionPackWhereUniqueInput!
+  data: JurisdictionPackUpdateInput!
+}
+
+input JurisdictionPackCreateInput {
+  code: String
+  name: String
+  country: String
+  region: String
+  verified: Boolean
+  sourceRefs: JSON
+  versions: JurisdictionPolicyVersionRelateToManyForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JurisdictionPolicyVersionRelateToManyForCreateInput {
+  create: [JurisdictionPolicyVersionCreateInput!]
+  connect: [JurisdictionPolicyVersionWhereUniqueInput!]
+}
+
+type JurisdictionPolicyVersion {
+  id: ID!
+  pack: JurisdictionPack
+  estimateThresholdMinor: BigInt
+  writtenEstimateWaiverAllowed: Boolean
+  waiverFormText: String
+  allowedAuthorizationMethods: JSON
+  authorizationEvidenceRules: JSON
+  toleranceRule: JSON
+  requireOdometerIn: Boolean
+  requireOdometerOut: Boolean
+  requireSignedWorkOrder: Boolean
+  requirePartCondition: Boolean
+  crashPartOemDefault: Boolean
+  shopSuppliesGenericAllowed: Boolean
+  replacedPartsOfferRequired: Boolean
+  replacedPartsOfferText: String
+  nonReturnableNoteText: String
+  teardownRules: JSON
+  designeeRules: JSON
+  thirdPartyPayorNoticeText: String
+  towingSeparateAuthorization: Boolean
+  subletDisclosureRequired: Boolean
+  invoiceRequiredFields: JSON
+  recordRetentionYears: Int
+  surchargeAllowed: Boolean
+  requiredNotices: JSON
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JurisdictionPolicyVersionWhereUniqueInput {
+  id: ID
+}
+
+input JurisdictionPolicyVersionWhereInput {
+  AND: [JurisdictionPolicyVersionWhereInput!]
+  OR: [JurisdictionPolicyVersionWhereInput!]
+  NOT: [JurisdictionPolicyVersionWhereInput!]
+  id: IDFilter
+  pack: JurisdictionPackWhereInput
+  estimateThresholdMinor: BigIntNullableFilter
+  writtenEstimateWaiverAllowed: BooleanFilter
+  waiverFormText: StringFilter
+  requireOdometerIn: BooleanFilter
+  requireOdometerOut: BooleanFilter
+  requireSignedWorkOrder: BooleanFilter
+  requirePartCondition: BooleanFilter
+  crashPartOemDefault: BooleanFilter
+  shopSuppliesGenericAllowed: BooleanFilter
+  replacedPartsOfferRequired: BooleanFilter
+  replacedPartsOfferText: StringFilter
+  nonReturnableNoteText: StringFilter
+  thirdPartyPayorNoticeText: StringFilter
+  towingSeparateAuthorization: BooleanFilter
+  subletDisclosureRequired: BooleanFilter
+  recordRetentionYears: IntFilter
+  surchargeAllowed: BooleanFilter
+  versionNumber: IntFilter
+  status: StringFilter
+  notes: StringFilter
+  basedOnId: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  effectiveFrom: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JurisdictionPolicyVersionOrderByInput {
+  id: OrderDirection
+  estimateThresholdMinor: OrderDirection
+  writtenEstimateWaiverAllowed: OrderDirection
+  waiverFormText: OrderDirection
+  requireOdometerIn: OrderDirection
+  requireOdometerOut: OrderDirection
+  requireSignedWorkOrder: OrderDirection
+  requirePartCondition: OrderDirection
+  crashPartOemDefault: OrderDirection
+  shopSuppliesGenericAllowed: OrderDirection
+  replacedPartsOfferRequired: OrderDirection
+  replacedPartsOfferText: OrderDirection
+  nonReturnableNoteText: OrderDirection
+  thirdPartyPayorNoticeText: OrderDirection
+  towingSeparateAuthorization: OrderDirection
+  subletDisclosureRequired: OrderDirection
+  recordRetentionYears: OrderDirection
+  surchargeAllowed: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  notes: OrderDirection
+  basedOnId: OrderDirection
+  publishedAt: OrderDirection
+  effectiveFrom: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input JurisdictionPolicyVersionUpdateInput {
+  pack: JurisdictionPackRelateToOneForUpdateInput
+  estimateThresholdMinor: BigInt
+  writtenEstimateWaiverAllowed: Boolean
+  waiverFormText: String
+  allowedAuthorizationMethods: JSON
+  authorizationEvidenceRules: JSON
+  toleranceRule: JSON
+  requireOdometerIn: Boolean
+  requireOdometerOut: Boolean
+  requireSignedWorkOrder: Boolean
+  requirePartCondition: Boolean
+  crashPartOemDefault: Boolean
+  shopSuppliesGenericAllowed: Boolean
+  replacedPartsOfferRequired: Boolean
+  replacedPartsOfferText: String
+  nonReturnableNoteText: String
+  teardownRules: JSON
+  designeeRules: JSON
+  thirdPartyPayorNoticeText: String
+  towingSeparateAuthorization: Boolean
+  subletDisclosureRequired: Boolean
+  invoiceRequiredFields: JSON
+  recordRetentionYears: Int
+  surchargeAllowed: Boolean
+  requiredNotices: JSON
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JurisdictionPolicyVersionUpdateArgs {
+  where: JurisdictionPolicyVersionWhereUniqueInput!
+  data: JurisdictionPolicyVersionUpdateInput!
+}
+
+input JurisdictionPolicyVersionCreateInput {
+  pack: JurisdictionPackRelateToOneForCreateInput
+  estimateThresholdMinor: BigInt
+  writtenEstimateWaiverAllowed: Boolean
+  waiverFormText: String
+  allowedAuthorizationMethods: JSON
+  authorizationEvidenceRules: JSON
+  toleranceRule: JSON
+  requireOdometerIn: Boolean
+  requireOdometerOut: Boolean
+  requireSignedWorkOrder: Boolean
+  requirePartCondition: Boolean
+  crashPartOemDefault: Boolean
+  shopSuppliesGenericAllowed: Boolean
+  replacedPartsOfferRequired: Boolean
+  replacedPartsOfferText: String
+  nonReturnableNoteText: String
+  teardownRules: JSON
+  designeeRules: JSON
+  thirdPartyPayorNoticeText: String
+  towingSeparateAuthorization: Boolean
+  subletDisclosureRequired: Boolean
+  invoiceRequiredFields: JSON
+  recordRetentionYears: Int
+  surchargeAllowed: Boolean
+  requiredNotices: JSON
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type LaborMatrixVersion {
+  id: ID!
+  shop: Shop
+  bands: JSON
+  appliesToClasses: JSON
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input LaborMatrixVersionWhereUniqueInput {
+  id: ID
+}
+
+input LaborMatrixVersionWhereInput {
+  AND: [LaborMatrixVersionWhereInput!]
+  OR: [LaborMatrixVersionWhereInput!]
+  NOT: [LaborMatrixVersionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  versionNumber: IntFilter
+  status: StringFilter
+  notes: StringFilter
+  basedOnId: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  effectiveFrom: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input LaborMatrixVersionOrderByInput {
+  id: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  notes: OrderDirection
+  basedOnId: OrderDirection
+  publishedAt: OrderDirection
+  effectiveFrom: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input LaborMatrixVersionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  bands: JSON
+  appliesToClasses: JSON
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input LaborMatrixVersionUpdateArgs {
+  where: LaborMatrixVersionWhereUniqueInput!
+  data: LaborMatrixVersionUpdateInput!
+}
+
+input LaborMatrixVersionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  bands: JSON
+  appliesToClasses: JSON
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type LaborRateClass {
+  id: ID!
+  set: LaborRateClassSetVersion
+  code: String
+  name: String
+  rateMinor: BigInt
+  taxCategory: TaxCategory
+  isDefault: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input LaborRateClassWhereUniqueInput {
+  id: ID
+}
+
+input LaborRateClassWhereInput {
+  AND: [LaborRateClassWhereInput!]
+  OR: [LaborRateClassWhereInput!]
+  NOT: [LaborRateClassWhereInput!]
+  id: IDFilter
+  set: LaborRateClassSetVersionWhereInput
+  code: StringFilter
+  name: StringFilter
+  rateMinor: BigIntFilter
+  taxCategory: TaxCategoryWhereInput
+  isDefault: BooleanFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input BigIntFilter {
+  equals: BigInt
+  in: [BigInt!]
+  notIn: [BigInt!]
+  lt: BigInt
+  lte: BigInt
+  gt: BigInt
+  gte: BigInt
+  not: BigIntFilter
+}
+
+input LaborRateClassOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  name: OrderDirection
+  rateMinor: OrderDirection
+  isDefault: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input LaborRateClassUpdateInput {
+  set: LaborRateClassSetVersionRelateToOneForUpdateInput
+  code: String
+  name: String
+  rateMinor: BigInt
+  taxCategory: TaxCategoryRelateToOneForUpdateInput
+  isDefault: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxCategoryRelateToOneForUpdateInput {
+  create: TaxCategoryCreateInput
+  connect: TaxCategoryWhereUniqueInput
+  disconnect: Boolean
+}
+
+input LaborRateClassUpdateArgs {
+  where: LaborRateClassWhereUniqueInput!
+  data: LaborRateClassUpdateInput!
+}
+
+input LaborRateClassCreateInput {
+  set: LaborRateClassSetVersionRelateToOneForCreateInput
+  code: String
+  name: String
+  rateMinor: BigInt
+  taxCategory: TaxCategoryRelateToOneForCreateInput
+  isDefault: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxCategoryRelateToOneForCreateInput {
+  create: TaxCategoryCreateInput
+  connect: TaxCategoryWhereUniqueInput
+}
+
+type LaborRateClassSetVersion {
+  id: ID!
+  shop: Shop
+  classes(where: LaborRateClassWhereInput! = {}, orderBy: [LaborRateClassOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborRateClassWhereUniqueInput): [LaborRateClass!]
+  classesCount(where: LaborRateClassWhereInput! = {}): Int
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input LaborRateClassSetVersionWhereUniqueInput {
+  id: ID
+}
+
+input LaborRateClassSetVersionWhereInput {
+  AND: [LaborRateClassSetVersionWhereInput!]
+  OR: [LaborRateClassSetVersionWhereInput!]
+  NOT: [LaborRateClassSetVersionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  classes: LaborRateClassManyRelationFilter
+  versionNumber: IntFilter
+  status: StringFilter
+  notes: StringFilter
+  basedOnId: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  effectiveFrom: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input LaborRateClassManyRelationFilter {
+  every: LaborRateClassWhereInput
+  some: LaborRateClassWhereInput
+  none: LaborRateClassWhereInput
+}
+
+input LaborRateClassSetVersionOrderByInput {
+  id: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  notes: OrderDirection
+  basedOnId: OrderDirection
+  publishedAt: OrderDirection
+  effectiveFrom: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input LaborRateClassSetVersionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  classes: LaborRateClassRelateToManyForUpdateInput
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input LaborRateClassRelateToManyForUpdateInput {
+  disconnect: [LaborRateClassWhereUniqueInput!]
+  set: [LaborRateClassWhereUniqueInput!]
+  create: [LaborRateClassCreateInput!]
+  connect: [LaborRateClassWhereUniqueInput!]
+}
+
+input LaborRateClassSetVersionUpdateArgs {
+  where: LaborRateClassSetVersionWhereUniqueInput!
+  data: LaborRateClassSetVersionUpdateInput!
+}
+
+input LaborRateClassSetVersionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  classes: LaborRateClassRelateToManyForCreateInput
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input LaborRateClassRelateToManyForCreateInput {
+  create: [LaborRateClassCreateInput!]
+  connect: [LaborRateClassWhereUniqueInput!]
+}
+
+type PartsMatrixVersion {
+  id: ID!
+  shop: Shop
+  tiers: JSON
+  categoryOverrides: JSON
+  supplierOverrides: JSON
+  marginFloorPct: Decimal
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PartsMatrixVersionWhereUniqueInput {
+  id: ID
+}
+
+input PartsMatrixVersionWhereInput {
+  AND: [PartsMatrixVersionWhereInput!]
+  OR: [PartsMatrixVersionWhereInput!]
+  NOT: [PartsMatrixVersionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  marginFloorPct: DecimalFilter
+  versionNumber: IntFilter
+  status: StringFilter
+  notes: StringFilter
+  basedOnId: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  effectiveFrom: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input DecimalFilter {
+  equals: Decimal
+  in: [Decimal!]
+  notIn: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  gt: Decimal
+  gte: Decimal
+  not: DecimalFilter
+}
+
+input PartsMatrixVersionOrderByInput {
+  id: OrderDirection
+  marginFloorPct: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  notes: OrderDirection
+  basedOnId: OrderDirection
+  publishedAt: OrderDirection
+  effectiveFrom: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PartsMatrixVersionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  tiers: JSON
+  categoryOverrides: JSON
+  supplierOverrides: JSON
+  marginFloorPct: Decimal
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PartsMatrixVersionUpdateArgs {
+  where: PartsMatrixVersionWhereUniqueInput!
+  data: PartsMatrixVersionUpdateInput!
+}
+
+input PartsMatrixVersionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  tiers: JSON
+  categoryOverrides: JSON
+  supplierOverrides: JSON
+  marginFloorPct: Decimal
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ShopPolicyVersion {
+  id: ID!
+  shop: Shop
+  flagHoursAt: String
+  comebackPayRule: String
+  allowConcurrentJobClocks: Boolean
+  requireQualityCheck: Boolean
+  diagnosisTrustThreshold: Decimal
+  authorizationLinkTtlHours: Int
+  promisedTimeRequired: Boolean
+  noShowGraceMinutes: Int
+  discountLimitPctByRole: JSON
+  refundApprovalMinor: BigInt
+  creditMemoApprovalMinor: BigInt
+  agentOrderLimitMinor: BigInt
+  agentAutonomy: JSON
+  proposalConfirmGranularity: String
+  declinedSafetyFollowUpPurpose: String
+  followUpCadenceDays: JSON
+  depositPolicy: JSON
+  surchargePolicy: JSON
+  inspectionClockMode: String
+  markupFactorDefault: Decimal
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShopPolicyVersionWhereUniqueInput {
+  id: ID
+}
+
+input ShopPolicyVersionWhereInput {
+  AND: [ShopPolicyVersionWhereInput!]
+  OR: [ShopPolicyVersionWhereInput!]
+  NOT: [ShopPolicyVersionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  flagHoursAt: StringFilter
+  comebackPayRule: StringFilter
+  allowConcurrentJobClocks: BooleanFilter
+  requireQualityCheck: BooleanFilter
+  diagnosisTrustThreshold: DecimalFilter
+  authorizationLinkTtlHours: IntFilter
+  promisedTimeRequired: BooleanFilter
+  noShowGraceMinutes: IntFilter
+  refundApprovalMinor: BigIntFilter
+  creditMemoApprovalMinor: BigIntFilter
+  agentOrderLimitMinor: BigIntFilter
+  proposalConfirmGranularity: StringFilter
+  declinedSafetyFollowUpPurpose: StringFilter
+  inspectionClockMode: StringFilter
+  markupFactorDefault: DecimalFilter
+  versionNumber: IntFilter
+  status: StringFilter
+  notes: StringFilter
+  basedOnId: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  effectiveFrom: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ShopPolicyVersionOrderByInput {
+  id: OrderDirection
+  flagHoursAt: OrderDirection
+  comebackPayRule: OrderDirection
+  allowConcurrentJobClocks: OrderDirection
+  requireQualityCheck: OrderDirection
+  diagnosisTrustThreshold: OrderDirection
+  authorizationLinkTtlHours: OrderDirection
+  promisedTimeRequired: OrderDirection
+  noShowGraceMinutes: OrderDirection
+  refundApprovalMinor: OrderDirection
+  creditMemoApprovalMinor: OrderDirection
+  agentOrderLimitMinor: OrderDirection
+  proposalConfirmGranularity: OrderDirection
+  declinedSafetyFollowUpPurpose: OrderDirection
+  inspectionClockMode: OrderDirection
+  markupFactorDefault: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  notes: OrderDirection
+  basedOnId: OrderDirection
+  publishedAt: OrderDirection
+  effectiveFrom: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ShopPolicyVersionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  flagHoursAt: String
+  comebackPayRule: String
+  allowConcurrentJobClocks: Boolean
+  requireQualityCheck: Boolean
+  diagnosisTrustThreshold: Decimal
+  authorizationLinkTtlHours: Int
+  promisedTimeRequired: Boolean
+  noShowGraceMinutes: Int
+  discountLimitPctByRole: JSON
+  refundApprovalMinor: BigInt
+  creditMemoApprovalMinor: BigInt
+  agentOrderLimitMinor: BigInt
+  agentAutonomy: JSON
+  proposalConfirmGranularity: String
+  declinedSafetyFollowUpPurpose: String
+  followUpCadenceDays: JSON
+  depositPolicy: JSON
+  surchargePolicy: JSON
+  inspectionClockMode: String
+  markupFactorDefault: Decimal
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShopPolicyVersionUpdateArgs {
+  where: ShopPolicyVersionWhereUniqueInput!
+  data: ShopPolicyVersionUpdateInput!
+}
+
+input ShopPolicyVersionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  flagHoursAt: String
+  comebackPayRule: String
+  allowConcurrentJobClocks: Boolean
+  requireQualityCheck: Boolean
+  diagnosisTrustThreshold: Decimal
+  authorizationLinkTtlHours: Int
+  promisedTimeRequired: Boolean
+  noShowGraceMinutes: Int
+  discountLimitPctByRole: JSON
+  refundApprovalMinor: BigInt
+  creditMemoApprovalMinor: BigInt
+  agentOrderLimitMinor: BigInt
+  agentAutonomy: JSON
+  proposalConfirmGranularity: String
+  declinedSafetyFollowUpPurpose: String
+  followUpCadenceDays: JSON
+  depositPolicy: JSON
+  surchargePolicy: JSON
+  inspectionClockMode: String
+  markupFactorDefault: Decimal
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type TaxCategory {
+  id: ID!
+  code: String
+  name: String
+  description: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxCategoryWhereUniqueInput {
+  id: ID
+  code: String
+}
+
+input TaxCategoryWhereInput {
+  AND: [TaxCategoryWhereInput!]
+  OR: [TaxCategoryWhereInput!]
+  NOT: [TaxCategoryWhereInput!]
+  id: IDFilter
+  code: StringFilter
+  name: StringFilter
+  description: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input TaxCategoryOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  name: OrderDirection
+  description: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input TaxCategoryUpdateInput {
+  code: String
+  name: String
+  description: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxCategoryUpdateArgs {
+  where: TaxCategoryWhereUniqueInput!
+  data: TaxCategoryUpdateInput!
+}
+
+input TaxCategoryCreateInput {
+  code: String
+  name: String
+  description: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type TaxRule {
+  id: ID!
+  ruleSet: TaxRuleSetVersion
+  category: TaxCategory
+  taxable: Boolean
+  rate: Decimal
+  coreChargeRule: String
+  warrantyDeductibleRule: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxRuleWhereUniqueInput {
+  id: ID
+}
+
+input TaxRuleWhereInput {
+  AND: [TaxRuleWhereInput!]
+  OR: [TaxRuleWhereInput!]
+  NOT: [TaxRuleWhereInput!]
+  id: IDFilter
+  ruleSet: TaxRuleSetVersionWhereInput
+  category: TaxCategoryWhereInput
+  taxable: BooleanFilter
+  rate: DecimalFilter
+  coreChargeRule: StringFilter
+  warrantyDeductibleRule: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input TaxRuleOrderByInput {
+  id: OrderDirection
+  taxable: OrderDirection
+  rate: OrderDirection
+  coreChargeRule: OrderDirection
+  warrantyDeductibleRule: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input TaxRuleUpdateInput {
+  ruleSet: TaxRuleSetVersionRelateToOneForUpdateInput
+  category: TaxCategoryRelateToOneForUpdateInput
+  taxable: Boolean
+  rate: Decimal
+  coreChargeRule: String
+  warrantyDeductibleRule: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxRuleUpdateArgs {
+  where: TaxRuleWhereUniqueInput!
+  data: TaxRuleUpdateInput!
+}
+
+input TaxRuleCreateInput {
+  ruleSet: TaxRuleSetVersionRelateToOneForCreateInput
+  category: TaxCategoryRelateToOneForCreateInput
+  taxable: Boolean
+  rate: Decimal
+  coreChargeRule: String
+  warrantyDeductibleRule: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type TaxRuleSetVersion {
+  id: ID!
+  shop: Shop
+  rounding: String
+  rules(where: TaxRuleWhereInput! = {}, orderBy: [TaxRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TaxRuleWhereUniqueInput): [TaxRule!]
+  rulesCount(where: TaxRuleWhereInput! = {}): Int
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxRuleSetVersionWhereUniqueInput {
+  id: ID
+}
+
+input TaxRuleSetVersionWhereInput {
+  AND: [TaxRuleSetVersionWhereInput!]
+  OR: [TaxRuleSetVersionWhereInput!]
+  NOT: [TaxRuleSetVersionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  rounding: StringFilter
+  rules: TaxRuleManyRelationFilter
+  versionNumber: IntFilter
+  status: StringFilter
+  notes: StringFilter
+  basedOnId: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  effectiveFrom: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input TaxRuleManyRelationFilter {
+  every: TaxRuleWhereInput
+  some: TaxRuleWhereInput
+  none: TaxRuleWhereInput
+}
+
+input TaxRuleSetVersionOrderByInput {
+  id: OrderDirection
+  rounding: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  notes: OrderDirection
+  basedOnId: OrderDirection
+  publishedAt: OrderDirection
+  effectiveFrom: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input TaxRuleSetVersionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  rounding: String
+  rules: TaxRuleRelateToManyForUpdateInput
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxRuleRelateToManyForUpdateInput {
+  disconnect: [TaxRuleWhereUniqueInput!]
+  set: [TaxRuleWhereUniqueInput!]
+  create: [TaxRuleCreateInput!]
+  connect: [TaxRuleWhereUniqueInput!]
+}
+
+input TaxRuleSetVersionUpdateArgs {
+  where: TaxRuleSetVersionWhereUniqueInput!
+  data: TaxRuleSetVersionUpdateInput!
+}
+
+input TaxRuleSetVersionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  rounding: String
+  rules: TaxRuleRelateToManyForCreateInput
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TaxRuleRelateToManyForCreateInput {
+  create: [TaxRuleCreateInput!]
+  connect: [TaxRuleWhereUniqueInput!]
+}
+
+type WarrantyTerm {
+  id: ID!
+  termSet: WarrantyTermSetVersion
+  code: String
+  name: String
+  months: Int
+  miles: Int
+  appliesTo: JSON
+  invoiceText: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyTermWhereUniqueInput {
+  id: ID
+}
+
+input WarrantyTermWhereInput {
+  AND: [WarrantyTermWhereInput!]
+  OR: [WarrantyTermWhereInput!]
+  NOT: [WarrantyTermWhereInput!]
+  id: IDFilter
+  termSet: WarrantyTermSetVersionWhereInput
+  code: StringFilter
+  name: StringFilter
+  months: IntFilter
+  miles: IntFilter
+  invoiceText: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input WarrantyTermOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  name: OrderDirection
+  months: OrderDirection
+  miles: OrderDirection
+  invoiceText: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input WarrantyTermUpdateInput {
+  termSet: WarrantyTermSetVersionRelateToOneForUpdateInput
+  code: String
+  name: String
+  months: Int
+  miles: Int
+  appliesTo: JSON
+  invoiceText: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyTermUpdateArgs {
+  where: WarrantyTermWhereUniqueInput!
+  data: WarrantyTermUpdateInput!
+}
+
+input WarrantyTermCreateInput {
+  termSet: WarrantyTermSetVersionRelateToOneForCreateInput
+  code: String
+  name: String
+  months: Int
+  miles: Int
+  appliesTo: JSON
+  invoiceText: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type WarrantyTermSetVersion {
+  id: ID!
+  shop: Shop
+  terms(where: WarrantyTermWhereInput! = {}, orderBy: [WarrantyTermOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyTermWhereUniqueInput): [WarrantyTerm!]
+  termsCount(where: WarrantyTermWhereInput! = {}): Int
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyTermSetVersionWhereUniqueInput {
+  id: ID
+}
+
+input WarrantyTermSetVersionWhereInput {
+  AND: [WarrantyTermSetVersionWhereInput!]
+  OR: [WarrantyTermSetVersionWhereInput!]
+  NOT: [WarrantyTermSetVersionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  terms: WarrantyTermManyRelationFilter
+  versionNumber: IntFilter
+  status: StringFilter
+  notes: StringFilter
+  basedOnId: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  effectiveFrom: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input WarrantyTermManyRelationFilter {
+  every: WarrantyTermWhereInput
+  some: WarrantyTermWhereInput
+  none: WarrantyTermWhereInput
+}
+
+input WarrantyTermSetVersionOrderByInput {
+  id: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  notes: OrderDirection
+  basedOnId: OrderDirection
+  publishedAt: OrderDirection
+  effectiveFrom: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input WarrantyTermSetVersionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  terms: WarrantyTermRelateToManyForUpdateInput
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyTermRelateToManyForUpdateInput {
+  disconnect: [WarrantyTermWhereUniqueInput!]
+  set: [WarrantyTermWhereUniqueInput!]
+  create: [WarrantyTermCreateInput!]
+  connect: [WarrantyTermWhereUniqueInput!]
+}
+
+input WarrantyTermSetVersionUpdateArgs {
+  where: WarrantyTermSetVersionWhereUniqueInput!
+  data: WarrantyTermSetVersionUpdateInput!
+}
+
+input WarrantyTermSetVersionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  terms: WarrantyTermRelateToManyForCreateInput
+  versionNumber: Int
+  status: String
+  notes: String
+  basedOnId: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  effectiveFrom: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyTermRelateToManyForCreateInput {
+  create: [WarrantyTermCreateInput!]
+  connect: [WarrantyTermWhereUniqueInput!]
+}
+
+type BusinessAccount {
+  id: ID!
+  name: String
+  accountNumber: String
+  customers(where: CustomerWhereInput! = {}, orderBy: [CustomerOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerWhereUniqueInput): [Customer!]
+  customersCount(where: CustomerWhereInput! = {}): Int
+  termsDays: Int
+  creditLimitMinor: BigInt
+  poRequired: Boolean
+  taxExempt: Boolean
+  billingMode: String
+  holdAfterOverdueDays: Int
+  openBalanceMinor: BigInt
+  intermediary: String
+  intermediaryName: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BusinessAccountWhereUniqueInput {
+  id: ID
+  accountNumber: String
+}
+
+input BusinessAccountWhereInput {
+  AND: [BusinessAccountWhereInput!]
+  OR: [BusinessAccountWhereInput!]
+  NOT: [BusinessAccountWhereInput!]
+  id: IDFilter
+  name: StringFilter
+  accountNumber: StringFilter
+  customers: CustomerManyRelationFilter
+  termsDays: IntFilter
+  creditLimitMinor: BigIntFilter
+  poRequired: BooleanFilter
+  taxExempt: BooleanFilter
+  billingMode: StringFilter
+  holdAfterOverdueDays: IntNullableFilter
+  openBalanceMinor: BigIntFilter
+  intermediary: StringFilter
+  intermediaryName: StringFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CustomerManyRelationFilter {
+  every: CustomerWhereInput
+  some: CustomerWhereInput
+  none: CustomerWhereInput
+}
+
+input BusinessAccountOrderByInput {
+  id: OrderDirection
+  name: OrderDirection
+  accountNumber: OrderDirection
+  termsDays: OrderDirection
+  creditLimitMinor: OrderDirection
+  poRequired: OrderDirection
+  taxExempt: OrderDirection
+  billingMode: OrderDirection
+  holdAfterOverdueDays: OrderDirection
+  openBalanceMinor: OrderDirection
+  intermediary: OrderDirection
+  intermediaryName: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input BusinessAccountUpdateInput {
+  name: String
+  accountNumber: String
+  customers: CustomerRelateToManyForUpdateInput
+  termsDays: Int
+  creditLimitMinor: BigInt
+  poRequired: Boolean
+  taxExempt: Boolean
+  billingMode: String
+  holdAfterOverdueDays: Int
+  openBalanceMinor: BigInt
+  intermediary: String
+  intermediaryName: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CustomerRelateToManyForUpdateInput {
+  disconnect: [CustomerWhereUniqueInput!]
+  set: [CustomerWhereUniqueInput!]
+  create: [CustomerCreateInput!]
+  connect: [CustomerWhereUniqueInput!]
+}
+
+input BusinessAccountUpdateArgs {
+  where: BusinessAccountWhereUniqueInput!
+  data: BusinessAccountUpdateInput!
+}
+
+input BusinessAccountCreateInput {
+  name: String
+  accountNumber: String
+  customers: CustomerRelateToManyForCreateInput
+  termsDays: Int
+  creditLimitMinor: BigInt
+  poRequired: Boolean
+  taxExempt: Boolean
+  billingMode: String
+  holdAfterOverdueDays: Int
+  openBalanceMinor: BigInt
+  intermediary: String
+  intermediaryName: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CustomerRelateToManyForCreateInput {
+  create: [CustomerCreateInput!]
+  connect: [CustomerWhereUniqueInput!]
+}
+
+type ContactConsent {
+  id: ID!
+  contact: CustomerContact
+  channel: String
+  purpose: String
+  action: String
+  method: String
+  evidence: JSON
+  writtenConsent: Boolean
+  recordedBy: User
+  at: DateTime
+}
+
+input ContactConsentWhereUniqueInput {
+  id: ID
+}
+
+input ContactConsentWhereInput {
+  AND: [ContactConsentWhereInput!]
+  OR: [ContactConsentWhereInput!]
+  NOT: [ContactConsentWhereInput!]
+  id: IDFilter
+  contact: CustomerContactWhereInput
+  channel: StringFilter
+  purpose: StringFilter
+  action: StringFilter
+  method: StringFilter
+  writtenConsent: BooleanFilter
+  recordedBy: UserWhereInput
+  at: DateTimeFilter
+}
+
+input ContactConsentOrderByInput {
+  id: OrderDirection
+  channel: OrderDirection
+  purpose: OrderDirection
+  action: OrderDirection
+  method: OrderDirection
+  writtenConsent: OrderDirection
+  at: OrderDirection
+}
+
+input ContactConsentUpdateInput {
+  contact: CustomerContactRelateToOneForUpdateInput
+  channel: String
+  purpose: String
+  action: String
+  method: String
+  evidence: JSON
+  writtenConsent: Boolean
+  recordedBy: UserRelateToOneForUpdateInput
+  at: DateTime
+}
+
+input CustomerContactRelateToOneForUpdateInput {
+  create: CustomerContactCreateInput
+  connect: CustomerContactWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ContactConsentUpdateArgs {
+  where: ContactConsentWhereUniqueInput!
+  data: ContactConsentUpdateInput!
+}
+
+input ContactConsentCreateInput {
+  contact: CustomerContactRelateToOneForCreateInput
+  channel: String
+  purpose: String
+  action: String
+  method: String
+  evidence: JSON
+  writtenConsent: Boolean
+  recordedBy: UserRelateToOneForCreateInput
+  at: DateTime
+}
+
+input CustomerContactRelateToOneForCreateInput {
+  create: CustomerContactCreateInput
+  connect: CustomerContactWhereUniqueInput
+}
+
+type Customer {
+  id: ID!
+  kind: String
+  firstName: String
+  lastName: String
+  companyName: String
+  displayName: String
+  contacts(where: CustomerContactWhereInput! = {}, orderBy: [CustomerContactOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerContactWhereUniqueInput): [CustomerContact!]
+  contactsCount(where: CustomerContactWhereInput! = {}): Int
+  addresses: JSON
+  preferredChannel: String
+  preferredLanguage: String
+  homeShop: Shop
+  businessAccount: BusinessAccount
+  ownerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
+  ownershipsCount(where: VehicleOwnershipWhereInput! = {}): Int
+  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
+  appointmentsCount(where: AppointmentWhereInput! = {}): Int
+  tags: JSON
+  notes: String
+  marketingSource: String
+  status: String
+  mergedInto: Customer
+  noShowCount: Int
+  portalUser: User
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CustomerWhereUniqueInput {
+  id: ID
+}
+
+input CustomerWhereInput {
+  AND: [CustomerWhereInput!]
+  OR: [CustomerWhereInput!]
+  NOT: [CustomerWhereInput!]
+  id: IDFilter
+  kind: StringFilter
+  firstName: StringFilter
+  lastName: StringFilter
+  companyName: StringFilter
+  displayName: StringFilter
+  contacts: CustomerContactManyRelationFilter
+  preferredChannel: StringFilter
+  preferredLanguage: StringFilter
+  homeShop: ShopWhereInput
+  businessAccount: BusinessAccountWhereInput
+  ownerships: VehicleOwnershipManyRelationFilter
+  appointments: AppointmentManyRelationFilter
+  notes: StringFilter
+  marketingSource: StringFilter
+  status: StringFilter
+  mergedInto: CustomerWhereInput
+  noShowCount: IntNullableFilter
+  portalUser: UserWhereInput
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CustomerContactManyRelationFilter {
+  every: CustomerContactWhereInput
+  some: CustomerContactWhereInput
+  none: CustomerContactWhereInput
+}
+
+input VehicleOwnershipManyRelationFilter {
+  every: VehicleOwnershipWhereInput
+  some: VehicleOwnershipWhereInput
+  none: VehicleOwnershipWhereInput
+}
+
+input AppointmentManyRelationFilter {
+  every: AppointmentWhereInput
+  some: AppointmentWhereInput
+  none: AppointmentWhereInput
+}
+
+input CustomerOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  firstName: OrderDirection
+  lastName: OrderDirection
+  companyName: OrderDirection
+  displayName: OrderDirection
+  preferredChannel: OrderDirection
+  preferredLanguage: OrderDirection
+  notes: OrderDirection
+  marketingSource: OrderDirection
+  status: OrderDirection
+  noShowCount: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CustomerUpdateInput {
+  kind: String
+  firstName: String
+  lastName: String
+  companyName: String
+  displayName: String
+  contacts: CustomerContactRelateToManyForUpdateInput
+  addresses: JSON
+  preferredChannel: String
+  preferredLanguage: String
+  homeShop: ShopRelateToOneForUpdateInput
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  ownerships: VehicleOwnershipRelateToManyForUpdateInput
+  appointments: AppointmentRelateToManyForUpdateInput
+  tags: JSON
+  notes: String
+  marketingSource: String
+  status: String
+  mergedInto: CustomerRelateToOneForUpdateInput
+  noShowCount: Int
+  portalUser: UserRelateToOneForUpdateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CustomerContactRelateToManyForUpdateInput {
+  disconnect: [CustomerContactWhereUniqueInput!]
+  set: [CustomerContactWhereUniqueInput!]
+  create: [CustomerContactCreateInput!]
+  connect: [CustomerContactWhereUniqueInput!]
+}
+
+input BusinessAccountRelateToOneForUpdateInput {
+  create: BusinessAccountCreateInput
+  connect: BusinessAccountWhereUniqueInput
+  disconnect: Boolean
+}
+
+input VehicleOwnershipRelateToManyForUpdateInput {
+  disconnect: [VehicleOwnershipWhereUniqueInput!]
+  set: [VehicleOwnershipWhereUniqueInput!]
+  create: [VehicleOwnershipCreateInput!]
+  connect: [VehicleOwnershipWhereUniqueInput!]
+}
+
+input AppointmentRelateToManyForUpdateInput {
+  disconnect: [AppointmentWhereUniqueInput!]
+  set: [AppointmentWhereUniqueInput!]
+  create: [AppointmentCreateInput!]
+  connect: [AppointmentWhereUniqueInput!]
+}
+
+input CustomerRelateToOneForUpdateInput {
+  create: CustomerCreateInput
+  connect: CustomerWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CustomerUpdateArgs {
+  where: CustomerWhereUniqueInput!
+  data: CustomerUpdateInput!
+}
+
+input CustomerCreateInput {
+  kind: String
+  firstName: String
+  lastName: String
+  companyName: String
+  displayName: String
+  contacts: CustomerContactRelateToManyForCreateInput
+  addresses: JSON
+  preferredChannel: String
+  preferredLanguage: String
+  homeShop: ShopRelateToOneForCreateInput
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  ownerships: VehicleOwnershipRelateToManyForCreateInput
+  appointments: AppointmentRelateToManyForCreateInput
+  tags: JSON
+  notes: String
+  marketingSource: String
+  status: String
+  mergedInto: CustomerRelateToOneForCreateInput
+  noShowCount: Int
+  portalUser: UserRelateToOneForCreateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CustomerContactRelateToManyForCreateInput {
+  create: [CustomerContactCreateInput!]
+  connect: [CustomerContactWhereUniqueInput!]
+}
+
+input BusinessAccountRelateToOneForCreateInput {
+  create: BusinessAccountCreateInput
+  connect: BusinessAccountWhereUniqueInput
+}
+
+input VehicleOwnershipRelateToManyForCreateInput {
+  create: [VehicleOwnershipCreateInput!]
+  connect: [VehicleOwnershipWhereUniqueInput!]
+}
+
+input AppointmentRelateToManyForCreateInput {
+  create: [AppointmentCreateInput!]
+  connect: [AppointmentWhereUniqueInput!]
+}
+
+input CustomerRelateToOneForCreateInput {
+  create: CustomerCreateInput
+  connect: CustomerWhereUniqueInput
+}
+
+type CustomerContact {
+  id: ID!
+  customer: Customer
+  kind: String
+  value: String
+  valueHash: String
+  label: String
+  isPrimary: Boolean
+  verifiedAt: DateTime
+  status: String
+  consents(where: ContactConsentWhereInput! = {}, orderBy: [ContactConsentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ContactConsentWhereUniqueInput): [ContactConsent!]
+  consentsCount(where: ContactConsentWhereInput! = {}): Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CustomerContactWhereUniqueInput {
+  id: ID
+}
+
+input CustomerContactWhereInput {
+  AND: [CustomerContactWhereInput!]
+  OR: [CustomerContactWhereInput!]
+  NOT: [CustomerContactWhereInput!]
+  id: IDFilter
+  customer: CustomerWhereInput
+  kind: StringFilter
+  value: StringFilter
+  valueHash: StringFilter
+  label: StringFilter
+  isPrimary: BooleanFilter
+  verifiedAt: DateTimeNullableFilter
+  status: StringFilter
+  consents: ContactConsentManyRelationFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ContactConsentManyRelationFilter {
+  every: ContactConsentWhereInput
+  some: ContactConsentWhereInput
+  none: ContactConsentWhereInput
+}
+
+input CustomerContactOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  value: OrderDirection
+  valueHash: OrderDirection
+  label: OrderDirection
+  isPrimary: OrderDirection
+  verifiedAt: OrderDirection
+  status: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CustomerContactUpdateInput {
+  customer: CustomerRelateToOneForUpdateInput
+  kind: String
+  value: String
+  valueHash: String
+  label: String
+  isPrimary: Boolean
+  verifiedAt: DateTime
+  status: String
+  consents: ContactConsentRelateToManyForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ContactConsentRelateToManyForUpdateInput {
+  disconnect: [ContactConsentWhereUniqueInput!]
+  set: [ContactConsentWhereUniqueInput!]
+  create: [ContactConsentCreateInput!]
+  connect: [ContactConsentWhereUniqueInput!]
+}
+
+input CustomerContactUpdateArgs {
+  where: CustomerContactWhereUniqueInput!
+  data: CustomerContactUpdateInput!
+}
+
+input CustomerContactCreateInput {
+  customer: CustomerRelateToOneForCreateInput
+  kind: String
+  value: String
+  valueHash: String
+  label: String
+  isPrimary: Boolean
+  verifiedAt: DateTime
+  status: String
+  consents: ContactConsentRelateToManyForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ContactConsentRelateToManyForCreateInput {
+  create: [ContactConsentCreateInput!]
+  connect: [ContactConsentWhereUniqueInput!]
+}
+
+type CustomerMergeEvent {
+  id: ID!
+  survivor: Customer
+  merged: Customer
+  movedCounts: JSON
+  reason: String
+  requestedBy: User
+  approvedBy: User
+  at: DateTime
+}
+
+input CustomerMergeEventWhereUniqueInput {
+  id: ID
+}
+
+input CustomerMergeEventWhereInput {
+  AND: [CustomerMergeEventWhereInput!]
+  OR: [CustomerMergeEventWhereInput!]
+  NOT: [CustomerMergeEventWhereInput!]
+  id: IDFilter
+  survivor: CustomerWhereInput
+  merged: CustomerWhereInput
+  reason: StringFilter
+  requestedBy: UserWhereInput
+  approvedBy: UserWhereInput
+  at: DateTimeNullableFilter
+}
+
+input CustomerMergeEventOrderByInput {
+  id: OrderDirection
+  reason: OrderDirection
+  at: OrderDirection
+}
+
+input CustomerMergeEventUpdateInput {
+  survivor: CustomerRelateToOneForUpdateInput
+  merged: CustomerRelateToOneForUpdateInput
+  movedCounts: JSON
+  reason: String
+  requestedBy: UserRelateToOneForUpdateInput
+  approvedBy: UserRelateToOneForUpdateInput
+  at: DateTime
+}
+
+input CustomerMergeEventUpdateArgs {
+  where: CustomerMergeEventWhereUniqueInput!
+  data: CustomerMergeEventUpdateInput!
+}
+
+input CustomerMergeEventCreateInput {
+  survivor: CustomerRelateToOneForCreateInput
+  merged: CustomerRelateToOneForCreateInput
+  movedCounts: JSON
+  reason: String
+  requestedBy: UserRelateToOneForCreateInput
+  approvedBy: UserRelateToOneForCreateInput
+  at: DateTime
+}
+
+type ExternalReference {
+  id: ID!
+  entityType: String
+  entityId: String
+  system: String
+  externalId: String
+  meta: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ExternalReferenceWhereUniqueInput {
+  id: ID
+}
+
+input ExternalReferenceWhereInput {
+  AND: [ExternalReferenceWhereInput!]
+  OR: [ExternalReferenceWhereInput!]
+  NOT: [ExternalReferenceWhereInput!]
+  id: IDFilter
+  entityType: StringFilter
+  entityId: StringFilter
+  system: StringFilter
+  externalId: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ExternalReferenceOrderByInput {
+  id: OrderDirection
+  entityType: OrderDirection
+  entityId: OrderDirection
+  system: OrderDirection
+  externalId: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ExternalReferenceUpdateInput {
+  entityType: String
+  entityId: String
+  system: String
+  externalId: String
+  meta: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ExternalReferenceUpdateArgs {
+  where: ExternalReferenceWhereUniqueInput!
+  data: ExternalReferenceUpdateInput!
+}
+
+input ExternalReferenceCreateInput {
+  entityType: String
+  entityId: String
+  system: String
+  externalId: String
+  meta: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type OdometerReading {
+  id: ID!
+  vehicle: Vehicle
+  value: Int
+  unit: String
+  source: String
+  checkIn: CheckIn
+  recordedBy: User
+  at: DateTime
+  accepted: Boolean
+  anomaly: String
+  overrideReason: String
+}
+
+input OdometerReadingWhereUniqueInput {
+  id: ID
+}
+
+input OdometerReadingWhereInput {
+  AND: [OdometerReadingWhereInput!]
+  OR: [OdometerReadingWhereInput!]
+  NOT: [OdometerReadingWhereInput!]
+  id: IDFilter
+  vehicle: VehicleWhereInput
+  value: IntFilter
+  unit: StringFilter
+  source: StringFilter
+  checkIn: CheckInWhereInput
+  recordedBy: UserWhereInput
+  at: DateTimeNullableFilter
+  accepted: BooleanFilter
+  anomaly: StringFilter
+  overrideReason: StringFilter
+}
+
+input OdometerReadingOrderByInput {
+  id: OrderDirection
+  value: OrderDirection
+  unit: OrderDirection
+  source: OrderDirection
+  at: OrderDirection
+  accepted: OrderDirection
+  anomaly: OrderDirection
+  overrideReason: OrderDirection
+}
+
+input OdometerReadingUpdateInput {
+  vehicle: VehicleRelateToOneForUpdateInput
+  value: Int
+  unit: String
+  source: String
+  checkIn: CheckInRelateToOneForUpdateInput
+  recordedBy: UserRelateToOneForUpdateInput
+  at: DateTime
+  accepted: Boolean
+  anomaly: String
+  overrideReason: String
+}
+
+input VehicleRelateToOneForUpdateInput {
+  create: VehicleCreateInput
+  connect: VehicleWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CheckInRelateToOneForUpdateInput {
+  create: CheckInCreateInput
+  connect: CheckInWhereUniqueInput
+  disconnect: Boolean
+}
+
+input OdometerReadingUpdateArgs {
+  where: OdometerReadingWhereUniqueInput!
+  data: OdometerReadingUpdateInput!
+}
+
+input OdometerReadingCreateInput {
+  vehicle: VehicleRelateToOneForCreateInput
+  value: Int
+  unit: String
+  source: String
+  checkIn: CheckInRelateToOneForCreateInput
+  recordedBy: UserRelateToOneForCreateInput
+  at: DateTime
+  accepted: Boolean
+  anomaly: String
+  overrideReason: String
+}
+
+input VehicleRelateToOneForCreateInput {
+  create: VehicleCreateInput
+  connect: VehicleWhereUniqueInput
+}
+
+input CheckInRelateToOneForCreateInput {
+  create: CheckInCreateInput
+  connect: CheckInWhereUniqueInput
+}
+
+type PlateRegistration {
+  id: ID!
+  vehicle: Vehicle
+  plate: String
+  state: String
+  firstSeenAt: DateTime
+  lastSeenAt: DateTime
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PlateRegistrationWhereUniqueInput {
+  id: ID
+}
+
+input PlateRegistrationWhereInput {
+  AND: [PlateRegistrationWhereInput!]
+  OR: [PlateRegistrationWhereInput!]
+  NOT: [PlateRegistrationWhereInput!]
+  id: IDFilter
+  vehicle: VehicleWhereInput
+  plate: StringFilter
+  state: StringFilter
+  firstSeenAt: DateTimeNullableFilter
+  lastSeenAt: DateTimeNullableFilter
+  active: BooleanFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input PlateRegistrationOrderByInput {
+  id: OrderDirection
+  plate: OrderDirection
+  state: OrderDirection
+  firstSeenAt: OrderDirection
+  lastSeenAt: OrderDirection
+  active: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PlateRegistrationUpdateInput {
+  vehicle: VehicleRelateToOneForUpdateInput
+  plate: String
+  state: String
+  firstSeenAt: DateTime
+  lastSeenAt: DateTime
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PlateRegistrationUpdateArgs {
+  where: PlateRegistrationWhereUniqueInput!
+  data: PlateRegistrationUpdateInput!
+}
+
+input PlateRegistrationCreateInput {
+  vehicle: VehicleRelateToOneForCreateInput
+  plate: String
+  state: String
+  firstSeenAt: DateTime
+  lastSeenAt: DateTime
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type RecallCheck {
+  id: ID!
+  vehicle: Vehicle
+  source: String
+  query: JSON
+  campaigns: JSON
+  campaignCount: Int
+  parkItAny: Boolean
+  checkedAt: DateTime
+  checkedBy: User
+}
+
+input RecallCheckWhereUniqueInput {
+  id: ID
+}
+
+input RecallCheckWhereInput {
+  AND: [RecallCheckWhereInput!]
+  OR: [RecallCheckWhereInput!]
+  NOT: [RecallCheckWhereInput!]
+  id: IDFilter
+  vehicle: VehicleWhereInput
+  source: StringFilter
+  campaignCount: IntNullableFilter
+  parkItAny: BooleanFilter
+  checkedAt: DateTimeNullableFilter
+  checkedBy: UserWhereInput
+}
+
+input RecallCheckOrderByInput {
+  id: OrderDirection
+  source: OrderDirection
+  campaignCount: OrderDirection
+  parkItAny: OrderDirection
+  checkedAt: OrderDirection
+}
+
+input RecallCheckUpdateInput {
+  vehicle: VehicleRelateToOneForUpdateInput
+  source: String
+  query: JSON
+  campaigns: JSON
+  campaignCount: Int
+  parkItAny: Boolean
+  checkedAt: DateTime
+  checkedBy: UserRelateToOneForUpdateInput
+}
+
+input RecallCheckUpdateArgs {
+  where: RecallCheckWhereUniqueInput!
+  data: RecallCheckUpdateInput!
+}
+
+input RecallCheckCreateInput {
+  vehicle: VehicleRelateToOneForCreateInput
+  source: String
+  query: JSON
+  campaigns: JSON
+  campaignCount: Int
+  parkItAny: Boolean
+  checkedAt: DateTime
+  checkedBy: UserRelateToOneForCreateInput
+}
+
+type Vehicle {
+  id: ID!
+  label: String
+  vin: String
+  vinValid: String
+  noVinReason: String
+  year: Int
+  make: String
+  model: String
+  trim: String
+  engine: String
+  drivetrain: String
+  transmission: String
+  fuelType: String
+  bodyClass: String
+  color: String
+  currentDecode: VehicleDecode
+  decodes(where: VehicleDecodeWhereInput! = {}, orderBy: [VehicleDecodeOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleDecodeWhereUniqueInput): [VehicleDecode!]
+  decodesCount(where: VehicleDecodeWhereInput! = {}): Int
+  recallChecks(where: RecallCheckWhereInput! = {}, orderBy: [RecallCheckOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RecallCheckWhereUniqueInput): [RecallCheck!]
+  recallChecksCount(where: RecallCheckWhereInput! = {}): Int
+  ownerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
+  ownershipsCount(where: VehicleOwnershipWhereInput! = {}): Int
+  plates(where: PlateRegistrationWhereInput! = {}, orderBy: [PlateRegistrationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PlateRegistrationWhereUniqueInput): [PlateRegistration!]
+  platesCount(where: PlateRegistrationWhereInput! = {}): Int
+  odometerReadings(where: OdometerReadingWhereInput! = {}, orderBy: [OdometerReadingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OdometerReadingWhereUniqueInput): [OdometerReading!]
+  odometerReadingsCount(where: OdometerReadingWhereInput! = {}): Int
+  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
+  appointmentsCount(where: AppointmentWhereInput! = {}): Int
+  lastOdometer: Int
+  lastOdometerUnit: String
+  tireSpec: JSON
+  maintenanceIntervals: JSON
+  notes: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input VehicleWhereUniqueInput {
+  id: ID
+}
+
+input VehicleWhereInput {
+  AND: [VehicleWhereInput!]
+  OR: [VehicleWhereInput!]
+  NOT: [VehicleWhereInput!]
+  id: IDFilter
+  vin: StringFilter
+  vinValid: StringFilter
+  noVinReason: StringFilter
+  year: IntNullableFilter
+  make: StringFilter
+  model: StringFilter
+  trim: StringFilter
+  engine: StringFilter
+  drivetrain: StringFilter
+  transmission: StringFilter
+  fuelType: StringFilter
+  bodyClass: StringFilter
+  color: StringFilter
+  currentDecode: VehicleDecodeWhereInput
+  decodes: VehicleDecodeManyRelationFilter
+  recallChecks: RecallCheckManyRelationFilter
+  ownerships: VehicleOwnershipManyRelationFilter
+  plates: PlateRegistrationManyRelationFilter
+  odometerReadings: OdometerReadingManyRelationFilter
+  appointments: AppointmentManyRelationFilter
+  lastOdometer: IntNullableFilter
+  lastOdometerUnit: StringFilter
+  notes: StringFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input VehicleDecodeManyRelationFilter {
+  every: VehicleDecodeWhereInput
+  some: VehicleDecodeWhereInput
+  none: VehicleDecodeWhereInput
+}
+
+input RecallCheckManyRelationFilter {
+  every: RecallCheckWhereInput
+  some: RecallCheckWhereInput
+  none: RecallCheckWhereInput
+}
+
+input PlateRegistrationManyRelationFilter {
+  every: PlateRegistrationWhereInput
+  some: PlateRegistrationWhereInput
+  none: PlateRegistrationWhereInput
+}
+
+input OdometerReadingManyRelationFilter {
+  every: OdometerReadingWhereInput
+  some: OdometerReadingWhereInput
+  none: OdometerReadingWhereInput
+}
+
+input VehicleOrderByInput {
+  id: OrderDirection
+  vin: OrderDirection
+  vinValid: OrderDirection
+  noVinReason: OrderDirection
+  year: OrderDirection
+  make: OrderDirection
+  model: OrderDirection
+  trim: OrderDirection
+  engine: OrderDirection
+  drivetrain: OrderDirection
+  transmission: OrderDirection
+  fuelType: OrderDirection
+  bodyClass: OrderDirection
+  color: OrderDirection
+  lastOdometer: OrderDirection
+  lastOdometerUnit: OrderDirection
+  notes: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input VehicleUpdateInput {
+  vin: String
+  vinValid: String
+  noVinReason: String
+  year: Int
+  make: String
+  model: String
+  trim: String
+  engine: String
+  drivetrain: String
+  transmission: String
+  fuelType: String
+  bodyClass: String
+  color: String
+  currentDecode: VehicleDecodeRelateToOneForUpdateInput
+  decodes: VehicleDecodeRelateToManyForUpdateInput
+  recallChecks: RecallCheckRelateToManyForUpdateInput
+  ownerships: VehicleOwnershipRelateToManyForUpdateInput
+  plates: PlateRegistrationRelateToManyForUpdateInput
+  odometerReadings: OdometerReadingRelateToManyForUpdateInput
+  appointments: AppointmentRelateToManyForUpdateInput
+  lastOdometer: Int
+  lastOdometerUnit: String
+  tireSpec: JSON
+  maintenanceIntervals: JSON
+  notes: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input VehicleDecodeRelateToOneForUpdateInput {
+  create: VehicleDecodeCreateInput
+  connect: VehicleDecodeWhereUniqueInput
+  disconnect: Boolean
+}
+
+input VehicleDecodeRelateToManyForUpdateInput {
+  disconnect: [VehicleDecodeWhereUniqueInput!]
+  set: [VehicleDecodeWhereUniqueInput!]
+  create: [VehicleDecodeCreateInput!]
+  connect: [VehicleDecodeWhereUniqueInput!]
+}
+
+input RecallCheckRelateToManyForUpdateInput {
+  disconnect: [RecallCheckWhereUniqueInput!]
+  set: [RecallCheckWhereUniqueInput!]
+  create: [RecallCheckCreateInput!]
+  connect: [RecallCheckWhereUniqueInput!]
+}
+
+input PlateRegistrationRelateToManyForUpdateInput {
+  disconnect: [PlateRegistrationWhereUniqueInput!]
+  set: [PlateRegistrationWhereUniqueInput!]
+  create: [PlateRegistrationCreateInput!]
+  connect: [PlateRegistrationWhereUniqueInput!]
+}
+
+input OdometerReadingRelateToManyForUpdateInput {
+  disconnect: [OdometerReadingWhereUniqueInput!]
+  set: [OdometerReadingWhereUniqueInput!]
+  create: [OdometerReadingCreateInput!]
+  connect: [OdometerReadingWhereUniqueInput!]
+}
+
+input VehicleUpdateArgs {
+  where: VehicleWhereUniqueInput!
+  data: VehicleUpdateInput!
+}
+
+input VehicleCreateInput {
+  vin: String
+  vinValid: String
+  noVinReason: String
+  year: Int
+  make: String
+  model: String
+  trim: String
+  engine: String
+  drivetrain: String
+  transmission: String
+  fuelType: String
+  bodyClass: String
+  color: String
+  currentDecode: VehicleDecodeRelateToOneForCreateInput
+  decodes: VehicleDecodeRelateToManyForCreateInput
+  recallChecks: RecallCheckRelateToManyForCreateInput
+  ownerships: VehicleOwnershipRelateToManyForCreateInput
+  plates: PlateRegistrationRelateToManyForCreateInput
+  odometerReadings: OdometerReadingRelateToManyForCreateInput
+  appointments: AppointmentRelateToManyForCreateInput
+  lastOdometer: Int
+  lastOdometerUnit: String
+  tireSpec: JSON
+  maintenanceIntervals: JSON
+  notes: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input VehicleDecodeRelateToOneForCreateInput {
+  create: VehicleDecodeCreateInput
+  connect: VehicleDecodeWhereUniqueInput
+}
+
+input VehicleDecodeRelateToManyForCreateInput {
+  create: [VehicleDecodeCreateInput!]
+  connect: [VehicleDecodeWhereUniqueInput!]
+}
+
+input RecallCheckRelateToManyForCreateInput {
+  create: [RecallCheckCreateInput!]
+  connect: [RecallCheckWhereUniqueInput!]
+}
+
+input PlateRegistrationRelateToManyForCreateInput {
+  create: [PlateRegistrationCreateInput!]
+  connect: [PlateRegistrationWhereUniqueInput!]
+}
+
+input OdometerReadingRelateToManyForCreateInput {
+  create: [OdometerReadingCreateInput!]
+  connect: [OdometerReadingWhereUniqueInput!]
+}
+
+type VehicleDecode {
+  id: ID!
+  vehicle: Vehicle
+  provider: String
+  requestedVin: String
+  decoded: JSON
+  errorCode: String
+  errorText: String
+  fetchedAt: DateTime
+  fetchedBy: User
+}
+
+input VehicleDecodeWhereUniqueInput {
+  id: ID
+}
+
+input VehicleDecodeWhereInput {
+  AND: [VehicleDecodeWhereInput!]
+  OR: [VehicleDecodeWhereInput!]
+  NOT: [VehicleDecodeWhereInput!]
+  id: IDFilter
+  vehicle: VehicleWhereInput
+  provider: StringFilter
+  requestedVin: StringFilter
+  errorCode: StringFilter
+  errorText: StringFilter
+  fetchedAt: DateTimeNullableFilter
+  fetchedBy: UserWhereInput
+}
+
+input VehicleDecodeOrderByInput {
+  id: OrderDirection
+  provider: OrderDirection
+  requestedVin: OrderDirection
+  errorCode: OrderDirection
+  errorText: OrderDirection
+  fetchedAt: OrderDirection
+}
+
+input VehicleDecodeUpdateInput {
+  vehicle: VehicleRelateToOneForUpdateInput
+  provider: String
+  requestedVin: String
+  decoded: JSON
+  errorCode: String
+  errorText: String
+  fetchedAt: DateTime
+  fetchedBy: UserRelateToOneForUpdateInput
+}
+
+input VehicleDecodeUpdateArgs {
+  where: VehicleDecodeWhereUniqueInput!
+  data: VehicleDecodeUpdateInput!
+}
+
+input VehicleDecodeCreateInput {
+  vehicle: VehicleRelateToOneForCreateInput
+  provider: String
+  requestedVin: String
+  decoded: JSON
+  errorCode: String
+  errorText: String
+  fetchedAt: DateTime
+  fetchedBy: UserRelateToOneForCreateInput
+}
+
+type VehicleOwnership {
+  id: ID!
+  vehicle: Vehicle
+  customer: Customer
+  businessAccount: BusinessAccount
+  role: String
+  startedAt: CalendarDay
+  endedAt: CalendarDay
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input VehicleOwnershipWhereUniqueInput {
+  id: ID
+}
+
+input VehicleOwnershipWhereInput {
+  AND: [VehicleOwnershipWhereInput!]
+  OR: [VehicleOwnershipWhereInput!]
+  NOT: [VehicleOwnershipWhereInput!]
+  id: IDFilter
+  vehicle: VehicleWhereInput
+  customer: CustomerWhereInput
+  businessAccount: BusinessAccountWhereInput
+  role: StringFilter
+  startedAt: CalendarDayNullableFilter
+  endedAt: CalendarDayNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input VehicleOwnershipOrderByInput {
+  id: OrderDirection
+  role: OrderDirection
+  startedAt: OrderDirection
+  endedAt: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input VehicleOwnershipUpdateInput {
+  vehicle: VehicleRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  role: String
+  startedAt: CalendarDay
+  endedAt: CalendarDay
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input VehicleOwnershipUpdateArgs {
+  where: VehicleOwnershipWhereUniqueInput!
+  data: VehicleOwnershipUpdateInput!
+}
+
+input VehicleOwnershipCreateInput {
+  vehicle: VehicleRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  role: String
+  startedAt: CalendarDay
+  endedAt: CalendarDay
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type Appointment {
+  id: ID!
+  shop: Shop
+  reference: String
+  customer: Customer
+  vehicle: Vehicle
+  lead: JSON
+  date: CalendarDay
+  startsAt: DateTime
+  endsAt: DateTime
+  kind: String
+  requestedServices: JSON
+  concernText: String
+  estimatedCentiHours: Int
+  bay: Bay
+  assignedTech: User
+  source: String
+  status: String
+  cancelReason: String
+  checkIn: CheckIn
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AppointmentWhereUniqueInput {
+  id: ID
+  reference: String
+  checkIn: CheckInWhereUniqueInput
+}
+
+input AppointmentWhereInput {
+  AND: [AppointmentWhereInput!]
+  OR: [AppointmentWhereInput!]
+  NOT: [AppointmentWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  customer: CustomerWhereInput
+  vehicle: VehicleWhereInput
+  date: CalendarDayNullableFilter
+  startsAt: DateTimeNullableFilter
+  endsAt: DateTimeNullableFilter
+  kind: StringFilter
+  concernText: StringFilter
+  estimatedCentiHours: IntFilter
+  bay: BayWhereInput
+  assignedTech: UserWhereInput
+  source: StringFilter
+  status: StringFilter
+  cancelReason: StringFilter
+  checkIn: CheckInWhereInput
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AppointmentOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  date: OrderDirection
+  startsAt: OrderDirection
+  endsAt: OrderDirection
+  kind: OrderDirection
+  concernText: OrderDirection
+  estimatedCentiHours: OrderDirection
+  source: OrderDirection
+  status: OrderDirection
+  cancelReason: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AppointmentUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  customer: CustomerRelateToOneForUpdateInput
+  vehicle: VehicleRelateToOneForUpdateInput
+  lead: JSON
+  date: CalendarDay
+  startsAt: DateTime
+  endsAt: DateTime
+  kind: String
+  requestedServices: JSON
+  concernText: String
+  estimatedCentiHours: Int
+  bay: BayRelateToOneForUpdateInput
+  assignedTech: UserRelateToOneForUpdateInput
+  source: String
+  status: String
+  cancelReason: String
+  checkIn: CheckInRelateToOneForUpdateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BayRelateToOneForUpdateInput {
+  create: BayCreateInput
+  connect: BayWhereUniqueInput
+  disconnect: Boolean
+}
+
+input AppointmentUpdateArgs {
+  where: AppointmentWhereUniqueInput!
+  data: AppointmentUpdateInput!
+}
+
+input AppointmentCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  customer: CustomerRelateToOneForCreateInput
+  vehicle: VehicleRelateToOneForCreateInput
+  lead: JSON
+  date: CalendarDay
+  startsAt: DateTime
+  endsAt: DateTime
+  kind: String
+  requestedServices: JSON
+  concernText: String
+  estimatedCentiHours: Int
+  bay: BayRelateToOneForCreateInput
+  assignedTech: UserRelateToOneForCreateInput
+  source: String
+  status: String
+  cancelReason: String
+  checkIn: CheckInRelateToOneForCreateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BayRelateToOneForCreateInput {
+  create: BayCreateInput
+  connect: BayWhereUniqueInput
+}
+
+type BookingHold {
+  id: ID!
+  shop: Shop
+  date: CalendarDay
+  slotStart: DateTime
+  kind: String
+  bayCentiHours: Int
+  tokenHash: String
+  source: String
+  expiresAt: DateTime
+  status: String
+  appointment: Appointment
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BookingHoldWhereUniqueInput {
+  id: ID
+  tokenHash: String
+}
+
+input BookingHoldWhereInput {
+  AND: [BookingHoldWhereInput!]
+  OR: [BookingHoldWhereInput!]
+  NOT: [BookingHoldWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  date: CalendarDayNullableFilter
+  slotStart: DateTimeNullableFilter
+  kind: StringFilter
+  bayCentiHours: IntNullableFilter
+  tokenHash: StringFilter
+  source: StringFilter
+  expiresAt: DateTimeNullableFilter
+  status: StringFilter
+  appointment: AppointmentWhereInput
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input BookingHoldOrderByInput {
+  id: OrderDirection
+  date: OrderDirection
+  slotStart: OrderDirection
+  kind: OrderDirection
+  bayCentiHours: OrderDirection
+  tokenHash: OrderDirection
+  source: OrderDirection
+  expiresAt: OrderDirection
+  status: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input BookingHoldUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  date: CalendarDay
+  slotStart: DateTime
+  kind: String
+  bayCentiHours: Int
+  tokenHash: String
+  source: String
+  expiresAt: DateTime
+  status: String
+  appointment: AppointmentRelateToOneForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AppointmentRelateToOneForUpdateInput {
+  create: AppointmentCreateInput
+  connect: AppointmentWhereUniqueInput
+  disconnect: Boolean
+}
+
+input BookingHoldUpdateArgs {
+  where: BookingHoldWhereUniqueInput!
+  data: BookingHoldUpdateInput!
+}
+
+input BookingHoldCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  date: CalendarDay
+  slotStart: DateTime
+  kind: String
+  bayCentiHours: Int
+  tokenHash: String
+  source: String
+  expiresAt: DateTime
+  status: String
+  appointment: AppointmentRelateToOneForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AppointmentRelateToOneForCreateInput {
+  create: AppointmentCreateInput
+  connect: AppointmentWhereUniqueInput
+}
+
+type BookingRule {
+  id: ID!
+  shop: Shop
+  kind: String
+  value: JSON
+  appliesToDays: JSON
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BookingRuleWhereUniqueInput {
+  id: ID
+}
+
+input BookingRuleWhereInput {
+  AND: [BookingRuleWhereInput!]
+  OR: [BookingRuleWhereInput!]
+  NOT: [BookingRuleWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  kind: StringFilter
+  active: BooleanFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input BookingRuleOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  active: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input BookingRuleUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  kind: String
+  value: JSON
+  appliesToDays: JSON
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BookingRuleUpdateArgs {
+  where: BookingRuleWhereUniqueInput!
+  data: BookingRuleUpdateInput!
+}
+
+input BookingRuleCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  kind: String
+  value: JSON
+  appliesToDays: JSON
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type CheckIn {
+  id: ID!
+  shop: Shop
+  reference: String
+  appointment: Appointment
+  customer: Customer
+  vehicle: Vehicle
+  odometerIn: OdometerReading
+  concerns: JSON
+  keyTag: String
+  waiter: Boolean
+  promisedAt: DateTime
+  contactPreference: String
+  transportationNeed: String
+  signatureMethod: String
+  signerName: String
+  signature: JSON
+  signatureHash: String
+  workOrderText: String
+  workOrderHash: String
+  signedAt: DateTime
+  valuablesNote: String
+  recallWarning: JSON
+  jurisdictionPolicyVersion: JurisdictionPolicyVersion
+  at: DateTime
+  by: User
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CheckInWhereUniqueInput {
+  id: ID
+  reference: String
+  appointment: AppointmentWhereUniqueInput
+}
+
+input CheckInWhereInput {
+  AND: [CheckInWhereInput!]
+  OR: [CheckInWhereInput!]
+  NOT: [CheckInWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  appointment: AppointmentWhereInput
+  customer: CustomerWhereInput
+  vehicle: VehicleWhereInput
+  odometerIn: OdometerReadingWhereInput
+  keyTag: StringFilter
+  waiter: BooleanFilter
+  promisedAt: DateTimeNullableFilter
+  contactPreference: StringFilter
+  transportationNeed: StringFilter
+  signatureMethod: StringFilter
+  signerName: StringFilter
+  signatureHash: StringFilter
+  workOrderText: StringFilter
+  workOrderHash: StringFilter
+  signedAt: DateTimeNullableFilter
+  valuablesNote: StringFilter
+  jurisdictionPolicyVersion: JurisdictionPolicyVersionWhereInput
+  at: DateTimeNullableFilter
+  by: UserWhereInput
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CheckInOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  keyTag: OrderDirection
+  waiter: OrderDirection
+  promisedAt: OrderDirection
+  contactPreference: OrderDirection
+  transportationNeed: OrderDirection
+  signatureMethod: OrderDirection
+  signerName: OrderDirection
+  signatureHash: OrderDirection
+  workOrderText: OrderDirection
+  workOrderHash: OrderDirection
+  signedAt: OrderDirection
+  valuablesNote: OrderDirection
+  at: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CheckInUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  appointment: AppointmentRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  vehicle: VehicleRelateToOneForUpdateInput
+  odometerIn: OdometerReadingRelateToOneForUpdateInput
+  concerns: JSON
+  keyTag: String
+  waiter: Boolean
+  promisedAt: DateTime
+  contactPreference: String
+  transportationNeed: String
+  signatureMethod: String
+  signerName: String
+  signature: JSON
+  signatureHash: String
+  workOrderText: String
+  workOrderHash: String
+  signedAt: DateTime
+  valuablesNote: String
+  recallWarning: JSON
+  jurisdictionPolicyVersion: JurisdictionPolicyVersionRelateToOneForUpdateInput
+  at: DateTime
+  by: UserRelateToOneForUpdateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input OdometerReadingRelateToOneForUpdateInput {
+  create: OdometerReadingCreateInput
+  connect: OdometerReadingWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CheckInUpdateArgs {
+  where: CheckInWhereUniqueInput!
+  data: CheckInUpdateInput!
+}
+
+input CheckInCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  appointment: AppointmentRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  vehicle: VehicleRelateToOneForCreateInput
+  odometerIn: OdometerReadingRelateToOneForCreateInput
+  concerns: JSON
+  keyTag: String
+  waiter: Boolean
+  promisedAt: DateTime
+  contactPreference: String
+  transportationNeed: String
+  signatureMethod: String
+  signerName: String
+  signature: JSON
+  signatureHash: String
+  workOrderText: String
+  workOrderHash: String
+  signedAt: DateTime
+  valuablesNote: String
+  recallWarning: JSON
+  jurisdictionPolicyVersion: JurisdictionPolicyVersionRelateToOneForCreateInput
+  at: DateTime
+  by: UserRelateToOneForCreateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input OdometerReadingRelateToOneForCreateInput {
+  create: OdometerReadingCreateInput
+  connect: OdometerReadingWhereUniqueInput
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -2611,16 +6041,211 @@ type Mutation {
   updateWorkerSchedules(data: [WorkerScheduleUpdateArgs!]!): [WorkerSchedule]
   deleteWorkerSchedule(where: WorkerScheduleWhereUniqueInput!): WorkerSchedule
   deleteWorkerSchedules(where: [WorkerScheduleWhereUniqueInput!]!): [WorkerSchedule]
+  createFeePolicyVersion(data: FeePolicyVersionCreateInput!): FeePolicyVersion
+  createFeePolicyVersions(data: [FeePolicyVersionCreateInput!]!): [FeePolicyVersion]
+  updateFeePolicyVersion(where: FeePolicyVersionWhereUniqueInput!, data: FeePolicyVersionUpdateInput!): FeePolicyVersion
+  updateFeePolicyVersions(data: [FeePolicyVersionUpdateArgs!]!): [FeePolicyVersion]
+  deleteFeePolicyVersion(where: FeePolicyVersionWhereUniqueInput!): FeePolicyVersion
+  deleteFeePolicyVersions(where: [FeePolicyVersionWhereUniqueInput!]!): [FeePolicyVersion]
+  createFeeRule(data: FeeRuleCreateInput!): FeeRule
+  createFeeRules(data: [FeeRuleCreateInput!]!): [FeeRule]
+  updateFeeRule(where: FeeRuleWhereUniqueInput!, data: FeeRuleUpdateInput!): FeeRule
+  updateFeeRules(data: [FeeRuleUpdateArgs!]!): [FeeRule]
+  deleteFeeRule(where: FeeRuleWhereUniqueInput!): FeeRule
+  deleteFeeRules(where: [FeeRuleWhereUniqueInput!]!): [FeeRule]
+  createJurisdictionPack(data: JurisdictionPackCreateInput!): JurisdictionPack
+  createJurisdictionPacks(data: [JurisdictionPackCreateInput!]!): [JurisdictionPack]
+  updateJurisdictionPack(where: JurisdictionPackWhereUniqueInput!, data: JurisdictionPackUpdateInput!): JurisdictionPack
+  updateJurisdictionPacks(data: [JurisdictionPackUpdateArgs!]!): [JurisdictionPack]
+  deleteJurisdictionPack(where: JurisdictionPackWhereUniqueInput!): JurisdictionPack
+  deleteJurisdictionPacks(where: [JurisdictionPackWhereUniqueInput!]!): [JurisdictionPack]
+  createJurisdictionPolicyVersion(data: JurisdictionPolicyVersionCreateInput!): JurisdictionPolicyVersion
+  createJurisdictionPolicyVersions(data: [JurisdictionPolicyVersionCreateInput!]!): [JurisdictionPolicyVersion]
+  updateJurisdictionPolicyVersion(where: JurisdictionPolicyVersionWhereUniqueInput!, data: JurisdictionPolicyVersionUpdateInput!): JurisdictionPolicyVersion
+  updateJurisdictionPolicyVersions(data: [JurisdictionPolicyVersionUpdateArgs!]!): [JurisdictionPolicyVersion]
+  deleteJurisdictionPolicyVersion(where: JurisdictionPolicyVersionWhereUniqueInput!): JurisdictionPolicyVersion
+  deleteJurisdictionPolicyVersions(where: [JurisdictionPolicyVersionWhereUniqueInput!]!): [JurisdictionPolicyVersion]
+  createLaborMatrixVersion(data: LaborMatrixVersionCreateInput!): LaborMatrixVersion
+  createLaborMatrixVersions(data: [LaborMatrixVersionCreateInput!]!): [LaborMatrixVersion]
+  updateLaborMatrixVersion(where: LaborMatrixVersionWhereUniqueInput!, data: LaborMatrixVersionUpdateInput!): LaborMatrixVersion
+  updateLaborMatrixVersions(data: [LaborMatrixVersionUpdateArgs!]!): [LaborMatrixVersion]
+  deleteLaborMatrixVersion(where: LaborMatrixVersionWhereUniqueInput!): LaborMatrixVersion
+  deleteLaborMatrixVersions(where: [LaborMatrixVersionWhereUniqueInput!]!): [LaborMatrixVersion]
+  createLaborRateClass(data: LaborRateClassCreateInput!): LaborRateClass
+  createLaborRateClasses(data: [LaborRateClassCreateInput!]!): [LaborRateClass]
+  updateLaborRateClass(where: LaborRateClassWhereUniqueInput!, data: LaborRateClassUpdateInput!): LaborRateClass
+  updateLaborRateClasses(data: [LaborRateClassUpdateArgs!]!): [LaborRateClass]
+  deleteLaborRateClass(where: LaborRateClassWhereUniqueInput!): LaborRateClass
+  deleteLaborRateClasses(where: [LaborRateClassWhereUniqueInput!]!): [LaborRateClass]
+  createLaborRateClassSetVersion(data: LaborRateClassSetVersionCreateInput!): LaborRateClassSetVersion
+  createLaborRateClassSetVersions(data: [LaborRateClassSetVersionCreateInput!]!): [LaborRateClassSetVersion]
+  updateLaborRateClassSetVersion(where: LaborRateClassSetVersionWhereUniqueInput!, data: LaborRateClassSetVersionUpdateInput!): LaborRateClassSetVersion
+  updateLaborRateClassSetVersions(data: [LaborRateClassSetVersionUpdateArgs!]!): [LaborRateClassSetVersion]
+  deleteLaborRateClassSetVersion(where: LaborRateClassSetVersionWhereUniqueInput!): LaborRateClassSetVersion
+  deleteLaborRateClassSetVersions(where: [LaborRateClassSetVersionWhereUniqueInput!]!): [LaborRateClassSetVersion]
+  createPartsMatrixVersion(data: PartsMatrixVersionCreateInput!): PartsMatrixVersion
+  createPartsMatrixVersions(data: [PartsMatrixVersionCreateInput!]!): [PartsMatrixVersion]
+  updatePartsMatrixVersion(where: PartsMatrixVersionWhereUniqueInput!, data: PartsMatrixVersionUpdateInput!): PartsMatrixVersion
+  updatePartsMatrixVersions(data: [PartsMatrixVersionUpdateArgs!]!): [PartsMatrixVersion]
+  deletePartsMatrixVersion(where: PartsMatrixVersionWhereUniqueInput!): PartsMatrixVersion
+  deletePartsMatrixVersions(where: [PartsMatrixVersionWhereUniqueInput!]!): [PartsMatrixVersion]
+  createShopPolicyVersion(data: ShopPolicyVersionCreateInput!): ShopPolicyVersion
+  createShopPolicyVersions(data: [ShopPolicyVersionCreateInput!]!): [ShopPolicyVersion]
+  updateShopPolicyVersion(where: ShopPolicyVersionWhereUniqueInput!, data: ShopPolicyVersionUpdateInput!): ShopPolicyVersion
+  updateShopPolicyVersions(data: [ShopPolicyVersionUpdateArgs!]!): [ShopPolicyVersion]
+  deleteShopPolicyVersion(where: ShopPolicyVersionWhereUniqueInput!): ShopPolicyVersion
+  deleteShopPolicyVersions(where: [ShopPolicyVersionWhereUniqueInput!]!): [ShopPolicyVersion]
+  createTaxCategory(data: TaxCategoryCreateInput!): TaxCategory
+  createTaxCategories(data: [TaxCategoryCreateInput!]!): [TaxCategory]
+  updateTaxCategory(where: TaxCategoryWhereUniqueInput!, data: TaxCategoryUpdateInput!): TaxCategory
+  updateTaxCategories(data: [TaxCategoryUpdateArgs!]!): [TaxCategory]
+  deleteTaxCategory(where: TaxCategoryWhereUniqueInput!): TaxCategory
+  deleteTaxCategories(where: [TaxCategoryWhereUniqueInput!]!): [TaxCategory]
+  createTaxRule(data: TaxRuleCreateInput!): TaxRule
+  createTaxRules(data: [TaxRuleCreateInput!]!): [TaxRule]
+  updateTaxRule(where: TaxRuleWhereUniqueInput!, data: TaxRuleUpdateInput!): TaxRule
+  updateTaxRules(data: [TaxRuleUpdateArgs!]!): [TaxRule]
+  deleteTaxRule(where: TaxRuleWhereUniqueInput!): TaxRule
+  deleteTaxRules(where: [TaxRuleWhereUniqueInput!]!): [TaxRule]
+  createTaxRuleSetVersion(data: TaxRuleSetVersionCreateInput!): TaxRuleSetVersion
+  createTaxRuleSetVersions(data: [TaxRuleSetVersionCreateInput!]!): [TaxRuleSetVersion]
+  updateTaxRuleSetVersion(where: TaxRuleSetVersionWhereUniqueInput!, data: TaxRuleSetVersionUpdateInput!): TaxRuleSetVersion
+  updateTaxRuleSetVersions(data: [TaxRuleSetVersionUpdateArgs!]!): [TaxRuleSetVersion]
+  deleteTaxRuleSetVersion(where: TaxRuleSetVersionWhereUniqueInput!): TaxRuleSetVersion
+  deleteTaxRuleSetVersions(where: [TaxRuleSetVersionWhereUniqueInput!]!): [TaxRuleSetVersion]
+  createWarrantyTerm(data: WarrantyTermCreateInput!): WarrantyTerm
+  createWarrantyTerms(data: [WarrantyTermCreateInput!]!): [WarrantyTerm]
+  updateWarrantyTerm(where: WarrantyTermWhereUniqueInput!, data: WarrantyTermUpdateInput!): WarrantyTerm
+  updateWarrantyTerms(data: [WarrantyTermUpdateArgs!]!): [WarrantyTerm]
+  deleteWarrantyTerm(where: WarrantyTermWhereUniqueInput!): WarrantyTerm
+  deleteWarrantyTerms(where: [WarrantyTermWhereUniqueInput!]!): [WarrantyTerm]
+  createWarrantyTermSetVersion(data: WarrantyTermSetVersionCreateInput!): WarrantyTermSetVersion
+  createWarrantyTermSetVersions(data: [WarrantyTermSetVersionCreateInput!]!): [WarrantyTermSetVersion]
+  updateWarrantyTermSetVersion(where: WarrantyTermSetVersionWhereUniqueInput!, data: WarrantyTermSetVersionUpdateInput!): WarrantyTermSetVersion
+  updateWarrantyTermSetVersions(data: [WarrantyTermSetVersionUpdateArgs!]!): [WarrantyTermSetVersion]
+  deleteWarrantyTermSetVersion(where: WarrantyTermSetVersionWhereUniqueInput!): WarrantyTermSetVersion
+  deleteWarrantyTermSetVersions(where: [WarrantyTermSetVersionWhereUniqueInput!]!): [WarrantyTermSetVersion]
+  createBusinessAccount(data: BusinessAccountCreateInput!): BusinessAccount
+  createBusinessAccounts(data: [BusinessAccountCreateInput!]!): [BusinessAccount]
+  updateBusinessAccount(where: BusinessAccountWhereUniqueInput!, data: BusinessAccountUpdateInput!): BusinessAccount
+  updateBusinessAccounts(data: [BusinessAccountUpdateArgs!]!): [BusinessAccount]
+  deleteBusinessAccount(where: BusinessAccountWhereUniqueInput!): BusinessAccount
+  deleteBusinessAccounts(where: [BusinessAccountWhereUniqueInput!]!): [BusinessAccount]
+  createContactConsent(data: ContactConsentCreateInput!): ContactConsent
+  createContactConsents(data: [ContactConsentCreateInput!]!): [ContactConsent]
+  updateContactConsent(where: ContactConsentWhereUniqueInput!, data: ContactConsentUpdateInput!): ContactConsent
+  updateContactConsents(data: [ContactConsentUpdateArgs!]!): [ContactConsent]
+  deleteContactConsent(where: ContactConsentWhereUniqueInput!): ContactConsent
+  deleteContactConsents(where: [ContactConsentWhereUniqueInput!]!): [ContactConsent]
+  createCustomer(data: CustomerCreateInput!): Customer
+  createCustomers(data: [CustomerCreateInput!]!): [Customer]
+  updateCustomer(where: CustomerWhereUniqueInput!, data: CustomerUpdateInput!): Customer
+  updateCustomers(data: [CustomerUpdateArgs!]!): [Customer]
+  deleteCustomer(where: CustomerWhereUniqueInput!): Customer
+  deleteCustomers(where: [CustomerWhereUniqueInput!]!): [Customer]
+  createCustomerContact(data: CustomerContactCreateInput!): CustomerContact
+  createCustomerContacts(data: [CustomerContactCreateInput!]!): [CustomerContact]
+  updateCustomerContact(where: CustomerContactWhereUniqueInput!, data: CustomerContactUpdateInput!): CustomerContact
+  updateCustomerContacts(data: [CustomerContactUpdateArgs!]!): [CustomerContact]
+  deleteCustomerContact(where: CustomerContactWhereUniqueInput!): CustomerContact
+  deleteCustomerContacts(where: [CustomerContactWhereUniqueInput!]!): [CustomerContact]
+  createCustomerMergeEvent(data: CustomerMergeEventCreateInput!): CustomerMergeEvent
+  createCustomerMergeEvents(data: [CustomerMergeEventCreateInput!]!): [CustomerMergeEvent]
+  updateCustomerMergeEvent(where: CustomerMergeEventWhereUniqueInput!, data: CustomerMergeEventUpdateInput!): CustomerMergeEvent
+  updateCustomerMergeEvents(data: [CustomerMergeEventUpdateArgs!]!): [CustomerMergeEvent]
+  deleteCustomerMergeEvent(where: CustomerMergeEventWhereUniqueInput!): CustomerMergeEvent
+  deleteCustomerMergeEvents(where: [CustomerMergeEventWhereUniqueInput!]!): [CustomerMergeEvent]
+  createExternalReference(data: ExternalReferenceCreateInput!): ExternalReference
+  createExternalReferences(data: [ExternalReferenceCreateInput!]!): [ExternalReference]
+  updateExternalReference(where: ExternalReferenceWhereUniqueInput!, data: ExternalReferenceUpdateInput!): ExternalReference
+  updateExternalReferences(data: [ExternalReferenceUpdateArgs!]!): [ExternalReference]
+  deleteExternalReference(where: ExternalReferenceWhereUniqueInput!): ExternalReference
+  deleteExternalReferences(where: [ExternalReferenceWhereUniqueInput!]!): [ExternalReference]
+  createOdometerReading(data: OdometerReadingCreateInput!): OdometerReading
+  createOdometerReadings(data: [OdometerReadingCreateInput!]!): [OdometerReading]
+  updateOdometerReading(where: OdometerReadingWhereUniqueInput!, data: OdometerReadingUpdateInput!): OdometerReading
+  updateOdometerReadings(data: [OdometerReadingUpdateArgs!]!): [OdometerReading]
+  deleteOdometerReading(where: OdometerReadingWhereUniqueInput!): OdometerReading
+  deleteOdometerReadings(where: [OdometerReadingWhereUniqueInput!]!): [OdometerReading]
+  createPlateRegistration(data: PlateRegistrationCreateInput!): PlateRegistration
+  createPlateRegistrations(data: [PlateRegistrationCreateInput!]!): [PlateRegistration]
+  updatePlateRegistration(where: PlateRegistrationWhereUniqueInput!, data: PlateRegistrationUpdateInput!): PlateRegistration
+  updatePlateRegistrations(data: [PlateRegistrationUpdateArgs!]!): [PlateRegistration]
+  deletePlateRegistration(where: PlateRegistrationWhereUniqueInput!): PlateRegistration
+  deletePlateRegistrations(where: [PlateRegistrationWhereUniqueInput!]!): [PlateRegistration]
+  createRecallCheck(data: RecallCheckCreateInput!): RecallCheck
+  createRecallChecks(data: [RecallCheckCreateInput!]!): [RecallCheck]
+  updateRecallCheck(where: RecallCheckWhereUniqueInput!, data: RecallCheckUpdateInput!): RecallCheck
+  updateRecallChecks(data: [RecallCheckUpdateArgs!]!): [RecallCheck]
+  deleteRecallCheck(where: RecallCheckWhereUniqueInput!): RecallCheck
+  deleteRecallChecks(where: [RecallCheckWhereUniqueInput!]!): [RecallCheck]
+  createVehicle(data: VehicleCreateInput!): Vehicle
+  createVehicles(data: [VehicleCreateInput!]!): [Vehicle]
+  updateVehicle(where: VehicleWhereUniqueInput!, data: VehicleUpdateInput!): Vehicle
+  updateVehicles(data: [VehicleUpdateArgs!]!): [Vehicle]
+  deleteVehicle(where: VehicleWhereUniqueInput!): Vehicle
+  deleteVehicles(where: [VehicleWhereUniqueInput!]!): [Vehicle]
+  createVehicleDecode(data: VehicleDecodeCreateInput!): VehicleDecode
+  createVehicleDecodes(data: [VehicleDecodeCreateInput!]!): [VehicleDecode]
+  updateVehicleDecode(where: VehicleDecodeWhereUniqueInput!, data: VehicleDecodeUpdateInput!): VehicleDecode
+  updateVehicleDecodes(data: [VehicleDecodeUpdateArgs!]!): [VehicleDecode]
+  deleteVehicleDecode(where: VehicleDecodeWhereUniqueInput!): VehicleDecode
+  deleteVehicleDecodes(where: [VehicleDecodeWhereUniqueInput!]!): [VehicleDecode]
+  createVehicleOwnership(data: VehicleOwnershipCreateInput!): VehicleOwnership
+  createVehicleOwnerships(data: [VehicleOwnershipCreateInput!]!): [VehicleOwnership]
+  updateVehicleOwnership(where: VehicleOwnershipWhereUniqueInput!, data: VehicleOwnershipUpdateInput!): VehicleOwnership
+  updateVehicleOwnerships(data: [VehicleOwnershipUpdateArgs!]!): [VehicleOwnership]
+  deleteVehicleOwnership(where: VehicleOwnershipWhereUniqueInput!): VehicleOwnership
+  deleteVehicleOwnerships(where: [VehicleOwnershipWhereUniqueInput!]!): [VehicleOwnership]
+  createAppointment(data: AppointmentCreateInput!): Appointment
+  createAppointments(data: [AppointmentCreateInput!]!): [Appointment]
+  updateAppointment(where: AppointmentWhereUniqueInput!, data: AppointmentUpdateInput!): Appointment
+  updateAppointments(data: [AppointmentUpdateArgs!]!): [Appointment]
+  deleteAppointment(where: AppointmentWhereUniqueInput!): Appointment
+  deleteAppointments(where: [AppointmentWhereUniqueInput!]!): [Appointment]
+  createBookingHold(data: BookingHoldCreateInput!): BookingHold
+  createBookingHolds(data: [BookingHoldCreateInput!]!): [BookingHold]
+  updateBookingHold(where: BookingHoldWhereUniqueInput!, data: BookingHoldUpdateInput!): BookingHold
+  updateBookingHolds(data: [BookingHoldUpdateArgs!]!): [BookingHold]
+  deleteBookingHold(where: BookingHoldWhereUniqueInput!): BookingHold
+  deleteBookingHolds(where: [BookingHoldWhereUniqueInput!]!): [BookingHold]
+  createBookingRule(data: BookingRuleCreateInput!): BookingRule
+  createBookingRules(data: [BookingRuleCreateInput!]!): [BookingRule]
+  updateBookingRule(where: BookingRuleWhereUniqueInput!, data: BookingRuleUpdateInput!): BookingRule
+  updateBookingRules(data: [BookingRuleUpdateArgs!]!): [BookingRule]
+  deleteBookingRule(where: BookingRuleWhereUniqueInput!): BookingRule
+  deleteBookingRules(where: [BookingRuleWhereUniqueInput!]!): [BookingRule]
+  createCheckIn(data: CheckInCreateInput!): CheckIn
+  createCheckIns(data: [CheckInCreateInput!]!): [CheckIn]
+  updateCheckIn(where: CheckInWhereUniqueInput!, data: CheckInUpdateInput!): CheckIn
+  updateCheckIns(data: [CheckInUpdateArgs!]!): [CheckIn]
+  deleteCheckIn(where: CheckInWhereUniqueInput!): CheckIn
+  deleteCheckIns(where: [CheckInWhereUniqueInput!]!): [CheckIn]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
   sendUserPasswordResetLink(email: String!): Boolean!
   redeemUserPasswordResetToken(email: String!, token: String!, password: String!): RedeemUserPasswordResetTokenResult
   updateActiveUser(data: UserUpdateProfileInput!): User
-  loadNorthgateSetup(idempotencyKey: String!): JSON
+  loadNorthgateSetup(idempotencyKey: String!, scope: String): JSON
   decideApprovalRequest(requestId: ID!, decision: String!, reason: String, expectedVersion: Int!, idempotencyKey: String!): JSON
   cancelApprovalRequest(requestId: ID!, expectedVersion: Int!, reason: String, idempotencyKey: String!): JSON
   requestOrgControls(changes: JSON!, reason: String!, idempotencyKey: String!): JSON
+  createPolicyDraft(kind: String!, headId: ID!, idempotencyKey: String!): JSON
+  publishPolicyVersion(kind: String!, versionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+  saveCustomer(input: JSON!, idempotencyKey: String!): JSON
+  addCustomerContact(customerId: ID!, contact: JSON!, allowDuplicate: Boolean, idempotencyKey: String!): JSON
+  recordContactConsent(input: JSON!, idempotencyKey: String!): JSON
+  saveBusinessAccount(name: String!, termsDays: Int, poRequired: Boolean, idempotencyKey: String!): JSON
+  saveVehicle(input: JSON!, idempotencyKey: String!): JSON
+  linkVehicleOwner(vehicleId: ID!, customerId: ID, businessAccountId: ID, idempotencyKey: String!): JSON
+  recordOdometerReading(vehicleId: ID!, value: Int!, unit: String, overrideReason: String, idempotencyKey: String!): JSON
+  decodeVehicleVin(vehicleId: ID!, idempotencyKey: String!): JSON
+  checkVehicleRecalls(vehicleId: ID!, idempotencyKey: String!): JSON
+  holdAppointmentSlot(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, idempotencyKey: String!): JSON
+  bookShopAppointment(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, customerId: ID, vehicleId: ID, lead: JSON, concernText: String, requestedServices: [String!], holdToken: String, confirm: Boolean, idempotencyKey: String!): JSON
+  transitionAppointment(id: ID!, to: String!, expectedVersion: Int!, reason: String, startsAt: String, idempotencyKey: String!): JSON
+  checkInShopVehicle(input: JSON!, idempotencyKey: String!): JSON
 }
 
 union UserAuthenticationWithPasswordResult = UserAuthenticationWithPasswordSuccess | UserAuthenticationWithPasswordFailure
@@ -2715,11 +6340,102 @@ type Query {
   workerSchedule(where: WorkerScheduleWhereUniqueInput!): WorkerSchedule
   workerSchedules(where: WorkerScheduleWhereInput! = {}, orderBy: [WorkerScheduleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WorkerScheduleWhereUniqueInput): [WorkerSchedule!]
   workerSchedulesCount(where: WorkerScheduleWhereInput! = {}): Int
+  feePolicyVersion(where: FeePolicyVersionWhereUniqueInput!): FeePolicyVersion
+  feePolicyVersions(where: FeePolicyVersionWhereInput! = {}, orderBy: [FeePolicyVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FeePolicyVersionWhereUniqueInput): [FeePolicyVersion!]
+  feePolicyVersionsCount(where: FeePolicyVersionWhereInput! = {}): Int
+  feeRule(where: FeeRuleWhereUniqueInput!): FeeRule
+  feeRules(where: FeeRuleWhereInput! = {}, orderBy: [FeeRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FeeRuleWhereUniqueInput): [FeeRule!]
+  feeRulesCount(where: FeeRuleWhereInput! = {}): Int
+  jurisdictionPack(where: JurisdictionPackWhereUniqueInput!): JurisdictionPack
+  jurisdictionPacks(where: JurisdictionPackWhereInput! = {}, orderBy: [JurisdictionPackOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JurisdictionPackWhereUniqueInput): [JurisdictionPack!]
+  jurisdictionPacksCount(where: JurisdictionPackWhereInput! = {}): Int
+  jurisdictionPolicyVersion(where: JurisdictionPolicyVersionWhereUniqueInput!): JurisdictionPolicyVersion
+  jurisdictionPolicyVersions(where: JurisdictionPolicyVersionWhereInput! = {}, orderBy: [JurisdictionPolicyVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JurisdictionPolicyVersionWhereUniqueInput): [JurisdictionPolicyVersion!]
+  jurisdictionPolicyVersionsCount(where: JurisdictionPolicyVersionWhereInput! = {}): Int
+  laborMatrixVersion(where: LaborMatrixVersionWhereUniqueInput!): LaborMatrixVersion
+  laborMatrixVersions(where: LaborMatrixVersionWhereInput! = {}, orderBy: [LaborMatrixVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborMatrixVersionWhereUniqueInput): [LaborMatrixVersion!]
+  laborMatrixVersionsCount(where: LaborMatrixVersionWhereInput! = {}): Int
+  laborRateClass(where: LaborRateClassWhereUniqueInput!): LaborRateClass
+  laborRateClasses(where: LaborRateClassWhereInput! = {}, orderBy: [LaborRateClassOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborRateClassWhereUniqueInput): [LaborRateClass!]
+  laborRateClassesCount(where: LaborRateClassWhereInput! = {}): Int
+  laborRateClassSetVersion(where: LaborRateClassSetVersionWhereUniqueInput!): LaborRateClassSetVersion
+  laborRateClassSetVersions(where: LaborRateClassSetVersionWhereInput! = {}, orderBy: [LaborRateClassSetVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborRateClassSetVersionWhereUniqueInput): [LaborRateClassSetVersion!]
+  laborRateClassSetVersionsCount(where: LaborRateClassSetVersionWhereInput! = {}): Int
+  partsMatrixVersion(where: PartsMatrixVersionWhereUniqueInput!): PartsMatrixVersion
+  partsMatrixVersions(where: PartsMatrixVersionWhereInput! = {}, orderBy: [PartsMatrixVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PartsMatrixVersionWhereUniqueInput): [PartsMatrixVersion!]
+  partsMatrixVersionsCount(where: PartsMatrixVersionWhereInput! = {}): Int
+  shopPolicyVersion(where: ShopPolicyVersionWhereUniqueInput!): ShopPolicyVersion
+  shopPolicyVersions(where: ShopPolicyVersionWhereInput! = {}, orderBy: [ShopPolicyVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopPolicyVersionWhereUniqueInput): [ShopPolicyVersion!]
+  shopPolicyVersionsCount(where: ShopPolicyVersionWhereInput! = {}): Int
+  taxCategory(where: TaxCategoryWhereUniqueInput!): TaxCategory
+  taxCategories(where: TaxCategoryWhereInput! = {}, orderBy: [TaxCategoryOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TaxCategoryWhereUniqueInput): [TaxCategory!]
+  taxCategoriesCount(where: TaxCategoryWhereInput! = {}): Int
+  taxRule(where: TaxRuleWhereUniqueInput!): TaxRule
+  taxRules(where: TaxRuleWhereInput! = {}, orderBy: [TaxRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TaxRuleWhereUniqueInput): [TaxRule!]
+  taxRulesCount(where: TaxRuleWhereInput! = {}): Int
+  taxRuleSetVersion(where: TaxRuleSetVersionWhereUniqueInput!): TaxRuleSetVersion
+  taxRuleSetVersions(where: TaxRuleSetVersionWhereInput! = {}, orderBy: [TaxRuleSetVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TaxRuleSetVersionWhereUniqueInput): [TaxRuleSetVersion!]
+  taxRuleSetVersionsCount(where: TaxRuleSetVersionWhereInput! = {}): Int
+  warrantyTerm(where: WarrantyTermWhereUniqueInput!): WarrantyTerm
+  warrantyTerms(where: WarrantyTermWhereInput! = {}, orderBy: [WarrantyTermOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyTermWhereUniqueInput): [WarrantyTerm!]
+  warrantyTermsCount(where: WarrantyTermWhereInput! = {}): Int
+  warrantyTermSetVersion(where: WarrantyTermSetVersionWhereUniqueInput!): WarrantyTermSetVersion
+  warrantyTermSetVersions(where: WarrantyTermSetVersionWhereInput! = {}, orderBy: [WarrantyTermSetVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyTermSetVersionWhereUniqueInput): [WarrantyTermSetVersion!]
+  warrantyTermSetVersionsCount(where: WarrantyTermSetVersionWhereInput! = {}): Int
+  businessAccount(where: BusinessAccountWhereUniqueInput!): BusinessAccount
+  businessAccounts(where: BusinessAccountWhereInput! = {}, orderBy: [BusinessAccountOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BusinessAccountWhereUniqueInput): [BusinessAccount!]
+  businessAccountsCount(where: BusinessAccountWhereInput! = {}): Int
+  contactConsent(where: ContactConsentWhereUniqueInput!): ContactConsent
+  contactConsents(where: ContactConsentWhereInput! = {}, orderBy: [ContactConsentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ContactConsentWhereUniqueInput): [ContactConsent!]
+  contactConsentsCount(where: ContactConsentWhereInput! = {}): Int
+  customer(where: CustomerWhereUniqueInput!): Customer
+  customers(where: CustomerWhereInput! = {}, orderBy: [CustomerOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerWhereUniqueInput): [Customer!]
+  customersCount(where: CustomerWhereInput! = {}): Int
+  customerContact(where: CustomerContactWhereUniqueInput!): CustomerContact
+  customerContacts(where: CustomerContactWhereInput! = {}, orderBy: [CustomerContactOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerContactWhereUniqueInput): [CustomerContact!]
+  customerContactsCount(where: CustomerContactWhereInput! = {}): Int
+  customerMergeEvent(where: CustomerMergeEventWhereUniqueInput!): CustomerMergeEvent
+  customerMergeEvents(where: CustomerMergeEventWhereInput! = {}, orderBy: [CustomerMergeEventOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerMergeEventWhereUniqueInput): [CustomerMergeEvent!]
+  customerMergeEventsCount(where: CustomerMergeEventWhereInput! = {}): Int
+  externalReference(where: ExternalReferenceWhereUniqueInput!): ExternalReference
+  externalReferences(where: ExternalReferenceWhereInput! = {}, orderBy: [ExternalReferenceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ExternalReferenceWhereUniqueInput): [ExternalReference!]
+  externalReferencesCount(where: ExternalReferenceWhereInput! = {}): Int
+  odometerReading(where: OdometerReadingWhereUniqueInput!): OdometerReading
+  odometerReadings(where: OdometerReadingWhereInput! = {}, orderBy: [OdometerReadingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OdometerReadingWhereUniqueInput): [OdometerReading!]
+  odometerReadingsCount(where: OdometerReadingWhereInput! = {}): Int
+  plateRegistration(where: PlateRegistrationWhereUniqueInput!): PlateRegistration
+  plateRegistrations(where: PlateRegistrationWhereInput! = {}, orderBy: [PlateRegistrationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PlateRegistrationWhereUniqueInput): [PlateRegistration!]
+  plateRegistrationsCount(where: PlateRegistrationWhereInput! = {}): Int
+  recallCheck(where: RecallCheckWhereUniqueInput!): RecallCheck
+  recallChecks(where: RecallCheckWhereInput! = {}, orderBy: [RecallCheckOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RecallCheckWhereUniqueInput): [RecallCheck!]
+  recallChecksCount(where: RecallCheckWhereInput! = {}): Int
+  vehicle(where: VehicleWhereUniqueInput!): Vehicle
+  vehicles(where: VehicleWhereInput! = {}, orderBy: [VehicleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleWhereUniqueInput): [Vehicle!]
+  vehiclesCount(where: VehicleWhereInput! = {}): Int
+  vehicleDecode(where: VehicleDecodeWhereUniqueInput!): VehicleDecode
+  vehicleDecodes(where: VehicleDecodeWhereInput! = {}, orderBy: [VehicleDecodeOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleDecodeWhereUniqueInput): [VehicleDecode!]
+  vehicleDecodesCount(where: VehicleDecodeWhereInput! = {}): Int
+  vehicleOwnership(where: VehicleOwnershipWhereUniqueInput!): VehicleOwnership
+  vehicleOwnerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
+  vehicleOwnershipsCount(where: VehicleOwnershipWhereInput! = {}): Int
+  appointment(where: AppointmentWhereUniqueInput!): Appointment
+  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
+  appointmentsCount(where: AppointmentWhereInput! = {}): Int
+  bookingHold(where: BookingHoldWhereUniqueInput!): BookingHold
+  bookingHolds(where: BookingHoldWhereInput! = {}, orderBy: [BookingHoldOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BookingHoldWhereUniqueInput): [BookingHold!]
+  bookingHoldsCount(where: BookingHoldWhereInput! = {}): Int
+  bookingRule(where: BookingRuleWhereUniqueInput!): BookingRule
+  bookingRules(where: BookingRuleWhereInput! = {}, orderBy: [BookingRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BookingRuleWhereUniqueInput): [BookingRule!]
+  bookingRulesCount(where: BookingRuleWhereInput! = {}): Int
+  checkIn(where: CheckInWhereUniqueInput!): CheckIn
+  checkIns(where: CheckInWhereInput! = {}, orderBy: [CheckInOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CheckInWhereUniqueInput): [CheckIn!]
+  checkInsCount(where: CheckInWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult
   redirectToInit: Boolean
   verifyAuditChain: JSON
+  checkAuthorizedCeiling(shopId: ID!, authorizedMinor: String!, priceMinor: String!, taxMinor: String): JSON
 }
 
 union AuthenticatedItem = User

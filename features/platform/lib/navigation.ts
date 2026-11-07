@@ -36,7 +36,7 @@ export const platformNavItems: PlatformNavItem[] = [
 ]
 
 /** Routes that exist in this build. Others stay out of the menu until their phase ships. */
-export const SHIPPED_ROUTES = new Set<string>(['/platform/approvals', '/platform/shops', '/platform/audit'])
+export const SHIPPED_ROUTES = new Set<string>(['/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/shops', '/platform/policies', '/platform/audit'])
 
 const shipped = platformNavItems.filter(item => SHIPPED_ROUTES.has(item.href))
 

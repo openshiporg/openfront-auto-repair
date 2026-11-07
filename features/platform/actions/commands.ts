@@ -11,6 +11,17 @@ const OPS: Record<string, Record<string, string>> = {
   decideApprovalRequest: { requestId: 'ID!', decision: 'String!', reason: 'String', expectedVersion: 'Int!' },
   cancelApprovalRequest: { requestId: 'ID!', expectedVersion: 'Int!', reason: 'String' },
   requestOrgControls: { changes: 'JSON!', reason: 'String!' },
+  createPolicyDraft: { kind: 'String!', headId: 'ID!' },
+  publishPolicyVersion: { kind: 'String!', versionId: 'ID!', expectedVersion: 'Int!' },
+  saveCustomer: { input: 'JSON!' },
+  recordContactConsent: { input: 'JSON!' },
+  saveVehicle: { input: 'JSON!' },
+  recordOdometerReading: { vehicleId: 'ID!', value: 'Int!', unit: 'String', overrideReason: 'String' },
+  decodeVehicleVin: { vehicleId: 'ID!' },
+  checkVehicleRecalls: { vehicleId: 'ID!' },
+  bookShopAppointment: { shopId: 'ID!', startsAt: 'String!', kind: 'String!', estimatedCentiHours: 'Int', customerId: 'ID', vehicleId: 'ID', lead: 'JSON', concernText: 'String', requestedServices: '[String!]', confirm: 'Boolean' },
+  transitionAppointment: { id: 'ID!', to: 'String!', expectedVersion: 'Int!', reason: 'String', startsAt: 'String' },
+  checkInShopVehicle: { input: 'JSON!' },
 };
 
 const KEY = /^[A-Za-z0-9._:-]{8,200}$/;
