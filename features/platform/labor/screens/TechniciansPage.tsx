@@ -49,7 +49,7 @@ export default async function TechniciansPage({ searchParams }: { searchParams?:
                 const lapsedNow = c.status === 'expired' || (c.expiresAt && c.expiresAt.slice(0, 10) < today);
                 return (
                   <div key={c.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                    <span className="min-w-0 break-words">{KIND[c.kind] ?? label(c.kind)} <Meta>{c.identifier}{c.expiresAt ? `, expires ${when(c.expiresAt, 'UTC', 'day')}` : ', does not expire'}</Meta></span>
+                    <span className="min-w-0 break-words">{KIND[c.kind] ?? label(c.kind)} <Meta>{c.identifier}{c.expiresAt ? `, expires ${new Date(`${c.expiresAt.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}` : ', does not expire'}</Meta></span>
                     <Status value={lapsedNow ? 'expired' : 'active'} />
                   </div>
                 );
@@ -58,7 +58,7 @@ export default async function TechniciansPage({ searchParams }: { searchParams?:
           </div>
         )) : <Empty>No technicians are set up at {shop.name}.</Empty>}
       </Section>
-      <Meta>Times shown in {tz.replace('_', ' ')}. A technician with a lapsed EPA 609 certificate cannot be assigned or start air-conditioning work.</Meta>
+      <Meta>Times shown in {tz.split('/').pop()?.replaceAll('_', ' ')}. A technician with a lapsed EPA 609 certificate cannot be assigned or start air-conditioning work.</Meta>
     </Page>
   );
 }

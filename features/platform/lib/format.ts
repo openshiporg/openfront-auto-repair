@@ -41,7 +41,9 @@ export function decimalText(value: string | null | undefined, options: { minPlac
 /** Labor time from integer centi-hours: 125 → "1.25 h". */
 export function hours(centi: number | null | undefined) {
   if (centi === null || centi === undefined) return '—'
-  return `${decimalText(`${Math.trunc(centi / 100)}.${String(Math.abs(centi % 100)).padStart(2, '0')}`, { maxPlaces: 2 })} h`
+  const sign = centi < 0 ? '-' : ''
+  const abs = Math.abs(centi)
+  return `${sign}${decimalText(`${Math.trunc(abs / 100)}.${String(abs % 100).padStart(2, '0')}`, { maxPlaces: 2 })} h`
 }
 
 /** A quantity from integer milli-units: 5700 → "5.7". */

@@ -59,7 +59,7 @@ export default async function PayPeriodsPage({ searchParams }: { searchParams?: 
                 </div>
                 {mine.map(e => (
                   <div key={e.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 pl-3 text-xs text-muted-foreground">
-                    <span className="min-w-0 break-words">{KIND[e.kind] ?? label(e.kind)}: {e.job?.repairOrder?.roNumber} job {e.job?.number}, {e.job?.title}{e.reason ? `. ${e.reason}` : ''}</span>
+                    <span className="min-w-0 break-words">{KIND[e.kind] ?? label(e.kind)}: {e.job?.repairOrder?.roNumber} job {e.job?.number}, {e.job?.title}{e.reason && e.kind !== 'flag' ? `. ${e.reason}` : ''}</span>
                     <span className="font-mono">{e.centiHours > 0 ? '+' : ''}{hours(e.centiHours)}</span>
                   </div>
                 ))}
