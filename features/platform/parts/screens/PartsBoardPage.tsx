@@ -7,8 +7,8 @@ import { Act, OrderQuoteButton, PhoneQuoteForm, QuoteForm, TinForm } from './Par
 type Line = { id: string; kind: string; partNumber: string; description: string; quantityMilli: number; isNewTire: boolean };
 type Job = { id: string; number: number; title: string; repairOrder: { id: string; roNumber: string; shop: { id: string } } | null; lines: Line[]; currentAuthorization: { id: string } | null };
 type Tire = { id: string; position: string; tin: string; job: { id: string } | null };
-type Quote = { id: string; jobId: string | null; partNumber: string; status: string; unitCostMinor: string; coreChargeMinor: string; availability: string; source: string; version: number; supplier: { id: string; name: string } | null };
-type OrderLine = { id: string; jobId: string | null; partNumber: string; quantityMilli: number; receivedQuantityMilli: number; order: { reference: string; status: string } | null };
+type Quote = { id: string; job: { id: string } | null; partNumber: string; status: string; unitCostMinor: string; coreChargeMinor: string; availability: string; source: string; version: number; supplier: { id: string; name: string } | null };
+type OrderLine = { id: string; job: { id: string } | null; partNumber: string; quantityMilli: number; receivedQuantityMilli: number; order: { reference: string; status: string } | null };
 type Supplier = { id: string; name: string; adapter: string };
 type Item = { id: string; partNumber: string; sku: string; stock: { onHandMilli: number; committedMilli: number } | null };
 
@@ -20,8 +20,8 @@ export default async function PartsBoardPage() {
     jobs(where: { currentAuthorization: { id: { not: null } } }, orderBy: { updatedAt: desc }, take: 60) {
       id number title repairOrder { id roNumber shop { id } } lines { id kind partNumber description quantityMilli isNewTire } currentAuthorization { id } }
     jobTires(take: 400) { id position tin job { id } }
-    partQuotes(where: { status: { in: ["offered", "selected"] } }, orderBy: { createdAt: desc }, take: 300) { id jobId partNumber status unitCostMinor coreChargeMinor availability source version supplier { id name } }
-    supplierOrderLines(where: { jobId: { not: null } }, take: 300) { id jobId partNumber quantityMilli receivedQuantityMilli order { reference status } }
+    partQuotes(where: { status: { in: ["offered", "selected"] } }, orderBy: { createdAt: desc }, take: 300) { id job { id } partNumber status unitCostMinor coreChargeMinor availability source version supplier { id name } }
+    supplierOrderLines(where: { job: { id: { not: null } } }, take: 300) { id job { id } partNumber quantityMilli receivedQuantityMilli order { reference status } }
     suppliers(where: { active: { equals: true } }, orderBy: { name: asc }) { id name adapter }
     shopItems(where: { active: { equals: true } }, take: 300) { id partNumber sku stock { onHandMilli committedMilli } } }`);
   const jobs = d.jobs.filter(j => j.lines.some(l => l.kind === 'part' || l.kind === 'tire'));
@@ -36,8 +36,8 @@ export default async function PartsBoardPage() {
               {job.repairOrder ? <a className="text-xs underline max-md:inline-flex max-md:min-h-11 max-md:items-center" href={`/dashboard/platform/repair-orders/${job.repairOrder.id}`}>Open the repair order</a> : null}
             </div>
             {job.lines.filter(l => l.kind === 'part' || l.kind === 'tire').map(line => {
-              const quotes = d.partQuotes.filter(x => x.jobId === job.id && norm(x.partNumber) === norm(line.partNumber));
-              const orders = d.supplierOrderLines.filter(x => x.jobId === job.id && norm(x.partNumber) === norm(line.partNumber));
+              const quotes = d.partQuotes.filter(x => x.job?.id === job.id && norm(x.partNumber) === norm(line.partNumber));
+              const orders = d.supplierOrderLines.filter(x => x.job?.id === job.id && norm(x.partNumber) === norm(line.partNumber));
               const shelf = d.shopItems.find(i => norm(i.partNumber) === norm(line.partNumber));
               const free = shelf?.stock ? shelf.stock.onHandMilli - shelf.stock.committedMilli : 0;
               const shopId = job.repairOrder?.shop.id ?? '';
