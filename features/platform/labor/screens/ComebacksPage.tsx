@@ -2,15 +2,16 @@ import { orgTimeZone, q } from '../../lib/server';
 import { label, money, when } from '../../lib/format';
 import { Page, Empty, Meta, Section, Stat, Status } from '../../components/ui';
 import { LaborTabs, ShopSwitch, pickShop } from './LaborTabs';
-import { Act, DiagnoseForm, OpenComebackForm } from './LaborActions';
+import { Act, AttachJobForm, DiagnoseForm, OpenComebackForm, ResolveForm } from './LaborActions';
 
 type Shop = { id: string; code: string; name: string };
-type Comeback = { id: string; reference: string; concern: string; cause: string; diagnosis: string | null; coverageValid: boolean; noCharge: boolean; resolution: string | null; status: string; createdAt: string; openedBy: { name: string } | null; originalJob: { number: number; title: string; repairOrder: { roNumber: string } | null } | null };
-type Claim = { id: string; claimNumber: string; laborReimbursementMinor: string | null; status: string; supplier: { name: string } | null; comeback: { reference: string } | null };
+type Comeback = { id: string; reference: string; concern: string; cause: string; diagnosis: string | null; coverageValid: boolean; noCharge: boolean; resolution: string | null; comebackJob: { id: string } | null; status: string; createdAt: string; openedBy: { name: string } | null; originalJob: { number: number; title: string; repairOrder: { roNumber: string } | null } | null };
+type Claim = { id: string; claimNumber: string; laborReimbursementMinor: string | null; voidReason: string; status: string; version: number; supplier: { name: string } | null; comeback: { reference: string } | null };
 type Billed = { id: string; number: number; title: string; repairOrder: { roNumber: string; vehicle: { year: number | null; make: string | null; model: string | null } | null } | null };
 
 const CAUSE: Record<string, string> = { workmanship: 'Our workmanship', part_failure: 'A part failed', new_issue: 'A new, unrelated problem', customer_caused: 'Caused by the customer', undetermined: 'Not yet diagnosed' };
-const STATE: Record<string, string> = { open: 'waiting for diagnosis', diagnosed: 'diagnosed', resolved: 'resolved' };
+const STATE: Record<string, string> = { open: 'waiting for diagnosis', diagnosed: 'diagnosed', resolved: 'resolved', cancelled: 'cancelled' };
+const CLOSED = ['resolved', 'cancelled'];
 
 /** Repeat visits for work the shop already billed: whether the warranty covers it, who was at fault, and what comes back from suppliers. */
 export default async function ComebacksPage({ searchParams }: { searchParams?: Promise<{ shop?: string }> }) {
@@ -20,14 +21,16 @@ export default async function ComebacksPage({ searchParams }: { searchParams?: P
   if (!shop) return <Page title="Comebacks"><LaborTabs active="comebacks" /><Empty>No shop is set up yet.</Empty></Page>;
   const tz = await orgTimeZone();
   const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
-  const d = await q<{ comebackCases: Comeback[]; partWarrantyClaims: Claim[]; jobs: Billed[] }>(`{
-    comebackCases(where: { shop: { id: { equals: "${shop.id}" } } }, orderBy: { createdAt: desc }, take: 100) { id reference concern cause diagnosis coverageValid noCharge resolution status createdAt openedBy { name } originalJob { number title repairOrder { roNumber } } }
-    partWarrantyClaims(where: { shop: { id: { equals: "${shop.id}" } } }, orderBy: { createdAt: desc }, take: 50) { id claimNumber laborReimbursementMinor status supplier { name } comeback { reference } }
+  const d = await q<{ comebackCases: Comeback[]; partWarrantyClaims: Claim[]; jobs: Billed[]; repeats: Billed[] }>(`{
+    comebackCases(where: { shop: { id: { equals: "${shop.id}" } } }, orderBy: { createdAt: desc }, take: 100) { id reference concern cause diagnosis coverageValid noCharge resolution comebackJob { id } status createdAt openedBy { name } originalJob { number title repairOrder { roNumber } } }
+    partWarrantyClaims(where: { shop: { id: { equals: "${shop.id}" } } }, orderBy: { createdAt: desc }, take: 50) { id claimNumber laborReimbursementMinor voidReason status version supplier { name } comeback { reference } }
     jobs(where: { status: { equals: "completed" }, completedAt: { gte: "${since}" }, repairOrder: { shop: { id: { equals: "${shop.id}" } } } }, orderBy: { completedAt: desc }, take: 60) { id number title repairOrder { roNumber vehicle { year make model } } }
+    repeats: jobs(where: { status: { notIn: ["voided", "declined", "deferred"] }, repairOrder: { kind: { equals: "comeback" }, shop: { id: { equals: "${shop.id}" } } } }, orderBy: { createdAt: desc }, take: 40) { id number title repairOrder { roNumber vehicle { year make model } } }
   }`);
-  const openJobs = new Set(d.comebackCases.filter(c => c.status !== 'resolved').map(c => `${c.originalJob?.repairOrder?.roNumber}-${c.originalJob?.number}`));
+  const openJobs = new Set(d.comebackCases.filter(c => !CLOSED.includes(c.status)).map(c => `${c.originalJob?.repairOrder?.roNumber}-${c.originalJob?.number}`));
   const choices = d.jobs.filter(j => !openJobs.has(`${j.repairOrder?.roNumber}-${j.number}`)).map(j => ({ id: j.id, label: `${j.repairOrder?.roNumber} job ${j.number}, ${j.title}${j.repairOrder?.vehicle ? ` (${[j.repairOrder.vehicle.year, j.repairOrder.vehicle.make, j.repairOrder.vehicle.model].filter(Boolean).join(' ')})` : ''}` }));
-  const open = d.comebackCases.filter(c => c.status !== 'resolved');
+  const open = d.comebackCases.filter(c => !CLOSED.includes(c.status));
+  const repeatChoices = d.repeats.map(j => ({ id: j.id, label: `${j.repairOrder?.roNumber} job ${j.number}, ${j.title}` }));
   return (
     <Page title="Comebacks">
       <LaborTabs active="comebacks" />
@@ -35,7 +38,7 @@ export default async function ComebacksPage({ searchParams }: { searchParams?: P
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat name="Open" value={<span className={`font-mono text-base ${open.length ? 'text-amber-600' : ''}`}>{open.length}</span>} />
         <Stat name="Free to the customer" value={<span className="font-mono text-base">{open.filter(c => c.noCharge).length}</span>} />
-        <Stat name="Supplier claims open" value={<span className="font-mono text-base">{d.partWarrantyClaims.filter(c => c.status !== 'credited' && c.status !== 'closed').length}</span>} />
+        <Stat name="Supplier claims open" value={<span className="font-mono text-base">{d.partWarrantyClaims.filter(c => !['credited', 'closed', 'withdrawn', 'denied'].includes(c.status)).length}</span>} />
       </div>
       <Section title="Open a comeback"><div className="py-3">{choices.length ? <OpenComebackForm jobs={choices} /> : <Empty>No recently finished job to open a comeback against.</Empty>}</div></Section>
       <Section title="Comebacks">
@@ -50,10 +53,12 @@ export default async function ComebacksPage({ searchParams }: { searchParams?: P
             {c.diagnosis ? <p className="break-words text-xs text-muted-foreground">Found: {c.diagnosis}</p> : null}
             {c.resolution ? <p className="break-words text-xs text-muted-foreground">Fixed: {c.resolution}</p> : null}
             {c.status === 'open' ? <div className="pt-1"><DiagnoseForm comebackId={c.id} /></div> : null}
-            {(c.status !== 'resolved' && !c.noCharge) || c.status === 'diagnosed' ? (
+            {c.status !== 'resolved' && c.status !== 'cancelled' && c.noCharge && !c.comebackJob ? <div className="pt-1"><AttachJobForm comebackId={c.id} jobs={repeatChoices} /></div> : null}
+            {c.status === 'diagnosed' ? <div className="pt-1"><ResolveForm comebackId={c.id} jobs={repeatChoices} /></div> : null}
+            {!CLOSED.includes(c.status) ? (
               <div className="flex flex-wrap items-start gap-2 pt-1">
-                {c.status !== 'resolved' && !c.noCharge ? <Act op="requestComebackGoodwill" vars={{ comebackId: c.id }} ask="Why is the shop making this repair free?">Make it free (needs approval)</Act> : null}
-                {c.status === 'diagnosed' ? <Act primaryStyle op="resolveShopComeback" vars={{ comebackId: c.id }} ask="What was done to fix it?" askKey="resolution">Mark fixed</Act> : null}
+                {!c.noCharge ? <Act op="requestComebackGoodwill" vars={{ comebackId: c.id }} ask="Why is the shop making this repair free?">Make it free (needs approval)</Act> : null}
+                <Act op="cancelShopComeback" vars={{ comebackId: c.id }} ask="Why is this comeback being cancelled?">Cancel this comeback</Act>
               </div>
             ) : null}
           </div>
@@ -64,7 +69,7 @@ export default async function ComebacksPage({ searchParams }: { searchParams?: P
           {d.partWarrantyClaims.map(c => (
             <div key={c.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b py-3 text-sm last:border-b-0">
               <span className="min-w-0 break-words">{c.claimNumber} <Meta>{c.supplier?.name}, for {c.comeback?.reference}{c.laborReimbursementMinor && c.laborReimbursementMinor !== '0' ? `, labor ${money(c.laborReimbursementMinor)}` : ''}</Meta></span>
-              <Status value={c.status} />
+              <span className="flex flex-wrap items-center gap-2"><Status value={c.status} />{['draft', 'submitted'].includes(c.status) ? <Act op="withdrawShopPartWarrantyClaim" vars={{ claimId: c.id }} ask="Why is this claim being withdrawn?">Withdraw</Act> : null}</span>
             </div>
           ))}
         </Section>

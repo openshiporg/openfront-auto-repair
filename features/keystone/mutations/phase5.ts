@@ -6,7 +6,7 @@ import {
   adjustFlaggedHours, assignJobTechnicians, clockIn, clockOut, closePayPeriod, endBreak, exportPayPeriod, logWaiting, recordCredential, requestClockCorrection, startBreak, startJobClock, stopJobClock,
   type CorrectionInput, type CredentialInput,
 } from '../lib/labor'
-import { createPartWarrantyClaim, diagnoseComeback, openComeback, requestGoodwill, resolveComeback } from '../lib/comebacks'
+import { attachComebackJob, cancelComeback, createPartWarrantyClaim, diagnoseComeback, openComeback, requestGoodwill, resolveComeback, withdrawPartWarrantyClaim } from '../lib/comebacks'
 
 type Ctx = { session: any; prisma: any }
 
@@ -15,7 +15,7 @@ const run = async <T>(context: Ctx, actor: Actor, name: string, idempotencyKey: 
   return { replay: result.replay, ...(result.value as T & object) }
 }
 
-async function shopOf(context: Ctx, model: 'jobClock' | 'payPeriod' | 'comebackCase' | 'technicianProfile' | 'job' | 'clockCorrection', id: unknown) {
+async function shopOf(context: Ctx, model: 'jobClock' | 'payPeriod' | 'comebackCase' | 'partWarrantyClaim' | 'technicianProfile' | 'job' | 'clockCorrection', id: unknown) {
   if (typeof id !== 'string' || !id) throw new DomainError(Codes.INVALID_INPUT, 'Choose a record.')
   const shopId = model === 'job'
     ? (await context.prisma.job.findUnique({ where: { id }, select: { repairOrder: { select: { shopId: true } } } }))?.repairOrder?.shopId
@@ -174,4 +174,25 @@ export async function createShopPartWarrantyClaim(_root: unknown, args: { comeba
   requirePermission(actor, 'canManageComebacks')
   await shopOf(context, 'comebackCase', args.comebackId)
   return run(context, actor, 'warranty_claim.create', args.idempotencyKey, args, uow => createPartWarrantyClaim(uow, actor, args))
+}
+
+export async function cancelShopComeback(_root: unknown, args: { comebackId: string; reason: string; expectedVersion?: number | null; idempotencyKey: string }, context: Ctx) {
+  const actor = actorFromSession(context.session)
+  requirePermission(actor, 'canManageComebacks')
+  await shopOf(context, 'comebackCase', args.comebackId)
+  return run(context, actor, 'comeback.cancel', args.idempotencyKey, args, uow => cancelComeback(uow, actor, args))
+}
+
+export async function withdrawShopPartWarrantyClaim(_root: unknown, args: { claimId: string; reason: string; expectedVersion?: number | null; idempotencyKey: string }, context: Ctx) {
+  const actor = actorFromSession(context.session)
+  requirePermission(actor, 'canManageComebacks')
+  await shopOf(context, 'partWarrantyClaim', args.claimId)
+  return run(context, actor, 'warranty_claim.withdraw', args.idempotencyKey, args, uow => withdrawPartWarrantyClaim(uow, actor, args))
+}
+
+export async function attachShopComebackJob(_root: unknown, args: { comebackId: string; comebackJobId: string; idempotencyKey: string }, context: Ctx) {
+  const actor = actorFromSession(context.session)
+  requirePermission(actor, 'canManageComebacks')
+  await shopOf(context, 'comebackCase', args.comebackId)
+  return run(context, actor, 'comeback.attach_job', args.idempotencyKey, args, uow => attachComebackJob(uow, actor, args))
 }

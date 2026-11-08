@@ -262,6 +262,7 @@ export const ShopPolicyVersion = list({
     flagHoursAt: choice(['job_completed', 'invoice_finalized'], 'job_completed'),
     comebackPayRule: choice(['reverse', 'keep'], 'reverse'),
     allowConcurrentJobClocks: checkbox({ defaultValue: false }),
+    tinPendingAllowed: checkbox({ defaultValue: false, ui: { description: 'Allow a new-tire sale to be invoiced before every tire number is recorded. The numbers stay owed on the registration.' } }),
     requireQualityCheck: checkbox({ defaultValue: true }),
     diagnosisTrustThreshold: conf({ defaultValue: '0.7000', description: 'Diagnosis confidence needed before a diagnosis-based job can be quoted (0 to 1).' }),
     authorizationLinkTtlHours: integer({ defaultValue: 72, validation: { isRequired: true, min: 1, max: 720 } }),

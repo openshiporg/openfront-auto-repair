@@ -1531,6 +1531,7 @@ var ShopPolicyVersion = (0, import_core8.list)({
     flagHoursAt: choice(["job_completed", "invoice_finalized"], "job_completed"),
     comebackPayRule: choice(["reverse", "keep"], "reverse"),
     allowConcurrentJobClocks: (0, import_fields8.checkbox)({ defaultValue: false }),
+    tinPendingAllowed: (0, import_fields8.checkbox)({ defaultValue: false, ui: { description: "Allow a new-tire sale to be invoiced before every tire number is recorded. The numbers stay owed on the registration." } }),
     requireQualityCheck: (0, import_fields8.checkbox)({ defaultValue: true }),
     diagnosisTrustThreshold: conf({ defaultValue: "0.7000", description: "Diagnosis confidence needed before a diagnosis-based job can be quoted (0 to 1)." }),
     authorizationLinkTtlHours: (0, import_fields8.integer)({ defaultValue: 72, validation: { isRequired: true, min: 1, max: 720 } }),
@@ -3049,7 +3050,7 @@ var CoreObligation = (0, import_core16.list)({
     supplierInvoiceLine: (0, import_fields15.relationship)({ ref: "SupplierInvoiceLine", ...readOnly }),
     writeOffReason: systemText(),
     approval: (0, import_fields15.relationship)({ ref: "ApprovalRequest", ...readOnly }),
-    dueAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    dueAt: (0, import_fields15.calendarDay)({ ...readOnly }),
     status: lifecycle(["owed", "returned", "credited", "customer_charged", "written_off"]),
     version: versionField(),
     ...trackingFields
@@ -3324,7 +3325,7 @@ var ComebackCase = (0, import_core17.list)({
     resolution: systemText(),
     openedBy: (0, import_fields16.relationship)({ ref: "User", ...readOnly }),
     resolvedAt: (0, import_fields16.timestamp)({ ...readOnly }),
-    status: lifecycle(["open", "diagnosed", "resolved"]),
+    status: lifecycle(["open", "diagnosed", "resolved", "cancelled"]),
     version: versionField(),
     ...trackingFields
   }
@@ -3339,7 +3340,9 @@ var PartWarrantyClaim = (0, import_core17.list)({
     jobLine: (0, import_fields16.relationship)({ ref: "JobLine", ...readOnly }),
     claimNumber: systemText({ required: true }),
     laborReimbursementMinor: minor({ defaultValue: 0n, access: { read: anyOf("canSeeCost"), create: sys9, update: sys9 } }),
-    status: lifecycle(["draft", "submitted", "credited", "denied"]),
+    voidReason: systemText(),
+    voidedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    status: lifecycle(["draft", "submitted", "credited", "denied", "withdrawn"]),
     version: versionField(),
     ...trackingFields
   }
@@ -4259,13 +4262,13 @@ async function placeSlot(tx, request, now) {
 }
 var dateOnly = (date2) => /* @__PURE__ */ new Date(`${date2}T00:00:00Z`);
 async function usage(tx, shopId, date2, now, exclude = {}) {
-  const day2 = dateOnly(date2);
+  const day3 = dateOnly(date2);
   const appointments = await tx.appointment.findMany({
-    where: { shopId, date: day2, status: { in: ACTIVE }, ...exclude.appointmentId ? { id: { not: exclude.appointmentId } } : {} },
+    where: { shopId, date: day3, status: { in: ACTIVE }, ...exclude.appointmentId ? { id: { not: exclude.appointmentId } } : {} },
     select: { id: true, kind: true, startsAt: true, estimatedCentiHours: true }
   });
   const holds = await tx.bookingHold.findMany({
-    where: { shopId, date: day2, status: "held", expiresAt: { gt: now }, ...exclude.holdId ? { id: { not: exclude.holdId } } : {} },
+    where: { shopId, date: day3, status: "held", expiresAt: { gt: now }, ...exclude.holdId ? { id: { not: exclude.holdId } } : {} },
     select: { id: true, kind: true, slotStart: true, bayCentiHours: true }
   });
   return [
@@ -5343,6 +5346,17 @@ async function reservedForJob(uow, jobId, shopItemId) {
   const sum = await uow.tx.stockMovement.aggregate({ where: { jobId, shopItemId }, _sum: { committedDeltaMilli: true } });
   return Math.max(0, sum._sum.committedDeltaMilli ?? 0);
 }
+async function releaseJobReservations(uow, actor, jobId, why) {
+  const held = await uow.tx.stockMovement.groupBy({ by: ["shopItemId"], where: { jobId, shopItemId: { not: null } }, _sum: { committedDeltaMilli: true }, _count: { _all: true } });
+  let released = 0;
+  for (const h of held) {
+    const qty2 = h._sum.committedDeltaMilli ?? 0;
+    if (qty2 <= 0 || !h.shopItemId) continue;
+    await postMovement(uow, actor, { shopItemId: h.shopItemId, type: "release", quantityMilli: qty2, jobId, key: `release:${jobId}:${h.shopItemId}:${h._count._all}`, reason: why });
+    released += qty2;
+  }
+  return released;
+}
 var UNITS2 = ["each", "quart", "liter", "gallon", "ounce", "pound", "foot", "set"];
 async function saveShopItem(uow, actor, input) {
   const { tx } = uow;
@@ -5508,6 +5522,89 @@ async function seedParts(uow, actor) {
     counts.shopItems += 1;
     await postMovement(uow, actor, { shopItemId: made.id, type: "receipt", quantityMilli: p.onHand, unitCostMinor: p.costMinor, key: `seed-opening:${p.shop}:${p.sku}`, reason: "Opening stock" });
     counts.openingStock += 1;
+  }
+  return counts;
+}
+
+// features/keystone/seed/labor.ts
+var TECHS = [
+  {
+    id: "seed_tech_nga_ramirez",
+    userId: "seed_user_ramirez",
+    shopId: "seed_shop_nga",
+    name: "Luis Ramirez",
+    payPlan: "flat_rate",
+    flatRateMinor: 3800n,
+    hourlyRateMinor: 0n,
+    skills: ["Engine performance", "Brakes", "Air conditioning", "Diagnostics"],
+    rateClasses: ["general", "diagnostic", "electrical", "european"],
+    credentials: [
+      { kind: "ase", identifier: "ASE A1-A8 Master", issuedAt: "2023-05-02", expiresAt: "2028-05-02" },
+      { kind: "epa_609", identifier: "MACS 609-2210418", issuedAt: "2025-03-14", expiresAt: null }
+    ]
+  },
+  {
+    id: "seed_tech_nga_tran",
+    userId: "seed_user_tran",
+    shopId: "seed_shop_nga",
+    name: "Kevin Tran",
+    payPlan: "flat_rate",
+    flatRateMinor: 3200n,
+    hourlyRateMinor: 0n,
+    skills: ["Brakes", "Suspension", "Maintenance", "Air conditioning"],
+    rateClasses: ["general", "fleet"],
+    credentials: [
+      { kind: "ase", identifier: "ASE A4, A5, A6", issuedAt: "2024-08-19", expiresAt: "2029-08-19" },
+      { kind: "epa_609", identifier: "ESCO 609-884127", issuedAt: "2025-09-30", expiresAt: "2027-09-30" }
+    ]
+  },
+  {
+    id: "seed_tech_nga_holloway",
+    userId: "seed_user_holloway",
+    shopId: "seed_shop_nga",
+    name: "Jake Holloway",
+    payPlan: "hourly",
+    flatRateMinor: 0n,
+    hourlyRateMinor: 2400n,
+    skills: ["Maintenance", "Tires", "Brakes"],
+    rateClasses: ["general"],
+    credentials: [{ kind: "epa_609", identifier: "ESCO 609-731560", issuedAt: "2023-04-11", expiresAt: "2026-04-11" }]
+  },
+  {
+    id: "seed_tech_ngt_morgan",
+    userId: "seed_user_morgan",
+    shopId: "seed_shop_ngt",
+    name: "Aisha Morgan",
+    payPlan: "flat_rate",
+    flatRateMinor: 3000n,
+    hourlyRateMinor: 0n,
+    skills: ["Tires", "Alignment", "Oil and lube", "Batteries"],
+    rateClasses: ["general"],
+    credentials: [{ kind: "ase", identifier: "ASE G1, A4", issuedAt: "2024-02-07", expiresAt: "2029-02-07" }]
+  }
+];
+var day2 = (value) => value ? /* @__PURE__ */ new Date(`${value}T00:00:00Z`) : null;
+async function seedLabor(uow, actor) {
+  const { tx, now } = uow;
+  const counts = { technicians: 0, credentials: 0 };
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  for (const t of TECHS) {
+    if (await tx.technicianProfile.findFirst({ where: { userId: t.userId, shopId: t.shopId }, select: { id: true } })) continue;
+    const user = await tx.user.findUnique({ where: { id: t.userId }, select: { id: true } });
+    if (!user) continue;
+    const row = await tx.technicianProfile.create({
+      data: { id: t.id, userId: t.userId, shopId: t.shopId, displayName: t.name, payPlan: t.payPlan, flatRateMinor: t.flatRateMinor, hourlyRateMinor: t.hourlyRateMinor, skills: t.skills, rateClasses: t.rateClasses, active: true }
+    });
+    auditCreate(uow, actor, "TechnicianProfile", row.id, "technician.created", { name: t.name, payPlan: t.payPlan }, { metadata: { seed: true } });
+    counts.technicians += 1;
+    for (const c of t.credentials) {
+      const expiresAt = day2(c.expiresAt);
+      const cred = await tx.technicianCredential.create({
+        data: { technicianId: row.id, kind: c.kind, identifier: c.identifier, issuedAt: day2(c.issuedAt), expiresAt, status: expiresAt && expiresAt < today ? "expired" : "active" }
+      });
+      auditCreate(uow, actor, "TechnicianCredential", cred.id, "credential.recorded", { technician: t.name, kind: c.kind, expiresAt }, { metadata: { seed: true } });
+      counts.credentials += 1;
+    }
   }
   return counts;
 }
@@ -5687,7 +5784,7 @@ var POLICY_KINDS = {
     head: "shopId",
     pointer: "shopPolicyId",
     label: "Shop policy",
-    fields: ["flagHoursAt", "comebackPayRule", "allowConcurrentJobClocks", "requireQualityCheck", "diagnosisTrustThreshold", "authorizationLinkTtlHours", "promisedTimeRequired", "noShowGraceMinutes", "discountLimitPctByRole", "refundApprovalMinor", "creditMemoApprovalMinor", "agentOrderLimitMinor", "agentAutonomy", "proposalConfirmGranularity", "declinedSafetyFollowUpPurpose", "followUpCadenceDays", "depositPolicy", "surchargePolicy", "inspectionClockMode", "markupFactorDefault"]
+    fields: ["flagHoursAt", "comebackPayRule", "allowConcurrentJobClocks", "tinPendingAllowed", "requireQualityCheck", "diagnosisTrustThreshold", "authorizationLinkTtlHours", "promisedTimeRequired", "noShowGraceMinutes", "discountLimitPctByRole", "refundApprovalMinor", "creditMemoApprovalMinor", "agentOrderLimitMinor", "agentAutonomy", "proposalConfirmGranularity", "declinedSafetyFollowUpPurpose", "followUpCadenceDays", "depositPolicy", "surchargePolicy", "inspectionClockMode", "markupFactorDefault"]
   },
   labor_rates: {
     model: "LaborRateClassSetVersion",
@@ -5965,8 +6062,8 @@ async function shopLaw(tx, shopId) {
   if (!shop.jurisdictionPolicyId) throw new DomainError(Codes.POLICY_MISSING, `${shop.code} has no published jurisdiction rules. Publish them under Settings \u2192 Policies first.`);
   const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: shop.jurisdictionPolicyId } });
   const pack = await tx.jurisdictionPack.findUniqueOrThrow({ where: { id: law.packId } });
-  const shopPolicy = shop.shopPolicyId ? await tx.shopPolicyVersion.findUnique({ where: { id: shop.shopPolicyId } }) : null;
-  return { shop, law, pack, shopPolicy, verified: pack.verified };
+  const shopPolicy2 = shop.shopPolicyId ? await tx.shopPolicyVersion.findUnique({ where: { id: shop.shopPolicyId } }) : null;
+  return { shop, law, pack, shopPolicy: shopPolicy2, verified: pack.verified };
 }
 
 // features/keystone/lib/checkIn.ts
@@ -6002,13 +6099,13 @@ function checkSignature(signature) {
 }
 async function checkInVehicle(uow, actor, input) {
   const { tx, now } = uow;
-  const { shop, law, shopPolicy } = await shopLaw(tx, input.shopId);
+  const { shop, law, shopPolicy: shopPolicy2 } = await shopLaw(tx, input.shopId);
   const full = await tx.shop.findUniqueOrThrow({ where: { id: input.shopId }, select: { code: true, name: true, legalName: true, registrations: true, timeZone: true } });
   const concerns = (input.concerns ?? []).map((c) => String(c).trim()).filter(Boolean).map((c) => c.slice(0, 500));
   if (!concerns.length) throw new DomainError(Codes.INVALID_INPUT, "Write down at least one concern in the customer's words.", { field: "concerns" });
   if (concerns.length > 20) throw new DomainError(Codes.INVALID_INPUT, "Twenty concerns at most. Group related ones.", { field: "concerns" });
   if (law.requireOdometerIn && !input.odometer) throw new DomainError(Codes.ODOMETER_REQUIRED, "Record the odometer reading. This state requires it on the invoice.", { field: "odometer" });
-  const promisedRequired = shopPolicy?.promisedTimeRequired ?? true;
+  const promisedRequired = shopPolicy2?.promisedTimeRequired ?? true;
   if (promisedRequired && !input.promisedAt) throw new DomainError(Codes.INVALID_INPUT, "Give the customer a promised time.", { field: "promisedAt" });
   if (input.promisedAt && input.promisedAt.getTime() <= now.getTime()) throw new DomainError(Codes.INVALID_INPUT, "The promised time must be later than now.", { field: "promisedAt" });
   const signature = checkSignature(input.signature);
@@ -6117,9 +6214,9 @@ function allocateMinor(total, weights) {
   const floors = exact2.map((x) => BigInt(x.floor().toFixed(0)));
   let leftover = abs - floors.reduce((a, b) => a + b, 0n);
   const order = exact2.map((x, index) => ({ index, remainder: x.minus(x.floor()) })).sort((a, b) => b.remainder.comparedTo(a.remainder) || a.index - b.index);
-  const shares = [...floors];
-  for (let i = 0; leftover > 0n; i = (i + 1) % order.length, leftover -= 1n) shares[order[i].index] += 1n;
-  return negative ? shares.map((x) => -x) : shares;
+  const shares2 = [...floors];
+  for (let i = 0; leftover > 0n; i = (i + 1) % order.length, leftover -= 1n) shares2[order[i].index] += 1n;
+  return negative ? shares2.map((x) => -x) : shares2;
 }
 
 // features/keystone/lib/pricing.ts
@@ -6364,6 +6461,451 @@ function jobContentHash(price) {
 }
 var identityHash = (lines) => sha256(canonicalJson(lines.map((l) => [l.kind, l.description, l.partNumber, l.condition, l.rateClassCode, l.subletVendorName]).sort((a, b) => canonicalJson(a).localeCompare(canonicalJson(b)))));
 
+// features/keystone/lib/flagging.ts
+var DAY = 864e5;
+var ANCHOR = Date.UTC(2026, 0, 5);
+var PERIOD_DAYS = 14;
+function shopDay(at, timeZone = "America/Los_Angeles") {
+  const [y, m, d2] = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d2));
+}
+function periodWindow(day3) {
+  const index = Math.floor((day3.getTime() - ANCHOR) / (PERIOD_DAYS * DAY));
+  const startsOn = new Date(ANCHOR + index * PERIOD_DAYS * DAY);
+  return { startsOn, endsOn: new Date(startsOn.getTime() + (PERIOD_DAYS - 1) * DAY) };
+}
+async function openPeriodFor(tx, shopId, day3) {
+  let window = periodWindow(day3);
+  for (let guard = 0; guard < 60; guard += 1) {
+    const found = await tx.payPeriod.findFirst({ where: { shopId, startsOn: window.startsOn } });
+    if (!found) return tx.payPeriod.create({ data: { shopId, startsOn: window.startsOn, endsOn: window.endsOn, status: "open" } });
+    if (found.status === "open") return found;
+    window = periodWindow(new Date(window.endsOn.getTime() + DAY));
+  }
+  throw new Error("No open pay period found");
+}
+async function shopPolicy(tx, shopId) {
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { timeZone: true, shopPolicyId: true } });
+  const policy = shop.shopPolicyId ? await tx.shopPolicyVersion.findUnique({ where: { id: shop.shopPolicyId }, select: { flagHoursAt: true, comebackPayRule: true, allowConcurrentJobClocks: true } }) : null;
+  return {
+    timeZone: shop.timeZone || "America/Los_Angeles",
+    flagHoursAt: policy?.flagHoursAt ?? "job_completed",
+    comebackPayRule: policy?.comebackPayRule ?? "reverse",
+    allowConcurrentJobClocks: policy?.allowConcurrentJobClocks ?? false
+  };
+}
+async function soldCentiHours(tx, jobId) {
+  const lines = await tx.jobLine.findMany({ where: { jobId, kind: "labor" }, select: { soldCentiHours: true } });
+  return lines.reduce((n, l) => n + l.soldCentiHours, 0);
+}
+async function shares(tx, jobId, shopId, actor) {
+  const recorded = await tx.jobTechShare.findMany({ where: { jobId }, select: { technicianId: true, sharePct: true } });
+  if (recorded.length) {
+    const out = [];
+    for (const r of recorded) {
+      const profile = r.technicianId ? await tx.technicianProfile.findFirst({ where: { userId: r.technicianId, shopId, active: true }, select: { id: true } }) : null;
+      if (profile) out.push({ technicianId: profile.id, weight: r.sharePct.toString() });
+    }
+    if (out.length) return out;
+  }
+  const clocks = await tx.jobClock.findMany({ where: { jobId }, select: { technicianId: true, workedCentiHours: true } });
+  if (clocks.length) {
+    const byTech = /* @__PURE__ */ new Map();
+    for (const c of clocks) if (c.technicianId) byTech.set(c.technicianId, (byTech.get(c.technicianId) ?? 0) + Math.max(1, c.workedCentiHours));
+    return [...byTech].map(([technicianId, weight]) => ({ technicianId, weight: String(weight) }));
+  }
+  const self = actorUserId(actor) ? await tx.technicianProfile.findFirst({ where: { userId: actorUserId(actor), shopId, active: true }, select: { id: true } }) : null;
+  return self ? [{ technicianId: self.id, weight: "1" }] : [];
+}
+async function flagJob(uow, actor, jobId, sourceEvent) {
+  const { tx, now } = uow;
+  const job = await tx.job.findUniqueOrThrow({ where: { id: jobId }, select: { id: true, number: true, repairOrder: { select: { shopId: true, roNumber: true } } } });
+  const shopId = job.repairOrder?.shopId;
+  if (!shopId) return { flagged: 0, technicians: 0 };
+  const sold = await soldCentiHours(tx, jobId);
+  if (sold <= 0) return { flagged: 0, technicians: 0 };
+  const already = await tx.flaggedHoursEntry.count({ where: { jobId, kind: "flag" } });
+  if (already) return { flagged: 0, technicians: 0 };
+  const who = await shares(tx, jobId, shopId, actor);
+  if (!who.length) {
+    auditCreate(uow, actor, "Job", jobId, "flagged_hours.no_technician", { sold }, { reason: "No technician is recorded on this job, so no hours were flagged." });
+    return { flagged: 0, technicians: 0 };
+  }
+  const policy = await shopPolicy(tx, shopId);
+  const period = await openPeriodFor(tx, shopId, shopDay(now, policy.timeZone));
+  const parts = allocateMinor(BigInt(sold), who.map((w) => w.weight));
+  let flagged = 0;
+  for (const [i, w] of who.entries()) {
+    const centi = Number(parts[i]);
+    if (centi === 0) continue;
+    const row = await tx.flaggedHoursEntry.create({
+      data: { shopId, technicianId: w.technicianId, jobId, centiHours: centi, kind: "flag", reason: `Job ${job.number} on ${job.repairOrder?.roNumber ?? "repair order"}`, sourceEvent, payPeriodId: period.id, flaggedAt: now }
+    });
+    auditCreate(uow, actor, "FlaggedHoursEntry", row.id, "flagged_hours.flagged", { jobId, technicianId: w.technicianId, centiHours: centi, sold });
+    flagged += centi;
+  }
+  return { flagged, technicians: who.length };
+}
+async function reverseJobFlags(uow, actor, jobId, sourceEvent, reason) {
+  const { tx, now } = uow;
+  const job = await tx.job.findUniqueOrThrow({ where: { id: jobId }, select: { repairOrder: { select: { shopId: true } } } });
+  const shopId = job.repairOrder.shopId;
+  const rows = await tx.flaggedHoursEntry.findMany({ where: { jobId }, select: { technicianId: true, centiHours: true } });
+  const net = /* @__PURE__ */ new Map();
+  for (const r of rows) if (r.technicianId) net.set(r.technicianId, (net.get(r.technicianId) ?? 0) + r.centiHours);
+  const policy = await shopPolicy(tx, shopId);
+  const period = await openPeriodFor(tx, shopId, shopDay(now, policy.timeZone));
+  let reversed = 0;
+  for (const [technicianId, centi] of net) {
+    if (centi <= 0) continue;
+    const exists = await tx.flaggedHoursEntry.findFirst({ where: { jobId, technicianId, kind: "reversal", sourceEvent }, select: { id: true } });
+    if (exists) continue;
+    const row = await tx.flaggedHoursEntry.create({ data: { shopId, technicianId, jobId, centiHours: -centi, kind: "reversal", reason, sourceEvent, payPeriodId: period.id, flaggedAt: now } });
+    auditCreate(uow, actor, "FlaggedHoursEntry", row.id, "flagged_hours.reversed", { jobId, technicianId, centiHours: -centi }, { reason });
+    reversed += centi;
+  }
+  return { reversed };
+}
+function payMinor(centiHours2, rateMinor) {
+  const product = BigInt(centiHours2) * rateMinor;
+  const sign = product < 0n ? -1n : 1n;
+  const abs = product < 0n ? -product : product;
+  const whole3 = abs / 100n;
+  const rest = abs % 100n;
+  const rounded = rest > 50n || rest === 50n && whole3 % 2n === 1n ? whole3 + 1n : whole3;
+  return sign * rounded;
+}
+
+// features/keystone/lib/labor.ts
+var MIN = 6e4;
+var centiOf = (ms) => Math.max(0, Math.round(ms / 36e3));
+async function ownProfile(tx, actor, shopId) {
+  const userId = actorUserId(actor);
+  const profile = userId ? await tx.technicianProfile.findFirst({ where: { userId, shopId, active: true } }) : null;
+  if (!profile) throw new DomainError(Codes.NOT_AUTHORIZED, "You are not set up as a technician at this shop.");
+  return profile;
+}
+async function profileById(tx, id) {
+  const profile = typeof id === "string" && id ? await tx.technicianProfile.findUnique({ where: { id } }) : null;
+  if (!profile) throw new DomainError(Codes.NOT_FOUND, "Technician not found.", { field: "technicianId" });
+  return profile;
+}
+var AC_WORK = /\b(a\/c|air conditioning|air-conditioning|refrigerant|recharge|evacuate)\b/i;
+async function jobNeedsRefrigerantCredential(tx, jobId) {
+  const lines = await tx.jobLine.findMany({ where: { jobId }, select: { kind: true, description: true, partCategory: true } });
+  return lines.some((l) => l.kind === "refrigerant" || l.partCategory === "refrigerant" || l.kind === "labor" && AC_WORK.test(l.description));
+}
+function credentialIsCurrent(c, today) {
+  return c.status === "active" && (!c.expiresAt || c.expiresAt.getTime() >= today.getTime());
+}
+async function assertCredentialForJob(tx, technicianId, jobId, now) {
+  if (!await jobNeedsRefrigerantCredential(tx, jobId)) return;
+  const profile = await tx.technicianProfile.findUniqueOrThrow({ where: { id: technicianId }, select: { displayName: true, shopId: true } });
+  const day3 = shopDay(now, (await shopPolicy(tx, profile.shopId)).timeZone);
+  const creds = await tx.technicianCredential.findMany({ where: { technicianId, kind: "epa_609" } });
+  if (creds.some((c) => credentialIsCurrent(c, day3))) return;
+  const latest = creds.filter((c) => c.expiresAt).sort((a, b) => b.expiresAt.getTime() - a.expiresAt.getTime())[0];
+  const why = !creds.length ? "has no EPA Section 609 certificate on file" : latest?.expiresAt && latest.expiresAt.getTime() < day3.getTime() ? `has an EPA Section 609 certificate that expired ${latest.expiresAt.toISOString().slice(0, 10)}` : "has no current EPA Section 609 certificate";
+  throw new DomainError(Codes.CREDENTIAL_REQUIRED, `${profile.displayName} ${why}. Refrigerant work needs a current certificate; give the job to a certified technician.`);
+}
+var KINDS = ["epa_609", "ase", "state_license", "manufacturer", "other"];
+var dayOf = (value, field) => {
+  if (value === null || value === void 0 || value === "") return null;
+  const d2 = /* @__PURE__ */ new Date(`${String(value).slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d2.getTime())) throw new DomainError(Codes.INVALID_INPUT, "Enter a valid date.", { field });
+  return d2;
+};
+async function recordCredential(uow, actor, input) {
+  const profile = await profileById(uow.tx, input.technicianId);
+  if (!KINDS.includes(input.kind)) throw new DomainError(Codes.INVALID_INPUT, "Choose the kind of certificate.", { field: "kind" });
+  const issuedAt = dayOf(input.issuedAt, "issuedAt");
+  const expiresAt = dayOf(input.expiresAt, "expiresAt");
+  if (issuedAt && expiresAt && expiresAt < issuedAt) throw new DomainError(Codes.INVALID_INPUT, "The certificate cannot expire before it was issued.", { field: "expiresAt" });
+  const day3 = shopDay(uow.now, (await shopPolicy(uow.tx, profile.shopId)).timeZone);
+  const row = await uow.tx.technicianCredential.create({
+    data: { technicianId: profile.id, kind: input.kind, identifier: textOf(input.identifier, "Certificate number", 60), issuedAt, expiresAt, verifiedById: actorUserId(actor), status: expiresAt && expiresAt < day3 ? "expired" : "active" }
+  });
+  auditCreate(uow, actor, "TechnicianCredential", row.id, "credential.recorded", { technician: profile.displayName, kind: input.kind, expiresAt });
+  return { id: row.id, status: row.status };
+}
+async function clockIn(uow, actor, shopId) {
+  const { tx, now } = uow;
+  const profile = await ownProfile(tx, actor, shopId);
+  const open = await tx.shiftClock.findFirst({ where: { technicianId: profile.id, status: { not: "clocked_out" } } });
+  if (open) throw new DomainError(Codes.GUARD_FAILED, "You are already clocked in.");
+  const row = await tx.shiftClock.create({ data: { shopId, technicianId: profile.id, clockInAt: now, breaks: [], status: "clocked_in" } });
+  auditCreate(uow, actor, "ShiftClock", row.id, "shift.clocked_in", { technician: profile.displayName, at: now });
+  return { id: row.id, status: "clocked_in" };
+}
+async function openShift(tx, technicianId) {
+  const shift = await tx.shiftClock.findFirst({ where: { technicianId, status: { not: "clocked_out" } } });
+  if (!shift) throw new DomainError(Codes.GUARD_FAILED, "You are not clocked in.");
+  return shift;
+}
+async function startBreak(uow, actor, shopId) {
+  const profile = await ownProfile(uow.tx, actor, shopId);
+  const shift = await openShift(uow.tx, profile.id);
+  if (shift.status !== "clocked_in") throw new DomainError(Codes.GUARD_FAILED, "You are already on a break.");
+  const breaks = (shift.breaks ?? []).concat({ startedAt: uow.now.toISOString(), endedAt: null });
+  await stopRunningJobClocks(uow, actor, profile.id, "break");
+  await transition(uow, { model: "ShiftClock", id: shift.id, from: ["clocked_in"], to: "on_break", actor, eventType: "shift.break_started", data: { breaks } });
+  return { id: shift.id, status: "on_break" };
+}
+async function endBreak(uow, actor, shopId) {
+  const profile = await ownProfile(uow.tx, actor, shopId);
+  const shift = await openShift(uow.tx, profile.id);
+  if (shift.status !== "on_break") throw new DomainError(Codes.GUARD_FAILED, "You are not on a break.");
+  const breaks = (shift.breaks ?? []).map((b) => b.endedAt ? b : { ...b, endedAt: uow.now.toISOString() });
+  await transition(uow, { model: "ShiftClock", id: shift.id, from: ["on_break"], to: "clocked_in", actor, eventType: "shift.break_ended", data: { breaks } });
+  return { id: shift.id, status: "clocked_in" };
+}
+async function clockOut(uow, actor, shopId) {
+  const profile = await ownProfile(uow.tx, actor, shopId);
+  const shift = await openShift(uow.tx, profile.id);
+  const stopped = await stopRunningJobClocks(uow, actor, profile.id, "clock_out");
+  const breaks = (shift.breaks ?? []).map((b) => b.endedAt ? b : { ...b, endedAt: uow.now.toISOString() });
+  await transition(uow, { model: "ShiftClock", id: shift.id, from: ["clocked_in", "on_break"], to: "clocked_out", actor, eventType: "shift.clocked_out", data: { clockOutAt: uow.now, breaks } });
+  return { id: shift.id, status: "clocked_out", jobClocksStopped: stopped };
+}
+function shiftCentiHours(shift, until) {
+  if (!shift.clockInAt) return 0;
+  const end = shift.clockOutAt ?? until;
+  let ms = end.getTime() - shift.clockInAt.getTime();
+  for (const b of shift.breaks ?? []) {
+    const from = new Date(b.startedAt).getTime();
+    const to = b.endedAt ? new Date(b.endedAt).getTime() : end.getTime();
+    ms -= Math.max(0, Math.min(to, end.getTime()) - Math.max(from, shift.clockInAt.getTime()));
+  }
+  return centiOf(ms);
+}
+async function closeWaiting(tx, jobClockId, at) {
+  await tx.waitingInterval.updateMany({ where: { jobClockId, endedAt: null }, data: { endedAt: at } });
+}
+async function workedCentiHours(tx, clock, stoppedAt) {
+  if (!clock.startedAt) return 0;
+  let ms = stoppedAt.getTime() - clock.startedAt.getTime();
+  const waits = await tx.waitingInterval.findMany({ where: { jobClockId: clock.id } });
+  for (const w of waits) if (w.startedAt) ms -= Math.max(0, (w.endedAt ?? stoppedAt).getTime() - w.startedAt.getTime());
+  return centiOf(ms);
+}
+async function stopRunningJobClocks(uow, actor, technicianId, why) {
+  const running = await uow.tx.jobClock.findMany({ where: { technicianId, status: "running" } });
+  for (const clock of running) {
+    await closeWaiting(uow.tx, clock.id, uow.now);
+    const worked = await workedCentiHours(uow.tx, clock, uow.now);
+    await transition(uow, { model: "JobClock", id: clock.id, from: ["running"], to: "stopped", actor, eventType: "job_clock.stopped", data: { stoppedAt: uow.now, workedCentiHours: worked }, metadata: { why } });
+  }
+  return running.length;
+}
+async function startJobClock(uow, actor, jobId) {
+  const { tx, now } = uow;
+  const job = await tx.job.findUniqueOrThrow({ where: { id: jobId }, select: { id: true, number: true, title: true, status: true, repairOrder: { select: { shopId: true, status: true } } } });
+  const shopId = job.repairOrder?.shopId;
+  if (!shopId) throw new DomainError(Codes.NOT_FOUND, "Job not found.");
+  const profile = await ownProfile(tx, actor, shopId);
+  if (job.status !== "in_progress") throw new DomainError(Codes.GUARD_FAILED, job.status === "authorized" ? "Start the job first, then start its clock." : `Job ${job.number} is ${job.status.replaceAll("_", " ")}; its clock cannot start.`);
+  await assertCredentialForJob(tx, profile.id, jobId, now);
+  const shift = await tx.shiftClock.findFirst({ where: { technicianId: profile.id, status: { not: "clocked_out" } } });
+  if (!shift) throw new DomainError(Codes.GUARD_FAILED, "Clock in to your shift before starting a job clock.");
+  if (shift.status === "on_break") throw new DomainError(Codes.GUARD_FAILED, "End your break before starting a job clock.");
+  const policy = await shopPolicy(tx, shopId);
+  const running = await tx.jobClock.findMany({ where: { technicianId: profile.id, status: "running" } });
+  if (running.some((r) => r.jobId === jobId)) throw new DomainError(Codes.GUARD_FAILED, "You already have a clock running on this job.");
+  if (running.length && !policy.allowConcurrentJobClocks) throw new DomainError(Codes.GUARD_FAILED, "You have a clock running on another job. Stop it before starting this one.");
+  const row = await tx.jobClock.create({ data: { shopId, technicianId: profile.id, jobId, shiftClockId: shift.id, startedAt: now, status: "running" } });
+  auditCreate(uow, actor, "JobClock", row.id, "job_clock.started", { job: job.number, technician: profile.displayName });
+  return { id: row.id, status: "running" };
+}
+async function stopJobClock(uow, actor, jobClockId) {
+  const { tx, now } = uow;
+  const clock = await lockRow(tx, "JobClock", jobClockId);
+  const profile = await ownProfile(tx, actor, clock.shopId);
+  if (clock.technicianId !== profile.id) throw new DomainError(Codes.NOT_AUTHORIZED, "That clock belongs to someone else.");
+  await closeWaiting(tx, clock.id, now);
+  const worked = await workedCentiHours(tx, clock, now);
+  await transition(uow, { model: "JobClock", id: clock.id, from: ["running"], to: "stopped", actor, eventType: "job_clock.stopped", data: { stoppedAt: now, workedCentiHours: worked } });
+  return { id: clock.id, status: "stopped", workedCentiHours: worked };
+}
+var REASONS = ["parts", "authorization", "bay", "tool", "info", "other"];
+async function logWaiting(uow, actor, input) {
+  const { tx, now } = uow;
+  const clock = await lockRow(tx, "JobClock", input.jobClockId);
+  const profile = await ownProfile(tx, actor, clock.shopId);
+  if (clock.technicianId !== profile.id) throw new DomainError(Codes.NOT_AUTHORIZED, "That clock belongs to someone else.");
+  if (clock.status !== "running") throw new DomainError(Codes.GUARD_FAILED, "This clock is stopped.");
+  const open = await tx.waitingInterval.findFirst({ where: { jobClockId: clock.id, endedAt: null } });
+  if (input.resume) {
+    if (!open) throw new DomainError(Codes.GUARD_FAILED, "The job is not waiting.");
+    await tx.waitingInterval.update({ where: { id: open.id }, data: { endedAt: now } });
+    return { id: open.id, waiting: false };
+  }
+  if (open) throw new DomainError(Codes.GUARD_FAILED, "The job is already waiting.");
+  if (!REASONS.includes(String(input.reason))) throw new DomainError(Codes.INVALID_INPUT, "Say what the job is waiting for.", { field: "reason" });
+  const row = await tx.waitingInterval.create({ data: { jobClockId: clock.id, reason: input.reason, startedAt: now, note: textOf(input.note, "Note", 200) } });
+  auditCreate(uow, actor, "WaitingInterval", row.id, "job_clock.waiting", { reason: input.reason });
+  return { id: row.id, waiting: true };
+}
+async function requestClockCorrection(uow, actor, input) {
+  const { tx } = uow;
+  const reason = textOf(input.reason, "Reason", 300);
+  if (reason.length < 5) throw new DomainError(Codes.INVALID_INPUT, "Say what was wrong with the time.", { field: "reason" });
+  if (!["shift", "job_clock"].includes(input.targetKind)) throw new DomainError(Codes.INVALID_INPUT, "Choose a shift or a job clock.", { field: "targetKind" });
+  const row = input.targetKind === "shift" ? await tx.shiftClock.findUnique({ where: { id: input.targetId } }) : await tx.jobClock.findUnique({ where: { id: input.targetId } });
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Time entry not found.");
+  const start = input.targetKind === "shift" ? row.clockInAt : row.startedAt;
+  const end = input.targetKind === "shift" ? row.clockOutAt : row.stoppedAt;
+  if (!end) throw new DomainError(Codes.GUARD_FAILED, "Correct a time entry after it has ended.");
+  const newStart = input.after.start ? new Date(input.after.start) : start;
+  const newEnd = input.after.end ? new Date(input.after.end) : end;
+  if (Number.isNaN(newStart.getTime()) || Number.isNaN(newEnd.getTime())) throw new DomainError(Codes.INVALID_INPUT, "Enter valid times.", { field: "after" });
+  if (newEnd <= newStart) throw new DomainError(Codes.INVALID_INPUT, "The end must come after the start.", { field: "after" });
+  if (newEnd.getTime() - newStart.getTime() > 16 * 60 * MIN) throw new DomainError(Codes.INVALID_INPUT, "A single entry cannot run longer than sixteen hours.", { field: "after" });
+  const profile = await tx.technicianProfile.findUniqueOrThrow({ where: { id: row.technicianId } });
+  const own = profile.userId === actorUserId(actor);
+  if (!own && !can(actor, "canManageTime")) throw new DomainError(Codes.NOT_AUTHORIZED, "You can only ask for a correction to your own time.");
+  const pending = await tx.clockCorrection.findFirst({ where: { targetId: input.targetId, status: "pending" } });
+  if (pending) throw new DomainError(Codes.GUARD_FAILED, "A correction to this entry is already waiting for approval.");
+  const before = { start, end };
+  const after = { start: newStart, end: newEnd };
+  const correction = await tx.clockCorrection.create({
+    data: { shopId: profile.shopId, technicianId: profile.id, targetKind: input.targetKind, targetId: input.targetId, before: JSON.parse(JSON.stringify(before)), after: JSON.parse(JSON.stringify(after)), reason, requestedById: actorUserId(actor), status: "pending" }
+  });
+  const hours = (a, b) => ((c) => `${Math.trunc(c / 100)}.${String(c % 100).padStart(2, "0")}`)(centiOf(b.getTime() - a.getTime()));
+  const request = await requestApproval(uow, actor, {
+    action: "time.correction",
+    targetList: "ClockCorrection",
+    targetId: correction.id,
+    payload: { correctionId: correction.id, after },
+    requiredPermission: "canApproveTime",
+    summary: `Correct ${profile.displayName}'s time from ${hours(start, end)} h to ${hours(newStart, newEnd)} h: ${reason}`
+  });
+  await tx.clockCorrection.update({ where: { id: correction.id }, data: { approvalId: request.id } });
+  auditCreate(uow, actor, "ClockCorrection", correction.id, "clock_correction.requested", { technician: profile.displayName, before, after }, { reason });
+  return { id: correction.id, approvalRequired: true, approvalRequestId: request.id };
+}
+registerApplier("time.correction", async (uow, actor, request) => {
+  const { tx } = uow;
+  const correction = await lockRow(tx, "ClockCorrection", request.targetId);
+  if (correction.status !== "pending") return { status: correction.status };
+  const after = correction.after;
+  const start = new Date(after.start);
+  const end = new Date(after.end);
+  if (correction.targetKind === "shift") {
+    await tx.shiftClock.update({ where: { id: correction.targetId }, data: { clockInAt: start, clockOutAt: end, version: { increment: 1 } } });
+  } else {
+    const clock = await tx.jobClock.findUniqueOrThrow({ where: { id: correction.targetId } });
+    const worked = await workedCentiHours(tx, { id: clock.id, startedAt: start }, end);
+    await tx.jobClock.update({ where: { id: clock.id }, data: { startedAt: start, stoppedAt: end, workedCentiHours: worked, version: { increment: 1 } } });
+  }
+  await transition(uow, { model: "ClockCorrection", id: correction.id, from: ["pending"], to: "applied", actor, eventType: "clock_correction.applied", approverId: actorUserId(actor), data: { appliedAt: uow.now } });
+  return { status: "applied" };
+});
+var dateText = (d2) => d2.toISOString().slice(0, 10);
+async function payPeriodSummary(tx, periodId) {
+  const period = await tx.payPeriod.findUniqueOrThrow({ where: { id: periodId } });
+  const techs = await tx.technicianProfile.findMany({ where: { shopId: period.shopId }, orderBy: { displayName: "asc" } });
+  const entries = await tx.flaggedHoursEntry.findMany({ where: { payPeriodId: periodId } });
+  const policy = await shopPolicy(tx, period.shopId);
+  const from = new Date(period.startsOn.getTime());
+  const until = new Date(period.endsOn.getTime() + 864e5);
+  const shifts = await tx.shiftClock.findMany({ where: { shopId: period.shopId, clockInAt: { gte: new Date(from.getTime() - 14 * 36e5), lt: new Date(until.getTime() + 14 * 36e5) }, status: "clocked_out" } });
+  const inPeriod = shifts.filter((s) => s.clockInAt && shopDay(s.clockInAt, policy.timeZone).getTime() >= from.getTime() && shopDay(s.clockInAt, policy.timeZone).getTime() < until.getTime());
+  return {
+    period,
+    rows: techs.map((t) => {
+      const mine = entries.filter((e) => e.technicianId === t.id);
+      const flagged = mine.reduce((n, e) => n + e.centiHours, 0);
+      const clocked = inPeriod.filter((s) => s.technicianId === t.id).reduce((n, s) => n + shiftCentiHours(s, s.clockOutAt), 0);
+      const gross = t.payPlan === "hourly" ? payMinor(clocked, t.hourlyRateMinor) : payMinor(flagged, t.flatRateMinor);
+      return { technicianId: t.id, name: t.displayName, payPlan: t.payPlan, rateMinor: t.payPlan === "hourly" ? t.hourlyRateMinor : t.flatRateMinor, flaggedCentiHours: flagged, clockedCentiHours: clocked, grossMinor: gross, entries: mine.length };
+    })
+  };
+}
+async function closePayPeriod(uow, actor, input) {
+  const { tx, now } = uow;
+  const period = await lockRow(tx, "PayPeriod", input.payPeriodId);
+  if (period.status !== "open") throw new DomainError(Codes.GUARD_FAILED, "This pay period is already closed.");
+  const policy = await shopPolicy(tx, period.shopId);
+  if (shopDay(now, policy.timeZone).getTime() <= new Date(period.endsOn).getTime()) throw new DomainError(Codes.GUARD_FAILED, `This pay period runs until ${dateText(new Date(period.endsOn))}. Close it after it ends.`);
+  const open = await tx.shiftClock.count({ where: { shopId: period.shopId, status: { not: "clocked_out" } } });
+  if (open) throw new DomainError(Codes.GUARD_FAILED, `${open} technician${open === 1 ? " is" : "s are"} still clocked in. Clock them out before closing the period.`);
+  const payload = { payPeriodId: period.id, startsOn: dateText(new Date(period.startsOn)), endsOn: dateText(new Date(period.endsOn)) };
+  let approverId = null;
+  if (input.approvalRequestId) {
+    approverId = (await consumeApproval(uow, { requestId: input.approvalRequestId, action: "pay_period.close", targetList: "PayPeriod", targetId: period.id, payload })).approverId;
+  } else {
+    const request = await requestApproval(uow, actor, { action: "pay_period.close", targetList: "PayPeriod", targetId: period.id, payload, requiredPermission: "canClosePayPeriod", summary: `Close the pay period ${payload.startsOn} to ${payload.endsOn}` });
+    return { approvalRequired: true, approvalRequestId: request.id };
+  }
+  await transition(uow, { model: "PayPeriod", id: period.id, from: ["open"], to: "closed", actor, eventType: "pay_period.closed", approverId, data: { closedAt: now, closedById: actorUserId(actor), approvedById: approverId } });
+  const next = await openPeriodFor(tx, period.shopId, new Date(new Date(period.endsOn).getTime() + 864e5));
+  return { id: period.id, status: "closed", nextPeriodId: next.id };
+}
+var csvCell = (value) => {
+  let s = String(value ?? "");
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
+};
+var dollars = (minor2) => `${minor2 < 0n ? "-" : ""}${((minor2 < 0n ? -minor2 : minor2) / 100n).toString()}.${((minor2 < 0n ? -minor2 : minor2) % 100n).toString().padStart(2, "0")}`;
+var hoursText = (centi) => `${centi < 0 ? "-" : ""}${Math.floor(Math.abs(centi) / 100)}.${String(Math.abs(centi) % 100).padStart(2, "0")}`;
+async function exportPayPeriod(uow, actor, payPeriodId) {
+  const { tx, now } = uow;
+  const locked = await lockRow(tx, "PayPeriod", payPeriodId);
+  if (locked.status === "open") throw new DomainError(Codes.GUARD_FAILED, "Close the pay period before exporting it.");
+  if (locked.status === "exported") return { id: payPeriodId, status: "exported", csv: locked.exportCsv, already: true };
+  const { rows, period } = await payPeriodSummary(tx, payPeriodId);
+  const head = ["Technician", "Pay plan", "Period start", "Period end", "Flagged hours", "Hours on the clock", "Rate", "Gross pay"];
+  const lines = [head.join(",")];
+  for (const r of rows.filter((x) => x.entries || x.clockedCentiHours)) {
+    lines.push([r.name, r.payPlan.replaceAll("_", " "), dateText(period.startsOn), dateText(period.endsOn), hoursText(r.flaggedCentiHours), hoursText(r.clockedCentiHours), dollars(r.rateMinor), dollars(r.grossMinor)].map(csvCell).join(","));
+  }
+  const csv = `${lines.join("\n")}
+`;
+  await transition(uow, { model: "PayPeriod", id: payPeriodId, from: ["closed"], to: "exported", actor, eventType: "pay_period.exported", data: { exportedAt: now, exportCsv: csv }, metadata: { technicians: rows.filter((x) => x.entries).length } });
+  return { id: payPeriodId, status: "exported", csv };
+}
+async function adjustFlaggedHours(uow, actor, input) {
+  const { tx, now } = uow;
+  const reason = textOf(input.reason, "Reason", 300);
+  if (reason.length < 5) throw new DomainError(Codes.INVALID_INPUT, "Say why the hours change.", { field: "reason" });
+  if (!Number.isSafeInteger(input.centiHours) || input.centiHours === 0 || Math.abs(input.centiHours) > 1e4) throw new DomainError(Codes.INVALID_INPUT, "Enter the hours to add or take off, in hundredths of an hour.", { field: "centiHours" });
+  const profile = await profileById(tx, input.technicianId);
+  const job = await tx.job.findUnique({ where: { id: input.jobId }, select: { id: true, number: true, repairOrder: { select: { shopId: true, roNumber: true } } } });
+  if (!job || job.repairOrder?.shopId !== profile.shopId) throw new DomainError(Codes.NOT_FOUND, "Job not found at this shop.", { field: "jobId" });
+  const policy = await shopPolicy(tx, profile.shopId);
+  const period = await openPeriodFor(tx, profile.shopId, shopDay(now, policy.timeZone));
+  const earlier = await tx.flaggedHoursEntry.findFirst({ where: { jobId: job.id, technicianId: profile.id }, orderBy: { flaggedAt: "asc" }, include: { payPeriod: { select: { startsOn: true, endsOn: true, status: true } } } });
+  const refersTo = earlier?.payPeriod?.status !== "open" && earlier?.payPeriod ? ` (corrects the period ${dateText(earlier.payPeriod.startsOn)} to ${dateText(earlier.payPeriod.endsOn)})` : "";
+  const row = await tx.flaggedHoursEntry.create({
+    data: { shopId: profile.shopId, technicianId: profile.id, jobId: job.id, centiHours: input.centiHours, kind: "adjustment", reason: `${reason}${refersTo}`, sourceEvent: `adjustment:${actorUserId(actor)}:${now.getTime()}`, payPeriodId: period.id, flaggedAt: now }
+  });
+  auditCreate(uow, actor, "FlaggedHoursEntry", row.id, "flagged_hours.adjusted", { technician: profile.displayName, job: job.number, centiHours: input.centiHours }, { reason });
+  return { id: row.id, payPeriodId: period.id };
+}
+async function assignJobTechnicians(uow, actor, input) {
+  const { tx } = uow;
+  const job = await tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { id: true, number: true, repairOrder: { select: { shopId: true } } } });
+  if (await tx.flaggedHoursEntry.count({ where: { jobId: job.id, kind: "flag" } })) throw new DomainError(Codes.GUARD_FAILED, "This job is already flagged; record any change as an adjustment.");
+  const list15 = Array.isArray(input.shares) ? input.shares : [];
+  if (!list15.length || list15.length > 6) throw new DomainError(Codes.INVALID_INPUT, "Choose one to six technicians.", { field: "shares" });
+  const seen = /* @__PURE__ */ new Set();
+  const rows = [];
+  for (const s of list15) {
+    if (seen.has(s.userId)) throw new DomainError(Codes.INVALID_INPUT, "A technician is listed twice.", { field: "shares" });
+    seen.add(s.userId);
+    const profile = await tx.technicianProfile.findFirst({ where: { userId: s.userId, shopId: job.repairOrder.shopId, active: true } });
+    if (!profile) throw new DomainError(Codes.INVALID_INPUT, "That person is not a technician at this shop.", { field: "shares" });
+    const pct2 = String(s.sharePct ?? "1");
+    if (!/^(0(\.\d{1,6})?|1(\.0{1,6})?)$/.test(pct2) || Number(pct2) <= 0) throw new DomainError(Codes.INVALID_INPUT, "A share is above 0 and at most 1.", { field: "shares" });
+    await assertCredentialForJob(tx, profile.id, job.id, uow.now);
+    rows.push({ technicianId: s.userId, sharePct: pct2 });
+  }
+  await tx.jobTechShare.deleteMany({ where: { jobId: job.id } });
+  for (const r of rows) await tx.jobTechShare.create({ data: { jobId: job.id, technicianId: r.technicianId, sharePct: r.sharePct } });
+  auditCreate(uow, actor, "Job", job.id, "job.technicians_assigned", { job: job.number, shares: rows });
+  return { id: job.id, technicians: rows.length };
+}
+
 // features/integrations/labor-guide/match.ts
 var has = (list15, value) => !Array.isArray(list15) || !list15.length || (value ? list15.some((v) => String(v).toLowerCase() === value.toLowerCase()) : false);
 function fitsVehicle(filter, vehicle) {
@@ -6573,7 +7115,7 @@ async function pricingPolicy(tx, ro) {
     law: { requirePartCondition: law.requirePartCondition, shopSuppliesGenericAllowed: law.shopSuppliesGenericAllowed, subletDisclosureRequired: law.subletDisclosureRequired }
   };
 }
-var KINDS = ["labor", "part", "tire", "core", "sublet", "discount", "refrigerant", "fee"];
+var KINDS2 = ["labor", "part", "tire", "core", "sublet", "discount", "refrigerant", "fee"];
 var int2 = (v, field, min = 0) => {
   if (v === null || v === void 0 || v === "") return null;
   const n = typeof v === "number" ? v : /^-?\d+$/.test(String(v)) ? Number(String(v)) : NaN;
@@ -6592,7 +7134,7 @@ function parseLines(raw) {
   if (raw.length > 60) throw new DomainError(Codes.INVALID_INPUT, "Sixty lines at most on one job.", { field: "lines" });
   return raw.map((r, i) => {
     const kind = r?.kind;
-    if (!KINDS.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, `Line ${i + 1}: unknown kind.`, { field: "kind" });
+    if (!KINDS2.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, `Line ${i + 1}: unknown kind.`, { field: "kind" });
     return {
       ref: `L${i + 1}`,
       kind,
@@ -6887,9 +7429,17 @@ async function refreshRoTotals(tx, repairOrderId) {
   const authorized = jobs.filter((j) => ["authorized", "in_progress", "needs_reauthorization", "completed"].includes(j.status)).reduce((n, j) => n + j.authorizedAmountMinor, 0n);
   await tx.repairOrder.update({ where: { id: repairOrderId }, data: { currentTotalMinor: current, authorizedTotalMinor: authorized } });
 }
+async function assertActorCredential(uow, actor, jobId, repairOrderId) {
+  const userId = actorUserId(actor);
+  if (!userId) return;
+  const ro = await uow.tx.repairOrder.findUnique({ where: { id: repairOrderId }, select: { shopId: true } });
+  const profile = ro?.shopId ? await uow.tx.technicianProfile.findFirst({ where: { userId, shopId: ro.shopId, active: true }, select: { id: true } }) : null;
+  if (profile) await assertCredentialForJob(uow.tx, profile.id, jobId, uow.now);
+}
 async function startJob(uow, actor, input) {
   const job = await uow.tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { repairOrderId: true } });
   await assertOpen(uow.tx, job.repairOrderId);
+  await assertActorCredential(uow, actor, input.jobId, job.repairOrderId);
   const row = await transition(uow, {
     model: "Job",
     id: input.jobId,
@@ -6914,12 +7464,34 @@ async function completeJob(uow, actor, input) {
   await assertOpen(uow.tx, job.repairOrderId);
   await transition(uow, { model: "Job", id: input.jobId, from: ["in_progress"], to: "completed", expectedVersion: input.expectedVersion, actor, eventType: "job.completed", data: { completedAt: uow.now } });
   if (job.concernId) await uow.tx.concern.update({ where: { id: job.concernId }, data: { cause, correction } });
+  await releaseJobReservations(uow, actor, input.jobId, "Job finished: the unused reservation goes back to stock");
+  const ro = await uow.tx.repairOrder.findUniqueOrThrow({ where: { id: job.repairOrderId }, select: { shopId: true, warrantyTermSetVersionId: true } });
+  if (!(await uow.tx.job.findUnique({ where: { id: input.jobId }, select: { warrantyTermId: true } }))?.warrantyTermId && ro.warrantyTermSetVersionId) {
+    const term = await uow.tx.warrantyTerm.findFirst({ where: { termSetId: ro.warrantyTermSetVersionId, code: "standard" }, select: { id: true } });
+    if (term) await uow.tx.job.update({ where: { id: input.jobId }, data: { warrantyTermId: term.id } });
+  }
+  if ((await shopPolicy(uow.tx, ro.shopId)).flagHoursAt === "job_completed") await flagJob(uow, actor, input.jobId, "job.completed");
   return { id: input.jobId, status: "completed" };
 }
 async function voidJob(uow, actor, input) {
   const reason = String(input.reason ?? "").trim().slice(0, 300);
   if (!reason) throw new DomainError(Codes.INVALID_INPUT, "Say why the job is removed.", { field: "reason" });
-  await transition(uow, { model: "Job", id: input.jobId, from: ["draft", "priced", "offered", "declined", "deferred"], to: "voided", expectedVersion: input.expectedVersion, actor, eventType: "job.voided", reason });
+  await transition(uow, {
+    model: "Job",
+    id: input.jobId,
+    from: ["draft", "priced", "offered", "authorized", "declined", "deferred"],
+    to: "voided",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "job.voided",
+    reason,
+    guard: async (j) => {
+      if (j.workStartedAt) throw new DomainError(Codes.GUARD_FAILED, "Work has started on this job, so it cannot be voided.");
+      const issued = await uow.tx.stockMovement.count({ where: { jobId: j.id, type: "issue" } });
+      if (issued) throw new DomainError(Codes.GUARD_FAILED, "Parts were issued to this job. Return them to stock before voiding it.");
+    }
+  });
+  await releaseJobReservations(uow, actor, input.jobId, `Job voided: ${reason}`);
   const job = await uow.tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { repairOrderId: true } });
   await refreshRoTotals(uow.tx, job.repairOrderId);
   return { id: input.jobId, status: "voided" };
@@ -7404,6 +7976,7 @@ async function applyAnswers(uow, actor, ev, ro, law, answers, election, e) {
       });
       const to = answer.decision === "decline" ? "declined" : "deferred";
       await transition(uow, { model: "Job", id: job.id, from: ["offered"], to, actor, eventType: `job.${to}`, metadata: { decisionId: decision.id, method: e.method } });
+      await releaseJobReservations(uow, actor, job.id, `Customer ${to === "declined" ? "declined" : "deferred"} the job`);
       decided.push({ jobId: job.id, number: job.number, decision: to });
     }
   }
@@ -7907,10 +8480,10 @@ async function seedShopPolicy(uow, actor, shopId) {
       ),
       await seedVersion(uow, actor, "labor_matrix", shop.id, v("labor_matrix"), { notes: "No labor matrix: book hours at the class rate.", bands: [], appliesToClasses: [] }),
       await seedVersion(uow, actor, "parts_matrix", shop.id, v("parts"), { notes: "Five-tier cost-plus matrix; 30% margin floor.", tiers: PARTS_TIERS, categoryOverrides: { tires: "1.250000" }, supplierOverrides: {}, marginFloorPct: "0.300000" }),
-      await seedVersion(uow, actor, "fees", shop.id, v("fees"), { notes: "California tire and battery fees (CDTFA). Battery deposit amount: placeholder rate (BUILD-PLAN \xA78 V2)." }, [
+      await seedVersion(uow, actor, "fees", shop.id, v("fees"), { notes: "California tire and battery fees (CDTFA)." }, [
         { code: "ca_tire_fee", kind: "per_unit", base: "units_of_item_category", perUnitMinor: 175n, itemCategory: "tire_new", taxTreatment: "non_taxable", separatelyStated: true, refundable: false, invoiceText: "California tire fee" },
         { code: "ca_battery_fee", kind: "per_unit", base: "units_of_item_category", perUnitMinor: 200n, itemCategory: "battery_lead_acid", taxTreatment: "non_taxable", separatelyStated: true, refundable: false, invoiceText: "California battery fee" },
-        { code: "battery_deposit", kind: "per_unit", base: "units_of_item_category", perUnitMinor: BATTERY_DEPOSIT_PLACEHOLDER_MINOR, itemCategory: "battery_lead_acid", taxTreatment: "taxable", separatelyStated: true, refundable: true, refundWindowDays: 45, invoiceText: "Battery deposit (refunded when a used battery is returned within 45 days) - placeholder rate" }
+        { code: "battery_deposit", kind: "per_unit", base: "units_of_item_category", perUnitMinor: BATTERY_DEPOSIT_PLACEHOLDER_MINOR, itemCategory: "battery_lead_acid", taxTreatment: "taxable", separatelyStated: true, refundable: true, refundWindowDays: 45, invoiceText: "Battery deposit (refunded when a used battery is returned within 45 days)" }
       ]),
       await seedVersion(
         uow,
@@ -7953,6 +8526,7 @@ function northgateSteps(actor, scope = "all") {
   steps.push({ name: "appointments", run: async (uow) => ({ appointments: await seedAppointments(uow, actor) }) });
   steps.push({ name: "golden_repair_order", run: (uow) => seedGoldenRepairOrder(uow, actor) });
   steps.push({ name: "parts_and_stock", run: (uow) => seedParts(uow, actor) });
+  steps.push({ name: "technicians", run: (uow) => seedLabor(uow, actor) });
   return steps;
 }
 var add = (total, part) => {
@@ -8085,7 +8659,7 @@ function vehicleData() {
 }
 
 // features/keystone/mutations/phase1.ts
-var KINDS2 = ["drop_off", "waiter", "pickup_delivery", "mobile"];
+var KINDS3 = ["drop_off", "waiter", "pickup_delivery", "mobile"];
 function requireShop(context, shopId) {
   if (typeof shopId !== "string" || !shopId) throw new DomainError(Codes.INVALID_INPUT, "Choose a shop.", { field: "shopId" });
   const ids = sessionShopIds(context.session);
@@ -8187,7 +8761,7 @@ async function checkVehicleRecalls(_root, args, context) {
   return run(context, actor, "vehicle.recalls", args.idempotencyKey, { vehicleId: args.vehicleId, ...query }, (uow) => storeRecallCheck(uow, actor, args.vehicleId, query, result.value, observedAt, adapter.key === "fixture"));
 }
 var kindArg = (value) => {
-  if (!KINDS2.includes(value)) throw new DomainError(Codes.INVALID_INPUT, "Choose drop-off, waiter, pickup or mobile.", { field: "kind" });
+  if (!KINDS3.includes(value)) throw new DomainError(Codes.INVALID_INPUT, "Choose drop-off, waiter, pickup or mobile.", { field: "kind" });
   return value;
 };
 async function holdAppointmentSlot(_root, args, context) {
@@ -8266,14 +8840,14 @@ async function checkAuthorizedCeiling(_root, args, context) {
 }
 
 // features/keystone/lib/cannedJobs.ts
-var KINDS3 = ["repair", "maintenance", "diagnosis", "inspection", "teardown", "tire", "sublet"];
+var KINDS4 = ["repair", "maintenance", "diagnosis", "inspection", "teardown", "tire", "sublet"];
 var text14 = (v, max) => String(v ?? "").trim().slice(0, max);
 async function saveCannedJobDraft(uow, actor, input) {
   const { tx } = uow;
   const lines = parseLines(input.lines);
   if (!lines.length) throw new DomainError(Codes.INVALID_INPUT, "A canned job needs at least one line.", { field: "lines" });
   const kind = input.kind ?? "repair";
-  if (!KINDS3.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, "Unknown job kind.", { field: "kind" });
+  if (!KINDS4.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, "Unknown job kind.", { field: "kind" });
   const stored = lines.map((l) => Object.fromEntries(Object.entries(l).filter(([k, v]) => k !== "ref" && v !== null && v !== void 0 && v !== "" && v !== false).map(([k, v]) => [k, typeof v === "bigint" ? v.toString() : v])));
   const content = { kind, customerDescription: text14(input.customerDescription, 1e3), notes: text14(input.notes, 1e3), lines: stored, authorId: actorUserId(actor) };
   let jobId = input.cannedJobId ?? null;
@@ -8533,6 +9107,13 @@ async function recordJobTire(uow, actor, input) {
   if (dupe) throw new DomainError(Codes.DUPLICATE, "That tire number is already recorded" + (dupe.jobId === job.id ? " on this job." : " on another job. Check the sidewall."), { field: "tin" });
   const row = await uow.tx.jobTire.create({ data: { jobId: job.id, tireSize: textOf(input.tireSize, "Tire size", 30), position, tin, recordedById: actorUserId(actor) } });
   auditCreate(uow, actor, "JobTire", row.id, "job_tire.recorded", { position, tin, tireSize: row.tireSize });
+  const owed = await uow.tx.tireRegistrationObligation.findMany({ where: { status: { in: ["open", "overdue"] }, jobLine: { jobId: job.id } }, select: { id: true, tins: true } });
+  for (const ob of owed) {
+    const tins = Array.isArray(ob.tins) ? ob.tins : [];
+    if (tins.includes(tin)) continue;
+    await uow.tx.tireRegistrationObligation.update({ where: { id: ob.id }, data: { tins: [...tins, tin], version: { increment: 1 } } });
+    auditCreate(uow, actor, "TireRegistrationObligation", ob.id, "tire_registration.tin_added", { tin, count: tins.length + 1 });
+  }
   return { id: row.id, tin };
 }
 async function createTireObligations(uow, actor, invoiceId) {
@@ -8595,10 +9176,15 @@ async function confirmTireRegistration(uow, actor, input) {
   return { id: input.obligationId };
 }
 async function sweepTireRegistrations(uow, actor) {
-  const today = new Date(Date.UTC(uow.now.getUTCFullYear(), uow.now.getUTCMonth(), uow.now.getUTCDate()));
-  const due = await uow.tx.tireRegistrationObligation.findMany({ where: { status: "open", dueAt: { lt: today } }, select: { id: true } });
-  for (const d2 of due) await transition(uow, { model: "TireRegistrationObligation", id: d2.id, from: ["open"], to: "overdue", actor, eventType: "tire_registration.overdue" });
-  return due.length;
+  const open = await uow.tx.tireRegistrationObligation.findMany({ where: { status: "open", dueAt: { not: null } }, select: { id: true, dueAt: true, shop: { select: { timeZone: true } } } });
+  let n = 0;
+  for (const d2 of open) {
+    const today = zonedDate(d2.shop?.timeZone || "America/Los_Angeles", uow.now);
+    if (d2.dueAt.toISOString().slice(0, 10) >= today) continue;
+    await transition(uow, { model: "TireRegistrationObligation", id: d2.id, from: ["open"], to: "overdue", actor, eventType: "tire_registration.overdue" });
+    n += 1;
+  }
+  return n;
 }
 
 // features/keystone/lib/invoiceMath.ts
@@ -8613,15 +9199,15 @@ function totalsOf2(lines) {
   const taxMinor = sumMinor(lines.map((l) => l.taxMinor));
   return { laborSubtotalMinor, partsSubtotalMinor, feesSubtotalMinor, subletSubtotalMinor, discountMinor, taxMinor, totalMinor: laborSubtotalMinor + partsSubtotalMinor + feesSubtotalMinor + subletSubtotalMinor + discountMinor + taxMinor };
 }
-function payerWeights(jobTotalMinor, shares) {
-  if (!shares.length) throw new Error("payerWeights needs at least one payer");
-  const percentSum = shares.reduce((a, s) => a.plus(s.percent), new Decimal(0));
+function payerWeights(jobTotalMinor, shares2) {
+  if (!shares2.length) throw new Error("payerWeights needs at least one payer");
+  const percentSum = shares2.reduce((a, s) => a.plus(s.percent), new Decimal(0));
   if (percentSum.isZero()) throw new Error("payer percentages must not all be zero");
-  const deductible = shares.reduce((a, s) => a + (s.deductibleMinor ?? 0n), 0n);
-  if (jobTotalMinor <= 0n || deductible <= 0n) return shares.map((s) => s.percent);
+  const deductible = shares2.reduce((a, s) => a + (s.deductibleMinor ?? 0n), 0n);
+  if (jobTotalMinor <= 0n || deductible <= 0n) return shares2.map((s) => s.percent);
   const capped = deductible > jobTotalMinor ? jobTotalMinor : deductible;
   const rest = dec(jobTotalMinor - capped);
-  return shares.map((s) => {
+  return shares2.map((s) => {
     const own = s.deductibleMinor && deductible > 0n ? dec(capped).times(dec(s.deductibleMinor)).div(dec(deductible)) : new Decimal(0);
     return own.plus(rest.times(s.percent).div(percentSum));
   });
@@ -8637,8 +9223,8 @@ function spreadPayment(amountMinor, balances) {
   if (amountMinor > owed) throw new Error("A payment cannot exceed what is owed");
   if (amountMinor === 0n || owed === 0n) return balances.map(() => 0n);
   if (balances.length === 1) return [amountMinor];
-  const shares = allocateMinor(amountMinor, balances.map((b) => b.toString()));
-  return shares.map((s, i) => s > balances[i] ? balances[i] : s);
+  const shares2 = allocateMinor(amountMinor, balances.map((b) => b.toString()));
+  return shares2.map((s, i) => s > balances[i] ? balances[i] : s);
 }
 function addDays2(date2, days) {
   const d2 = /* @__PURE__ */ new Date(`${date2}T00:00:00Z`);
@@ -8646,10 +9232,10 @@ function addDays2(date2, days) {
   return d2.toISOString().slice(0, 10);
 }
 function addMonths(date2, months) {
-  const [y, m, day2] = date2.split("-").map(Number);
+  const [y, m, day3] = date2.split("-").map(Number);
   const target = new Date(Date.UTC(y, m - 1 + months, 1));
   const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
-  target.setUTCDate(Math.min(day2, last));
+  target.setUTCDate(Math.min(day3, last));
   return target.toISOString().slice(0, 10);
 }
 var addYears = (date2, years) => addMonths(date2, years * 12);
@@ -8763,14 +9349,14 @@ async function allocatePayment(uow, actor, paymentId) {
   const owed = sumMinor(balances);
   const apply = available > owed ? owed : available;
   if (apply <= 0n) return 0n;
-  const shares = spreadPayment(apply, balances);
+  const shares2 = spreadPayment(apply, balances);
   for (let i = 0; i < invoices.length; i += 1) {
-    if (shares[i] <= 0n) continue;
-    await tx.paymentAllocation.create({ data: { paymentId, invoiceId: invoices[i].id, amountMinor: shares[i], at: now } });
-    await settleInvoice(uow, actor, invoices[i], shares[i], 0n);
+    if (shares2[i] <= 0n) continue;
+    await tx.paymentAllocation.create({ data: { paymentId, invoiceId: invoices[i].id, amountMinor: shares2[i], at: now } });
+    await settleInvoice(uow, actor, invoices[i], shares2[i], 0n);
   }
   await tx.payment.update({ where: { id: paymentId }, data: { allocatedMinor: { increment: apply }, version: { increment: 1 } } });
-  auditCreate(uow, actor, "Payment", paymentId, "payment.allocated", { amountMinor: apply, invoices: invoices.map((inv, i) => ({ id: inv.id, amountMinor: shares[i] })) });
+  auditCreate(uow, actor, "Payment", paymentId, "payment.allocated", { amountMinor: apply, invoices: invoices.map((inv, i) => ({ id: inv.id, amountMinor: shares2[i] })) });
   return apply;
 }
 async function settleInvoice(uow, actor, invoice, paidDelta, creditedDelta) {
@@ -8856,24 +9442,36 @@ async function buildInvoicePlan(tx, repairOrderId, now) {
     }
   }
   const law2 = law;
+  const tinPolicy = ro.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: ro.shopPolicyVersionId }, select: { tinPendingAllowed: true } }) : null;
+  if (!tinPolicy?.tinPendingAllowed) {
+    for (const j of billable.filter((x) => x.status === "completed")) {
+      const need = j.lines.filter((l) => l.kind === "tire" && l.isNewTire).reduce((n, l) => n + Math.round((l.quantityMilli ?? 1e3) / 1e3), 0);
+      if (!need) continue;
+      const have = await tx.jobTire.count({ where: { jobId: j.id } });
+      if (have < need) problems.push(`Job ${j.number}, ${j.title}, has ${need} new tire${need === 1 ? "" : "s"} but ${have} tire number${have === 1 ? " is" : "s are"} recorded. Record every tire's DOT number before invoicing.`);
+    }
+  }
+  for (const j of billable.filter((x) => x.status === "completed" && x.noChargeReason?.startsWith("Comeback "))) {
+    if (j.payerSplits.some((s) => s.payerKind === "customer" && Number(s.percent) > 0)) problems.push(`Job ${j.number}, ${j.title}, is a free comeback repair but is still set to bill the customer. Resolve the comeback so the shop's warranty pays for it.`);
+  }
   const payers = /* @__PURE__ */ new Map();
   const lineBuckets = /* @__PURE__ */ new Map();
   const customerPayer = { key: "customer", kind: "customer", businessAccountId: null, customerId: ro.customerId, payorName: ro.customer?.displayName ?? "", authorizationNumber: "", claimNumber: "" };
   const defaultPayer = ro.businessAccountId && ro.businessAccount ? { key: payerKeyOf("business_account", ro.businessAccountId, ""), kind: "business_account", businessAccountId: ro.businessAccountId, customerId: ro.customerId, payorName: ro.businessAccount.name, authorizationNumber: "", claimNumber: "" } : customerPayer;
   for (const j of billable.filter((x) => x.status === "completed")) {
     const splits = j.payerSplits.filter((s) => s.payerKind !== "customer" || s.percent);
-    const shares = [];
+    const shares2 = [];
     for (const s of splits) {
       const kind = s.payerKind;
       const payer = kind === "customer" ? customerPayer : { key: payerKeyOf(kind, s.businessAccountId, s.payorName), kind, businessAccountId: s.businessAccountId, customerId: null, payorName: s.payorName, authorizationNumber: s.authorizationNumber, claimNumber: s.claimNumber };
-      shares.push({ payer, share: { key: payer.key, percent: dec(s.percent.toString()), deductibleMinor: s.deductibleMinor ?? void 0 } });
+      shares2.push({ payer, share: { key: payer.key, percent: dec(s.percent.toString()), deductibleMinor: s.deductibleMinor ?? void 0 } });
     }
-    const total = shares.reduce((a, s) => a.plus(s.share.percent), new Decimal(0));
+    const total = shares2.reduce((a, s) => a.plus(s.share.percent), new Decimal(0));
     if (total.greaterThan(100)) problems.push(`Job ${j.number}: the payer shares add up to more than 100%.`);
-    if (!shares.length) shares.push({ payer: defaultPayer, share: { key: defaultPayer.key, percent: new Decimal(100) } });
-    else if (total.lessThan(100) && !shares.some((s) => s.payer.kind === "customer")) shares.push({ payer: defaultPayer, share: { key: defaultPayer.key, percent: new Decimal(100).minus(total) } });
+    if (!shares2.length) shares2.push({ payer: defaultPayer, share: { key: defaultPayer.key, percent: new Decimal(100) } });
+    else if (total.lessThan(100) && !shares2.some((s) => s.payer.kind === "customer")) shares2.push({ payer: defaultPayer, share: { key: defaultPayer.key, percent: new Decimal(100).minus(total) } });
     const merged = /* @__PURE__ */ new Map();
-    for (const s of shares) {
+    for (const s of shares2) {
       const prior = merged.get(s.payer.key);
       merged.set(s.payer.key, prior ? { payer: s.payer, share: { key: s.payer.key, percent: prior.share.percent.plus(s.share.percent), deductibleMinor: (prior.share.deductibleMinor ?? 0n) + (s.share.deductibleMinor ?? 0n) } } : s);
     }
@@ -8929,7 +9527,7 @@ async function finalizeInvoices(uow, actor, input) {
     if (account?.poRequired && !poNumber) problems.push(`${account.name} requires a purchase order number on every invoice.`);
   }
   if (problems.length) {
-    const code = problems.some((p) => p.includes("purchase order")) ? Codes.PO_REQUIRED : problems.some((p) => p.includes("credit hold")) ? Codes.CREDIT_HOLD : problems.some((p) => p.includes("above what the customer authorized")) ? Codes.REAUTHORIZATION_REQUIRED : problems.some((p) => p.includes("odometer")) ? Codes.ODOMETER_REQUIRED : Codes.GUARD_FAILED;
+    const code = problems.some((p) => p.includes("purchase order")) ? Codes.PO_REQUIRED : problems.some((p) => p.includes("credit hold")) ? Codes.CREDIT_HOLD : problems.some((p) => p.includes("above what the customer authorized")) ? Codes.REAUTHORIZATION_REQUIRED : problems.some((p) => p.includes("odometer")) ? Codes.ODOMETER_REQUIRED : problems.some((p) => p.includes("DOT number")) ? Codes.TIN_REQUIRED : Codes.GUARD_FAILED;
     throw new DomainError(code, problems[0], { problems });
   }
   let odometerOutId = ro.odometerOutId;
@@ -9014,6 +9612,9 @@ async function finalizeInvoices(uow, actor, input) {
         status: "active"
       }
     });
+  }
+  if ((await shopPolicy(tx, ro.shopId)).flagHoursAt === "invoice_finalized") {
+    for (const job of built.billable.filter((j) => j.status === "completed")) await flagJob(uow, actor, job.id, "invoice.finalized");
   }
   await transition(uow, {
     model: "RepairOrder",
@@ -9135,9 +9736,9 @@ async function applyRefundResult(uow, actor, input) {
     const net = rows.map((r) => ({ invoiceId: r.invoiceId, net: r._sum.amountMinor ?? 0n })).filter((r) => r.net > 0n).sort((a, b) => a.invoiceId.localeCompare(b.invoiceId));
     const available = sumMinor(net.map((n) => n.net));
     if (fromInvoices > available) fromInvoices = available;
-    const shares = net.length ? allocateMinor(fromInvoices, net.map((n) => n.net.toString())) : [];
+    const shares2 = net.length ? allocateMinor(fromInvoices, net.map((n) => n.net.toString())) : [];
     for (let i = 0; i < net.length; i += 1) {
-      const take = shares[i] > net[i].net ? net[i].net : shares[i];
+      const take = shares2[i] > net[i].net ? net[i].net : shares2[i];
       if (take <= 0n) continue;
       const invoice = await lockRow(tx, "Invoice", net[i].invoiceId);
       await tx.paymentAllocation.create({ data: { paymentId: payment.id, invoiceId: invoice.id, refundId: refund.id, amountMinor: -take, at: now } });
@@ -9229,13 +9830,13 @@ async function closeDay(uow, actor, input) {
 }
 async function reopenDay(uow, actor, input) {
   const reason = reasonOf(input.reason, "the day is being reopened");
-  const day2 = await lockRow(uow.tx, "BusinessDayClose", input.dayCloseId);
-  if (day2.status !== "closed") throw new DomainError(Codes.GUARD_FAILED, "Only a closed day can be reopened.");
-  const gate2 = await needApproval(uow, actor, { action: "day.reopen", targetList: "BusinessDayClose", targetId: day2.id, permission: "canApproveReopen", approvalRequestId: input.approvalRequestId, payload: { dayCloseId: day2.id, reason }, summary: `Reopen the day ${new Date(day2.businessDate).toISOString().slice(0, 10)}: ${reason}` });
+  const day3 = await lockRow(uow.tx, "BusinessDayClose", input.dayCloseId);
+  if (day3.status !== "closed") throw new DomainError(Codes.GUARD_FAILED, "Only a closed day can be reopened.");
+  const gate2 = await needApproval(uow, actor, { action: "day.reopen", targetList: "BusinessDayClose", targetId: day3.id, permission: "canApproveReopen", approvalRequestId: input.approvalRequestId, payload: { dayCloseId: day3.id, reason }, summary: `Reopen the day ${new Date(day3.businessDate).toISOString().slice(0, 10)}: ${reason}` });
   if (!gate2.approved) return waiting(gate2.approvalRequestId);
-  await uow.tx.businessDayClose.update({ where: { id: day2.id }, data: { status: "reopened", reopenApprovalId: gate2.approvalRequestId, version: { increment: 1 } } });
-  uow.audit({ eventType: "day.reopened", entityType: "BusinessDayClose", entityId: day2.id, actorUserId: actorUserId(actor), approverId: null, reason, after: { status: "reopened" } });
-  return { id: day2.id, status: "reopened" };
+  await uow.tx.businessDayClose.update({ where: { id: day3.id }, data: { status: "reopened", reopenApprovalId: gate2.approvalRequestId, version: { increment: 1 } } });
+  uow.audit({ eventType: "day.reopened", entityType: "BusinessDayClose", entityId: day3.id, actorUserId: actorUserId(actor), approverId: null, reason, after: { status: "reopened" } });
+  return { id: day3.id, status: "reopened" };
 }
 async function releaseVehicle(uow, actor, input) {
   const { tx, now } = uow;
@@ -9947,7 +10548,8 @@ async function addCoreOwed(uow, actor, a) {
     await tx.coreObligation.update({ where: { id: existing.id }, data: { coreChargeMinor: { increment: amount } } });
     return;
   }
-  const dueAt = new Date(now.getTime() + a.windowDays * 864e5);
+  const zone = (await tx.shop.findUnique({ where: { id: a.shopId }, select: { timeZone: true } }))?.timeZone || "America/Los_Angeles";
+  const dueAt = /* @__PURE__ */ new Date(`${addDays2(zonedDate(zone, now), a.windowDays)}T00:00:00.000Z`);
   const row = await tx.coreObligation.create({
     data: {
       shopId: a.shopId,
@@ -9963,7 +10565,7 @@ async function addCoreOwed(uow, actor, a) {
       status: "owed"
     }
   });
-  auditCreate(uow, actor, "CoreObligation", row.id, "core.owed", { partNumber: a.orderLine.partNumber, coreChargeMinor: amount, dueAt: dueAt.toISOString() });
+  auditCreate(uow, actor, "CoreObligation", row.id, "core.owed", { partNumber: a.orderLine.partNumber, coreChargeMinor: amount, dueAt: dueAt.toISOString().slice(0, 10) });
 }
 async function markCoreReturned(uow, actor, input) {
   await transition(uow, {
@@ -10101,6 +10703,8 @@ async function matchSupplierInvoice(uow, actor, input) {
       await tx.coreObligation.update({ where: { id: core.id }, data: { status: "credited", creditedAt: uow.now, supplierInvoiceLineId: credit.line.id, version: { increment: 1 } } });
       auditCreate(uow, actor, "CoreObligation", core.id, "core.credited", { invoice: invoice.invoiceNumber, coreChargeMinor: core.coreChargeMinor });
     } else {
+      const already = await tx.discrepancy.count({ where: { kind: "core_not_credited", detail: { contains: `(core ${core.id})` }, invoiceId: { not: invoice.id } } });
+      if (already) continue;
       found.push({ kind: "core_not_credited", amountMinor: BigInt(core.coreChargeMinor), detail: `The ${core.partNumber} core was returned but invoice ${invoice.invoiceNumber} shows no credit. (core ${core.id})`, lineId: null });
     }
   }
@@ -10303,6 +10907,12 @@ async function receiveShopSupplierOrder(_root, args, context) {
   await shopOf3(context, "supplierOrder", input.orderId);
   return run4(context, actor, "supplier_order.receive", args.idempotencyKey, input, (uow) => receiveSupplierOrder(uow, actor, { ...input, receiptKey: input.receiptKey || args.idempotencyKey }));
 }
+async function releaseShopJobReservations(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...PARTS);
+  await shopOf3(context, "job", args.jobId);
+  return run4(context, actor, "stock.release_job", args.idempotencyKey, args, async (uow) => ({ releasedMilli: await releaseJobReservations(uow, actor, args.jobId, `Released: ${textOf(args.reason, "Reason", 200, true)}`) }));
+}
 async function reserveJobPart(_root, args, context) {
   const actor = actorFromSession(context.session);
   requirePermission(actor, ...PARTS);
@@ -10432,6 +11042,298 @@ async function sweepShopTireRegistrations(_root, args, context) {
   return run4(context, actor, "tire_registration.sweep", args.idempotencyKey, {}, async (uow) => ({ overdue: await sweepTireRegistrations(uow, actor) }));
 }
 
+// features/keystone/lib/comebacks.ts
+var CLOSED_CASE = ["resolved", "cancelled"];
+var CAUSES = ["workmanship", "part_failure", "new_issue", "customer_caused"];
+function coverageHolds(c, day3, miles) {
+  if (c.status !== "active") return false;
+  if (c.endsOn && c.endsOn.getTime() < day3.getTime()) return false;
+  if (c.endsAtMiles !== null && miles !== null && miles > c.endsAtMiles) return false;
+  return true;
+}
+async function openComeback(uow, actor, input) {
+  const { tx, now } = uow;
+  const concern = textOf(input.concern, "What the customer reports", 600, true);
+  const job = await tx.job.findUnique({ where: { id: input.originalJobId }, select: { id: true, number: true, title: true, status: true, repairOrder: { select: { id: true, shopId: true, roNumber: true, vehicleId: true } } } });
+  if (!job?.repairOrder?.shopId) throw new DomainError(Codes.NOT_FOUND, "Job not found.", { field: "originalJobId" });
+  const billed = await tx.invoiceLine.count({ where: { sourceJobLine: { jobId: job.id }, invoice: { status: { notIn: ["void"] } } } });
+  if (job.status !== "completed" || !billed) throw new DomainError(Codes.GUARD_FAILED, "A comeback points at work that was finished and billed. Finish and invoice this job first.");
+  await lockRow(tx, "Job", job.id);
+  const open = await tx.comebackCase.findFirst({ where: { originalJobId: job.id, status: { notIn: [...CLOSED_CASE] } } });
+  if (open) throw new DomainError(Codes.GUARD_FAILED, `${open.reference} is already open for this job.`);
+  const shopId = job.repairOrder.shopId;
+  const coverage = await tx.warrantyCoverage.findFirst({ where: { jobId: job.id }, orderBy: { createdAt: "desc" } });
+  let miles = input.odometer ?? null;
+  if (miles === null && job.repairOrder.vehicleId) {
+    const reading = await tx.odometerReading.findFirst({ where: { vehicleId: job.repairOrder.vehicleId, accepted: true }, orderBy: { at: "desc" }, select: { value: true } });
+    miles = reading?.value ?? null;
+  }
+  const policy = await shopPolicy(tx, shopId);
+  const holds = coverage ? coverageHolds(coverage, shopDay(now, policy.timeZone), miles) : false;
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { code: true } });
+  const reference = await nextShopReference(tx, "CB", shop.code, now);
+  const row = await tx.comebackCase.create({
+    data: { shopId, reference, originalJobId: job.id, concern, coverageId: coverage?.id ?? null, coverageValid: holds, noCharge: holds, cause: "undetermined", openedById: actorUserId(actor), status: "open" }
+  });
+  if (coverage && holds) await tx.warrantyCoverage.update({ where: { id: coverage.id }, data: { version: { increment: 1 } } });
+  auditCreate(uow, actor, "ComebackCase", row.id, "comeback.opened", { reference, job: `${job.repairOrder.roNumber} job ${job.number}`, coverageValid: holds });
+  return { id: row.id, reference, coverageValid: holds, noCharge: holds };
+}
+async function diagnoseComeback(uow, actor, input) {
+  const { tx } = uow;
+  if (!CAUSES.includes(input.cause)) throw new DomainError(Codes.INVALID_INPUT, "Choose the cause.", { field: "cause" });
+  const diagnosis = textOf(input.diagnosis, "Diagnosis", 800, true);
+  const row = await lockRow(tx, "ComebackCase", input.comebackId);
+  const noCharge = row.coverageValid || row.noCharge;
+  await transition(uow, { model: "ComebackCase", id: row.id, from: ["open"], to: "diagnosed", expectedVersion: input.expectedVersion, actor, eventType: "comeback.diagnosed", data: { cause: input.cause, diagnosis, noCharge } });
+  let reversed = 0;
+  if (input.cause === "workmanship") {
+    const policy = await shopPolicy(tx, row.shopId);
+    if (policy.comebackPayRule === "reverse") reversed = (await reverseJobFlags(uow, actor, row.originalJobId, `comeback:${row.id}`, `Comeback ${row.reference}: the work did not hold`)).reversed;
+  }
+  return { id: row.id, status: "diagnosed", noCharge, hoursReversed: reversed };
+}
+async function requestGoodwill(uow, actor, input) {
+  const { tx } = uow;
+  const reason = textOf(input.reason, "Reason", 300);
+  if (reason.length < 5) throw new DomainError(Codes.INVALID_INPUT, "Say why the shop is making this free.", { field: "reason" });
+  const row = await lockRow(tx, "ComebackCase", input.comebackId);
+  if (CLOSED_CASE.includes(row.status)) throw new DomainError(Codes.GUARD_FAILED, "This comeback is closed.");
+  if (row.noCharge) throw new DomainError(Codes.GUARD_FAILED, "This repair is already free for the customer.");
+  const payload = { comebackId: row.id, reason };
+  if (input.approvalRequestId) {
+    const { approverId } = await consumeApproval(uow, { requestId: input.approvalRequestId, action: "goodwill.approve", targetList: "ComebackCase", targetId: row.id, payload });
+    await tx.comebackCase.update({ where: { id: row.id }, data: { noCharge: true, goodwillApprovalId: input.approvalRequestId, version: { increment: 1 } } });
+    auditCreate(uow, actor, "ComebackCase", row.id, "comeback.goodwill_applied", { reference: row.reference }, { reason });
+    return { id: row.id, noCharge: true, approverId };
+  }
+  const request = await requestApproval(uow, actor, { action: "goodwill.approve", targetList: "ComebackCase", targetId: row.id, payload, requiredPermission: "canApproveGoodwill", summary: `Make comeback ${row.reference} free for the customer: ${reason}` });
+  return { approvalRequired: true, approvalRequestId: request.id };
+}
+async function billedAlready(tx, jobId) {
+  return await tx.invoiceLine.count({ where: { sourceJobLine: { jobId }, invoice: { status: { notIn: ["void"] } } } }) > 0;
+}
+async function linkComebackJob(uow, actor, row, comebackJobId) {
+  const { tx } = uow;
+  const j = await lockRow(tx, "Job", comebackJobId);
+  const jobRo = await tx.repairOrder.findUnique({ where: { id: j.repairOrderId }, select: { id: true, shopId: true, customerId: true, vehicleId: true, kind: true, roNumber: true } });
+  if (!jobRo || jobRo.shopId !== row.shopId) throw new DomainError(Codes.NOT_FOUND, "Job not found at this shop.", { field: "comebackJobId" });
+  if (j.id === row.originalJobId) throw new DomainError(Codes.INVALID_INPUT, "The repeat repair is a new job, not the original one.", { field: "comebackJobId" });
+  const original = await tx.job.findUniqueOrThrow({ where: { id: row.originalJobId }, select: { repairOrder: { select: { customerId: true, vehicleId: true } } } });
+  if (jobRo.customerId !== original.repairOrder?.customerId || jobRo.vehicleId !== original.repairOrder?.vehicleId) {
+    throw new DomainError(Codes.GUARD_FAILED, `That job is on ${jobRo.roNumber}, which is for a different customer or vehicle than the job that came back.`, { field: "comebackJobId" });
+  }
+  if (["voided", "declined", "deferred"].includes(j.status)) throw new DomainError(Codes.GUARD_FAILED, "That job was removed or declined, so it cannot be the repeat repair.", { field: "comebackJobId" });
+  if (await billedAlready(tx, j.id)) throw new DomainError(Codes.GUARD_FAILED, "That job is already on an invoice. The repeat repair has to be one that has not been billed.", { field: "comebackJobId" });
+  const taken = await tx.comebackCase.findFirst({ where: { comebackJobId: j.id, id: { not: row.id }, status: { not: "cancelled" } }, select: { reference: true } });
+  if (taken) throw new DomainError(Codes.GUARD_FAILED, `That job is already the repeat repair for ${taken.reference}.`, { field: "comebackJobId" });
+  if (row.noCharge) {
+    if (jobRo.kind !== "comeback") throw new DomainError(Codes.GUARD_FAILED, `A free repair goes on a repair order opened as a comeback. ${jobRo.roNumber} is a ${jobRo.kind} order.`, { field: "comebackJobId" });
+    const reason = `Comeback ${row.reference}: no charge, covered by the shop`;
+    await tx.payerSplit.deleteMany({ where: { jobId: j.id } });
+    await tx.payerSplit.create({ data: { jobId: j.id, payerKind: "shop_warranty", percent: "1.000000", payorName: "Shop warranty", claimNumber: row.reference } });
+    if (["draft", "priced", "offered"].includes(j.status)) {
+      await transition(uow, { model: "Job", id: j.id, from: [j.status], to: "authorized", actor, eventType: "job.covered_by_warranty", reason, data: { noChargeReason: reason, authorizedAmountMinor: 0n, authorizedSubtotalMinor: 0n, chargeCeilingMinor: 0n } });
+    } else {
+      await tx.job.update({ where: { id: j.id }, data: { noChargeReason: reason, version: { increment: 1 } } });
+    }
+    auditCreate(uow, actor, "Job", j.id, "job.payer_set_shop_warranty", { comeback: row.reference });
+  }
+  return j.id;
+}
+async function resolveComeback(uow, actor, input) {
+  const { tx } = uow;
+  const resolution = textOf(input.resolution, "Resolution", 800, true);
+  const row = await lockRow(tx, "ComebackCase", input.comebackId);
+  if (row.status === "open") throw new DomainError(Codes.GUARD_FAILED, "Diagnose the comeback before resolving it.");
+  const comebackJobId = input.comebackJobId ? await linkComebackJob(uow, actor, row, String(input.comebackJobId)) : null;
+  await transition(uow, { model: "ComebackCase", id: row.id, from: ["diagnosed"], to: "resolved", expectedVersion: input.expectedVersion, actor, eventType: "comeback.resolved", data: { resolution, resolvedAt: uow.now, comebackJobId } });
+  return { id: row.id, status: "resolved" };
+}
+async function cancelComeback(uow, actor, input) {
+  const reason = textOf(input.reason, "Reason", 300, true);
+  if (reason.length < 3) throw new DomainError(Codes.INVALID_INPUT, "Say why the comeback is cancelled.", { field: "reason" });
+  await transition(uow, { model: "ComebackCase", id: input.comebackId, from: ["open", "diagnosed"], to: "cancelled", expectedVersion: input.expectedVersion, actor, eventType: "comeback.cancelled", reason, data: { resolution: `Cancelled: ${reason}` } });
+  return { id: input.comebackId, status: "cancelled" };
+}
+async function createPartWarrantyClaim(uow, actor, input) {
+  const { tx, now } = uow;
+  const row = await lockRow(tx, "ComebackCase", input.comebackId);
+  if (row.cause !== "part_failure") throw new DomainError(Codes.GUARD_FAILED, "A supplier claim is for a part that failed. Diagnose the comeback as a part failure first.");
+  if (row.status === "cancelled") throw new DomainError(Codes.GUARD_FAILED, "This comeback was cancelled.");
+  const supplier = await tx.supplier.findUnique({ where: { id: String(input.supplierId) }, select: { id: true, name: true } });
+  if (!supplier) throw new DomainError(Codes.NOT_FOUND, "Supplier not found.", { field: "supplierId" });
+  const jobLineId = input.jobLineId ? String(input.jobLineId) : null;
+  if (jobLineId) {
+    const line = await tx.jobLine.findUnique({ where: { id: jobLineId }, select: { jobId: true, kind: true } });
+    if (!line || ![row.originalJobId, row.comebackJobId].includes(line.jobId)) throw new DomainError(Codes.INVALID_INPUT, "That part line is not on the job that came back.", { field: "jobLineId" });
+  }
+  const reimb = centsOf(input.laborReimbursementMinor ?? 0, "Labor reimbursement", false);
+  const dupe = await tx.partWarrantyClaim.findFirst({ where: { comebackId: row.id, jobLineId, status: { notIn: ["denied", "withdrawn"] } }, select: { claimNumber: true } });
+  if (dupe) throw new DomainError(Codes.DUPLICATE, `${dupe.claimNumber} already claims this part for ${row.reference}. Withdraw it first if it was raised by mistake.`);
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: row.shopId }, select: { code: true } });
+  const claimNumber = await nextShopReference(tx, "WC", shop.code, now);
+  const claim = await tx.partWarrantyClaim.create({ data: { shopId: row.shopId, comebackId: row.id, supplierId: supplier.id, jobLineId, claimNumber, laborReimbursementMinor: reimb, status: "draft" } });
+  auditCreate(uow, actor, "PartWarrantyClaim", claim.id, "warranty_claim.created", { claimNumber, supplier: supplier.name, comeback: row.reference });
+  return { id: claim.id, claimNumber };
+}
+async function withdrawPartWarrantyClaim(uow, actor, input) {
+  const reason = textOf(input.reason, "Reason", 300, true);
+  if (reason.length < 3) throw new DomainError(Codes.INVALID_INPUT, "Say why the claim is withdrawn.", { field: "reason" });
+  await transition(uow, { model: "PartWarrantyClaim", id: input.claimId, from: ["draft", "submitted"], to: "withdrawn", expectedVersion: input.expectedVersion, actor, eventType: "warranty_claim.withdrawn", reason, data: { voidReason: reason, voidedAt: uow.now } });
+  return { id: input.claimId, status: "withdrawn" };
+}
+
+// features/keystone/mutations/phase5.ts
+var run5 = async (context, actor, name, idempotencyKey, params, work) => {
+  const result = await command(context.prisma, { name, actor, idempotencyKey, params }, work);
+  return { replay: result.replay, ...result.value };
+};
+async function shopOf4(context, model, id) {
+  if (typeof id !== "string" || !id) throw new DomainError(Codes.INVALID_INPUT, "Choose a record.");
+  const shopId = model === "job" ? (await context.prisma.job.findUnique({ where: { id }, select: { repairOrder: { select: { shopId: true } } } }))?.repairOrder?.shopId : (await context.prisma[model].findUnique({ where: { id }, select: { shopId: true } }))?.shopId;
+  if (!shopId) throw new DomainError(Codes.NOT_FOUND, "Not found.");
+  return requireShop(context, shopId);
+}
+async function clockInShift(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClockSelf");
+  requireHuman(actor, "clock in");
+  requireShop(context, args.shopId);
+  return run5(context, actor, "shift.clock_in", args.idempotencyKey, args, (uow) => clockIn(uow, actor, args.shopId));
+}
+async function clockOutShift(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClockSelf");
+  requireHuman(actor, "clock out");
+  requireShop(context, args.shopId);
+  return run5(context, actor, "shift.clock_out", args.idempotencyKey, args, (uow) => clockOut(uow, actor, args.shopId));
+}
+async function startShiftBreak(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClockSelf");
+  requireHuman(actor, "start a break");
+  requireShop(context, args.shopId);
+  return run5(context, actor, "shift.break_start", args.idempotencyKey, args, (uow) => startBreak(uow, actor, args.shopId));
+}
+async function endShiftBreak(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClockSelf");
+  requireHuman(actor, "end a break");
+  requireShop(context, args.shopId);
+  return run5(context, actor, "shift.break_end", args.idempotencyKey, args, (uow) => endBreak(uow, actor, args.shopId));
+}
+async function startTechJobClock(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClockSelf");
+  requireHuman(actor, "start a job clock");
+  await shopOf4(context, "job", args.jobId);
+  return run5(context, actor, "job_clock.start", args.idempotencyKey, args, (uow) => startJobClock(uow, actor, args.jobId));
+}
+async function stopTechJobClock(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClockSelf");
+  requireHuman(actor, "stop a job clock");
+  await shopOf4(context, "jobClock", args.jobClockId);
+  return run5(context, actor, "job_clock.stop", args.idempotencyKey, args, (uow) => stopJobClock(uow, actor, args.jobClockId));
+}
+async function logJobWaiting(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClockSelf");
+  requireHuman(actor, "log waiting time");
+  await shopOf4(context, "jobClock", args.jobClockId);
+  return run5(context, actor, "job_clock.waiting", args.idempotencyKey, args, (uow) => logWaiting(uow, actor, { jobClockId: args.jobClockId, reason: args.reason, resume: args.resume, note: args.note }));
+}
+async function requestTimeCorrection(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClockSelf", "canManageTime");
+  requireHuman(actor, "ask for a time correction");
+  const input = args.input ?? {};
+  if (input.targetKind !== "shift" && input.targetKind !== "job_clock") throw new DomainError(Codes.INVALID_INPUT, "Choose a shift or a job clock.", { field: "targetKind" });
+  const target = await context.prisma[input.targetKind === "shift" ? "shiftClock" : "jobClock"].findUnique({ where: { id: String(input.targetId) }, select: { shopId: true } });
+  if (!target?.shopId) throw new DomainError(Codes.NOT_FOUND, "Time entry not found.");
+  requireShop(context, target.shopId);
+  return run5(context, actor, "clock_correction.request", args.idempotencyKey, args.input, (uow) => requestClockCorrection(uow, actor, input));
+}
+async function saveTechCredential(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageTime");
+  requireHuman(actor, "record a certificate");
+  const input = args.input ?? {};
+  await shopOf4(context, "technicianProfile", input.technicianId);
+  return run5(context, actor, "credential.record", args.idempotencyKey, input, (uow) => recordCredential(uow, actor, input));
+}
+async function assignShopJobTechnicians(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageTime", "canWriteRepairOrders");
+  await shopOf4(context, "job", args.jobId);
+  return run5(context, actor, "job.assign_technicians", args.idempotencyKey, args, (uow) => assignJobTechnicians(uow, actor, { jobId: args.jobId, shares: args.shares }));
+}
+async function adjustTechFlaggedHours(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageTime");
+  requireHuman(actor, "adjust flagged hours");
+  await shopOf4(context, "technicianProfile", args.technicianId);
+  return run5(context, actor, "flagged_hours.adjust", args.idempotencyKey, args, (uow) => adjustFlaggedHours(uow, actor, args));
+}
+async function closeShopPayPeriod(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageTime", "canClosePayPeriod");
+  requireHuman(actor, "close a pay period");
+  await shopOf4(context, "payPeriod", args.payPeriodId);
+  return run5(context, actor, "pay_period.close", args.idempotencyKey, args, (uow) => closePayPeriod(uow, actor, args));
+}
+async function exportShopPayPeriod(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canClosePayPeriod", "canReadTechPay");
+  requireHuman(actor, "export a pay period");
+  await shopOf4(context, "payPeriod", args.payPeriodId);
+  return run5(context, actor, "pay_period.export", args.idempotencyKey, args, (uow) => exportPayPeriod(uow, actor, args.payPeriodId));
+}
+async function openShopComeback(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageComebacks");
+  await shopOf4(context, "job", args.originalJobId);
+  return run5(context, actor, "comeback.open", args.idempotencyKey, args, (uow) => openComeback(uow, actor, args));
+}
+async function diagnoseShopComeback(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageComebacks");
+  await shopOf4(context, "comebackCase", args.comebackId);
+  return run5(context, actor, "comeback.diagnose", args.idempotencyKey, args, (uow) => diagnoseComeback(uow, actor, args));
+}
+async function requestComebackGoodwill(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageComebacks", "canApproveGoodwill");
+  requireHuman(actor, "make a repair free");
+  await shopOf4(context, "comebackCase", args.comebackId);
+  return run5(context, actor, "comeback.goodwill", args.idempotencyKey, args, (uow) => requestGoodwill(uow, actor, args));
+}
+async function resolveShopComeback(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageComebacks");
+  await shopOf4(context, "comebackCase", args.comebackId);
+  return run5(context, actor, "comeback.resolve", args.idempotencyKey, args, (uow) => resolveComeback(uow, actor, args));
+}
+async function createShopPartWarrantyClaim(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageComebacks");
+  await shopOf4(context, "comebackCase", args.comebackId);
+  return run5(context, actor, "warranty_claim.create", args.idempotencyKey, args, (uow) => createPartWarrantyClaim(uow, actor, args));
+}
+async function cancelShopComeback(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageComebacks");
+  await shopOf4(context, "comebackCase", args.comebackId);
+  return run5(context, actor, "comeback.cancel", args.idempotencyKey, args, (uow) => cancelComeback(uow, actor, args));
+}
+async function withdrawShopPartWarrantyClaim(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageComebacks");
+  await shopOf4(context, "partWarrantyClaim", args.claimId);
+  return run5(context, actor, "warranty_claim.withdraw", args.idempotencyKey, args, (uow) => withdrawPartWarrantyClaim(uow, actor, args));
+}
+
 // features/keystone/mutations/index.ts
 var graphql4 = String.raw;
 function extendGraphqlSchema(baseSchema) {
@@ -10529,6 +11431,27 @@ function extendGraphqlSchema(baseSchema) {
         completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
         confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
         sweepShopTireRegistrations(idempotencyKey: String!): JSON
+        clockInShift(shopId: ID!, idempotencyKey: String!): JSON
+        clockOutShift(shopId: ID!, idempotencyKey: String!): JSON
+        startShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
+        endShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
+        startTechJobClock(jobId: ID!, idempotencyKey: String!): JSON
+        stopTechJobClock(jobClockId: ID!, idempotencyKey: String!): JSON
+        logJobWaiting(jobClockId: ID!, reason: String, resume: Boolean, note: String, idempotencyKey: String!): JSON
+        requestTimeCorrection(input: JSON!, idempotencyKey: String!): JSON
+        saveTechCredential(input: JSON!, idempotencyKey: String!): JSON
+        assignShopJobTechnicians(jobId: ID!, shares: JSON!, idempotencyKey: String!): JSON
+        adjustTechFlaggedHours(technicianId: ID!, jobId: ID!, centiHours: Int!, reason: String!, idempotencyKey: String!): JSON
+        closeShopPayPeriod(payPeriodId: ID!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        exportShopPayPeriod(payPeriodId: ID!, idempotencyKey: String!): JSON
+        openShopComeback(originalJobId: ID!, concern: String!, odometer: Int, idempotencyKey: String!): JSON
+        diagnoseShopComeback(comebackId: ID!, cause: String!, diagnosis: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        requestComebackGoodwill(comebackId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        resolveShopComeback(comebackId: ID!, resolution: String!, comebackJobId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+        createShopPartWarrantyClaim(comebackId: ID!, supplierId: ID!, jobLineId: ID, laborReimbursementMinor: String, idempotencyKey: String!): JSON
+        cancelShopComeback(comebackId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        withdrawShopPartWarrantyClaim(claimId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        releaseShopJobReservations(jobId: ID!, reason: String!, idempotencyKey: String!): JSON
       }
     `,
     resolvers: {
@@ -10615,6 +11538,27 @@ function extendGraphqlSchema(baseSchema) {
         recordShopSupplierInvoice: op(recordShopSupplierInvoice),
         matchShopSupplierInvoice: op(matchShopSupplierInvoice),
         resolveSupplierDiscrepancy: op(resolveSupplierDiscrepancy),
+        clockInShift: op(clockInShift),
+        clockOutShift: op(clockOutShift),
+        startShiftBreak: op(startShiftBreak),
+        endShiftBreak: op(endShiftBreak),
+        startTechJobClock: op(startTechJobClock),
+        stopTechJobClock: op(stopTechJobClock),
+        logJobWaiting: op(logJobWaiting),
+        requestTimeCorrection: op(requestTimeCorrection),
+        saveTechCredential: op(saveTechCredential),
+        assignShopJobTechnicians: op(assignShopJobTechnicians),
+        adjustTechFlaggedHours: op(adjustTechFlaggedHours),
+        closeShopPayPeriod: op(closeShopPayPeriod),
+        exportShopPayPeriod: op(exportShopPayPeriod),
+        openShopComeback: op(openShopComeback),
+        diagnoseShopComeback: op(diagnoseShopComeback),
+        requestComebackGoodwill: op(requestComebackGoodwill),
+        resolveShopComeback: op(resolveShopComeback),
+        createShopPartWarrantyClaim: op(createShopPartWarrantyClaim),
+        cancelShopComeback: op(cancelShopComeback),
+        withdrawShopPartWarrantyClaim: op(withdrawShopPartWarrantyClaim),
+        releaseShopJobReservations: op(releaseShopJobReservations),
         approveShopSupplierInvoice: op(approveShopSupplierInvoice),
         exportShopSupplierInvoice: op(exportShopSupplierInvoice),
         recordShopJobTire: op(recordShopJobTire),

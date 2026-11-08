@@ -4,7 +4,7 @@ import { DomainError, Codes } from '../lib/errors'
 import { needApproval } from '../lib/settlement'
 import { requireShop } from './phase1'
 import { adjustStock, postCycleCount, recordCounts, startCycleCount } from '../lib/cycleCounts'
-import { saveShopItem, type ItemInput } from '../lib/stock'
+import { releaseJobReservations, saveShopItem, type ItemInput } from '../lib/stock'
 import {
   advanceSupplierReturn, beginPlacing, cancelSupplierOrder, confirmSupplierOrder, createSupplierOrder, createSupplierReturn, finishPlacing, issuePartToJob, markCoreReturned,
   receiveSupplierOrder, recordManualPlacement, recordPartQuote, reservePartForJob, resolveUnknownOrder, returnPartFromJob, selectPartQuote, writeOffCore,
@@ -172,6 +172,13 @@ export async function receiveShopSupplierOrder(_root: unknown, args: { input: Re
 }
 
 // ── Stock ─────────────────────────────────────────────────────────────────────
+
+export async function releaseShopJobReservations(_root: unknown, args: { jobId: string; reason: string; idempotencyKey: string }, context: Ctx) {
+  const actor = actorFromSession(context.session)
+  requirePermission(actor, ...PARTS)
+  await shopOf(context, 'job', args.jobId)
+  return run(context, actor, 'stock.release_job', args.idempotencyKey, args, async uow => ({ releasedMilli: await releaseJobReservations(uow, actor, args.jobId, `Released: ${textOf(args.reason, 'Reason', 200, true)}`) }))
+}
 
 export async function reserveJobPart(_root: unknown, args: { jobId: string; shopItemId: string; quantityMilli: number; idempotencyKey: string }, context: Ctx) {
   const actor = actorFromSession(context.session)

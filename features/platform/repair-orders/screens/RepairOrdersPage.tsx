@@ -31,7 +31,10 @@ export default async function RepairOrdersPage({ searchParams }: { searchParams?
                 <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{c.customer?.displayName}</span><span className="font-mono text-xs text-muted-foreground">{c.shop?.name} · {c.reference}</span></div>
                 <Meta>{c.vehicle?.label} · signed by {c.signerName} · {when(c.at, tz)}</Meta>
               </div>
-              <ActionButton op="openShopRepairOrder" vars={{ input: { checkInId: c.id } }} className="bg-primary text-primary-foreground">Open repair order</ActionButton>
+              <div className="flex flex-wrap gap-2">
+                <ActionButton op="openShopRepairOrder" vars={{ input: { checkInId: c.id } }} className="bg-primary text-primary-foreground">Open repair order</ActionButton>
+                <ActionButton op="openShopRepairOrder" vars={{ input: { checkInId: c.id, kind: 'comeback' } }}>Open as a comeback</ActionButton>
+              </div>
             </Row>
           ))}
         </Section>

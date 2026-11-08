@@ -204,7 +204,7 @@ export function PhoneAuthorizationForm({ estimateVersionId, jobs, customerName, 
 }
 
 /** Makes the customer's approval link. Sent by SMS or email when they agreed to transactional messages. */
-export function AuthorizationLinkButton({ estimateVersionId, contacts }: { estimateVersionId: string; contacts: { id: string; kind: string; label: string }[] }) {
+export function AuthorizationLinkButton({ estimateVersionId, contacts, timeZone = 'America/Los_Angeles' }: { estimateVersionId: string; contacts: { id: string; kind: string; label: string }[]; timeZone?: string }) {
   const [open, setOpen] = React.useState(false);
   const usable = contacts.filter(c => c.kind === 'mobile' || c.kind === 'email');
   const [contactId, setContact] = React.useState(usable[0]?.id ?? '');
@@ -214,7 +214,7 @@ export function AuthorizationLinkButton({ estimateVersionId, contacts }: { estim
     const url = typeof window === 'undefined' ? send.result.path : `${window.location.origin}${send.result.path}`;
     return (
       <div className="w-full space-y-1 rounded-md border p-3 text-sm">
-        <div>Link queued to {contact?.label}. It works until {new Date(send.result.expiresAt).toLocaleString('en-US')}.</div>
+        <div>Link queued to {contact?.label}. It works until {new Intl.DateTimeFormat('en-US', { timeZone, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(new Date(send.result.expiresAt))}.</div>
         <div className="break-all font-mono text-xs text-muted-foreground">{url}</div>
       </div>
     );

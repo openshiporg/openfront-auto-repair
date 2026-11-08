@@ -15,6 +15,8 @@ import {
   placeSupplierOrder, postShopCycleCount, receiveShopSupplierOrder, recordShopCounts, recordShopJobTire, recordShopSupplierInvoice, requestSupplierQuote, reserveJobPart, resolveSupplierDiscrepancy,
   resolveUnknownSupplierOrder, startShopCycleCount, sweepShopTireRegistrations, writeOffShopCore, returnJobPart, saveShopPartItem, selectSupplierQuote,
 } from './phase4'
+import { zonedDate } from '../../../lib/zonedTime'
+import { addDays as addCalendarDays } from '../lib/invoiceMath'
 import { loadNorthgateSetup } from './setup'
 import { SHOPS } from '../seed/northgate'
 
@@ -255,10 +257,12 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     expect(cores).toHaveLength(2)
     expect(cores.every(c => c.status === 'owed' && c.coreChargeMinor === 4500n && c.owedTo === 'supplier')).toBe(true)
     const capitolCore = cores.find(c => c.supplierId === capitol)!
-    const days = Math.round((capitolCore.dueAt!.getTime() - Date.now()) / 86_400_000)
-    expect(days).toBe(30)
+    // M1: the window closes on a calendar day in the shop's zone, so it is a plain date, not a moment.
+    const shop = await prisma.shop.findUniqueOrThrow({ where: { id: NGA }, select: { timeZone: true } })
+    const shopToday = zonedDate(shop.timeZone!, new Date())
+    expect(capitolCore.dueAt!.toISOString().slice(0, 10)).toBe(addCalendarDays(shopToday, 30))
     const valleyCore = cores.find(c => c.supplierId === valley)!
-    expect(Math.round((valleyCore.dueAt!.getTime() - Date.now()) / 86_400_000)).toBe(45)
+    expect(valleyCore.dueAt!.toISOString().slice(0, 10)).toBe(addCalendarDays(shopToday, 45))
     coreA = capitolCore.id
     coreB = valleyCore.id
   })

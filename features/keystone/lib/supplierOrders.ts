@@ -6,6 +6,8 @@ import { itemForPart, postMovement, reservedForJob } from './stock'
 import { centsOf, choiceOf, idOf, listOf, milliOf, objectOf, textOf } from './partsInput'
 import { sumMinor } from './money'
 import { extendMinor } from './stockMath'
+import { addDays as addCalendarDays } from './invoiceMath'
+import { zonedDate } from '../../../lib/zonedTime'
 import type { Tx } from './db'
 import type { UnitOfWork } from './unitOfWork'
 
@@ -269,14 +271,16 @@ async function addCoreOwed(uow: UnitOfWork, actor: Actor, a: { shopId: string; s
     await tx.coreObligation.update({ where: { id: existing.id }, data: { coreChargeMinor: { increment: amount } } })
     return
   }
-  const dueAt = new Date(now.getTime() + a.windowDays * 86_400_000)
+  // The return window runs in the shop's days (M1): today there, plus the window, stored as a calendar day.
+  const zone = (await tx.shop.findUnique({ where: { id: a.shopId }, select: { timeZone: true } }))?.timeZone || 'America/Los_Angeles'
+  const dueAt = new Date(`${addCalendarDays(zonedDate(zone, now), a.windowDays)}T00:00:00.000Z`)
   const row = await tx.coreObligation.create({
     data: {
       shopId: a.shopId, supplierId: a.supplierId, jobId: a.orderLine.jobId, jobLineId: a.orderLine.jobLineId ?? null, shopItemId: a.orderLine.shopItemId, partNumber: a.orderLine.partNumber,
       supplierOrderLineId: a.orderLine.id, coreChargeMinor: amount, owedTo: 'supplier', dueAt, status: 'owed',
     },
   })
-  auditCreate(uow, actor, 'CoreObligation', row.id, 'core.owed', { partNumber: a.orderLine.partNumber, coreChargeMinor: amount, dueAt: dueAt.toISOString() })
+  auditCreate(uow, actor, 'CoreObligation', row.id, 'core.owed', { partNumber: a.orderLine.partNumber, coreChargeMinor: amount, dueAt: dueAt.toISOString().slice(0, 10) })
 }
 
 /** The old part went back to the supplier. */

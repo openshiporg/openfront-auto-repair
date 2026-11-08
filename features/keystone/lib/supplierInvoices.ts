@@ -91,6 +91,9 @@ export async function matchSupplierInvoice(uow: UnitOfWork, actor: Actor, input:
       await tx.coreObligation.update({ where: { id: core.id }, data: { status: 'credited', creditedAt: uow.now, supplierInvoiceLineId: credit.line.id, version: { increment: 1 } } })
       auditCreate(uow, actor, 'CoreObligation', core.id, 'core.credited', { invoice: invoice.invoiceNumber, coreChargeMinor: core.coreChargeMinor })
     } else {
+      // Say it once (L1): a core already reported on an earlier invoice is not reported again on every later one.
+      const already = await tx.discrepancy.count({ where: { kind: 'core_not_credited', detail: { contains: `(core ${core.id})` }, invoiceId: { not: invoice.id } } })
+      if (already) continue
       found.push({ kind: 'core_not_credited', amountMinor: BigInt(core.coreChargeMinor), detail: `The ${core.partNumber} core was returned but invoice ${invoice.invoiceNumber} shows no credit. (core ${core.id})`, lineId: null })
     }
   }

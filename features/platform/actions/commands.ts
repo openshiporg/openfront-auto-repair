@@ -100,6 +100,10 @@ const OPS: Record<string, Record<string, string>> = {
   requestComebackGoodwill: { comebackId: 'ID!', reason: 'String!', approvalRequestId: 'ID' },
   resolveShopComeback: { comebackId: 'ID!', resolution: 'String!', comebackJobId: 'ID', expectedVersion: 'Int' },
   createShopPartWarrantyClaim: { comebackId: 'ID!', supplierId: 'ID!', jobLineId: 'ID', laborReimbursementMinor: 'String' },
+  attachShopComebackJob: { comebackId: 'ID!', comebackJobId: 'ID!' },
+  cancelShopComeback: { comebackId: 'ID!', reason: 'String!', expectedVersion: 'Int' },
+  withdrawShopPartWarrantyClaim: { claimId: 'ID!', reason: 'String!', expectedVersion: 'Int' },
+  releaseShopJobReservations: { jobId: 'ID!', reason: 'String!' },
 };
 
 const KEY = /^[A-Za-z0-9._:-]{8,200}$/;

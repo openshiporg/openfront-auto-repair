@@ -80,6 +80,22 @@ export async function reservedForJob(uow: UnitOfWork, jobId: string, shopItemId:
   return Math.max(0, sum._sum.committedDeltaMilli ?? 0)
 }
 
+/**
+ * A job's reservation ends with the job (H3). Whatever it still holds of each item, commits less releases and issues,
+ * goes back to free stock. Safe to call twice: once the held quantity is zero there is nothing to post.
+ */
+export async function releaseJobReservations(uow: UnitOfWork, actor: Actor, jobId: string, why: string) {
+  const held = await uow.tx.stockMovement.groupBy({ by: ['shopItemId'], where: { jobId, shopItemId: { not: null } }, _sum: { committedDeltaMilli: true }, _count: { _all: true } })
+  let released = 0
+  for (const h of held) {
+    const qty = h._sum.committedDeltaMilli ?? 0
+    if (qty <= 0 || !h.shopItemId) continue
+    await postMovement(uow, actor, { shopItemId: h.shopItemId, type: 'release', quantityMilli: qty, jobId, key: `release:${jobId}:${h.shopItemId}:${h._count._all}`, reason: why })
+    released += qty
+  }
+  return released
+}
+
 // ── Item master ───────────────────────────────────────────────────────────────
 
 const UNITS = ['each', 'quart', 'liter', 'gallon', 'ounce', 'pound', 'foot', 'set'] as const

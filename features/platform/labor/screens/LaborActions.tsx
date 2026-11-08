@@ -104,6 +104,34 @@ export function DiagnoseForm({ comebackId }: { comebackId: string }) {
   );
 }
 
+export function AttachJobForm({ comebackId, jobs }: { comebackId: string; jobs: { id: string; label: string }[] }) {
+  const [jobId, setJobId] = React.useState(jobs[0]?.id ?? '');
+  const cmd = useCommand<Waiting>('attachShopComebackJob', LABOR_PATHS);
+  if (!jobs.length) return <p className="text-xs text-muted-foreground">To repeat the repair, open the vehicle&apos;s check-in as a comeback on the Repair orders page, add the job, then link it here.</p>;
+  return (
+    <form className="flex w-full max-w-xl flex-wrap items-end gap-2" onSubmit={e => { e.preventDefault(); cmd.run({ comebackId, comebackJobId: jobId }); }}>
+      <label className={labelClass}>Repeat repair job<select className={inputClass} value={jobId} onChange={e => setJobId(e.target.value)}>{jobs.map(j => <option key={j.id} value={j.id}>{j.label}</option>)}</select></label>
+      <button type="submit" disabled={cmd.pending} className={pillClass}>{cmd.pending ? 'Linking' : 'Link the repair job'}</button>
+      <FormError error={cmd.error} />
+    </form>
+  );
+}
+
+export function ResolveForm({ comebackId, jobs }: { comebackId: string; jobs: { id: string; label: string }[] }) {
+  const [jobId, setJobId] = React.useState('');
+  const [resolution, setResolution] = React.useState('');
+  const cmd = useCommand<Waiting>('resolveShopComeback', LABOR_PATHS);
+  return (
+    <form className="flex w-full max-w-xl flex-col gap-2" onSubmit={e => { e.preventDefault(); cmd.run({ comebackId, resolution, ...(jobId ? { comebackJobId: jobId } : {}) }); }}>
+      <label className={labelClass}>What was done to fix it<input required minLength={5} maxLength={800} className={inputClass} value={resolution} onChange={e => setResolution(e.target.value)} placeholder="Replaced the caliper and bled the brakes" /></label>
+      {jobs.length ? <label className={labelClass}>Repeat repair job (a free repair is paid by the shop)<select className={inputClass} value={jobId} onChange={e => setJobId(e.target.value)}><option value="">None</option>{jobs.map(j => <option key={j.id} value={j.id}>{j.label}</option>)}</select></label> : null}
+      <div><button type="submit" disabled={cmd.pending} className={primary}>{cmd.pending ? 'Saving' : 'Mark fixed'}</button></div>
+      <Waits result={cmd.result} />
+      <FormError error={cmd.error} />
+    </form>
+  );
+}
+
 export function OpenComebackForm({ jobs }: { jobs: { id: string; label: string }[] }) {
   const [jobId, setJobId] = React.useState(jobs[0]?.id ?? '');
   const [concern, setConcern] = React.useState('');

@@ -131,6 +131,10 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         requestComebackGoodwill(comebackId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
         resolveShopComeback(comebackId: ID!, resolution: String!, comebackJobId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
         createShopPartWarrantyClaim(comebackId: ID!, supplierId: ID!, jobLineId: ID, laborReimbursementMinor: String, idempotencyKey: String!): JSON
+        attachShopComebackJob(comebackId: ID!, comebackJobId: ID!, idempotencyKey: String!): JSON
+        cancelShopComeback(comebackId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        withdrawShopPartWarrantyClaim(claimId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        releaseShopJobReservations(jobId: ID!, reason: String!, idempotencyKey: String!): JSON
       }
     `,
     resolvers: {
@@ -235,6 +239,10 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         requestComebackGoodwill: op(p5.requestComebackGoodwill),
         resolveShopComeback: op(p5.resolveShopComeback),
         createShopPartWarrantyClaim: op(p5.createShopPartWarrantyClaim),
+        attachShopComebackJob: op(p5.attachShopComebackJob),
+        cancelShopComeback: op(p5.cancelShopComeback),
+        withdrawShopPartWarrantyClaim: op(p5.withdrawShopPartWarrantyClaim),
+        releaseShopJobReservations: op(p4.releaseShopJobReservations),
         approveShopSupplierInvoice: op(p4.approveShopSupplierInvoice),
         exportShopSupplierInvoice: op(p4.exportShopSupplierInvoice),
         recordShopJobTire: op(p4.recordShopJobTire),

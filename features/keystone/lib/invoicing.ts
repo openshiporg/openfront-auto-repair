@@ -56,6 +56,7 @@ export async function buildInvoicePlan(tx: Tx, repairOrderId: string, now: Date)
   // I-R5: nothing is billed above what the customer authorized (plus the law's tolerance).
   for (const j of billable.filter(x => x.status === 'completed')) {
     if (BigInt(j.totalMinor) === 0n && j.noChargeReason) continue
+    if (j.noChargeReason?.startsWith('Comeback ') && j.payerSplits.some(s => s.payerKind === 'shop_warranty')) continue // the customer is billed $0, so there is no ceiling to hold it to
     try {
       const includesTax = (law.toleranceRule as { includesTax?: boolean } | null)?.includesTax === true
       assertWithinCeiling({ rule: law.toleranceRule, authorizedMinor: includesTax ? j.authorizedAmountMinor : j.authorizedSubtotalMinor, priceMinor: j.subtotalMinor, taxMinor: j.taxMinor, jobId: j.id })
@@ -66,6 +67,21 @@ export async function buildInvoicePlan(tx: Tx, repairOrderId: string, now: Date)
   }
   const law2 = law as { requireOdometerOut?: boolean }
 
+  // I-T2: a new-tire sale carries one tire number per tire, unless the shop's policy lets the numbers follow ("TIN pending").
+  const tinPolicy = ro.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: ro.shopPolicyVersionId }, select: { tinPendingAllowed: true } }) : null
+  if (!tinPolicy?.tinPendingAllowed) {
+    for (const j of billable.filter(x => x.status === 'completed')) {
+      const need = j.lines.filter(l => l.kind === 'tire' && l.isNewTire).reduce((n, l) => n + Math.round((l.quantityMilli ?? 1000) / 1000), 0)
+      if (!need) continue
+      const have = await tx.jobTire.count({ where: { jobId: j.id } })
+      if (have < need) problems.push(`Job ${j.number}, ${j.title}, has ${need} new tire${need === 1 ? '' : 's'} but ${have} tire number${have === 1 ? ' is' : 's are'} recorded. Record every tire's DOT number before invoicing.`)
+    }
+  }
+  // I-W2: a repeat repair the shop covers is never billed to the customer.
+  for (const j of billable.filter(x => x.status === 'completed' && x.noChargeReason?.startsWith('Comeback '))) {
+    if (j.payerSplits.some(s => s.payerKind === 'customer' && Number(s.percent) > 0)) problems.push(`Job ${j.number}, ${j.title}, is a free comeback repair but is still set to bill the customer. Resolve the comeback so the shop's warranty pays for it.`)
+  }
+
   // Payers: each job's split rows; whatever the others don't cover is the customer's.
   const payers = new Map<string, Payer>()
   const lineBuckets = new Map<string, PlannedLine[]>()
@@ -74,6 +90,19 @@ export async function buildInvoicePlan(tx: Tx, repairOrderId: string, now: Date)
     ? { key: payerKeyOf('business_account', ro.businessAccountId, ''), kind: 'business_account', businessAccountId: ro.businessAccountId, customerId: ro.customerId, payorName: ro.businessAccount.name, authorizationNumber: '', claimNumber: '' }
     : customerPayer
   for (const j of billable.filter(x => x.status === 'completed')) {
+    // I-W2: work the shop covers prints on the customer's invoice at $0.00. The customer owes nothing and the shop absorbs the cost.
+    if (j.payerSplits.some(s => s.payerKind === 'shop_warranty') && j.noChargeReason?.startsWith('Comeback ')) {
+      payers.set(customerPayer.key, customerPayer)
+      const bucket = lineBuckets.get(customerPayer.key) ?? []
+      for (const line of j.lines) {
+        bucket.push({
+          kind: line.kind, extendedMinor: 0n, taxMinor: 0n, sourceJobLineId: line.id, jobNumber: j.number, jobTitle: j.title, description: `${line.description} (covered by the shop's warranty)`, partNumber: line.partNumber, brand: line.brand, condition: line.condition ?? '',
+          subletVendorName: line.subletVendorName, quantityMilli: line.quantityMilli, centiHours: line.soldCentiHours, unitPriceMinor: 0n, taxCategoryCode: line.taxCategoryCode, sortOrder: j.number * 1000 + (line.sortOrder ?? 0),
+        })
+      }
+      lineBuckets.set(customerPayer.key, bucket)
+      continue
+    }
     const splits = j.payerSplits.filter(s => s.payerKind !== 'customer' || s.percent)
     const shares: { payer: Payer; share: PayerShare }[] = []
     for (const s of splits) {
@@ -138,7 +167,7 @@ export async function finalizeInvoices(uow: UnitOfWork, actor: Actor, input: Fin
     if (account?.poRequired && !poNumber) problems.push(`${account.name} requires a purchase order number on every invoice.`)
   }
   if (problems.length) {
-    const code = problems.some(p => p.includes('purchase order')) ? Codes.PO_REQUIRED : problems.some(p => p.includes('credit hold')) ? Codes.CREDIT_HOLD : problems.some(p => p.includes('above what the customer authorized')) ? Codes.REAUTHORIZATION_REQUIRED : problems.some(p => p.includes('odometer')) ? Codes.ODOMETER_REQUIRED : Codes.GUARD_FAILED
+    const code = problems.some(p => p.includes('purchase order')) ? Codes.PO_REQUIRED : problems.some(p => p.includes('credit hold')) ? Codes.CREDIT_HOLD : problems.some(p => p.includes('above what the customer authorized')) ? Codes.REAUTHORIZATION_REQUIRED : problems.some(p => p.includes('odometer')) ? Codes.ODOMETER_REQUIRED : problems.some(p => p.includes('DOT number')) ? Codes.TIN_REQUIRED : Codes.GUARD_FAILED
     throw new DomainError(code, problems[0], { problems })
   }
 

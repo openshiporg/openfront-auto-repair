@@ -7,6 +7,7 @@ import { checkSignature, type SignatureInput } from './checkIn'
 import { assertOpen, refreshRoTotals } from './repairOrders'
 import { deriveToken, hashToken, isTokenShape, newTokenId } from './publicTokens'
 import { requireTransactionalConsent } from './inspections'
+import { releaseJobReservations } from './stock'
 import type { Tx } from './db'
 import type { UnitOfWork } from './unitOfWork'
 
@@ -321,6 +322,7 @@ async function applyAnswers(uow: UnitOfWork, actor: Actor, ev: any, ro: any, law
       })
       const to = answer.decision === 'decline' ? 'declined' : 'deferred'
       await transition(uow, { model: 'Job', id: job.id, from: ['offered'], to, actor, eventType: `job.${to}`, metadata: { decisionId: decision.id, method: e.method } })
+      await releaseJobReservations(uow, actor, job.id, `Customer ${to === 'declined' ? 'declined' : 'deferred'} the job`)
       decided.push({ jobId: job.id, number: job.number, decision: to })
     }
   }

@@ -1,9 +1,10 @@
 import { orgTimeZone, q } from '../../lib/server';
+import { zonedDate } from '@/lib/zonedTime';
 import { hours, label, money, when } from '../../lib/format';
 import { Page, Empty, Meta, Section, Stat, Status } from '../../components/ui';
 import { LaborTabs, ShopSwitch, pickShop } from './LaborTabs';
 
-type Shop = { id: string; code: string; name: string };
+type Shop = { id: string; code: string; name: string; timeZone?: string };
 type Cred = { id: string; technician: { id: string } | null; kind: string; identifier: string; issuedAt: string | null; expiresAt: string | null; status: string };
 type Tech = { id: string; displayName: string; payPlan: string; flatRateMinor: string | null; hourlyRateMinor: string | null; skills: string[] | null; rateClasses: string[] | null; active: boolean };
 type Entry = { technician: { id: string } | null; centiHours: number; kind: string; flaggedAt: string };
@@ -14,7 +15,7 @@ const PLAN: Record<string, string> = { flat_rate: 'Flat rate', hourly: 'Hourly',
 /** The people who turn wrenches: pay plan, the certificates they hold, and what they have flagged this period. */
 export default async function TechniciansPage({ searchParams }: { searchParams?: Promise<{ shop?: string }> }) {
   const params = await searchParams;
-  const base = await q<{ shops: Shop[] }>(`{ shops(where: { status: { equals: "active" } }, orderBy: { code: asc }) { id code name } }`);
+  const base = await q<{ shops: Shop[] }>(`{ shops(where: { status: { equals: "active" } }, orderBy: { code: asc }) { id code name timeZone } }`);
   const shop = pickShop(base.shops, params?.shop);
   if (!shop) return <Page title="Technicians"><LaborTabs active="technicians" /><Empty>No shop is set up yet.</Empty></Page>;
   const tz = await orgTimeZone();
@@ -23,7 +24,7 @@ export default async function TechniciansPage({ searchParams }: { searchParams?:
     technicianCredentials(where: { technician: { shop: { id: { equals: "${shop.id}" } } } }, orderBy: { kind: asc }) { id kind identifier issuedAt expiresAt status technician { id } }
     flaggedHoursEntries(where: { shop: { id: { equals: "${shop.id}" } }, payPeriod: { status: { equals: "open" } } }, take: 1000) { technician { id } centiHours kind flaggedAt }
   }`);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = zonedDate(shop.timeZone || tz, new Date());
   const credsOf = (id: string) => d.technicianCredentials.filter(c => c.technician?.id === id);
   const flagged = (id: string) => d.flaggedHoursEntries.filter(e => e.technician?.id === id).reduce((n, e) => n + e.centiHours, 0);
   const lapsed = d.technicianProfiles.filter(t => credsOf(t.id).some(c => c.kind === 'epa_609' && (c.status === 'expired' || (c.expiresAt && c.expiresAt.slice(0, 10) < today)))).length;

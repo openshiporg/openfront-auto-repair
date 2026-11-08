@@ -10,6 +10,7 @@ import { identityHash, priceJob, type JobPrice, type LineInput, type LineKind, t
 import type { UnitOfWork } from './unitOfWork'
 import { flagJob, shopPolicy } from './flagging'
 import { assertCredentialForJob } from './labor'
+import { releaseJobReservations } from './stock'
 import { guideSnapshot, laborGuide, type GuideOperation, type LibraryRow } from '../../integrations/labor-guide'
 
 /*
@@ -472,6 +473,7 @@ export async function completeJob(uow: UnitOfWork, actor: Actor, input: { jobId:
   await assertOpen(uow.tx, job.repairOrderId!)
   await transition(uow, { model: 'Job', id: input.jobId, from: ['in_progress'], to: 'completed', expectedVersion: input.expectedVersion, actor, eventType: 'job.completed', data: { completedAt: uow.now } })
   if (job.concernId) await uow.tx.concern.update({ where: { id: job.concernId }, data: { cause, correction } })
+  await releaseJobReservations(uow, actor, input.jobId, 'Job finished: the unused reservation goes back to stock')
   const ro = await uow.tx.repairOrder.findUniqueOrThrow({ where: { id: job.repairOrderId! }, select: { shopId: true, warrantyTermSetVersionId: true } })
   // The job carries the shop's standard warranty term from the set pinned on the order (I-W1), unless one was chosen.
   if (!(await uow.tx.job.findUnique({ where: { id: input.jobId }, select: { warrantyTermId: true } }))?.warrantyTermId && ro.warrantyTermSetVersionId) {
@@ -482,11 +484,19 @@ export async function completeJob(uow: UnitOfWork, actor: Actor, input: { jobId:
   return { id: input.jobId, status: 'completed' }
 }
 
-/** Pre-work void (SM§3). */
+/** Pre-work void (SM§3). A job the customer authorized can still be withdrawn before any part is issued or any time is clocked; its reservation is released. */
 export async function voidJob(uow: UnitOfWork, actor: Actor, input: { jobId: string; expectedVersion: number; reason: string }) {
   const reason = String(input.reason ?? '').trim().slice(0, 300)
   if (!reason) throw new DomainError(Codes.INVALID_INPUT, 'Say why the job is removed.', { field: 'reason' })
-  await transition(uow, { model: 'Job', id: input.jobId, from: ['draft', 'priced', 'offered', 'declined', 'deferred'], to: 'voided', expectedVersion: input.expectedVersion, actor, eventType: 'job.voided', reason })
+  await transition(uow, {
+    model: 'Job', id: input.jobId, from: ['draft', 'priced', 'offered', 'authorized', 'declined', 'deferred'], to: 'voided', expectedVersion: input.expectedVersion, actor, eventType: 'job.voided', reason,
+    guard: async (j: any) => {
+      if (j.workStartedAt) throw new DomainError(Codes.GUARD_FAILED, 'Work has started on this job, so it cannot be voided.')
+      const issued = await uow.tx.stockMovement.count({ where: { jobId: j.id, type: 'issue' } })
+      if (issued) throw new DomainError(Codes.GUARD_FAILED, 'Parts were issued to this job. Return them to stock before voiding it.')
+    },
+  })
+  await releaseJobReservations(uow, actor, input.jobId, `Job voided: ${reason}`)
   const job = await uow.tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { repairOrderId: true } })
   await refreshRoTotals(uow.tx, job.repairOrderId!)
   return { id: input.jobId, status: 'voided' }

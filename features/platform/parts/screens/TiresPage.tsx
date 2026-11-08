@@ -4,12 +4,12 @@ import { Page, Empty, Meta, Section, Stat, Status } from '../../components/ui';
 import { PartsTabs } from './PartsTabs';
 import { TireCompleteForm, Act } from './PartsActions';
 
-type Ob = { id: string; tireDescription: string; tins: string[] | null; dueAt: string | null; status: string; method: string | null; purchaserName: string; invoice: { id: string; invoiceNumber: string; repairOrder: { id: string } | null } | null };
+type Ob = { id: string; tireDescription: string; tins: string[] | null; dueAt: string | null; status: string; method: string | null; purchaserName: string; invoice: { id: string; invoiceNumber: string; repairOrder: { id: string } | null } | null; shop: { timeZone: string } | null };
 
 /** New-tire sales owe a registration within 30 days. A late one turns Overdue by itself. */
 export default async function TiresPage() {
   const { tireRegistrationObligations } = await q<{ tireRegistrationObligations: Ob[] }>(`{ tireRegistrationObligations(orderBy: { dueAt: asc }, take: 200) {
-    id tireDescription tins dueAt status method purchaserName invoice { id invoiceNumber repairOrder { id } } } }`);
+    id tireDescription tins dueAt status method purchaserName invoice { id invoiceNumber repairOrder { id } } shop { timeZone } } }`);
   const all = tireRegistrationObligations;
   const active = all.filter(o => ['open', 'overdue'].includes(o.status));
   const waiting = all.filter(o => ['handed_over', 'submitted'].includes(o.status));

@@ -249,7 +249,7 @@ export const CoreObligation = list({
     supplierInvoiceLine: relationship({ ref: 'SupplierInvoiceLine', ...readOnly }),
     writeOffReason: systemText(),
     approval: relationship({ ref: 'ApprovalRequest', ...readOnly }),
-    dueAt: timestamp({ ...readOnly }),
+    dueAt: calendarDay({ ...readOnly }),
     status: lifecycle(['owed', 'returned', 'credited', 'customer_charged', 'written_off']),
     version: versionField(),
     ...trackingFields,

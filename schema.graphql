@@ -3572,6 +3572,7 @@ type ShopPolicyVersion {
   flagHoursAt: String
   comebackPayRule: String
   allowConcurrentJobClocks: Boolean
+  tinPendingAllowed: Boolean
   requireQualityCheck: Boolean
   diagnosisTrustThreshold: Decimal
   authorizationLinkTtlHours: Int
@@ -3616,6 +3617,7 @@ input ShopPolicyVersionWhereInput {
   flagHoursAt: StringFilter
   comebackPayRule: StringFilter
   allowConcurrentJobClocks: BooleanFilter
+  tinPendingAllowed: BooleanFilter
   requireQualityCheck: BooleanFilter
   diagnosisTrustThreshold: DecimalFilter
   authorizationLinkTtlHours: IntFilter
@@ -3647,6 +3649,7 @@ input ShopPolicyVersionOrderByInput {
   flagHoursAt: OrderDirection
   comebackPayRule: OrderDirection
   allowConcurrentJobClocks: OrderDirection
+  tinPendingAllowed: OrderDirection
   requireQualityCheck: OrderDirection
   diagnosisTrustThreshold: OrderDirection
   authorizationLinkTtlHours: OrderDirection
@@ -3676,6 +3679,7 @@ input ShopPolicyVersionUpdateInput {
   flagHoursAt: String
   comebackPayRule: String
   allowConcurrentJobClocks: Boolean
+  tinPendingAllowed: Boolean
   requireQualityCheck: Boolean
   diagnosisTrustThreshold: Decimal
   authorizationLinkTtlHours: Int
@@ -3717,6 +3721,7 @@ input ShopPolicyVersionCreateInput {
   flagHoursAt: String
   comebackPayRule: String
   allowConcurrentJobClocks: Boolean
+  tinPendingAllowed: Boolean
   requireQualityCheck: Boolean
   diagnosisTrustThreshold: Decimal
   authorizationLinkTtlHours: Int
@@ -10309,7 +10314,7 @@ type CoreObligation {
   supplierInvoiceLine: SupplierInvoiceLine
   writeOffReason: String
   approval: ApprovalRequest
-  dueAt: DateTime
+  dueAt: CalendarDay
   status: String
   version: Int
   createdAt: DateTime
@@ -10341,7 +10346,7 @@ input CoreObligationWhereInput {
   supplierInvoiceLine: SupplierInvoiceLineWhereInput
   writeOffReason: StringFilter
   approval: ApprovalRequestWhereInput
-  dueAt: DateTimeNullableFilter
+  dueAt: CalendarDayNullableFilter
   status: StringFilter
   version: IntFilter
   createdAt: DateTimeFilter
@@ -10381,7 +10386,7 @@ input CoreObligationUpdateInput {
   supplierInvoiceLine: SupplierInvoiceLineRelateToOneForUpdateInput
   writeOffReason: String
   approval: ApprovalRequestRelateToOneForUpdateInput
-  dueAt: DateTime
+  dueAt: CalendarDay
   status: String
   version: Int
   createdAt: DateTime
@@ -10434,7 +10439,7 @@ input CoreObligationCreateInput {
   supplierInvoiceLine: SupplierInvoiceLineRelateToOneForCreateInput
   writeOffReason: String
   approval: ApprovalRequestRelateToOneForCreateInput
-  dueAt: DateTime
+  dueAt: CalendarDay
   status: String
   version: Int
   createdAt: DateTime
@@ -12519,6 +12524,8 @@ type PartWarrantyClaim {
   jobLine: JobLine
   claimNumber: String
   laborReimbursementMinor: BigInt
+  voidReason: String
+  voidedAt: DateTime
   status: String
   version: Int
   createdAt: DateTime
@@ -12540,6 +12547,8 @@ input PartWarrantyClaimWhereInput {
   jobLine: JobLineWhereInput
   claimNumber: StringFilter
   laborReimbursementMinor: BigIntFilter
+  voidReason: StringFilter
+  voidedAt: DateTimeNullableFilter
   status: StringFilter
   version: IntFilter
   createdAt: DateTimeFilter
@@ -12550,6 +12559,8 @@ input PartWarrantyClaimOrderByInput {
   id: OrderDirection
   claimNumber: OrderDirection
   laborReimbursementMinor: OrderDirection
+  voidReason: OrderDirection
+  voidedAt: OrderDirection
   status: OrderDirection
   version: OrderDirection
   createdAt: OrderDirection
@@ -12563,6 +12574,8 @@ input PartWarrantyClaimUpdateInput {
   jobLine: JobLineRelateToOneForUpdateInput
   claimNumber: String
   laborReimbursementMinor: BigInt
+  voidReason: String
+  voidedAt: DateTime
   status: String
   version: Int
   createdAt: DateTime
@@ -12587,6 +12600,8 @@ input PartWarrantyClaimCreateInput {
   jobLine: JobLineRelateToOneForCreateInput
   claimNumber: String
   laborReimbursementMinor: BigInt
+  voidReason: String
+  voidedAt: DateTime
   status: String
   version: Int
   createdAt: DateTime
@@ -13786,6 +13801,27 @@ type Mutation {
   completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
   confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
   sweepShopTireRegistrations(idempotencyKey: String!): JSON
+  clockInShift(shopId: ID!, idempotencyKey: String!): JSON
+  clockOutShift(shopId: ID!, idempotencyKey: String!): JSON
+  startShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
+  endShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
+  startTechJobClock(jobId: ID!, idempotencyKey: String!): JSON
+  stopTechJobClock(jobClockId: ID!, idempotencyKey: String!): JSON
+  logJobWaiting(jobClockId: ID!, reason: String, resume: Boolean, note: String, idempotencyKey: String!): JSON
+  requestTimeCorrection(input: JSON!, idempotencyKey: String!): JSON
+  saveTechCredential(input: JSON!, idempotencyKey: String!): JSON
+  assignShopJobTechnicians(jobId: ID!, shares: JSON!, idempotencyKey: String!): JSON
+  adjustTechFlaggedHours(technicianId: ID!, jobId: ID!, centiHours: Int!, reason: String!, idempotencyKey: String!): JSON
+  closeShopPayPeriod(payPeriodId: ID!, approvalRequestId: ID, idempotencyKey: String!): JSON
+  exportShopPayPeriod(payPeriodId: ID!, idempotencyKey: String!): JSON
+  openShopComeback(originalJobId: ID!, concern: String!, odometer: Int, idempotencyKey: String!): JSON
+  diagnoseShopComeback(comebackId: ID!, cause: String!, diagnosis: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+  requestComebackGoodwill(comebackId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+  resolveShopComeback(comebackId: ID!, resolution: String!, comebackJobId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+  createShopPartWarrantyClaim(comebackId: ID!, supplierId: ID!, jobLineId: ID, laborReimbursementMinor: String, idempotencyKey: String!): JSON
+  cancelShopComeback(comebackId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+  withdrawShopPartWarrantyClaim(claimId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+  releaseShopJobReservations(jobId: ID!, reason: String!, idempotencyKey: String!): JSON
 }
 
 union UserAuthenticationWithPasswordResult = UserAuthenticationWithPasswordSuccess | UserAuthenticationWithPasswordFailure

@@ -12,8 +12,9 @@ import { addRepairJob, openShopRepairOrder, recordCustomerAuthorization, sendRep
 import { finalizeShopInvoice } from './phase3'
 import {
   adjustTechFlaggedHours, assignShopJobTechnicians, clockInShift, clockOutShift, closeShopPayPeriod, createShopPartWarrantyClaim, diagnoseShopComeback, endShiftBreak, exportShopPayPeriod, logJobWaiting,
-  openShopComeback, requestComebackGoodwill, requestTimeCorrection, resolveShopComeback, saveTechCredential, startShiftBreak, startTechJobClock, stopTechJobClock,
+  attachShopComebackJob, cancelShopComeback, openShopComeback, requestComebackGoodwill, withdrawShopPartWarrantyClaim, requestTimeCorrection, resolveShopComeback, saveTechCredential, startShiftBreak, startTechJobClock, stopTechJobClock,
 } from './phase5'
+import { recordShopJobTire, reserveJobPart, issueJobPart } from './phase4'
 import { loadNorthgateSetup } from './setup'
 import { SHOPS } from '../seed/northgate'
 
@@ -28,13 +29,18 @@ const COUNTER = ['canAccessDashboard', 'canReadRepairOrders', 'canWriteRepairOrd
 const TECH = ['canAccessDashboard', 'canReadRepairOrders', 'canWriteRepairOrders', 'canClockSelf']
 const MANAGER = [...COUNTER, 'canManageTime', 'canApproveTime', 'canClosePayPeriod', 'canReadTechPay', 'canManageComebacks']
 const OWNER_EXTRA = [...MANAGER, 'canApproveGoodwill']
+const PARTS_DESK = [...MANAGER, 'canManageParts', 'canOrderParts', 'canReceiveParts', 'canSeeCost', 'canManageTireRegistrations']
+const TIRES = [
+  { kind: 'labor', description: 'Mount and balance four tires', rateClassCode: 'general', soldCentiHours: 100 },
+  { kind: 'tire', description: 'Michelin Pilot Sport 225/45R17 94W', partNumber: 'XPS-22545R17', brand: 'Michelin', partCategory: 'tires', condition: 'new', quantityMilli: 4000, unitCostMinor: '17900', isNewTire: true, tireSize: '225/45R17' },
+]
 const BRAKES = [{ kind: 'labor', description: 'Front brake pads and rotors, replace', rateClassCode: 'general', soldCentiHours: 125 }]
 const AC_JOB = [{ kind: 'labor', description: 'A/C system, evacuate and recharge', rateClassCode: 'general', soldCentiHours: 100 }]
 
 describe.skipIf(!hasTestDatabase)('Phase 5 labor, flagged hours, pay periods and comebacks (database)', () => {
   let prisma: PrismaClient
   type Ctx = { session: unknown; prisma: PrismaClient }
-  let owner: Ctx, advisor: Ctx, manager: Ctx, goodwillOwner: Ctx, ramirez: Ctx, tran: Ctx, holloway: Ctx
+  let desk: Ctx, owner: Ctx, advisor: Ctx, manager: Ctx, goodwillOwner: Ctx, ramirez: Ctx, tran: Ctx, holloway: Ctx
   const key = (p: string) => uniqueKey(p)
   const profile = (userId: string) => prisma.technicianProfile.findFirstOrThrow({ where: { userId, shopId: NGA } })
   const sumFor = async (jobId: string) => (await prisma.flaggedHoursEntry.aggregate({ where: { jobId }, _sum: { centiHours: true } }))._sum.centiHours ?? 0
@@ -78,6 +84,7 @@ describe.skipIf(!hasTestDatabase)('Phase 5 labor, flagged hours, pay periods and
     manager = { session: sessionFor(m.id, MANAGER), prisma }
     goodwillOwner = { session: sessionFor(g.id, OWNER_EXTRA), prisma }
     await loadNorthgateSetup(null, { idempotencyKey: key('setup') }, owner)
+    desk = { session: sessionFor(m.id, PARTS_DESK), prisma }
     ramirez = { session: sessionFor('seed_user_ramirez', TECH), prisma }
     tran = { session: sessionFor('seed_user_tran', TECH), prisma }
     holloway = { session: sessionFor('seed_user_holloway', TECH), prisma }
@@ -287,5 +294,163 @@ describe.skipIf(!hasTestDatabase)('Phase 5 labor, flagged hours, pay periods and
       expect(await sumFor(j.id)).toBe(sold + rest)
     }
     expect((await verifyAuditChain(prisma)).ok).toBe(true)
+  })
+
+  // ── Review fixes (C1, C2, H1, H2, H3, M3, M4) ─────────────────────────────────────
+
+  /** A comeback repair order for the same customer and vehicle, with the repeat job priced and (when asked) started. */
+  async function comebackRepairOrder(customerId: string) {
+    const owned = await prisma.vehicleOwnership.findFirstOrThrow({ where: { customerId, endedAt: null }, include: { vehicle: true } })
+    // The comeback is days after the first visit; the 12-hour duplicate check-in guard must not see the old one.
+    await prisma.$executeRawUnsafe(`ALTER TABLE "CheckIn" DISABLE TRIGGER USER`)
+    await prisma.$executeRawUnsafe(`UPDATE "CheckIn" SET "at" = now() - interval '5 days' WHERE "vehicle" = '${owned.vehicleId}'`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "CheckIn" ENABLE TRIGGER USER`)
+    const checkIn = await checkInShopVehicle(null, { input: { shopId: NGA, customerId, vehicleId: owned.vehicleId!, concerns: ['Grinding is back'], promisedAt: new Date(Date.now() + 86_400_000).toISOString(), odometer: { value: (owned.vehicle!.lastOdometer ?? 0) + 300 }, signature: SIGNATURE, contactPreference: 'sms', transportationNeed: 'none' }, idempotencyKey: key('ci') }, advisor) as { id: string }
+    return (await openShopRepairOrder(null, { input: { checkInId: checkIn.id, kind: 'comeback' }, idempotencyKey: key('ro') }, advisor) as { id: string }).id
+  }
+
+  it('C1: a free comeback is billed $0 on a comeback order and starts without authorization; a job on another customer or one already billed is refused', { timeout: 900_000 }, async () => {
+    const ro = await newRepairOrder('seed_cust_12')
+    const original = await authorizedJob(ro, BRAKES)
+    await assignShopJobTechnicians(null, { jobId: original, shares: [{ userId: 'seed_user_ramirez' }], idempotencyKey: key('as') }, manager)
+    await start(original); await complete(original); await invoice(ro)
+    const cb = await openShopComeback(null, { originalJobId: original, concern: 'Squeal is back on the left side', idempotencyKey: key('cb') }, manager) as { id: string; noCharge: boolean }
+    expect(cb.noCharge).toBe(true)
+    await diagnoseShopComeback(null, { comebackId: cb.id, cause: 'workmanship', diagnosis: 'Shim left out on reassembly', idempotencyKey: key('dg') }, manager)
+
+    // A job on someone else's order is refused.
+    const strangerRo = await newRepairOrder('seed_cust_13')
+    const strangerJob = (await addRepairJob(null, { input: { repairOrderId: strangerRo, title: 'Stranger job', lines: BRAKES }, idempotencyKey: key('j') }, advisor) as { id: string }).id
+    await expect(attachShopComebackJob(null, { comebackId: cb.id, comebackJobId: strangerJob, idempotencyKey: key('at') }, manager)).rejects.toMatchObject({ code: 'GUARD_FAILED' })
+    // The original, already-billed job is refused too, and a free repair must sit on a comeback order.
+    await expect(attachShopComebackJob(null, { comebackId: cb.id, comebackJobId: original, idempotencyKey: key('at') }, manager)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
+    const sameCustomerStandard = await prisma.repairOrder.findUniqueOrThrow({ where: { id: ro } })
+    expect(sameCustomerStandard.kind).toBe('standard')
+
+    // The right job: same customer and vehicle, on a comeback order.
+    const cbRo = await comebackRepairOrder('seed_cust_12')
+    const repeat = (await addRepairJob(null, { input: { repairOrderId: cbRo, title: 'Redo the front brakes', lines: BRAKES }, idempotencyKey: key('j') }, advisor) as { id: string }).id
+    await attachShopComebackJob(null, { comebackId: cb.id, comebackJobId: repeat, idempotencyKey: key('at') }, manager)
+    const splits = await prisma.payerSplit.findMany({ where: { jobId: repeat } })
+    expect(splits.map(x => x.payerKind)).toEqual(['shop_warranty'])
+    // No authorization was recorded, yet work can start and finish.
+    expect(await prisma.authorization.count({ where: { jobId: repeat } })).toBe(0)
+    await start(repeat)
+    await complete(repeat)
+    await resolveShopComeback(null, { comebackId: cb.id, resolution: 'Fitted the shim, road-tested', comebackJobId: repeat, idempotencyKey: key('rs') }, manager)
+    const fin = await invoice(cbRo)
+    const inv = await prisma.invoice.findUniqueOrThrow({ where: { id: fin.invoices[0].id }, include: { lines: true } })
+    expect(inv.totalMinor).toBe(0n)
+    expect(inv.balanceMinor).toBe(0n)
+    expect(inv.lines.length).toBeGreaterThan(0)
+    expect(inv.lines.every(l => l.extendedMinor === 0n && l.taxMinor === 0n)).toBe(true)
+    // Once billed, that job can no longer be the repeat repair for another case.
+    const second = await openShopComeback(null, { originalJobId: repeat, concern: 'Still squeaking', idempotencyKey: key('cb') }, manager) as { id: string }
+    await diagnoseShopComeback(null, { comebackId: second.id, cause: 'workmanship', diagnosis: 'Rotor runout', idempotencyKey: key('dg') }, manager)
+    await expect(attachShopComebackJob(null, { comebackId: second.id, comebackJobId: repeat, idempotencyKey: key('at') }, manager)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
+  })
+
+  it('H1 and M4: one supplier claim per comeback per part line, the labor sign is kept, and a wrong claim is withdrawn with a reason', { timeout: 600_000 }, async () => {
+    const ro = await newRepairOrder('seed_cust_14')
+    const jobId = await authorizedJob(ro, BRAKES)
+    await assignShopJobTechnicians(null, { jobId, shares: [{ userId: 'seed_user_ramirez' }], idempotencyKey: key('as') }, manager)
+    await start(jobId); await complete(jobId); await invoice(ro)
+    const cb = await openShopComeback(null, { originalJobId: jobId, concern: 'Pedal pulsates', idempotencyKey: key('cb') }, manager) as { id: string }
+    await diagnoseShopComeback(null, { comebackId: cb.id, cause: 'part_failure', diagnosis: 'Rotor warped inside the warranty', idempotencyKey: key('dg') }, manager)
+    const supplier = await prisma.supplier.findFirstOrThrow()
+    await expect(createShopPartWarrantyClaim(null, { comebackId: cb.id, supplierId: supplier.id, laborReimbursementMinor: '-24750', idempotencyKey: key('wc') }, manager)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
+    const first = await createShopPartWarrantyClaim(null, { comebackId: cb.id, supplierId: supplier.id, laborReimbursementMinor: '24750', idempotencyKey: key('wc') }, manager) as { id: string }
+    await expect(createShopPartWarrantyClaim(null, { comebackId: cb.id, supplierId: supplier.id, laborReimbursementMinor: '24750', idempotencyKey: key('wc') }, manager)).rejects.toMatchObject({ code: 'DUPLICATE' })
+    // Two at the same moment: exactly one lands.
+    await withdrawShopPartWarrantyClaim(null, { claimId: first.id, reason: 'Raised on the wrong supplier', idempotencyKey: key('wd') }, manager)
+    const race = await Promise.allSettled([1, 2].map(() => createShopPartWarrantyClaim(null, { comebackId: cb.id, supplierId: supplier.id, laborReimbursementMinor: '9500', idempotencyKey: key('wc') }, manager)))
+    expect(race.filter(r => r.status === 'fulfilled')).toHaveLength(1)
+    const live = await prisma.partWarrantyClaim.findMany({ where: { comebackId: cb.id, status: { notIn: ['withdrawn', 'denied'] } } })
+    expect(live).toHaveLength(1)
+    expect(live[0].laborReimbursementMinor).toBe(9500n)
+    const gone = await prisma.partWarrantyClaim.findUniqueOrThrow({ where: { id: first.id } })
+    expect(gone).toMatchObject({ status: 'withdrawn', voidReason: 'Raised on the wrong supplier' })
+    expect(gone.voidedAt).not.toBeNull()
+    // The database says the same.
+    await expect(prisma.$executeRawUnsafe(`UPDATE "PartWarrantyClaim" SET "laborReimbursementMinor" = -1 WHERE id = '${live[0].id}'`)).rejects.toThrow(/PartWarrantyClaim_money_nonnegative/)
+    await expect(prisma.partWarrantyClaim.create({ data: { comebackId: cb.id, supplierId: supplier.id, claimNumber: 'WC-DUP-1', status: 'draft' } })).rejects.toThrow(/Unique constraint failed.*comeback/s)
+  })
+
+  it('H2: two comebacks opened at the same moment for one job make one case; a cancelled case frees the job', { timeout: 600_000 }, async () => {
+    const ro = await newRepairOrder('seed_cust_15')
+    const jobId = await authorizedJob(ro, BRAKES)
+    await assignShopJobTechnicians(null, { jobId, shares: [{ userId: 'seed_user_ramirez' }], idempotencyKey: key('as') }, manager)
+    await start(jobId); await complete(jobId); await invoice(ro)
+    const race = await Promise.allSettled([1, 2, 3].map(i => openShopComeback(null, { originalJobId: jobId, concern: `Noise again ${i}`, idempotencyKey: key('cb') }, manager)))
+    expect(race.filter(r => r.status === 'fulfilled')).toHaveLength(1)
+    const cases = await prisma.comebackCase.findMany({ where: { originalJobId: jobId } })
+    expect(cases).toHaveLength(1)
+    await expect(prisma.comebackCase.create({ data: { originalJobId: jobId, reference: 'CB-DUP-1', status: 'open', shopId: NGA } })).rejects.toThrow(/Unique constraint failed.*originalJob/s)
+    await cancelShopComeback(null, { comebackId: cases[0].id, reason: 'Customer withdrew the complaint', idempotencyKey: key('cx') }, manager)
+    await openShopComeback(null, { originalJobId: jobId, concern: 'It really is back', idempotencyKey: key('cb') }, manager)
+  })
+
+  it('C2: a new-tire sale is not invoiced without every tire number, unless the policy allows TIN pending; a later number reaches the registration', { timeout: 900_000 }, async () => {
+    const ro = await newRepairOrder('seed_cust_16')
+    const jobId = await authorizedJob(ro, TIRES)
+    const tins = ['DOT C4JX5D9S3423', 'DOT C4JX5D9S3523', 'DOT C4JX5D9S3623', 'DOT C4JX5D9S3723']
+    for (const [i, tin] of tins.slice(0, 2).entries()) await recordShopJobTire(null, { jobId, tireSize: '225/45R17', position: ['LF', 'RF'][i], tin, idempotencyKey: key('tin') }, desk)
+    await start(jobId); await complete(jobId)
+    const r = await prisma.repairOrder.findUniqueOrThrow({ where: { id: ro }, include: { vehicle: true } })
+    const finalize = () => finalizeShopInvoice(null, { input: { repairOrderId: ro, expectedVersion: r.version, odometerOut: (r.vehicle!.lastOdometer ?? 0) + 5 }, idempotencyKey: key('f') }, advisor) as Promise<{ invoices: { id: string }[] }>
+    await expect(finalize()).rejects.toMatchObject({ code: 'TIN_REQUIRED' })
+    expect(await prisma.invoice.count({ where: { repairOrderId: ro } })).toBe(0)
+    // The shop allows TIN pending: the invoice goes out and the numbers stay owed.
+    const pinned = await prisma.repairOrder.findUniqueOrThrow({ where: { id: ro }, select: { shopPolicyVersionId: true } })
+    await prisma.$executeRawUnsafe(`ALTER TABLE "ShopPolicyVersion" DISABLE TRIGGER USER`)
+    await prisma.shopPolicyVersion.update({ where: { id: pinned.shopPolicyVersionId! }, data: { tinPendingAllowed: true } })
+    await prisma.$executeRawUnsafe(`ALTER TABLE "ShopPolicyVersion" ENABLE TRIGGER USER`)
+    const fin = await finalize()
+    const ob = await prisma.tireRegistrationObligation.findFirstOrThrow({ where: { invoiceId: fin.invoices[0].id } })
+    expect((ob.tins as string[]).length).toBe(2)
+    for (const [i, tin] of tins.slice(2).entries()) await recordShopJobTire(null, { jobId, tireSize: '225/45R17', position: ['LR', 'RR'][i], tin, idempotencyKey: key('tin') }, desk)
+    const after = await prisma.tireRegistrationObligation.findUniqueOrThrow({ where: { id: ob.id } })
+    expect((after.tins as string[]).sort()).toEqual(['C4JX5D9S3423', 'C4JX5D9S3523', 'C4JX5D9S3623', 'C4JX5D9S3723'])
+  })
+
+  it('H3: a reservation is released when its job completes, is voided or is declined, and the ledger nets to zero', { timeout: 900_000 }, async () => {
+    const stock = await prisma.shopItem.findFirstOrThrow({ where: { shopId: NGA, sku: 'BRK-PAD-P06075' }, include: { stock: true } })
+    const committed = async () => (await prisma.stockLevel.findFirstOrThrow({ where: { shopItem: { id: stock.id } } })).committedMilli
+    const before = await committed()
+    const PAD_JOB = [...BRAKES, { kind: 'part', description: 'Front brake pad set', partNumber: 'P06075', brand: 'Brembo', partCategory: 'brakes', condition: 'new', quantityMilli: 1000, unitCostMinor: '4800' }]
+    // Completed without the part being issued.
+    const ro1 = await newRepairOrder('seed_cust_17')
+    const j1 = await authorizedJob(ro1, PAD_JOB)
+    await reserveJobPart(null, { jobId: j1, shopItemId: stock.id, quantityMilli: 1000, idempotencyKey: key('rv') }, desk)
+    expect(await committed()).toBe(before + 1000)
+    await start(j1); await complete(j1)
+    expect(await committed()).toBe(before)
+    // Voided before work starts.
+    const ro2 = await newRepairOrder('seed_cust_18')
+    const j2 = await authorizedJob(ro2, PAD_JOB)
+    await reserveJobPart(null, { jobId: j2, shopItemId: stock.id, quantityMilli: 1000, idempotencyKey: key('rv') }, desk)
+    expect(await committed()).toBe(before + 1000)
+    const row = await prisma.job.findUniqueOrThrow({ where: { id: j2 } })
+    await transitionRepairJob(null, { jobId: j2, to: 'voided', reason: 'Customer picked up the car and left', expectedVersion: row.version, idempotencyKey: key('vd') }, advisor)
+    expect(await committed()).toBe(before)
+    // A job that issued a part cannot simply be voided.
+    const ro3 = await newRepairOrder('seed_cust_19')
+    const j3 = await authorizedJob(ro3, PAD_JOB)
+    await reserveJobPart(null, { jobId: j3, shopItemId: stock.id, quantityMilli: 1000, idempotencyKey: key('rv') }, desk)
+    await issueJobPart(null, { jobId: j3, shopItemId: stock.id, quantityMilli: 1000, idempotencyKey: key('is') }, desk)
+    const row3 = await prisma.job.findUniqueOrThrow({ where: { id: j3 } })
+    await expect(transitionRepairJob(null, { jobId: j3, to: 'voided', reason: 'Changed our mind', expectedVersion: row3.version, idempotencyKey: key('vd') }, advisor)).rejects.toMatchObject({ code: 'GUARD_FAILED' })
+    // For every job and item, commits less releases and issues add up to nothing once the job is finished.
+    const rows = await prisma.stockMovement.groupBy({ by: ['jobId', 'shopItemId'], where: { jobId: { in: [j1, j2] } }, _sum: { committedDeltaMilli: true } })
+    expect(rows.every(r => (r._sum.committedDeltaMilli ?? 0) === 0)).toBe(true)
+  })
+
+  it('M1 and M3: a core falls due on the shop day, and the database refuses a receipt above the quantity ordered', { timeout: 120_000 }, async () => {
+    const cores = await prisma.$queryRawUnsafe<{ data_type: string }[]>(`SELECT data_type FROM information_schema.columns WHERE table_name = 'CoreObligation' AND column_name = 'dueAt' AND table_schema = current_schema()`)
+    expect(cores[0].data_type).toBe('date')
+    const names = await prisma.$queryRawUnsafe<{ conname: string }[]>(`SELECT conname FROM pg_constraint WHERE conrelid = '"SupplierOrderLine"'::regclass AND contype = 'c'`)
+    expect(names.map(n => n.conname)).toEqual(expect.arrayContaining(['SupplierOrderLine_quantities_sane', 'SupplierOrderLine_received_within_ordered']))
+    const def = await prisma.$queryRawUnsafe<{ def: string }[]>(`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'SupplierOrderLine_received_within_ordered'`)
+    expect(def[0].def).toMatch(/receivedQuantityMilli.*<=.*quantityMilli/)
   })
 })

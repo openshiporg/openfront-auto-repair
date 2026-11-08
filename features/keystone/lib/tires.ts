@@ -2,6 +2,7 @@ import { actorUserId, type Actor } from './actor'
 import { auditCreate, transition } from './cas'
 import { Codes, DomainError } from './errors'
 import { choiceOf, idOf, textOf } from './partsInput'
+import { zonedDate } from '../../../lib/zonedTime'
 import type { UnitOfWork } from './unitOfWork'
 
 /*
@@ -30,6 +31,14 @@ export async function recordJobTire(uow: UnitOfWork, actor: Actor, input: { jobI
   if (dupe) throw new DomainError(Codes.DUPLICATE, 'That tire number is already recorded' + (dupe.jobId === job.id ? ' on this job.' : ' on another job. Check the sidewall.'), { field: 'tin' })
   const row = await uow.tx.jobTire.create({ data: { jobId: job.id, tireSize: textOf(input.tireSize, 'Tire size', 30), position, tin, recordedById: actorUserId(actor) } })
   auditCreate(uow, actor, 'JobTire', row.id, 'job_tire.recorded', { position, tin, tireSize: row.tireSize })
+  // A number recorded after the invoice goes onto the registration that is still owed (C2).
+  const owed = await uow.tx.tireRegistrationObligation.findMany({ where: { status: { in: ['open', 'overdue'] }, jobLine: { jobId: job.id } }, select: { id: true, tins: true } })
+  for (const ob of owed) {
+    const tins = Array.isArray(ob.tins) ? (ob.tins as string[]) : []
+    if (tins.includes(tin)) continue
+    await uow.tx.tireRegistrationObligation.update({ where: { id: ob.id }, data: { tins: [...tins, tin], version: { increment: 1 } } })
+    auditCreate(uow, actor, 'TireRegistrationObligation', ob.id, 'tire_registration.tin_added', { tin, count: tins.length + 1 })
+  }
   return { id: row.id, tin }
 }
 
@@ -83,10 +92,15 @@ export async function confirmTireRegistration(uow: UnitOfWork, actor: Actor, inp
   return { id: input.obligationId }
 }
 
-/** Worker sweep: open registrations past their due day become overdue. */
+/** Worker sweep: open registrations past their due day, counted in each shop's own day, become overdue. */
 export async function sweepTireRegistrations(uow: UnitOfWork, actor: Actor) {
-  const today = new Date(Date.UTC(uow.now.getUTCFullYear(), uow.now.getUTCMonth(), uow.now.getUTCDate()))
-  const due = await uow.tx.tireRegistrationObligation.findMany({ where: { status: 'open', dueAt: { lt: today } }, select: { id: true } })
-  for (const d of due) await transition(uow, { model: 'TireRegistrationObligation', id: d.id, from: ['open'], to: 'overdue', actor, eventType: 'tire_registration.overdue' })
-  return due.length
+  const open = await uow.tx.tireRegistrationObligation.findMany({ where: { status: 'open', dueAt: { not: null } }, select: { id: true, dueAt: true, shop: { select: { timeZone: true } } } })
+  let n = 0
+  for (const d of open) {
+    const today = zonedDate(d.shop?.timeZone || 'America/Los_Angeles', uow.now)
+    if (d.dueAt!.toISOString().slice(0, 10) >= today) continue
+    await transition(uow, { model: 'TireRegistrationObligation', id: d.id, from: ['open'], to: 'overdue', actor, eventType: 'tire_registration.overdue' })
+    n += 1
+  }
+  return n
 }

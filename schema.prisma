@@ -918,6 +918,7 @@ model ShopPolicyVersion {
   flagHoursAt                        String        @default("job_completed")
   comebackPayRule                    String        @default("reverse")
   allowConcurrentJobClocks           Boolean       @default(false)
+  tinPendingAllowed                  Boolean       @default(false)
   requireQualityCheck                Boolean       @default(true)
   diagnosisTrustThreshold            Decimal       @default("0.7000") @postgresql.Decimal(5, 4)
   authorizationLinkTtlHours          Int           @default(72)
@@ -2549,7 +2550,7 @@ model CoreObligation {
   writeOffReason        String               @default("")
   approval              ApprovalRequest?     @relation("CoreObligation_approval", fields: [approvalId], references: [id])
   approvalId            String?              @map("approval")
-  dueAt                 DateTime?
+  dueAt                 DateTime?            @postgresql.Date
   status                String               @default("owed")
   version               Int                  @default(0)
   createdAt             DateTime             @default(now())
@@ -3089,6 +3090,8 @@ model PartWarrantyClaim {
   jobLineId               String?       @map("jobLine")
   claimNumber             String        @default("")
   laborReimbursementMinor BigInt        @default(0)
+  voidReason              String        @default("")
+  voidedAt                DateTime?
   status                  String        @default("draft")
   version                 Int           @default(0)
   createdAt               DateTime      @default(now())

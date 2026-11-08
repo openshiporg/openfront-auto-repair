@@ -12,7 +12,7 @@ export function LaborTabs({ active }: { active: string }) {
   return <Tabs active={active} items={TABS} />;
 }
 
-type ShopLite = { id: string; code: string; name: string };
+type ShopLite = { id: string; code: string; name: string; timeZone?: string };
 
 /** Which shop's labor is on screen: ?shop=NGT, else the first shop. */
 export function pickShop(shops: ShopLite[], code?: string) {

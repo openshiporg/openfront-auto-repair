@@ -1,10 +1,11 @@
 import { orgTimeZone, q } from '../../lib/server';
+import { zonedDate } from '@/lib/zonedTime';
 import { hours, label, money, when } from '../../lib/format';
 import { Page, Empty, Meta, Section, Stat, Status } from '../../components/ui';
 import { LaborTabs, ShopSwitch, pickShop } from './LaborTabs';
 import { Act, ExportButton } from './LaborActions';
 
-type Shop = { id: string; code: string; name: string };
+type Shop = { id: string; code: string; name: string; timeZone?: string };
 type Period = { id: string; startsOn: string; endsOn: string; status: string; closedAt: string | null; exportedAt: string | null; closedBy: { name: string } | null; approvedBy: { name: string } | null };
 type Tech = { id: string; displayName: string; payPlan: string; flatRateMinor: string | null; hourlyRateMinor: string | null };
 type Entry = { id: string; technician: { id: string } | null; centiHours: number; kind: string; reason: string | null; flaggedAt: string; job: { number: number; title: string; repairOrder: { roNumber: string } | null } | null };
@@ -16,7 +17,7 @@ const KIND: Record<string, string> = { flag: 'Flagged', reversal: 'Taken back', 
 /** Flagged hours by technician for each two-week period, the close that a second person approves, and the pay file. */
 export default async function PayPeriodsPage({ searchParams }: { searchParams?: Promise<{ shop?: string; period?: string }> }) {
   const params = await searchParams;
-  const base = await q<{ shops: Shop[] }>(`{ shops(where: { status: { equals: "active" } }, orderBy: { code: asc }) { id code name } }`);
+  const base = await q<{ shops: Shop[] }>(`{ shops(where: { status: { equals: "active" } }, orderBy: { code: asc }) { id code name timeZone } }`);
   const shop = pickShop(base.shops, params?.shop);
   if (!shop) return <Page title="Pay periods"><LaborTabs active="pay" /><Empty>No shop is set up yet.</Empty></Page>;
   const tz = await orgTimeZone();
@@ -33,7 +34,8 @@ export default async function PayPeriodsPage({ searchParams }: { searchParams?: 
     const gross = rate ? (BigInt(centi) * BigInt(rate)) / 100n : null;
     return { t, mine, centi, gross };
   }).filter(r => r.mine.length);
-  const ended = period ? new Date(period.endsOn).getTime() < Date.now() - 0 : false;
+  // A period has ended once its last day is over in the shop's own zone, not at UTC midnight.
+  const ended = period ? period.endsOn.slice(0, 10) < zonedDate(shop.timeZone || tz, new Date()) : false;
   const link = (p: Period) => `/dashboard/platform/pay-periods?shop=${shop.code}&period=${p.id}`;
   return (
     <Page title="Pay periods">

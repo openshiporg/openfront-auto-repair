@@ -187,7 +187,7 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
               <div className="font-medium">{sent.reference} waiting on the customer · {money(sent.totalMinor)}</div>
               <div className="flex flex-wrap gap-2">
                 <Link href={`/dashboard/platform/repair-orders/${ro.id}/authorize`} className="inline-flex h-8 max-md:h-11 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">Customer is here: sign on the tablet</Link>
-                <AuthorizationLinkButton estimateVersionId={sent.id} contacts={extra.contacts} />
+                <AuthorizationLinkButton estimateVersionId={sent.id} contacts={extra.contacts} timeZone={ro.shop?.timeZone ?? undefined} />
               </div>
             </div>
             {methods.includes('oral_phone') ? <PhoneAuthorizationForm estimateVersionId={sent.id} jobs={offered.map(j => ({ id: j.id, number: j.number, title: j.title, totalMinor: j.totalMinor }))} customerName={ro.customer?.displayName ?? ''} replacedParts={ro.jurisdictionPolicyVersion?.replacedPartsOfferRequired ? ro.jurisdictionPolicyVersion.replacedPartsOfferText : ''} /> : null}

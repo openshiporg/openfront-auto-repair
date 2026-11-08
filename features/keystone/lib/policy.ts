@@ -38,7 +38,7 @@ export const POLICY_KINDS: Record<PolicyKind, KindSpec> = {
   },
   shop_policy: {
     model: 'ShopPolicyVersion', delegate: 'shopPolicyVersion', head: 'shopId', pointer: 'shopPolicyId', label: 'Shop policy',
-    fields: ['flagHoursAt', 'comebackPayRule', 'allowConcurrentJobClocks', 'requireQualityCheck', 'diagnosisTrustThreshold', 'authorizationLinkTtlHours', 'promisedTimeRequired', 'noShowGraceMinutes', 'discountLimitPctByRole', 'refundApprovalMinor', 'creditMemoApprovalMinor', 'agentOrderLimitMinor', 'agentAutonomy', 'proposalConfirmGranularity', 'declinedSafetyFollowUpPurpose', 'followUpCadenceDays', 'depositPolicy', 'surchargePolicy', 'inspectionClockMode', 'markupFactorDefault'],
+    fields: ['flagHoursAt', 'comebackPayRule', 'allowConcurrentJobClocks', 'tinPendingAllowed', 'requireQualityCheck', 'diagnosisTrustThreshold', 'authorizationLinkTtlHours', 'promisedTimeRequired', 'noShowGraceMinutes', 'discountLimitPctByRole', 'refundApprovalMinor', 'creditMemoApprovalMinor', 'agentOrderLimitMinor', 'agentAutonomy', 'proposalConfirmGranularity', 'declinedSafetyFollowUpPurpose', 'followUpCadenceDays', 'depositPolicy', 'surchargePolicy', 'inspectionClockMode', 'markupFactorDefault'],
   },
   labor_rates: {
     model: 'LaborRateClassSetVersion', delegate: 'laborRateClassSetVersion', head: 'shopId', pointer: 'laborRateClassSetId', label: 'Labor rates',
