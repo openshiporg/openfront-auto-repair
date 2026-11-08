@@ -58,10 +58,10 @@ export const Invoice = list({
         type: graphql.String,
         resolve(item: any) {
           if (item.status === 'paid' || item.status === 'credited' || BigInt(item.balanceMinor ?? 0) <= 0n) return 'settled'
-          const due = item.dueDate ? new Date(item.dueDate).getTime() : null
+          const due = item.dueDate ? new Date(item.dueDate).getTime() + 86_400_000 : null // owed through the end of the due day
           if (due === null) return 'current'
           const days = Math.floor((due - Date.now()) / 86_400_000)
-          return days < -1 ? 'overdue' : days <= 3 ? 'due_soon' : 'current'
+          return days < 0 ? 'overdue' : days <= 3 ? 'due_soon' : 'current'
         },
       }),
     }),
