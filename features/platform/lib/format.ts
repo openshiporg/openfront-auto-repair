@@ -66,6 +66,8 @@ export function percent(value: string | null | undefined) {
 
 export function when(iso: string | null | undefined, tz = 'America/Los_Angeles', style: 'full' | 'time' | 'day' | 'seconds' = 'full') {
   if (!iso) return ''
+  // A calendar day (2026-12-08) has no time zone: read it as that day, not as midnight UTC shifted back.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) tz = 'UTC'
   const d = new Date(iso)
   const opts: Intl.DateTimeFormatOptions =
     style === 'time' ? { hour: 'numeric', minute: '2-digit' }
