@@ -4,6 +4,9 @@ import { when, money, percent, label } from '../../lib/format';
 import { Page, Row, Empty, Status, Meta, Section, Tabs, Stat } from '../../components/ui';
 import { ActionButton } from '../../components/ActionButton';
 
+/** Older published wording carried build notes; show the customer-facing text only. */
+const clean = (t: string) => t.replace(/\s*-\s*placeholder rate/gi, '').replace(/\s*Battery deposit amount: placeholder rate \(BUILD-PLAN[^)]*\)\.?/gi, '').replace(/\s*·\s*$/, '').trim();
+
 type Version = { id: string; versionNumber: number; status: string; version: number; publishedAt: string | null; notes: string; author: { name: string } | null; publishedBy: { name: string } | null };
 type Kind = { kind: string; label: string; list: string; path: string; gql: string; pointer: string; detail: string };
 
@@ -36,10 +39,10 @@ function tolerance(rule: Law['toleranceRule']) {
 /** Summary of a published version's content for the row under it. */
 function summary(kind: string, v: Record<string, any>) {
   switch (kind) {
-    case 'shop_policy': return `Diagnosis trust gate ${percent(v.diagnosisTrustThreshold)} · no-show grace ${v.noShowGraceMinutes} min · agents may order up to ${money(v.agentOrderLimitMinor)} · authorizations recorded by agents: ${v.agentAutonomy?.record_authorization ?? 'off'}`;
+    case 'shop_policy': return `Diagnosis trust gate ${percent(v.diagnosisTrustThreshold)} · no-show grace ${v.noShowGraceMinutes} min · ${BigInt(v.agentOrderLimitMinor ?? 0) > 0n ? `assistants may order up to ${money(v.agentOrderLimitMinor)}` : 'assistants may not place orders'} · authorizations recorded by assistants: ${v.agentAutonomy?.record_authorization ?? 'off'}`;
     case 'labor_rates': return (v.classes ?? []).map((c: any) => `${c.name || c.code} ${money(c.rateMinor)}/h${c.isDefault ? ' (default)' : ''}`).join(' · ');
     case 'parts_matrix': return `${(v.tiers ?? []).length} cost tiers · margin floor ${percent(v.marginFloorPct)}`;
-    case 'fees': return (v.rules ?? []).map((r: any) => `${r.invoiceText || label(r.code)} ${r.perUnitMinor ? `${money(r.perUnitMinor)} each` : r.flatMinor ? money(r.flatMinor) : percent(r.percent)}`).join(' · ') || 'No fees';
+    case 'fees': return (v.rules ?? []).map((r: any) => `${clean(r.invoiceText || label(r.code))} ${r.perUnitMinor ? `${money(r.perUnitMinor)} each` : r.flatMinor ? money(r.flatMinor) : percent(r.percent)}`).join(' · ') || 'No fees';
     case 'tax': return (v.rules ?? []).map((r: any) => `${r.category?.name ?? '?'} ${r.taxable ? percent(r.rate) : 'not taxed'}`).join(' · ');
     case 'warranty': return (v.terms ?? []).map((t: any) => t.name || `${label(t.code)} ${t.months} mo / ${Number(t.miles).toLocaleString('en-US')} mi`).join(' · ');
     default: return '';
@@ -138,7 +141,7 @@ export default async function PoliciesPage({ searchParams }: { searchParams?: Pr
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2"><span className="font-medium">v{current.versionNumber}</span><Status value="published" /></div>
                   <p className="break-words text-sm">{summary(k.kind, current)}</p>
-                  <Meta>Published {when(current.publishedAt, tz)}{current.publishedBy ? ` by ${current.publishedBy.name}` : ''}{current.notes ? ` · ${current.notes}` : ''}</Meta>
+                  <Meta>Published {when(current.publishedAt, tz)}{current.publishedBy ? ` by ${current.publishedBy.name}` : ''}{clean(current.notes) ? ` · ${clean(current.notes)}` : ''}</Meta>
                 </div>
               </Row>
             ) : <Empty>Nothing published yet.</Empty>}

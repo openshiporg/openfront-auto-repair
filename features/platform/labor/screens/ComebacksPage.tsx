@@ -43,15 +43,19 @@ export default async function ComebacksPage({ searchParams }: { searchParams?: P
           <div key={c.id} className="space-y-2 border-b py-4 text-sm last:border-b-0">
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
               <span className="min-w-0 break-words font-medium">{c.reference} <Meta>{c.originalJob?.repairOrder?.roNumber} job {c.originalJob?.number}, {c.originalJob?.title}. Opened {when(c.createdAt, tz, 'day')}{c.openedBy ? ` by ${c.openedBy.name}` : ''}</Meta></span>
-              <Status value={c.status === 'resolved' ? 'completed' : c.status === 'diagnosed' ? 'started' : 'pending'} className="normal-case" />
+              <Status value={c.status} />
             </div>
             <p className="break-words">&ldquo;{c.concern}&rdquo;</p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1"><Meta>{c.noCharge ? 'Free to the customer' : c.coverageValid ? 'Covered' : 'Warranty has run out, the customer pays unless the owner approves goodwill'}</Meta><Meta>{CAUSE[c.cause] ?? label(c.cause)}, {STATE[c.status] ?? label(c.status)}</Meta></div>
-            {c.diagnosis ? <Meta>Found: {c.diagnosis}</Meta> : null}
-            {c.resolution ? <Meta>Fixed: {c.resolution}</Meta> : null}
-            {c.status === 'open' ? <DiagnoseForm comebackId={c.id} /> : null}
-            {c.status !== 'resolved' && !c.noCharge ? <Act op="requestComebackGoodwill" vars={{ comebackId: c.id }} ask="Why is the shop making this repair free?">Make it free (needs approval)</Act> : null}
-            {c.status === 'diagnosed' ? <Act primaryStyle op="resolveShopComeback" vars={{ comebackId: c.id }} ask="What was done to fix it?" askKey="resolution">Mark fixed</Act> : null}
+            {c.diagnosis ? <p className="break-words text-xs text-muted-foreground">Found: {c.diagnosis}</p> : null}
+            {c.resolution ? <p className="break-words text-xs text-muted-foreground">Fixed: {c.resolution}</p> : null}
+            {c.status === 'open' ? <div className="pt-1"><DiagnoseForm comebackId={c.id} /></div> : null}
+            {(c.status !== 'resolved' && !c.noCharge) || c.status === 'diagnosed' ? (
+              <div className="flex flex-wrap items-start gap-2 pt-1">
+                {c.status !== 'resolved' && !c.noCharge ? <Act op="requestComebackGoodwill" vars={{ comebackId: c.id }} ask="Why is the shop making this repair free?">Make it free (needs approval)</Act> : null}
+                {c.status === 'diagnosed' ? <Act primaryStyle op="resolveShopComeback" vars={{ comebackId: c.id }} ask="What was done to fix it?" askKey="resolution">Mark fixed</Act> : null}
+              </div>
+            ) : null}
           </div>
         )) : <Empty>No comebacks. Work that came back for the same problem shows up here.</Empty>}
       </Section>

@@ -56,7 +56,7 @@ export default async function PartsBoardPage() {
                   ) : null}
                   {quotes.length ? quotes.map(x => (
                     <Row key={x.id}>
-                      <div className="min-w-0"><span className="text-sm">{x.supplier?.name}</span> <Meta>{label(x.availability)} · {x.source}{BigInt(x.coreChargeMinor) > 0n ? ` · core ${money(x.coreChargeMinor)}` : ''}</Meta></div>
+                      <div className="min-w-0"><span className="text-sm">{x.supplier?.name}</span> <Meta>{label(x.availability)} · {label(x.source)}{BigInt(x.coreChargeMinor) > 0n ? ` · core ${money(x.coreChargeMinor)}` : ''}</Meta></div>
                       <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm">{money(x.unitCostMinor)}</span><Status value={x.status} />
                         {x.status === 'offered' ? <Act op="selectSupplierQuote" vars={{ quoteId: x.id, expectedVersion: x.version }}>Pick</Act> : null}
                         {x.status === 'selected' && x.supplier ? <OrderQuoteButton shopId={shopId} supplierId={x.supplier.id} quoteId={x.id} jobId={job.id} quantityMilli={line.quantityMilli} /> : null}
