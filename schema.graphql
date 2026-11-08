@@ -5768,6 +5768,7 @@ type CheckIn {
   valuablesNote: String
   recallWarning: JSON
   jurisdictionPolicyVersion: JurisdictionPolicyVersion
+  repairOrder: RepairOrder
   at: DateTime
   by: User
   version: Int
@@ -5779,6 +5780,7 @@ input CheckInWhereUniqueInput {
   id: ID
   reference: String
   appointment: AppointmentWhereUniqueInput
+  repairOrder: RepairOrderWhereUniqueInput
 }
 
 input CheckInWhereInput {
@@ -5805,6 +5807,7 @@ input CheckInWhereInput {
   signedAt: DateTimeNullableFilter
   valuablesNote: StringFilter
   jurisdictionPolicyVersion: JurisdictionPolicyVersionWhereInput
+  repairOrder: RepairOrderWhereInput
   at: DateTimeNullableFilter
   by: UserWhereInput
   version: IntFilter
@@ -5856,6 +5859,7 @@ input CheckInUpdateInput {
   valuablesNote: String
   recallWarning: JSON
   jurisdictionPolicyVersion: JurisdictionPolicyVersionRelateToOneForUpdateInput
+  repairOrder: RepairOrderRelateToOneForUpdateInput
   at: DateTime
   by: UserRelateToOneForUpdateInput
   version: Int
@@ -5866,6 +5870,12 @@ input CheckInUpdateInput {
 input OdometerReadingRelateToOneForUpdateInput {
   create: OdometerReadingCreateInput
   connect: OdometerReadingWhereUniqueInput
+  disconnect: Boolean
+}
+
+input RepairOrderRelateToOneForUpdateInput {
+  create: RepairOrderCreateInput
+  connect: RepairOrderWhereUniqueInput
   disconnect: Boolean
 }
 
@@ -5897,6 +5907,7 @@ input CheckInCreateInput {
   valuablesNote: String
   recallWarning: JSON
   jurisdictionPolicyVersion: JurisdictionPolicyVersionRelateToOneForCreateInput
+  repairOrder: RepairOrderRelateToOneForCreateInput
   at: DateTime
   by: UserRelateToOneForCreateInput
   version: Int
@@ -5907,6 +5918,3035 @@ input CheckInCreateInput {
 input OdometerReadingRelateToOneForCreateInput {
   create: OdometerReadingCreateInput
   connect: OdometerReadingWhereUniqueInput
+}
+
+input RepairOrderRelateToOneForCreateInput {
+  create: RepairOrderCreateInput
+  connect: RepairOrderWhereUniqueInput
+}
+
+type CollisionClaimRef {
+  id: ID!
+  repairOrder: RepairOrder
+  insurer: String
+  claimNumber: String
+  adjuster: JSON
+  drpProgram: String
+  externalEstimateSystem: String
+  externalEstimateRef: String
+  thirdPartyEstimate: Document
+  notes: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CollisionClaimRefWhereUniqueInput {
+  id: ID
+  repairOrder: RepairOrderWhereUniqueInput
+}
+
+input CollisionClaimRefWhereInput {
+  AND: [CollisionClaimRefWhereInput!]
+  OR: [CollisionClaimRefWhereInput!]
+  NOT: [CollisionClaimRefWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  insurer: StringFilter
+  claimNumber: StringFilter
+  drpProgram: StringFilter
+  externalEstimateSystem: StringFilter
+  externalEstimateRef: StringFilter
+  thirdPartyEstimate: DocumentWhereInput
+  notes: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CollisionClaimRefOrderByInput {
+  id: OrderDirection
+  insurer: OrderDirection
+  claimNumber: OrderDirection
+  drpProgram: OrderDirection
+  externalEstimateSystem: OrderDirection
+  externalEstimateRef: OrderDirection
+  notes: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CollisionClaimRefUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  insurer: String
+  claimNumber: String
+  adjuster: JSON
+  drpProgram: String
+  externalEstimateSystem: String
+  externalEstimateRef: String
+  thirdPartyEstimate: DocumentRelateToOneForUpdateInput
+  notes: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CollisionClaimRefUpdateArgs {
+  where: CollisionClaimRefWhereUniqueInput!
+  data: CollisionClaimRefUpdateInput!
+}
+
+input CollisionClaimRefCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  insurer: String
+  claimNumber: String
+  adjuster: JSON
+  drpProgram: String
+  externalEstimateSystem: String
+  externalEstimateRef: String
+  thirdPartyEstimate: DocumentRelateToOneForCreateInput
+  notes: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type Concern {
+  id: ID!
+  repairOrder: RepairOrder
+  customerWords: String
+  category: String
+  diagnosis: String
+  cause: String
+  correction: String
+  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
+  jobsCount(where: JobWhereInput! = {}): Int
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ConcernWhereUniqueInput {
+  id: ID
+}
+
+input ConcernWhereInput {
+  AND: [ConcernWhereInput!]
+  OR: [ConcernWhereInput!]
+  NOT: [ConcernWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  customerWords: StringFilter
+  category: StringFilter
+  diagnosis: StringFilter
+  cause: StringFilter
+  correction: StringFilter
+  jobs: JobManyRelationFilter
+  sortOrder: IntNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JobManyRelationFilter {
+  every: JobWhereInput
+  some: JobWhereInput
+  none: JobWhereInput
+}
+
+input ConcernOrderByInput {
+  id: OrderDirection
+  customerWords: OrderDirection
+  category: OrderDirection
+  diagnosis: OrderDirection
+  cause: OrderDirection
+  correction: OrderDirection
+  sortOrder: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ConcernUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  customerWords: String
+  category: String
+  diagnosis: String
+  cause: String
+  correction: String
+  jobs: JobRelateToManyForUpdateInput
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobRelateToManyForUpdateInput {
+  disconnect: [JobWhereUniqueInput!]
+  set: [JobWhereUniqueInput!]
+  create: [JobCreateInput!]
+  connect: [JobWhereUniqueInput!]
+}
+
+input ConcernUpdateArgs {
+  where: ConcernWhereUniqueInput!
+  data: ConcernUpdateInput!
+}
+
+input ConcernCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  customerWords: String
+  category: String
+  diagnosis: String
+  cause: String
+  correction: String
+  jobs: JobRelateToManyForCreateInput
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobRelateToManyForCreateInput {
+  create: [JobCreateInput!]
+  connect: [JobWhereUniqueInput!]
+}
+
+type Job {
+  id: ID!
+  repairOrder: RepairOrder
+  number: Int
+  title: String
+  customerDescription: String
+  kind: String
+  concern: Concern
+  source: String
+  cannedJobVersion: CannedJobVersion
+  inspectionItemResult: InspectionItemResult
+  lines(where: JobLineWhereInput! = {}, orderBy: [JobLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobLineWhereUniqueInput): [JobLine!]
+  linesCount(where: JobLineWhereInput! = {}): Int
+  techShares(where: JobTechShareWhereInput! = {}, orderBy: [JobTechShareOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobTechShareWhereUniqueInput): [JobTechShare!]
+  techSharesCount(where: JobTechShareWhereInput! = {}): Int
+  payerSplits(where: PayerSplitWhereInput! = {}, orderBy: [PayerSplitOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PayerSplitWhereUniqueInput): [PayerSplit!]
+  payerSplitsCount(where: PayerSplitWhereInput! = {}): Int
+  urgency: String
+  warrantyTerm: WarrantyTerm
+  contentHash: String
+  priceSnapshot: JSON
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  laborMinor: BigInt
+  partsMinor: BigInt
+  feesMinor: BigInt
+  costMinor: BigInt
+  marginMinor: BigInt
+  offeredInVersion: EstimateVersion
+  authorizedAmountMinor: BigInt
+  authorizedSubtotalMinor: BigInt
+  authorizedContentHash: String
+  authorizedIdentityHash: String
+  chargeCeilingMinor: BigInt
+  currentAuthorization: Authorization
+  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
+  authorizationsCount(where: AuthorizationWhereInput! = {}): Int
+  decisions(where: JobDecisionWhereInput! = {}, orderBy: [JobDecisionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobDecisionWhereUniqueInput): [JobDecision!]
+  decisionsCount(where: JobDecisionWhereInput! = {}): Int
+  belowThresholdRecordedAt: DateTime
+  noChargeReason: String
+  teardownDisclosure: TeardownDisclosure
+  reauthorizationReason: String
+  workStartedAt: DateTime
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobWhereUniqueInput {
+  id: ID
+  teardownDisclosure: TeardownDisclosureWhereUniqueInput
+}
+
+input JobWhereInput {
+  AND: [JobWhereInput!]
+  OR: [JobWhereInput!]
+  NOT: [JobWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  number: IntFilter
+  title: StringFilter
+  customerDescription: StringFilter
+  kind: StringFilter
+  concern: ConcernWhereInput
+  source: StringFilter
+  cannedJobVersion: CannedJobVersionWhereInput
+  inspectionItemResult: InspectionItemResultWhereInput
+  lines: JobLineManyRelationFilter
+  techShares: JobTechShareManyRelationFilter
+  payerSplits: PayerSplitManyRelationFilter
+  urgency: StringFilter
+  warrantyTerm: WarrantyTermWhereInput
+  contentHash: StringFilter
+  subtotalMinor: BigIntFilter
+  taxMinor: BigIntFilter
+  totalMinor: BigIntFilter
+  laborMinor: BigIntFilter
+  partsMinor: BigIntFilter
+  feesMinor: BigIntFilter
+  costMinor: BigIntFilter
+  marginMinor: BigIntFilter
+  offeredInVersion: EstimateVersionWhereInput
+  authorizedAmountMinor: BigIntFilter
+  authorizedSubtotalMinor: BigIntFilter
+  authorizedContentHash: StringFilter
+  authorizedIdentityHash: StringFilter
+  chargeCeilingMinor: BigIntFilter
+  currentAuthorization: AuthorizationWhereInput
+  authorizations: AuthorizationManyRelationFilter
+  decisions: JobDecisionManyRelationFilter
+  belowThresholdRecordedAt: DateTimeNullableFilter
+  noChargeReason: StringFilter
+  teardownDisclosure: TeardownDisclosureWhereInput
+  reauthorizationReason: StringFilter
+  workStartedAt: DateTimeNullableFilter
+  completedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JobLineManyRelationFilter {
+  every: JobLineWhereInput
+  some: JobLineWhereInput
+  none: JobLineWhereInput
+}
+
+input JobTechShareManyRelationFilter {
+  every: JobTechShareWhereInput
+  some: JobTechShareWhereInput
+  none: JobTechShareWhereInput
+}
+
+input PayerSplitManyRelationFilter {
+  every: PayerSplitWhereInput
+  some: PayerSplitWhereInput
+  none: PayerSplitWhereInput
+}
+
+input AuthorizationManyRelationFilter {
+  every: AuthorizationWhereInput
+  some: AuthorizationWhereInput
+  none: AuthorizationWhereInput
+}
+
+input JobDecisionManyRelationFilter {
+  every: JobDecisionWhereInput
+  some: JobDecisionWhereInput
+  none: JobDecisionWhereInput
+}
+
+input JobOrderByInput {
+  id: OrderDirection
+  number: OrderDirection
+  title: OrderDirection
+  customerDescription: OrderDirection
+  kind: OrderDirection
+  source: OrderDirection
+  urgency: OrderDirection
+  contentHash: OrderDirection
+  subtotalMinor: OrderDirection
+  taxMinor: OrderDirection
+  totalMinor: OrderDirection
+  laborMinor: OrderDirection
+  partsMinor: OrderDirection
+  feesMinor: OrderDirection
+  costMinor: OrderDirection
+  marginMinor: OrderDirection
+  authorizedAmountMinor: OrderDirection
+  authorizedSubtotalMinor: OrderDirection
+  authorizedContentHash: OrderDirection
+  authorizedIdentityHash: OrderDirection
+  chargeCeilingMinor: OrderDirection
+  belowThresholdRecordedAt: OrderDirection
+  noChargeReason: OrderDirection
+  reauthorizationReason: OrderDirection
+  workStartedAt: OrderDirection
+  completedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input JobUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  number: Int
+  title: String
+  customerDescription: String
+  kind: String
+  concern: ConcernRelateToOneForUpdateInput
+  source: String
+  cannedJobVersion: CannedJobVersionRelateToOneForUpdateInput
+  inspectionItemResult: InspectionItemResultRelateToOneForUpdateInput
+  lines: JobLineRelateToManyForUpdateInput
+  techShares: JobTechShareRelateToManyForUpdateInput
+  payerSplits: PayerSplitRelateToManyForUpdateInput
+  urgency: String
+  warrantyTerm: WarrantyTermRelateToOneForUpdateInput
+  contentHash: String
+  priceSnapshot: JSON
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  laborMinor: BigInt
+  partsMinor: BigInt
+  feesMinor: BigInt
+  costMinor: BigInt
+  marginMinor: BigInt
+  offeredInVersion: EstimateVersionRelateToOneForUpdateInput
+  authorizedAmountMinor: BigInt
+  authorizedSubtotalMinor: BigInt
+  authorizedContentHash: String
+  authorizedIdentityHash: String
+  chargeCeilingMinor: BigInt
+  currentAuthorization: AuthorizationRelateToOneForUpdateInput
+  authorizations: AuthorizationRelateToManyForUpdateInput
+  decisions: JobDecisionRelateToManyForUpdateInput
+  belowThresholdRecordedAt: DateTime
+  noChargeReason: String
+  teardownDisclosure: TeardownDisclosureRelateToOneForUpdateInput
+  reauthorizationReason: String
+  workStartedAt: DateTime
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ConcernRelateToOneForUpdateInput {
+  create: ConcernCreateInput
+  connect: ConcernWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CannedJobVersionRelateToOneForUpdateInput {
+  create: CannedJobVersionCreateInput
+  connect: CannedJobVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input InspectionItemResultRelateToOneForUpdateInput {
+  create: InspectionItemResultCreateInput
+  connect: InspectionItemResultWhereUniqueInput
+  disconnect: Boolean
+}
+
+input JobLineRelateToManyForUpdateInput {
+  disconnect: [JobLineWhereUniqueInput!]
+  set: [JobLineWhereUniqueInput!]
+  create: [JobLineCreateInput!]
+  connect: [JobLineWhereUniqueInput!]
+}
+
+input JobTechShareRelateToManyForUpdateInput {
+  disconnect: [JobTechShareWhereUniqueInput!]
+  set: [JobTechShareWhereUniqueInput!]
+  create: [JobTechShareCreateInput!]
+  connect: [JobTechShareWhereUniqueInput!]
+}
+
+input PayerSplitRelateToManyForUpdateInput {
+  disconnect: [PayerSplitWhereUniqueInput!]
+  set: [PayerSplitWhereUniqueInput!]
+  create: [PayerSplitCreateInput!]
+  connect: [PayerSplitWhereUniqueInput!]
+}
+
+input WarrantyTermRelateToOneForUpdateInput {
+  create: WarrantyTermCreateInput
+  connect: WarrantyTermWhereUniqueInput
+  disconnect: Boolean
+}
+
+input EstimateVersionRelateToOneForUpdateInput {
+  create: EstimateVersionCreateInput
+  connect: EstimateVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input AuthorizationRelateToOneForUpdateInput {
+  create: AuthorizationCreateInput
+  connect: AuthorizationWhereUniqueInput
+  disconnect: Boolean
+}
+
+input AuthorizationRelateToManyForUpdateInput {
+  disconnect: [AuthorizationWhereUniqueInput!]
+  set: [AuthorizationWhereUniqueInput!]
+  create: [AuthorizationCreateInput!]
+  connect: [AuthorizationWhereUniqueInput!]
+}
+
+input JobDecisionRelateToManyForUpdateInput {
+  disconnect: [JobDecisionWhereUniqueInput!]
+  set: [JobDecisionWhereUniqueInput!]
+  create: [JobDecisionCreateInput!]
+  connect: [JobDecisionWhereUniqueInput!]
+}
+
+input TeardownDisclosureRelateToOneForUpdateInput {
+  create: TeardownDisclosureCreateInput
+  connect: TeardownDisclosureWhereUniqueInput
+  disconnect: Boolean
+}
+
+input JobUpdateArgs {
+  where: JobWhereUniqueInput!
+  data: JobUpdateInput!
+}
+
+input JobCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  number: Int
+  title: String
+  customerDescription: String
+  kind: String
+  concern: ConcernRelateToOneForCreateInput
+  source: String
+  cannedJobVersion: CannedJobVersionRelateToOneForCreateInput
+  inspectionItemResult: InspectionItemResultRelateToOneForCreateInput
+  lines: JobLineRelateToManyForCreateInput
+  techShares: JobTechShareRelateToManyForCreateInput
+  payerSplits: PayerSplitRelateToManyForCreateInput
+  urgency: String
+  warrantyTerm: WarrantyTermRelateToOneForCreateInput
+  contentHash: String
+  priceSnapshot: JSON
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  laborMinor: BigInt
+  partsMinor: BigInt
+  feesMinor: BigInt
+  costMinor: BigInt
+  marginMinor: BigInt
+  offeredInVersion: EstimateVersionRelateToOneForCreateInput
+  authorizedAmountMinor: BigInt
+  authorizedSubtotalMinor: BigInt
+  authorizedContentHash: String
+  authorizedIdentityHash: String
+  chargeCeilingMinor: BigInt
+  currentAuthorization: AuthorizationRelateToOneForCreateInput
+  authorizations: AuthorizationRelateToManyForCreateInput
+  decisions: JobDecisionRelateToManyForCreateInput
+  belowThresholdRecordedAt: DateTime
+  noChargeReason: String
+  teardownDisclosure: TeardownDisclosureRelateToOneForCreateInput
+  reauthorizationReason: String
+  workStartedAt: DateTime
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ConcernRelateToOneForCreateInput {
+  create: ConcernCreateInput
+  connect: ConcernWhereUniqueInput
+}
+
+input CannedJobVersionRelateToOneForCreateInput {
+  create: CannedJobVersionCreateInput
+  connect: CannedJobVersionWhereUniqueInput
+}
+
+input InspectionItemResultRelateToOneForCreateInput {
+  create: InspectionItemResultCreateInput
+  connect: InspectionItemResultWhereUniqueInput
+}
+
+input JobLineRelateToManyForCreateInput {
+  create: [JobLineCreateInput!]
+  connect: [JobLineWhereUniqueInput!]
+}
+
+input JobTechShareRelateToManyForCreateInput {
+  create: [JobTechShareCreateInput!]
+  connect: [JobTechShareWhereUniqueInput!]
+}
+
+input PayerSplitRelateToManyForCreateInput {
+  create: [PayerSplitCreateInput!]
+  connect: [PayerSplitWhereUniqueInput!]
+}
+
+input WarrantyTermRelateToOneForCreateInput {
+  create: WarrantyTermCreateInput
+  connect: WarrantyTermWhereUniqueInput
+}
+
+input EstimateVersionRelateToOneForCreateInput {
+  create: EstimateVersionCreateInput
+  connect: EstimateVersionWhereUniqueInput
+}
+
+input AuthorizationRelateToOneForCreateInput {
+  create: AuthorizationCreateInput
+  connect: AuthorizationWhereUniqueInput
+}
+
+input AuthorizationRelateToManyForCreateInput {
+  create: [AuthorizationCreateInput!]
+  connect: [AuthorizationWhereUniqueInput!]
+}
+
+input JobDecisionRelateToManyForCreateInput {
+  create: [JobDecisionCreateInput!]
+  connect: [JobDecisionWhereUniqueInput!]
+}
+
+input TeardownDisclosureRelateToOneForCreateInput {
+  create: TeardownDisclosureCreateInput
+  connect: TeardownDisclosureWhereUniqueInput
+}
+
+type JobLine {
+  id: ID!
+  job: Job
+  kind: String
+  description: String
+  auto: Boolean
+  rateClass: LaborRateClass
+  soldCentiHours: Int
+  guideCentiHours: Int
+  overlapCentiHours: Int
+  guideSnapshot: JSON
+  rateMinor: BigInt
+  partNumber: String
+  brand: String
+  partCategory: String
+  condition: String
+  quantityMilli: Int
+  unitOfMeasure: String
+  unitCostMinor: BigInt
+  unitPriceMinor: BigInt
+  matrixTierSnapshot: JSON
+  fulfilment: String
+  isNewTire: Boolean
+  tireSize: String
+  subletVendorName: String
+  subletCostMinor: BigInt
+  feeRule: FeeRule
+  feeCode: String
+  taxCategory: TaxCategory
+  taxCategoryCode: String
+  taxable: Boolean
+  taxRate: Decimal
+  extendedMinor: BigInt
+  taxMinor: BigInt
+  override: JSON
+  sortOrder: Int
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobLineWhereUniqueInput {
+  id: ID
+}
+
+input JobLineWhereInput {
+  AND: [JobLineWhereInput!]
+  OR: [JobLineWhereInput!]
+  NOT: [JobLineWhereInput!]
+  id: IDFilter
+  job: JobWhereInput
+  kind: StringFilter
+  description: StringFilter
+  auto: BooleanFilter
+  rateClass: LaborRateClassWhereInput
+  soldCentiHours: IntFilter
+  guideCentiHours: IntFilter
+  overlapCentiHours: IntFilter
+  rateMinor: BigIntFilter
+  partNumber: StringFilter
+  brand: StringFilter
+  partCategory: StringFilter
+  condition: StringNullableFilter
+  quantityMilli: IntFilter
+  unitOfMeasure: StringFilter
+  unitCostMinor: BigIntFilter
+  unitPriceMinor: BigIntFilter
+  fulfilment: StringFilter
+  isNewTire: BooleanFilter
+  tireSize: StringFilter
+  subletVendorName: StringFilter
+  subletCostMinor: BigIntFilter
+  feeRule: FeeRuleWhereInput
+  feeCode: StringFilter
+  taxCategory: TaxCategoryWhereInput
+  taxCategoryCode: StringFilter
+  taxable: BooleanFilter
+  taxRate: DecimalFilter
+  extendedMinor: BigIntFilter
+  taxMinor: BigIntFilter
+  sortOrder: IntNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JobLineOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  description: OrderDirection
+  auto: OrderDirection
+  soldCentiHours: OrderDirection
+  guideCentiHours: OrderDirection
+  overlapCentiHours: OrderDirection
+  rateMinor: OrderDirection
+  partNumber: OrderDirection
+  brand: OrderDirection
+  partCategory: OrderDirection
+  condition: OrderDirection
+  quantityMilli: OrderDirection
+  unitOfMeasure: OrderDirection
+  unitCostMinor: OrderDirection
+  unitPriceMinor: OrderDirection
+  fulfilment: OrderDirection
+  isNewTire: OrderDirection
+  tireSize: OrderDirection
+  subletVendorName: OrderDirection
+  subletCostMinor: OrderDirection
+  feeCode: OrderDirection
+  taxCategoryCode: OrderDirection
+  taxable: OrderDirection
+  taxRate: OrderDirection
+  extendedMinor: OrderDirection
+  taxMinor: OrderDirection
+  sortOrder: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input JobLineUpdateInput {
+  job: JobRelateToOneForUpdateInput
+  kind: String
+  description: String
+  auto: Boolean
+  rateClass: LaborRateClassRelateToOneForUpdateInput
+  soldCentiHours: Int
+  guideCentiHours: Int
+  overlapCentiHours: Int
+  guideSnapshot: JSON
+  rateMinor: BigInt
+  partNumber: String
+  brand: String
+  partCategory: String
+  condition: String
+  quantityMilli: Int
+  unitOfMeasure: String
+  unitCostMinor: BigInt
+  unitPriceMinor: BigInt
+  matrixTierSnapshot: JSON
+  fulfilment: String
+  isNewTire: Boolean
+  tireSize: String
+  subletVendorName: String
+  subletCostMinor: BigInt
+  feeRule: FeeRuleRelateToOneForUpdateInput
+  feeCode: String
+  taxCategory: TaxCategoryRelateToOneForUpdateInput
+  taxCategoryCode: String
+  taxable: Boolean
+  taxRate: Decimal
+  extendedMinor: BigInt
+  taxMinor: BigInt
+  override: JSON
+  sortOrder: Int
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobRelateToOneForUpdateInput {
+  create: JobCreateInput
+  connect: JobWhereUniqueInput
+  disconnect: Boolean
+}
+
+input LaborRateClassRelateToOneForUpdateInput {
+  create: LaborRateClassCreateInput
+  connect: LaborRateClassWhereUniqueInput
+  disconnect: Boolean
+}
+
+input FeeRuleRelateToOneForUpdateInput {
+  create: FeeRuleCreateInput
+  connect: FeeRuleWhereUniqueInput
+  disconnect: Boolean
+}
+
+input JobLineUpdateArgs {
+  where: JobLineWhereUniqueInput!
+  data: JobLineUpdateInput!
+}
+
+input JobLineCreateInput {
+  job: JobRelateToOneForCreateInput
+  kind: String
+  description: String
+  auto: Boolean
+  rateClass: LaborRateClassRelateToOneForCreateInput
+  soldCentiHours: Int
+  guideCentiHours: Int
+  overlapCentiHours: Int
+  guideSnapshot: JSON
+  rateMinor: BigInt
+  partNumber: String
+  brand: String
+  partCategory: String
+  condition: String
+  quantityMilli: Int
+  unitOfMeasure: String
+  unitCostMinor: BigInt
+  unitPriceMinor: BigInt
+  matrixTierSnapshot: JSON
+  fulfilment: String
+  isNewTire: Boolean
+  tireSize: String
+  subletVendorName: String
+  subletCostMinor: BigInt
+  feeRule: FeeRuleRelateToOneForCreateInput
+  feeCode: String
+  taxCategory: TaxCategoryRelateToOneForCreateInput
+  taxCategoryCode: String
+  taxable: Boolean
+  taxRate: Decimal
+  extendedMinor: BigInt
+  taxMinor: BigInt
+  override: JSON
+  sortOrder: Int
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobRelateToOneForCreateInput {
+  create: JobCreateInput
+  connect: JobWhereUniqueInput
+}
+
+input LaborRateClassRelateToOneForCreateInput {
+  create: LaborRateClassCreateInput
+  connect: LaborRateClassWhereUniqueInput
+}
+
+input FeeRuleRelateToOneForCreateInput {
+  create: FeeRuleCreateInput
+  connect: FeeRuleWhereUniqueInput
+}
+
+type JobTechShare {
+  id: ID!
+  job: Job
+  technician: User
+  sharePct: Decimal
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobTechShareWhereUniqueInput {
+  id: ID
+}
+
+input JobTechShareWhereInput {
+  AND: [JobTechShareWhereInput!]
+  OR: [JobTechShareWhereInput!]
+  NOT: [JobTechShareWhereInput!]
+  id: IDFilter
+  job: JobWhereInput
+  technician: UserWhereInput
+  sharePct: DecimalFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JobTechShareOrderByInput {
+  id: OrderDirection
+  sharePct: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input JobTechShareUpdateInput {
+  job: JobRelateToOneForUpdateInput
+  technician: UserRelateToOneForUpdateInput
+  sharePct: Decimal
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobTechShareUpdateArgs {
+  where: JobTechShareWhereUniqueInput!
+  data: JobTechShareUpdateInput!
+}
+
+input JobTechShareCreateInput {
+  job: JobRelateToOneForCreateInput
+  technician: UserRelateToOneForCreateInput
+  sharePct: Decimal
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PayerSplit {
+  id: ID!
+  job: Job
+  payerKind: String
+  businessAccount: BusinessAccount
+  payorName: String
+  authorizationNumber: String
+  claimNumber: String
+  percent: Decimal
+  fixedMinor: BigInt
+  deductibleMinor: BigInt
+  warrantyTaxTreatment: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PayerSplitWhereUniqueInput {
+  id: ID
+}
+
+input PayerSplitWhereInput {
+  AND: [PayerSplitWhereInput!]
+  OR: [PayerSplitWhereInput!]
+  NOT: [PayerSplitWhereInput!]
+  id: IDFilter
+  job: JobWhereInput
+  payerKind: StringFilter
+  businessAccount: BusinessAccountWhereInput
+  payorName: StringFilter
+  authorizationNumber: StringFilter
+  claimNumber: StringFilter
+  percent: DecimalFilter
+  fixedMinor: BigIntNullableFilter
+  deductibleMinor: BigIntNullableFilter
+  warrantyTaxTreatment: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input PayerSplitOrderByInput {
+  id: OrderDirection
+  payerKind: OrderDirection
+  payorName: OrderDirection
+  authorizationNumber: OrderDirection
+  claimNumber: OrderDirection
+  percent: OrderDirection
+  fixedMinor: OrderDirection
+  deductibleMinor: OrderDirection
+  warrantyTaxTreatment: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PayerSplitUpdateInput {
+  job: JobRelateToOneForUpdateInput
+  payerKind: String
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  payorName: String
+  authorizationNumber: String
+  claimNumber: String
+  percent: Decimal
+  fixedMinor: BigInt
+  deductibleMinor: BigInt
+  warrantyTaxTreatment: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PayerSplitUpdateArgs {
+  where: PayerSplitWhereUniqueInput!
+  data: PayerSplitUpdateInput!
+}
+
+input PayerSplitCreateInput {
+  job: JobRelateToOneForCreateInput
+  payerKind: String
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  payorName: String
+  authorizationNumber: String
+  claimNumber: String
+  percent: Decimal
+  fixedMinor: BigInt
+  deductibleMinor: BigInt
+  warrantyTaxTreatment: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type QualityCheck {
+  id: ID!
+  repairOrder: RepairOrder
+  performedBy: User
+  roadTest: Boolean
+  checklist: JSON
+  notes: String
+  at: DateTime
+  result: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input QualityCheckWhereUniqueInput {
+  id: ID
+}
+
+input QualityCheckWhereInput {
+  AND: [QualityCheckWhereInput!]
+  OR: [QualityCheckWhereInput!]
+  NOT: [QualityCheckWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  performedBy: UserWhereInput
+  roadTest: BooleanFilter
+  notes: StringFilter
+  at: DateTimeNullableFilter
+  result: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input QualityCheckOrderByInput {
+  id: OrderDirection
+  roadTest: OrderDirection
+  notes: OrderDirection
+  at: OrderDirection
+  result: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input QualityCheckUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  performedBy: UserRelateToOneForUpdateInput
+  roadTest: Boolean
+  checklist: JSON
+  notes: String
+  at: DateTime
+  result: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input QualityCheckUpdateArgs {
+  where: QualityCheckWhereUniqueInput!
+  data: QualityCheckUpdateInput!
+}
+
+input QualityCheckCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  performedBy: UserRelateToOneForCreateInput
+  roadTest: Boolean
+  checklist: JSON
+  notes: String
+  at: DateTime
+  result: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type RepairOrder {
+  id: ID!
+  shop: Shop
+  roNumber: String
+  kind: String
+  customer: Customer
+  businessAccount: BusinessAccount
+  vehicle: Vehicle
+  serviceAdvisor: User
+  appointment: Appointment
+  checkIn: CheckIn
+  concerns(where: ConcernWhereInput! = {}, orderBy: [ConcernOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ConcernWhereUniqueInput): [Concern!]
+  concernsCount(where: ConcernWhereInput! = {}): Int
+  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
+  jobsCount(where: JobWhereInput! = {}): Int
+  inspections(where: InspectionWhereInput! = {}, orderBy: [InspectionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionWhereUniqueInput): [Inspection!]
+  inspectionsCount(where: InspectionWhereInput! = {}): Int
+  estimateVersions(where: EstimateVersionWhereInput! = {}, orderBy: [EstimateVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: EstimateVersionWhereUniqueInput): [EstimateVersion!]
+  estimateVersionsCount(where: EstimateVersionWhereInput! = {}): Int
+  authorizationRequests(where: AuthorizationRequestWhereInput! = {}, orderBy: [AuthorizationRequestOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationRequestWhereUniqueInput): [AuthorizationRequest!]
+  authorizationRequestsCount(where: AuthorizationRequestWhereInput! = {}): Int
+  odometerIn: OdometerReading
+  odometerOut: OdometerReading
+  jurisdictionPolicyVersion: JurisdictionPolicyVersion
+  shopPolicyVersion: ShopPolicyVersion
+  laborRateClassSetVersion: LaborRateClassSetVersion
+  laborMatrixVersion: LaborMatrixVersion
+  partsMatrixVersion: PartsMatrixVersion
+  feePolicyVersion: FeePolicyVersion
+  taxRuleSetVersion: TaxRuleSetVersion
+  warrantyTermSetVersion: WarrantyTermSetVersion
+  replacedPartsElection: String
+  electedAt: DateTime
+  designee: JSON
+  promisedAt: DateTime
+  holdReason: String
+  holdNote: String
+  heldAt: DateTime
+  waiter: Boolean
+  keyTag: String
+  authorizedTotalMinor: BigInt
+  currentTotalMinor: BigInt
+  boardStage: String
+  lockedAt: DateTime
+  releasedAt: DateTime
+  releasedBy: User
+  collisionClaimRef: CollisionClaimRef
+  qualityChecks(where: QualityCheckWhereInput! = {}, orderBy: [QualityCheckOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: QualityCheckWhereUniqueInput): [QualityCheck!]
+  qualityChecksCount(where: QualityCheckWhereInput! = {}): Int
+  tasks(where: StaffTaskWhereInput! = {}, orderBy: [StaffTaskOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StaffTaskWhereUniqueInput): [StaffTask!]
+  tasksCount(where: StaffTaskWhereInput! = {}): Int
+  openedAt: DateTime
+  openedBy: User
+  voidReason: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RepairOrderWhereUniqueInput {
+  id: ID
+  roNumber: String
+  checkIn: CheckInWhereUniqueInput
+  collisionClaimRef: CollisionClaimRefWhereUniqueInput
+}
+
+input RepairOrderWhereInput {
+  AND: [RepairOrderWhereInput!]
+  OR: [RepairOrderWhereInput!]
+  NOT: [RepairOrderWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  roNumber: StringFilter
+  kind: StringFilter
+  customer: CustomerWhereInput
+  businessAccount: BusinessAccountWhereInput
+  vehicle: VehicleWhereInput
+  serviceAdvisor: UserWhereInput
+  appointment: AppointmentWhereInput
+  checkIn: CheckInWhereInput
+  concerns: ConcernManyRelationFilter
+  jobs: JobManyRelationFilter
+  inspections: InspectionManyRelationFilter
+  estimateVersions: EstimateVersionManyRelationFilter
+  authorizationRequests: AuthorizationRequestManyRelationFilter
+  odometerIn: OdometerReadingWhereInput
+  odometerOut: OdometerReadingWhereInput
+  jurisdictionPolicyVersion: JurisdictionPolicyVersionWhereInput
+  shopPolicyVersion: ShopPolicyVersionWhereInput
+  laborRateClassSetVersion: LaborRateClassSetVersionWhereInput
+  laborMatrixVersion: LaborMatrixVersionWhereInput
+  partsMatrixVersion: PartsMatrixVersionWhereInput
+  feePolicyVersion: FeePolicyVersionWhereInput
+  taxRuleSetVersion: TaxRuleSetVersionWhereInput
+  warrantyTermSetVersion: WarrantyTermSetVersionWhereInput
+  replacedPartsElection: StringFilter
+  electedAt: DateTimeNullableFilter
+  promisedAt: DateTimeNullableFilter
+  holdReason: StringFilter
+  holdNote: StringFilter
+  heldAt: DateTimeNullableFilter
+  waiter: BooleanFilter
+  keyTag: StringFilter
+  authorizedTotalMinor: BigIntFilter
+  currentTotalMinor: BigIntFilter
+  lockedAt: DateTimeNullableFilter
+  releasedAt: DateTimeNullableFilter
+  releasedBy: UserWhereInput
+  collisionClaimRef: CollisionClaimRefWhereInput
+  qualityChecks: QualityCheckManyRelationFilter
+  tasks: StaffTaskManyRelationFilter
+  openedAt: DateTimeNullableFilter
+  openedBy: UserWhereInput
+  voidReason: StringFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ConcernManyRelationFilter {
+  every: ConcernWhereInput
+  some: ConcernWhereInput
+  none: ConcernWhereInput
+}
+
+input InspectionManyRelationFilter {
+  every: InspectionWhereInput
+  some: InspectionWhereInput
+  none: InspectionWhereInput
+}
+
+input EstimateVersionManyRelationFilter {
+  every: EstimateVersionWhereInput
+  some: EstimateVersionWhereInput
+  none: EstimateVersionWhereInput
+}
+
+input AuthorizationRequestManyRelationFilter {
+  every: AuthorizationRequestWhereInput
+  some: AuthorizationRequestWhereInput
+  none: AuthorizationRequestWhereInput
+}
+
+input QualityCheckManyRelationFilter {
+  every: QualityCheckWhereInput
+  some: QualityCheckWhereInput
+  none: QualityCheckWhereInput
+}
+
+input StaffTaskManyRelationFilter {
+  every: StaffTaskWhereInput
+  some: StaffTaskWhereInput
+  none: StaffTaskWhereInput
+}
+
+input RepairOrderOrderByInput {
+  id: OrderDirection
+  roNumber: OrderDirection
+  kind: OrderDirection
+  replacedPartsElection: OrderDirection
+  electedAt: OrderDirection
+  promisedAt: OrderDirection
+  holdReason: OrderDirection
+  holdNote: OrderDirection
+  heldAt: OrderDirection
+  waiter: OrderDirection
+  keyTag: OrderDirection
+  authorizedTotalMinor: OrderDirection
+  currentTotalMinor: OrderDirection
+  lockedAt: OrderDirection
+  releasedAt: OrderDirection
+  openedAt: OrderDirection
+  voidReason: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input RepairOrderUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  roNumber: String
+  kind: String
+  customer: CustomerRelateToOneForUpdateInput
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  vehicle: VehicleRelateToOneForUpdateInput
+  serviceAdvisor: UserRelateToOneForUpdateInput
+  appointment: AppointmentRelateToOneForUpdateInput
+  checkIn: CheckInRelateToOneForUpdateInput
+  concerns: ConcernRelateToManyForUpdateInput
+  jobs: JobRelateToManyForUpdateInput
+  inspections: InspectionRelateToManyForUpdateInput
+  estimateVersions: EstimateVersionRelateToManyForUpdateInput
+  authorizationRequests: AuthorizationRequestRelateToManyForUpdateInput
+  odometerIn: OdometerReadingRelateToOneForUpdateInput
+  odometerOut: OdometerReadingRelateToOneForUpdateInput
+  jurisdictionPolicyVersion: JurisdictionPolicyVersionRelateToOneForUpdateInput
+  shopPolicyVersion: ShopPolicyVersionRelateToOneForUpdateInput
+  laborRateClassSetVersion: LaborRateClassSetVersionRelateToOneForUpdateInput
+  laborMatrixVersion: LaborMatrixVersionRelateToOneForUpdateInput
+  partsMatrixVersion: PartsMatrixVersionRelateToOneForUpdateInput
+  feePolicyVersion: FeePolicyVersionRelateToOneForUpdateInput
+  taxRuleSetVersion: TaxRuleSetVersionRelateToOneForUpdateInput
+  warrantyTermSetVersion: WarrantyTermSetVersionRelateToOneForUpdateInput
+  replacedPartsElection: String
+  electedAt: DateTime
+  designee: JSON
+  promisedAt: DateTime
+  holdReason: String
+  holdNote: String
+  heldAt: DateTime
+  waiter: Boolean
+  keyTag: String
+  authorizedTotalMinor: BigInt
+  currentTotalMinor: BigInt
+  lockedAt: DateTime
+  releasedAt: DateTime
+  releasedBy: UserRelateToOneForUpdateInput
+  collisionClaimRef: CollisionClaimRefRelateToOneForUpdateInput
+  qualityChecks: QualityCheckRelateToManyForUpdateInput
+  tasks: StaffTaskRelateToManyForUpdateInput
+  openedAt: DateTime
+  openedBy: UserRelateToOneForUpdateInput
+  voidReason: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ConcernRelateToManyForUpdateInput {
+  disconnect: [ConcernWhereUniqueInput!]
+  set: [ConcernWhereUniqueInput!]
+  create: [ConcernCreateInput!]
+  connect: [ConcernWhereUniqueInput!]
+}
+
+input InspectionRelateToManyForUpdateInput {
+  disconnect: [InspectionWhereUniqueInput!]
+  set: [InspectionWhereUniqueInput!]
+  create: [InspectionCreateInput!]
+  connect: [InspectionWhereUniqueInput!]
+}
+
+input EstimateVersionRelateToManyForUpdateInput {
+  disconnect: [EstimateVersionWhereUniqueInput!]
+  set: [EstimateVersionWhereUniqueInput!]
+  create: [EstimateVersionCreateInput!]
+  connect: [EstimateVersionWhereUniqueInput!]
+}
+
+input AuthorizationRequestRelateToManyForUpdateInput {
+  disconnect: [AuthorizationRequestWhereUniqueInput!]
+  set: [AuthorizationRequestWhereUniqueInput!]
+  create: [AuthorizationRequestCreateInput!]
+  connect: [AuthorizationRequestWhereUniqueInput!]
+}
+
+input CollisionClaimRefRelateToOneForUpdateInput {
+  create: CollisionClaimRefCreateInput
+  connect: CollisionClaimRefWhereUniqueInput
+  disconnect: Boolean
+}
+
+input QualityCheckRelateToManyForUpdateInput {
+  disconnect: [QualityCheckWhereUniqueInput!]
+  set: [QualityCheckWhereUniqueInput!]
+  create: [QualityCheckCreateInput!]
+  connect: [QualityCheckWhereUniqueInput!]
+}
+
+input StaffTaskRelateToManyForUpdateInput {
+  disconnect: [StaffTaskWhereUniqueInput!]
+  set: [StaffTaskWhereUniqueInput!]
+  create: [StaffTaskCreateInput!]
+  connect: [StaffTaskWhereUniqueInput!]
+}
+
+input RepairOrderUpdateArgs {
+  where: RepairOrderWhereUniqueInput!
+  data: RepairOrderUpdateInput!
+}
+
+input RepairOrderCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  roNumber: String
+  kind: String
+  customer: CustomerRelateToOneForCreateInput
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  vehicle: VehicleRelateToOneForCreateInput
+  serviceAdvisor: UserRelateToOneForCreateInput
+  appointment: AppointmentRelateToOneForCreateInput
+  checkIn: CheckInRelateToOneForCreateInput
+  concerns: ConcernRelateToManyForCreateInput
+  jobs: JobRelateToManyForCreateInput
+  inspections: InspectionRelateToManyForCreateInput
+  estimateVersions: EstimateVersionRelateToManyForCreateInput
+  authorizationRequests: AuthorizationRequestRelateToManyForCreateInput
+  odometerIn: OdometerReadingRelateToOneForCreateInput
+  odometerOut: OdometerReadingRelateToOneForCreateInput
+  jurisdictionPolicyVersion: JurisdictionPolicyVersionRelateToOneForCreateInput
+  shopPolicyVersion: ShopPolicyVersionRelateToOneForCreateInput
+  laborRateClassSetVersion: LaborRateClassSetVersionRelateToOneForCreateInput
+  laborMatrixVersion: LaborMatrixVersionRelateToOneForCreateInput
+  partsMatrixVersion: PartsMatrixVersionRelateToOneForCreateInput
+  feePolicyVersion: FeePolicyVersionRelateToOneForCreateInput
+  taxRuleSetVersion: TaxRuleSetVersionRelateToOneForCreateInput
+  warrantyTermSetVersion: WarrantyTermSetVersionRelateToOneForCreateInput
+  replacedPartsElection: String
+  electedAt: DateTime
+  designee: JSON
+  promisedAt: DateTime
+  holdReason: String
+  holdNote: String
+  heldAt: DateTime
+  waiter: Boolean
+  keyTag: String
+  authorizedTotalMinor: BigInt
+  currentTotalMinor: BigInt
+  lockedAt: DateTime
+  releasedAt: DateTime
+  releasedBy: UserRelateToOneForCreateInput
+  collisionClaimRef: CollisionClaimRefRelateToOneForCreateInput
+  qualityChecks: QualityCheckRelateToManyForCreateInput
+  tasks: StaffTaskRelateToManyForCreateInput
+  openedAt: DateTime
+  openedBy: UserRelateToOneForCreateInput
+  voidReason: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ConcernRelateToManyForCreateInput {
+  create: [ConcernCreateInput!]
+  connect: [ConcernWhereUniqueInput!]
+}
+
+input InspectionRelateToManyForCreateInput {
+  create: [InspectionCreateInput!]
+  connect: [InspectionWhereUniqueInput!]
+}
+
+input EstimateVersionRelateToManyForCreateInput {
+  create: [EstimateVersionCreateInput!]
+  connect: [EstimateVersionWhereUniqueInput!]
+}
+
+input AuthorizationRequestRelateToManyForCreateInput {
+  create: [AuthorizationRequestCreateInput!]
+  connect: [AuthorizationRequestWhereUniqueInput!]
+}
+
+input CollisionClaimRefRelateToOneForCreateInput {
+  create: CollisionClaimRefCreateInput
+  connect: CollisionClaimRefWhereUniqueInput
+}
+
+input QualityCheckRelateToManyForCreateInput {
+  create: [QualityCheckCreateInput!]
+  connect: [QualityCheckWhereUniqueInput!]
+}
+
+input StaffTaskRelateToManyForCreateInput {
+  create: [StaffTaskCreateInput!]
+  connect: [StaffTaskWhereUniqueInput!]
+}
+
+type StaffTask {
+  id: ID!
+  shop: Shop
+  kind: String
+  title: String
+  detail: String
+  repairOrder: RepairOrder
+  authorizationRequest: AuthorizationRequest
+  assignee: User
+  createdByUser: User
+  createdByAgent: AgentIdentity
+  source: String
+  evidence: JSON
+  dueAt: DateTime
+  doneAt: DateTime
+  doneBy: User
+  outcome: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StaffTaskWhereUniqueInput {
+  id: ID
+}
+
+input StaffTaskWhereInput {
+  AND: [StaffTaskWhereInput!]
+  OR: [StaffTaskWhereInput!]
+  NOT: [StaffTaskWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  kind: StringFilter
+  title: StringFilter
+  detail: StringFilter
+  repairOrder: RepairOrderWhereInput
+  authorizationRequest: AuthorizationRequestWhereInput
+  assignee: UserWhereInput
+  createdByUser: UserWhereInput
+  createdByAgent: AgentIdentityWhereInput
+  source: StringFilter
+  dueAt: DateTimeNullableFilter
+  doneAt: DateTimeNullableFilter
+  doneBy: UserWhereInput
+  outcome: StringFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input StaffTaskOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  title: OrderDirection
+  detail: OrderDirection
+  source: OrderDirection
+  dueAt: OrderDirection
+  doneAt: OrderDirection
+  outcome: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input StaffTaskUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  kind: String
+  title: String
+  detail: String
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  authorizationRequest: AuthorizationRequestRelateToOneForUpdateInput
+  assignee: UserRelateToOneForUpdateInput
+  createdByUser: UserRelateToOneForUpdateInput
+  createdByAgent: AgentIdentityRelateToOneForUpdateInput
+  source: String
+  evidence: JSON
+  dueAt: DateTime
+  doneAt: DateTime
+  doneBy: UserRelateToOneForUpdateInput
+  outcome: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AuthorizationRequestRelateToOneForUpdateInput {
+  create: AuthorizationRequestCreateInput
+  connect: AuthorizationRequestWhereUniqueInput
+  disconnect: Boolean
+}
+
+input StaffTaskUpdateArgs {
+  where: StaffTaskWhereUniqueInput!
+  data: StaffTaskUpdateInput!
+}
+
+input StaffTaskCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  kind: String
+  title: String
+  detail: String
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  authorizationRequest: AuthorizationRequestRelateToOneForCreateInput
+  assignee: UserRelateToOneForCreateInput
+  createdByUser: UserRelateToOneForCreateInput
+  createdByAgent: AgentIdentityRelateToOneForCreateInput
+  source: String
+  evidence: JSON
+  dueAt: DateTime
+  doneAt: DateTime
+  doneBy: UserRelateToOneForCreateInput
+  outcome: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AuthorizationRequestRelateToOneForCreateInput {
+  create: AuthorizationRequestCreateInput
+  connect: AuthorizationRequestWhereUniqueInput
+}
+
+type TeardownDisclosure {
+  id: ID!
+  job: Job
+  teardownCostMinor: BigInt
+  reassemblyCostMinor: BigInt
+  areaDescription: String
+  destroyedParts: JSON
+  restorationWarning: Boolean
+  maxReassemblyDays: Int
+  disclosureText: String
+  disclosureTextVersion: String
+  lockedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TeardownDisclosureWhereUniqueInput {
+  id: ID
+  job: JobWhereUniqueInput
+}
+
+input TeardownDisclosureWhereInput {
+  AND: [TeardownDisclosureWhereInput!]
+  OR: [TeardownDisclosureWhereInput!]
+  NOT: [TeardownDisclosureWhereInput!]
+  id: IDFilter
+  job: JobWhereInput
+  teardownCostMinor: BigIntFilter
+  reassemblyCostMinor: BigIntFilter
+  areaDescription: StringFilter
+  restorationWarning: BooleanFilter
+  maxReassemblyDays: IntNullableFilter
+  disclosureText: StringFilter
+  disclosureTextVersion: StringFilter
+  lockedAt: DateTimeNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input TeardownDisclosureOrderByInput {
+  id: OrderDirection
+  teardownCostMinor: OrderDirection
+  reassemblyCostMinor: OrderDirection
+  areaDescription: OrderDirection
+  restorationWarning: OrderDirection
+  maxReassemblyDays: OrderDirection
+  disclosureText: OrderDirection
+  disclosureTextVersion: OrderDirection
+  lockedAt: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input TeardownDisclosureUpdateInput {
+  job: JobRelateToOneForUpdateInput
+  teardownCostMinor: BigInt
+  reassemblyCostMinor: BigInt
+  areaDescription: String
+  destroyedParts: JSON
+  restorationWarning: Boolean
+  maxReassemblyDays: Int
+  disclosureText: String
+  disclosureTextVersion: String
+  lockedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TeardownDisclosureUpdateArgs {
+  where: TeardownDisclosureWhereUniqueInput!
+  data: TeardownDisclosureUpdateInput!
+}
+
+input TeardownDisclosureCreateInput {
+  job: JobRelateToOneForCreateInput
+  teardownCostMinor: BigInt
+  reassemblyCostMinor: BigInt
+  areaDescription: String
+  destroyedParts: JSON
+  restorationWarning: Boolean
+  maxReassemblyDays: Int
+  disclosureText: String
+  disclosureTextVersion: String
+  lockedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type CannedJob {
+  id: ID!
+  shop: Shop
+  code: String
+  name: String
+  category: String
+  active: Boolean
+  versions(where: CannedJobVersionWhereInput! = {}, orderBy: [CannedJobVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CannedJobVersionWhereUniqueInput): [CannedJobVersion!]
+  versionsCount(where: CannedJobVersionWhereInput! = {}): Int
+  currentVersion: CannedJobVersion
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CannedJobWhereUniqueInput {
+  id: ID
+}
+
+input CannedJobWhereInput {
+  AND: [CannedJobWhereInput!]
+  OR: [CannedJobWhereInput!]
+  NOT: [CannedJobWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  code: StringFilter
+  name: StringFilter
+  category: StringFilter
+  active: BooleanFilter
+  versions: CannedJobVersionManyRelationFilter
+  currentVersion: CannedJobVersionWhereInput
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CannedJobVersionManyRelationFilter {
+  every: CannedJobVersionWhereInput
+  some: CannedJobVersionWhereInput
+  none: CannedJobVersionWhereInput
+}
+
+input CannedJobOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  name: OrderDirection
+  category: OrderDirection
+  active: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CannedJobUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  code: String
+  name: String
+  category: String
+  active: Boolean
+  versions: CannedJobVersionRelateToManyForUpdateInput
+  currentVersion: CannedJobVersionRelateToOneForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CannedJobVersionRelateToManyForUpdateInput {
+  disconnect: [CannedJobVersionWhereUniqueInput!]
+  set: [CannedJobVersionWhereUniqueInput!]
+  create: [CannedJobVersionCreateInput!]
+  connect: [CannedJobVersionWhereUniqueInput!]
+}
+
+input CannedJobUpdateArgs {
+  where: CannedJobWhereUniqueInput!
+  data: CannedJobUpdateInput!
+}
+
+input CannedJobCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  code: String
+  name: String
+  category: String
+  active: Boolean
+  versions: CannedJobVersionRelateToManyForCreateInput
+  currentVersion: CannedJobVersionRelateToOneForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CannedJobVersionRelateToManyForCreateInput {
+  create: [CannedJobVersionCreateInput!]
+  connect: [CannedJobVersionWhereUniqueInput!]
+}
+
+type CannedJobVersion {
+  id: ID!
+  cannedJob: CannedJob
+  versionNumber: Int
+  kind: String
+  lines: JSON
+  customerDescription: String
+  defaultWarrantyCode: String
+  notes: String
+  author: User
+  publishedBy: User
+  publishedAt: DateTime
+  retiredAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CannedJobVersionWhereUniqueInput {
+  id: ID
+}
+
+input CannedJobVersionWhereInput {
+  AND: [CannedJobVersionWhereInput!]
+  OR: [CannedJobVersionWhereInput!]
+  NOT: [CannedJobVersionWhereInput!]
+  id: IDFilter
+  cannedJob: CannedJobWhereInput
+  versionNumber: IntFilter
+  kind: StringFilter
+  customerDescription: StringFilter
+  defaultWarrantyCode: StringFilter
+  notes: StringFilter
+  author: UserWhereInput
+  publishedBy: UserWhereInput
+  publishedAt: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CannedJobVersionOrderByInput {
+  id: OrderDirection
+  versionNumber: OrderDirection
+  kind: OrderDirection
+  customerDescription: OrderDirection
+  defaultWarrantyCode: OrderDirection
+  notes: OrderDirection
+  publishedAt: OrderDirection
+  retiredAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CannedJobVersionUpdateInput {
+  cannedJob: CannedJobRelateToOneForUpdateInput
+  versionNumber: Int
+  kind: String
+  lines: JSON
+  customerDescription: String
+  defaultWarrantyCode: String
+  notes: String
+  author: UserRelateToOneForUpdateInput
+  publishedBy: UserRelateToOneForUpdateInput
+  publishedAt: DateTime
+  retiredAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CannedJobRelateToOneForUpdateInput {
+  create: CannedJobCreateInput
+  connect: CannedJobWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CannedJobVersionUpdateArgs {
+  where: CannedJobVersionWhereUniqueInput!
+  data: CannedJobVersionUpdateInput!
+}
+
+input CannedJobVersionCreateInput {
+  cannedJob: CannedJobRelateToOneForCreateInput
+  versionNumber: Int
+  kind: String
+  lines: JSON
+  customerDescription: String
+  defaultWarrantyCode: String
+  notes: String
+  author: UserRelateToOneForCreateInput
+  publishedBy: UserRelateToOneForCreateInput
+  publishedAt: DateTime
+  retiredAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CannedJobRelateToOneForCreateInput {
+  create: CannedJobCreateInput
+  connect: CannedJobWhereUniqueInput
+}
+
+type Inspection {
+  id: ID!
+  repairOrder: RepairOrder
+  templateVersion: InspectionTemplateVersion
+  technician: User
+  results(where: InspectionItemResultWhereInput! = {}, orderBy: [InspectionItemResultOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionItemResultWhereUniqueInput): [InspectionItemResult!]
+  resultsCount(where: InspectionItemResultWhereInput! = {}): Int
+  startedAt: DateTime
+  completedAt: DateTime
+  sentAt: DateTime
+  viewedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionWhereUniqueInput {
+  id: ID
+}
+
+input InspectionWhereInput {
+  AND: [InspectionWhereInput!]
+  OR: [InspectionWhereInput!]
+  NOT: [InspectionWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  templateVersion: InspectionTemplateVersionWhereInput
+  technician: UserWhereInput
+  results: InspectionItemResultManyRelationFilter
+  startedAt: DateTimeNullableFilter
+  completedAt: DateTimeNullableFilter
+  sentAt: DateTimeNullableFilter
+  viewedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input InspectionItemResultManyRelationFilter {
+  every: InspectionItemResultWhereInput
+  some: InspectionItemResultWhereInput
+  none: InspectionItemResultWhereInput
+}
+
+input InspectionOrderByInput {
+  id: OrderDirection
+  startedAt: OrderDirection
+  completedAt: OrderDirection
+  sentAt: OrderDirection
+  viewedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input InspectionUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  templateVersion: InspectionTemplateVersionRelateToOneForUpdateInput
+  technician: UserRelateToOneForUpdateInput
+  results: InspectionItemResultRelateToManyForUpdateInput
+  startedAt: DateTime
+  completedAt: DateTime
+  sentAt: DateTime
+  viewedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateVersionRelateToOneForUpdateInput {
+  create: InspectionTemplateVersionCreateInput
+  connect: InspectionTemplateVersionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input InspectionItemResultRelateToManyForUpdateInput {
+  disconnect: [InspectionItemResultWhereUniqueInput!]
+  set: [InspectionItemResultWhereUniqueInput!]
+  create: [InspectionItemResultCreateInput!]
+  connect: [InspectionItemResultWhereUniqueInput!]
+}
+
+input InspectionUpdateArgs {
+  where: InspectionWhereUniqueInput!
+  data: InspectionUpdateInput!
+}
+
+input InspectionCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  templateVersion: InspectionTemplateVersionRelateToOneForCreateInput
+  technician: UserRelateToOneForCreateInput
+  results: InspectionItemResultRelateToManyForCreateInput
+  startedAt: DateTime
+  completedAt: DateTime
+  sentAt: DateTime
+  viewedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateVersionRelateToOneForCreateInput {
+  create: InspectionTemplateVersionCreateInput
+  connect: InspectionTemplateVersionWhereUniqueInput
+}
+
+input InspectionItemResultRelateToManyForCreateInput {
+  create: [InspectionItemResultCreateInput!]
+  connect: [InspectionItemResultWhereUniqueInput!]
+}
+
+type InspectionItemResult {
+  id: ID!
+  inspection: Inspection
+  templateItem: InspectionTemplateItem
+  condition: String
+  derivedCondition: String
+  overrideReason: String
+  measurements: JSON
+  notes: String
+  media(where: DocumentWhereInput! = {}, orderBy: [DocumentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: DocumentWhereUniqueInput): [Document!]
+  mediaCount(where: DocumentWhereInput! = {}): Int
+  recommendedJobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
+  recommendedJobsCount(where: JobWhereInput! = {}): Int
+  recordedBy: User
+  recordedAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionItemResultWhereUniqueInput {
+  id: ID
+}
+
+input InspectionItemResultWhereInput {
+  AND: [InspectionItemResultWhereInput!]
+  OR: [InspectionItemResultWhereInput!]
+  NOT: [InspectionItemResultWhereInput!]
+  id: IDFilter
+  inspection: InspectionWhereInput
+  templateItem: InspectionTemplateItemWhereInput
+  condition: StringFilter
+  derivedCondition: StringFilter
+  overrideReason: StringFilter
+  notes: StringFilter
+  media: DocumentManyRelationFilter
+  recommendedJobs: JobManyRelationFilter
+  recordedBy: UserWhereInput
+  recordedAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input DocumentManyRelationFilter {
+  every: DocumentWhereInput
+  some: DocumentWhereInput
+  none: DocumentWhereInput
+}
+
+input InspectionItemResultOrderByInput {
+  id: OrderDirection
+  condition: OrderDirection
+  derivedCondition: OrderDirection
+  overrideReason: OrderDirection
+  notes: OrderDirection
+  recordedAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input InspectionItemResultUpdateInput {
+  inspection: InspectionRelateToOneForUpdateInput
+  templateItem: InspectionTemplateItemRelateToOneForUpdateInput
+  condition: String
+  derivedCondition: String
+  overrideReason: String
+  measurements: JSON
+  notes: String
+  media: DocumentRelateToManyForUpdateInput
+  recommendedJobs: JobRelateToManyForUpdateInput
+  recordedBy: UserRelateToOneForUpdateInput
+  recordedAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionRelateToOneForUpdateInput {
+  create: InspectionCreateInput
+  connect: InspectionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input InspectionTemplateItemRelateToOneForUpdateInput {
+  create: InspectionTemplateItemCreateInput
+  connect: InspectionTemplateItemWhereUniqueInput
+  disconnect: Boolean
+}
+
+input DocumentRelateToManyForUpdateInput {
+  disconnect: [DocumentWhereUniqueInput!]
+  set: [DocumentWhereUniqueInput!]
+  create: [DocumentCreateInput!]
+  connect: [DocumentWhereUniqueInput!]
+}
+
+input InspectionItemResultUpdateArgs {
+  where: InspectionItemResultWhereUniqueInput!
+  data: InspectionItemResultUpdateInput!
+}
+
+input InspectionItemResultCreateInput {
+  inspection: InspectionRelateToOneForCreateInput
+  templateItem: InspectionTemplateItemRelateToOneForCreateInput
+  condition: String
+  derivedCondition: String
+  overrideReason: String
+  measurements: JSON
+  notes: String
+  media: DocumentRelateToManyForCreateInput
+  recommendedJobs: JobRelateToManyForCreateInput
+  recordedBy: UserRelateToOneForCreateInput
+  recordedAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionRelateToOneForCreateInput {
+  create: InspectionCreateInput
+  connect: InspectionWhereUniqueInput
+}
+
+input InspectionTemplateItemRelateToOneForCreateInput {
+  create: InspectionTemplateItemCreateInput
+  connect: InspectionTemplateItemWhereUniqueInput
+}
+
+input DocumentRelateToManyForCreateInput {
+  create: [DocumentCreateInput!]
+  connect: [DocumentWhereUniqueInput!]
+}
+
+type InspectionTemplate {
+  id: ID!
+  name: String
+  kind: String
+  shop: Shop
+  versions(where: InspectionTemplateVersionWhereInput! = {}, orderBy: [InspectionTemplateVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateVersionWhereUniqueInput): [InspectionTemplateVersion!]
+  versionsCount(where: InspectionTemplateVersionWhereInput! = {}): Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateWhereUniqueInput {
+  id: ID
+}
+
+input InspectionTemplateWhereInput {
+  AND: [InspectionTemplateWhereInput!]
+  OR: [InspectionTemplateWhereInput!]
+  NOT: [InspectionTemplateWhereInput!]
+  id: IDFilter
+  name: StringFilter
+  kind: StringFilter
+  shop: ShopWhereInput
+  versions: InspectionTemplateVersionManyRelationFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input InspectionTemplateVersionManyRelationFilter {
+  every: InspectionTemplateVersionWhereInput
+  some: InspectionTemplateVersionWhereInput
+  none: InspectionTemplateVersionWhereInput
+}
+
+input InspectionTemplateOrderByInput {
+  id: OrderDirection
+  name: OrderDirection
+  kind: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input InspectionTemplateUpdateInput {
+  name: String
+  kind: String
+  shop: ShopRelateToOneForUpdateInput
+  versions: InspectionTemplateVersionRelateToManyForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateVersionRelateToManyForUpdateInput {
+  disconnect: [InspectionTemplateVersionWhereUniqueInput!]
+  set: [InspectionTemplateVersionWhereUniqueInput!]
+  create: [InspectionTemplateVersionCreateInput!]
+  connect: [InspectionTemplateVersionWhereUniqueInput!]
+}
+
+input InspectionTemplateUpdateArgs {
+  where: InspectionTemplateWhereUniqueInput!
+  data: InspectionTemplateUpdateInput!
+}
+
+input InspectionTemplateCreateInput {
+  name: String
+  kind: String
+  shop: ShopRelateToOneForCreateInput
+  versions: InspectionTemplateVersionRelateToManyForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateVersionRelateToManyForCreateInput {
+  create: [InspectionTemplateVersionCreateInput!]
+  connect: [InspectionTemplateVersionWhereUniqueInput!]
+}
+
+type InspectionTemplateItem {
+  id: ID!
+  templateVersion: InspectionTemplateVersion
+  code: String
+  section: String
+  label: String
+  measurement: JSON
+  photoRequiredOn: JSON
+  cannedJobCode: String
+  required: Boolean
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateItemWhereUniqueInput {
+  id: ID
+}
+
+input InspectionTemplateItemWhereInput {
+  AND: [InspectionTemplateItemWhereInput!]
+  OR: [InspectionTemplateItemWhereInput!]
+  NOT: [InspectionTemplateItemWhereInput!]
+  id: IDFilter
+  templateVersion: InspectionTemplateVersionWhereInput
+  code: StringFilter
+  section: StringFilter
+  label: StringFilter
+  cannedJobCode: StringFilter
+  required: BooleanFilter
+  sortOrder: IntNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input InspectionTemplateItemOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  section: OrderDirection
+  label: OrderDirection
+  cannedJobCode: OrderDirection
+  required: OrderDirection
+  sortOrder: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input InspectionTemplateItemUpdateInput {
+  templateVersion: InspectionTemplateVersionRelateToOneForUpdateInput
+  code: String
+  section: String
+  label: String
+  measurement: JSON
+  photoRequiredOn: JSON
+  cannedJobCode: String
+  required: Boolean
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateItemUpdateArgs {
+  where: InspectionTemplateItemWhereUniqueInput!
+  data: InspectionTemplateItemUpdateInput!
+}
+
+input InspectionTemplateItemCreateInput {
+  templateVersion: InspectionTemplateVersionRelateToOneForCreateInput
+  code: String
+  section: String
+  label: String
+  measurement: JSON
+  photoRequiredOn: JSON
+  cannedJobCode: String
+  required: Boolean
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type InspectionTemplateVersion {
+  id: ID!
+  template: InspectionTemplate
+  versionNumber: Int
+  items(where: InspectionTemplateItemWhereInput! = {}, orderBy: [InspectionTemplateItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateItemWhereUniqueInput): [InspectionTemplateItem!]
+  itemsCount(where: InspectionTemplateItemWhereInput! = {}): Int
+  status: String
+  publishedAt: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateVersionWhereUniqueInput {
+  id: ID
+}
+
+input InspectionTemplateVersionWhereInput {
+  AND: [InspectionTemplateVersionWhereInput!]
+  OR: [InspectionTemplateVersionWhereInput!]
+  NOT: [InspectionTemplateVersionWhereInput!]
+  id: IDFilter
+  template: InspectionTemplateWhereInput
+  versionNumber: IntFilter
+  items: InspectionTemplateItemManyRelationFilter
+  status: StringFilter
+  publishedAt: DateTimeNullableFilter
+  retiredAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input InspectionTemplateItemManyRelationFilter {
+  every: InspectionTemplateItemWhereInput
+  some: InspectionTemplateItemWhereInput
+  none: InspectionTemplateItemWhereInput
+}
+
+input InspectionTemplateVersionOrderByInput {
+  id: OrderDirection
+  versionNumber: OrderDirection
+  status: OrderDirection
+  publishedAt: OrderDirection
+  retiredAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input InspectionTemplateVersionUpdateInput {
+  template: InspectionTemplateRelateToOneForUpdateInput
+  versionNumber: Int
+  items: InspectionTemplateItemRelateToManyForUpdateInput
+  status: String
+  publishedAt: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateRelateToOneForUpdateInput {
+  create: InspectionTemplateCreateInput
+  connect: InspectionTemplateWhereUniqueInput
+  disconnect: Boolean
+}
+
+input InspectionTemplateItemRelateToManyForUpdateInput {
+  disconnect: [InspectionTemplateItemWhereUniqueInput!]
+  set: [InspectionTemplateItemWhereUniqueInput!]
+  create: [InspectionTemplateItemCreateInput!]
+  connect: [InspectionTemplateItemWhereUniqueInput!]
+}
+
+input InspectionTemplateVersionUpdateArgs {
+  where: InspectionTemplateVersionWhereUniqueInput!
+  data: InspectionTemplateVersionUpdateInput!
+}
+
+input InspectionTemplateVersionCreateInput {
+  template: InspectionTemplateRelateToOneForCreateInput
+  versionNumber: Int
+  items: InspectionTemplateItemRelateToManyForCreateInput
+  status: String
+  publishedAt: DateTime
+  retiredAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InspectionTemplateRelateToOneForCreateInput {
+  create: InspectionTemplateCreateInput
+  connect: InspectionTemplateWhereUniqueInput
+}
+
+input InspectionTemplateItemRelateToManyForCreateInput {
+  create: [InspectionTemplateItemCreateInput!]
+  connect: [InspectionTemplateItemWhereUniqueInput!]
+}
+
+type LaborOperation {
+  id: ID!
+  shop: Shop
+  code: String
+  description: String
+  variant: String
+  vehicleFilter: JSON
+  centiHours: Int
+  skillLevel: String
+  rateClassCode: String
+  includes: JSON
+  overlaps: JSON
+  source: String
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input LaborOperationWhereUniqueInput {
+  id: ID
+}
+
+input LaborOperationWhereInput {
+  AND: [LaborOperationWhereInput!]
+  OR: [LaborOperationWhereInput!]
+  NOT: [LaborOperationWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  code: StringFilter
+  description: StringFilter
+  variant: StringFilter
+  centiHours: IntFilter
+  skillLevel: StringFilter
+  rateClassCode: StringFilter
+  source: StringFilter
+  active: BooleanFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input LaborOperationOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  description: OrderDirection
+  variant: OrderDirection
+  centiHours: OrderDirection
+  skillLevel: OrderDirection
+  rateClassCode: OrderDirection
+  source: OrderDirection
+  active: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input LaborOperationUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  code: String
+  description: String
+  variant: String
+  vehicleFilter: JSON
+  centiHours: Int
+  skillLevel: String
+  rateClassCode: String
+  includes: JSON
+  overlaps: JSON
+  source: String
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input LaborOperationUpdateArgs {
+  where: LaborOperationWhereUniqueInput!
+  data: LaborOperationUpdateInput!
+}
+
+input LaborOperationCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  code: String
+  description: String
+  variant: String
+  vehicleFilter: JSON
+  centiHours: Int
+  skillLevel: String
+  rateClassCode: String
+  includes: JSON
+  overlaps: JSON
+  source: String
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PublishedService {
+  id: ID!
+  shop: Shop
+  name: String
+  slug: String
+  description: String
+  fromPriceMinor: BigInt
+  estimatedCentiHours: Int
+  bookable: Boolean
+  cannedJob: CannedJob
+  sortOrder: Int
+  isPublished: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PublishedServiceWhereUniqueInput {
+  id: ID
+}
+
+input PublishedServiceWhereInput {
+  AND: [PublishedServiceWhereInput!]
+  OR: [PublishedServiceWhereInput!]
+  NOT: [PublishedServiceWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  name: StringFilter
+  slug: StringFilter
+  description: StringFilter
+  fromPriceMinor: BigIntNullableFilter
+  estimatedCentiHours: IntNullableFilter
+  bookable: BooleanFilter
+  cannedJob: CannedJobWhereInput
+  sortOrder: IntNullableFilter
+  isPublished: BooleanFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input PublishedServiceOrderByInput {
+  id: OrderDirection
+  name: OrderDirection
+  slug: OrderDirection
+  description: OrderDirection
+  fromPriceMinor: OrderDirection
+  estimatedCentiHours: OrderDirection
+  bookable: OrderDirection
+  sortOrder: OrderDirection
+  isPublished: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PublishedServiceUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  name: String
+  slug: String
+  description: String
+  fromPriceMinor: BigInt
+  estimatedCentiHours: Int
+  bookable: Boolean
+  cannedJob: CannedJobRelateToOneForUpdateInput
+  sortOrder: Int
+  isPublished: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PublishedServiceUpdateArgs {
+  where: PublishedServiceWhereUniqueInput!
+  data: PublishedServiceUpdateInput!
+}
+
+input PublishedServiceCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  name: String
+  slug: String
+  description: String
+  fromPriceMinor: BigInt
+  estimatedCentiHours: Int
+  bookable: Boolean
+  cannedJob: CannedJobRelateToOneForCreateInput
+  sortOrder: Int
+  isPublished: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ServiceMenuItem {
+  id: ID!
+  shop: Shop
+  name: String
+  fixedPriceMinor: BigInt
+  cannedJob: CannedJob
+  vehicleFilter: JSON
+  publishable: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ServiceMenuItemWhereUniqueInput {
+  id: ID
+}
+
+input ServiceMenuItemWhereInput {
+  AND: [ServiceMenuItemWhereInput!]
+  OR: [ServiceMenuItemWhereInput!]
+  NOT: [ServiceMenuItemWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  name: StringFilter
+  fixedPriceMinor: BigIntNullableFilter
+  cannedJob: CannedJobWhereInput
+  publishable: BooleanFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ServiceMenuItemOrderByInput {
+  id: OrderDirection
+  name: OrderDirection
+  fixedPriceMinor: OrderDirection
+  publishable: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ServiceMenuItemUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  name: String
+  fixedPriceMinor: BigInt
+  cannedJob: CannedJobRelateToOneForUpdateInput
+  vehicleFilter: JSON
+  publishable: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ServiceMenuItemUpdateArgs {
+  where: ServiceMenuItemWhereUniqueInput!
+  data: ServiceMenuItemUpdateInput!
+}
+
+input ServiceMenuItemCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  name: String
+  fixedPriceMinor: BigInt
+  cannedJob: CannedJobRelateToOneForCreateInput
+  vehicleFilter: JSON
+  publishable: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type Authorization {
+  id: ID!
+  job: Job
+  estimateVersion: EstimateVersion
+  jobContentHash: String
+  amountMinor: BigInt
+  subtotalMinor: BigInt
+  method: String
+  actorKind: String
+  actorName: String
+  contactUsed: String
+  evidence: JSON
+  authorizedAt: DateTime
+  recordedByUser: User
+  authorizationRequest: AuthorizationRequest
+  signature: Document
+  consentTextVersion: String
+  poNumber: String
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AuthorizationWhereUniqueInput {
+  id: ID
+}
+
+input AuthorizationWhereInput {
+  AND: [AuthorizationWhereInput!]
+  OR: [AuthorizationWhereInput!]
+  NOT: [AuthorizationWhereInput!]
+  id: IDFilter
+  job: JobWhereInput
+  estimateVersion: EstimateVersionWhereInput
+  jobContentHash: StringFilter
+  amountMinor: BigIntFilter
+  subtotalMinor: BigIntFilter
+  method: StringFilter
+  actorKind: StringFilter
+  actorName: StringFilter
+  contactUsed: StringFilter
+  authorizedAt: DateTimeFilter
+  recordedByUser: UserWhereInput
+  authorizationRequest: AuthorizationRequestWhereInput
+  signature: DocumentWhereInput
+  consentTextVersion: StringFilter
+  poNumber: StringFilter
+  status: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AuthorizationOrderByInput {
+  id: OrderDirection
+  jobContentHash: OrderDirection
+  amountMinor: OrderDirection
+  subtotalMinor: OrderDirection
+  method: OrderDirection
+  actorKind: OrderDirection
+  actorName: OrderDirection
+  contactUsed: OrderDirection
+  authorizedAt: OrderDirection
+  consentTextVersion: OrderDirection
+  poNumber: OrderDirection
+  status: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AuthorizationUpdateInput {
+  job: JobRelateToOneForUpdateInput
+  estimateVersion: EstimateVersionRelateToOneForUpdateInput
+  jobContentHash: String
+  amountMinor: BigInt
+  subtotalMinor: BigInt
+  method: String
+  actorKind: String
+  actorName: String
+  contactUsed: String
+  evidence: JSON
+  authorizedAt: DateTime
+  recordedByUser: UserRelateToOneForUpdateInput
+  authorizationRequest: AuthorizationRequestRelateToOneForUpdateInput
+  signature: DocumentRelateToOneForUpdateInput
+  consentTextVersion: String
+  poNumber: String
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AuthorizationUpdateArgs {
+  where: AuthorizationWhereUniqueInput!
+  data: AuthorizationUpdateInput!
+}
+
+input AuthorizationCreateInput {
+  job: JobRelateToOneForCreateInput
+  estimateVersion: EstimateVersionRelateToOneForCreateInput
+  jobContentHash: String
+  amountMinor: BigInt
+  subtotalMinor: BigInt
+  method: String
+  actorKind: String
+  actorName: String
+  contactUsed: String
+  evidence: JSON
+  authorizedAt: DateTime
+  recordedByUser: UserRelateToOneForCreateInput
+  authorizationRequest: AuthorizationRequestRelateToOneForCreateInput
+  signature: DocumentRelateToOneForCreateInput
+  consentTextVersion: String
+  poNumber: String
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type AuthorizationRequest {
+  id: ID!
+  repairOrder: RepairOrder
+  estimateVersion: EstimateVersion
+  channel: String
+  contact: CustomerContact
+  contactLabel: String
+  tokenHash: String
+  expiresAt: DateTime
+  deliveredAt: DateTime
+  viewedAt: DateTime
+  answeredAt: DateTime
+  viewerEvidence: JSON
+  answer: JSON
+  consentTextVersion: String
+  createdByUser: User
+  createdByAgent: AgentIdentity
+  depositRequestedMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AuthorizationRequestWhereUniqueInput {
+  id: ID
+  tokenHash: String
+}
+
+input AuthorizationRequestWhereInput {
+  AND: [AuthorizationRequestWhereInput!]
+  OR: [AuthorizationRequestWhereInput!]
+  NOT: [AuthorizationRequestWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  estimateVersion: EstimateVersionWhereInput
+  channel: StringFilter
+  contact: CustomerContactWhereInput
+  contactLabel: StringFilter
+  tokenHash: StringFilter
+  expiresAt: DateTimeNullableFilter
+  deliveredAt: DateTimeNullableFilter
+  viewedAt: DateTimeNullableFilter
+  answeredAt: DateTimeNullableFilter
+  consentTextVersion: StringFilter
+  createdByUser: UserWhereInput
+  createdByAgent: AgentIdentityWhereInput
+  depositRequestedMinor: BigIntNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AuthorizationRequestOrderByInput {
+  id: OrderDirection
+  channel: OrderDirection
+  contactLabel: OrderDirection
+  tokenHash: OrderDirection
+  expiresAt: OrderDirection
+  deliveredAt: OrderDirection
+  viewedAt: OrderDirection
+  answeredAt: OrderDirection
+  consentTextVersion: OrderDirection
+  depositRequestedMinor: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AuthorizationRequestUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  estimateVersion: EstimateVersionRelateToOneForUpdateInput
+  channel: String
+  contact: CustomerContactRelateToOneForUpdateInput
+  contactLabel: String
+  tokenHash: String
+  expiresAt: DateTime
+  deliveredAt: DateTime
+  viewedAt: DateTime
+  answeredAt: DateTime
+  viewerEvidence: JSON
+  answer: JSON
+  consentTextVersion: String
+  createdByUser: UserRelateToOneForUpdateInput
+  createdByAgent: AgentIdentityRelateToOneForUpdateInput
+  depositRequestedMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AuthorizationRequestUpdateArgs {
+  where: AuthorizationRequestWhereUniqueInput!
+  data: AuthorizationRequestUpdateInput!
+}
+
+input AuthorizationRequestCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  estimateVersion: EstimateVersionRelateToOneForCreateInput
+  channel: String
+  contact: CustomerContactRelateToOneForCreateInput
+  contactLabel: String
+  tokenHash: String
+  expiresAt: DateTime
+  deliveredAt: DateTime
+  viewedAt: DateTime
+  answeredAt: DateTime
+  viewerEvidence: JSON
+  answer: JSON
+  consentTextVersion: String
+  createdByUser: UserRelateToOneForCreateInput
+  createdByAgent: AgentIdentityRelateToOneForCreateInput
+  depositRequestedMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type EstimateVersion {
+  id: ID!
+  repairOrder: RepairOrder
+  versionNumber: Int
+  reference: String
+  snapshot: JSON
+  contentHash: String
+  jobHashes: JSON
+  includedJobIds: JSON
+  disclosuresChecked: JSON
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  document: Document
+  sentAt: DateTime
+  sentBy: User
+  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
+  authorizationsCount(where: AuthorizationWhereInput! = {}): Int
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input EstimateVersionWhereUniqueInput {
+  id: ID
+  reference: String
+}
+
+input EstimateVersionWhereInput {
+  AND: [EstimateVersionWhereInput!]
+  OR: [EstimateVersionWhereInput!]
+  NOT: [EstimateVersionWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  versionNumber: IntFilter
+  reference: StringFilter
+  contentHash: StringFilter
+  subtotalMinor: BigIntFilter
+  taxMinor: BigIntFilter
+  totalMinor: BigIntFilter
+  document: DocumentWhereInput
+  sentAt: DateTimeNullableFilter
+  sentBy: UserWhereInput
+  authorizations: AuthorizationManyRelationFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input EstimateVersionOrderByInput {
+  id: OrderDirection
+  versionNumber: OrderDirection
+  reference: OrderDirection
+  contentHash: OrderDirection
+  subtotalMinor: OrderDirection
+  taxMinor: OrderDirection
+  totalMinor: OrderDirection
+  sentAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input EstimateVersionUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  versionNumber: Int
+  reference: String
+  snapshot: JSON
+  contentHash: String
+  jobHashes: JSON
+  includedJobIds: JSON
+  disclosuresChecked: JSON
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  document: DocumentRelateToOneForUpdateInput
+  sentAt: DateTime
+  sentBy: UserRelateToOneForUpdateInput
+  authorizations: AuthorizationRelateToManyForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input EstimateVersionUpdateArgs {
+  where: EstimateVersionWhereUniqueInput!
+  data: EstimateVersionUpdateInput!
+}
+
+input EstimateVersionCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  versionNumber: Int
+  reference: String
+  snapshot: JSON
+  contentHash: String
+  jobHashes: JSON
+  includedJobIds: JSON
+  disclosuresChecked: JSON
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  document: DocumentRelateToOneForCreateInput
+  sentAt: DateTime
+  sentBy: UserRelateToOneForCreateInput
+  authorizations: AuthorizationRelateToManyForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type JobDecision {
+  id: ID!
+  job: Job
+  estimateVersion: EstimateVersion
+  decision: String
+  actorName: String
+  method: String
+  at: DateTime
+  reason: String
+  deferUntil: DateTime
+  deferMiles: Int
+  recordedByUser: User
+  authorizationRequest: AuthorizationRequest
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobDecisionWhereUniqueInput {
+  id: ID
+}
+
+input JobDecisionWhereInput {
+  AND: [JobDecisionWhereInput!]
+  OR: [JobDecisionWhereInput!]
+  NOT: [JobDecisionWhereInput!]
+  id: IDFilter
+  job: JobWhereInput
+  estimateVersion: EstimateVersionWhereInput
+  decision: StringFilter
+  actorName: StringFilter
+  method: StringFilter
+  at: DateTimeFilter
+  reason: StringFilter
+  deferUntil: DateTimeNullableFilter
+  deferMiles: IntNullableFilter
+  recordedByUser: UserWhereInput
+  authorizationRequest: AuthorizationRequestWhereInput
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JobDecisionOrderByInput {
+  id: OrderDirection
+  decision: OrderDirection
+  actorName: OrderDirection
+  method: OrderDirection
+  at: OrderDirection
+  reason: OrderDirection
+  deferUntil: OrderDirection
+  deferMiles: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input JobDecisionUpdateInput {
+  job: JobRelateToOneForUpdateInput
+  estimateVersion: EstimateVersionRelateToOneForUpdateInput
+  decision: String
+  actorName: String
+  method: String
+  at: DateTime
+  reason: String
+  deferUntil: DateTime
+  deferMiles: Int
+  recordedByUser: UserRelateToOneForUpdateInput
+  authorizationRequest: AuthorizationRequestRelateToOneForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobDecisionUpdateArgs {
+  where: JobDecisionWhereUniqueInput!
+  data: JobDecisionUpdateInput!
+}
+
+input JobDecisionCreateInput {
+  job: JobRelateToOneForCreateInput
+  estimateVersion: EstimateVersionRelateToOneForCreateInput
+  decision: String
+  actorName: String
+  method: String
+  at: DateTime
+  reason: String
+  deferUntil: DateTime
+  deferMiles: Int
+  recordedByUser: UserRelateToOneForCreateInput
+  authorizationRequest: AuthorizationRequestRelateToOneForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 """
@@ -6221,6 +9261,150 @@ type Mutation {
   updateCheckIns(data: [CheckInUpdateArgs!]!): [CheckIn]
   deleteCheckIn(where: CheckInWhereUniqueInput!): CheckIn
   deleteCheckIns(where: [CheckInWhereUniqueInput!]!): [CheckIn]
+  createCollisionClaimRef(data: CollisionClaimRefCreateInput!): CollisionClaimRef
+  createCollisionClaimRefs(data: [CollisionClaimRefCreateInput!]!): [CollisionClaimRef]
+  updateCollisionClaimRef(where: CollisionClaimRefWhereUniqueInput!, data: CollisionClaimRefUpdateInput!): CollisionClaimRef
+  updateCollisionClaimRefs(data: [CollisionClaimRefUpdateArgs!]!): [CollisionClaimRef]
+  deleteCollisionClaimRef(where: CollisionClaimRefWhereUniqueInput!): CollisionClaimRef
+  deleteCollisionClaimRefs(where: [CollisionClaimRefWhereUniqueInput!]!): [CollisionClaimRef]
+  createConcern(data: ConcernCreateInput!): Concern
+  createConcerns(data: [ConcernCreateInput!]!): [Concern]
+  updateConcern(where: ConcernWhereUniqueInput!, data: ConcernUpdateInput!): Concern
+  updateConcerns(data: [ConcernUpdateArgs!]!): [Concern]
+  deleteConcern(where: ConcernWhereUniqueInput!): Concern
+  deleteConcerns(where: [ConcernWhereUniqueInput!]!): [Concern]
+  createJob(data: JobCreateInput!): Job
+  createJobs(data: [JobCreateInput!]!): [Job]
+  updateJob(where: JobWhereUniqueInput!, data: JobUpdateInput!): Job
+  updateJobs(data: [JobUpdateArgs!]!): [Job]
+  deleteJob(where: JobWhereUniqueInput!): Job
+  deleteJobs(where: [JobWhereUniqueInput!]!): [Job]
+  createJobLine(data: JobLineCreateInput!): JobLine
+  createJobLines(data: [JobLineCreateInput!]!): [JobLine]
+  updateJobLine(where: JobLineWhereUniqueInput!, data: JobLineUpdateInput!): JobLine
+  updateJobLines(data: [JobLineUpdateArgs!]!): [JobLine]
+  deleteJobLine(where: JobLineWhereUniqueInput!): JobLine
+  deleteJobLines(where: [JobLineWhereUniqueInput!]!): [JobLine]
+  createJobTechShare(data: JobTechShareCreateInput!): JobTechShare
+  createJobTechShares(data: [JobTechShareCreateInput!]!): [JobTechShare]
+  updateJobTechShare(where: JobTechShareWhereUniqueInput!, data: JobTechShareUpdateInput!): JobTechShare
+  updateJobTechShares(data: [JobTechShareUpdateArgs!]!): [JobTechShare]
+  deleteJobTechShare(where: JobTechShareWhereUniqueInput!): JobTechShare
+  deleteJobTechShares(where: [JobTechShareWhereUniqueInput!]!): [JobTechShare]
+  createPayerSplit(data: PayerSplitCreateInput!): PayerSplit
+  createPayerSplits(data: [PayerSplitCreateInput!]!): [PayerSplit]
+  updatePayerSplit(where: PayerSplitWhereUniqueInput!, data: PayerSplitUpdateInput!): PayerSplit
+  updatePayerSplits(data: [PayerSplitUpdateArgs!]!): [PayerSplit]
+  deletePayerSplit(where: PayerSplitWhereUniqueInput!): PayerSplit
+  deletePayerSplits(where: [PayerSplitWhereUniqueInput!]!): [PayerSplit]
+  createQualityCheck(data: QualityCheckCreateInput!): QualityCheck
+  createQualityChecks(data: [QualityCheckCreateInput!]!): [QualityCheck]
+  updateQualityCheck(where: QualityCheckWhereUniqueInput!, data: QualityCheckUpdateInput!): QualityCheck
+  updateQualityChecks(data: [QualityCheckUpdateArgs!]!): [QualityCheck]
+  deleteQualityCheck(where: QualityCheckWhereUniqueInput!): QualityCheck
+  deleteQualityChecks(where: [QualityCheckWhereUniqueInput!]!): [QualityCheck]
+  createRepairOrder(data: RepairOrderCreateInput!): RepairOrder
+  createRepairOrders(data: [RepairOrderCreateInput!]!): [RepairOrder]
+  updateRepairOrder(where: RepairOrderWhereUniqueInput!, data: RepairOrderUpdateInput!): RepairOrder
+  updateRepairOrders(data: [RepairOrderUpdateArgs!]!): [RepairOrder]
+  deleteRepairOrder(where: RepairOrderWhereUniqueInput!): RepairOrder
+  deleteRepairOrders(where: [RepairOrderWhereUniqueInput!]!): [RepairOrder]
+  createStaffTask(data: StaffTaskCreateInput!): StaffTask
+  createStaffTasks(data: [StaffTaskCreateInput!]!): [StaffTask]
+  updateStaffTask(where: StaffTaskWhereUniqueInput!, data: StaffTaskUpdateInput!): StaffTask
+  updateStaffTasks(data: [StaffTaskUpdateArgs!]!): [StaffTask]
+  deleteStaffTask(where: StaffTaskWhereUniqueInput!): StaffTask
+  deleteStaffTasks(where: [StaffTaskWhereUniqueInput!]!): [StaffTask]
+  createTeardownDisclosure(data: TeardownDisclosureCreateInput!): TeardownDisclosure
+  createTeardownDisclosures(data: [TeardownDisclosureCreateInput!]!): [TeardownDisclosure]
+  updateTeardownDisclosure(where: TeardownDisclosureWhereUniqueInput!, data: TeardownDisclosureUpdateInput!): TeardownDisclosure
+  updateTeardownDisclosures(data: [TeardownDisclosureUpdateArgs!]!): [TeardownDisclosure]
+  deleteTeardownDisclosure(where: TeardownDisclosureWhereUniqueInput!): TeardownDisclosure
+  deleteTeardownDisclosures(where: [TeardownDisclosureWhereUniqueInput!]!): [TeardownDisclosure]
+  createCannedJob(data: CannedJobCreateInput!): CannedJob
+  createCannedJobs(data: [CannedJobCreateInput!]!): [CannedJob]
+  updateCannedJob(where: CannedJobWhereUniqueInput!, data: CannedJobUpdateInput!): CannedJob
+  updateCannedJobs(data: [CannedJobUpdateArgs!]!): [CannedJob]
+  deleteCannedJob(where: CannedJobWhereUniqueInput!): CannedJob
+  deleteCannedJobs(where: [CannedJobWhereUniqueInput!]!): [CannedJob]
+  createCannedJobVersion(data: CannedJobVersionCreateInput!): CannedJobVersion
+  createCannedJobVersions(data: [CannedJobVersionCreateInput!]!): [CannedJobVersion]
+  updateCannedJobVersion(where: CannedJobVersionWhereUniqueInput!, data: CannedJobVersionUpdateInput!): CannedJobVersion
+  updateCannedJobVersions(data: [CannedJobVersionUpdateArgs!]!): [CannedJobVersion]
+  deleteCannedJobVersion(where: CannedJobVersionWhereUniqueInput!): CannedJobVersion
+  deleteCannedJobVersions(where: [CannedJobVersionWhereUniqueInput!]!): [CannedJobVersion]
+  createInspection(data: InspectionCreateInput!): Inspection
+  createInspections(data: [InspectionCreateInput!]!): [Inspection]
+  updateInspection(where: InspectionWhereUniqueInput!, data: InspectionUpdateInput!): Inspection
+  updateInspections(data: [InspectionUpdateArgs!]!): [Inspection]
+  deleteInspection(where: InspectionWhereUniqueInput!): Inspection
+  deleteInspections(where: [InspectionWhereUniqueInput!]!): [Inspection]
+  createInspectionItemResult(data: InspectionItemResultCreateInput!): InspectionItemResult
+  createInspectionItemResults(data: [InspectionItemResultCreateInput!]!): [InspectionItemResult]
+  updateInspectionItemResult(where: InspectionItemResultWhereUniqueInput!, data: InspectionItemResultUpdateInput!): InspectionItemResult
+  updateInspectionItemResults(data: [InspectionItemResultUpdateArgs!]!): [InspectionItemResult]
+  deleteInspectionItemResult(where: InspectionItemResultWhereUniqueInput!): InspectionItemResult
+  deleteInspectionItemResults(where: [InspectionItemResultWhereUniqueInput!]!): [InspectionItemResult]
+  createInspectionTemplate(data: InspectionTemplateCreateInput!): InspectionTemplate
+  createInspectionTemplates(data: [InspectionTemplateCreateInput!]!): [InspectionTemplate]
+  updateInspectionTemplate(where: InspectionTemplateWhereUniqueInput!, data: InspectionTemplateUpdateInput!): InspectionTemplate
+  updateInspectionTemplates(data: [InspectionTemplateUpdateArgs!]!): [InspectionTemplate]
+  deleteInspectionTemplate(where: InspectionTemplateWhereUniqueInput!): InspectionTemplate
+  deleteInspectionTemplates(where: [InspectionTemplateWhereUniqueInput!]!): [InspectionTemplate]
+  createInspectionTemplateItem(data: InspectionTemplateItemCreateInput!): InspectionTemplateItem
+  createInspectionTemplateItems(data: [InspectionTemplateItemCreateInput!]!): [InspectionTemplateItem]
+  updateInspectionTemplateItem(where: InspectionTemplateItemWhereUniqueInput!, data: InspectionTemplateItemUpdateInput!): InspectionTemplateItem
+  updateInspectionTemplateItems(data: [InspectionTemplateItemUpdateArgs!]!): [InspectionTemplateItem]
+  deleteInspectionTemplateItem(where: InspectionTemplateItemWhereUniqueInput!): InspectionTemplateItem
+  deleteInspectionTemplateItems(where: [InspectionTemplateItemWhereUniqueInput!]!): [InspectionTemplateItem]
+  createInspectionTemplateVersion(data: InspectionTemplateVersionCreateInput!): InspectionTemplateVersion
+  createInspectionTemplateVersions(data: [InspectionTemplateVersionCreateInput!]!): [InspectionTemplateVersion]
+  updateInspectionTemplateVersion(where: InspectionTemplateVersionWhereUniqueInput!, data: InspectionTemplateVersionUpdateInput!): InspectionTemplateVersion
+  updateInspectionTemplateVersions(data: [InspectionTemplateVersionUpdateArgs!]!): [InspectionTemplateVersion]
+  deleteInspectionTemplateVersion(where: InspectionTemplateVersionWhereUniqueInput!): InspectionTemplateVersion
+  deleteInspectionTemplateVersions(where: [InspectionTemplateVersionWhereUniqueInput!]!): [InspectionTemplateVersion]
+  createLaborOperation(data: LaborOperationCreateInput!): LaborOperation
+  createLaborOperations(data: [LaborOperationCreateInput!]!): [LaborOperation]
+  updateLaborOperation(where: LaborOperationWhereUniqueInput!, data: LaborOperationUpdateInput!): LaborOperation
+  updateLaborOperations(data: [LaborOperationUpdateArgs!]!): [LaborOperation]
+  deleteLaborOperation(where: LaborOperationWhereUniqueInput!): LaborOperation
+  deleteLaborOperations(where: [LaborOperationWhereUniqueInput!]!): [LaborOperation]
+  createPublishedService(data: PublishedServiceCreateInput!): PublishedService
+  createPublishedServices(data: [PublishedServiceCreateInput!]!): [PublishedService]
+  updatePublishedService(where: PublishedServiceWhereUniqueInput!, data: PublishedServiceUpdateInput!): PublishedService
+  updatePublishedServices(data: [PublishedServiceUpdateArgs!]!): [PublishedService]
+  deletePublishedService(where: PublishedServiceWhereUniqueInput!): PublishedService
+  deletePublishedServices(where: [PublishedServiceWhereUniqueInput!]!): [PublishedService]
+  createServiceMenuItem(data: ServiceMenuItemCreateInput!): ServiceMenuItem
+  createServiceMenuItems(data: [ServiceMenuItemCreateInput!]!): [ServiceMenuItem]
+  updateServiceMenuItem(where: ServiceMenuItemWhereUniqueInput!, data: ServiceMenuItemUpdateInput!): ServiceMenuItem
+  updateServiceMenuItems(data: [ServiceMenuItemUpdateArgs!]!): [ServiceMenuItem]
+  deleteServiceMenuItem(where: ServiceMenuItemWhereUniqueInput!): ServiceMenuItem
+  deleteServiceMenuItems(where: [ServiceMenuItemWhereUniqueInput!]!): [ServiceMenuItem]
+  createAuthorization(data: AuthorizationCreateInput!): Authorization
+  createAuthorizations(data: [AuthorizationCreateInput!]!): [Authorization]
+  updateAuthorization(where: AuthorizationWhereUniqueInput!, data: AuthorizationUpdateInput!): Authorization
+  updateAuthorizations(data: [AuthorizationUpdateArgs!]!): [Authorization]
+  deleteAuthorization(where: AuthorizationWhereUniqueInput!): Authorization
+  deleteAuthorizations(where: [AuthorizationWhereUniqueInput!]!): [Authorization]
+  createAuthorizationRequest(data: AuthorizationRequestCreateInput!): AuthorizationRequest
+  createAuthorizationRequests(data: [AuthorizationRequestCreateInput!]!): [AuthorizationRequest]
+  updateAuthorizationRequest(where: AuthorizationRequestWhereUniqueInput!, data: AuthorizationRequestUpdateInput!): AuthorizationRequest
+  updateAuthorizationRequests(data: [AuthorizationRequestUpdateArgs!]!): [AuthorizationRequest]
+  deleteAuthorizationRequest(where: AuthorizationRequestWhereUniqueInput!): AuthorizationRequest
+  deleteAuthorizationRequests(where: [AuthorizationRequestWhereUniqueInput!]!): [AuthorizationRequest]
+  createEstimateVersion(data: EstimateVersionCreateInput!): EstimateVersion
+  createEstimateVersions(data: [EstimateVersionCreateInput!]!): [EstimateVersion]
+  updateEstimateVersion(where: EstimateVersionWhereUniqueInput!, data: EstimateVersionUpdateInput!): EstimateVersion
+  updateEstimateVersions(data: [EstimateVersionUpdateArgs!]!): [EstimateVersion]
+  deleteEstimateVersion(where: EstimateVersionWhereUniqueInput!): EstimateVersion
+  deleteEstimateVersions(where: [EstimateVersionWhereUniqueInput!]!): [EstimateVersion]
+  createJobDecision(data: JobDecisionCreateInput!): JobDecision
+  createJobDecisions(data: [JobDecisionCreateInput!]!): [JobDecision]
+  updateJobDecision(where: JobDecisionWhereUniqueInput!, data: JobDecisionUpdateInput!): JobDecision
+  updateJobDecisions(data: [JobDecisionUpdateArgs!]!): [JobDecision]
+  deleteJobDecision(where: JobDecisionWhereUniqueInput!): JobDecision
+  deleteJobDecisions(where: [JobDecisionWhereUniqueInput!]!): [JobDecision]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -6246,6 +9430,26 @@ type Mutation {
   bookShopAppointment(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, customerId: ID, vehicleId: ID, lead: JSON, concernText: String, requestedServices: [String!], holdToken: String, confirm: Boolean, idempotencyKey: String!): JSON
   transitionAppointment(id: ID!, to: String!, expectedVersion: Int!, reason: String, startsAt: String, idempotencyKey: String!): JSON
   checkInShopVehicle(input: JSON!, idempotencyKey: String!): JSON
+  openShopRepairOrder(input: JSON!, idempotencyKey: String!): JSON
+  holdRepairOrder(repairOrderId: ID!, expectedVersion: Int!, hold: Boolean!, reason: String, note: String, idempotencyKey: String!): JSON
+  addRepairJob(input: JSON!, idempotencyKey: String!): JSON
+  saveJobLines(jobId: ID!, expectedVersion: Int!, lines: JSON!, idempotencyKey: String!): JSON
+  saveCannedJob(input: JSON!, idempotencyKey: String!): JSON
+  publishCannedJobVersion(versionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+  setCannedJobStatus(cannedJobId: ID!, active: Boolean!, idempotencyKey: String!): JSON
+  editRepairJobLines(jobId: ID!, expectedVersion: Int!, add: JSON, removeLineId: ID, choose: JSON, idempotencyKey: String!): JSON
+  repriceRepairJob(jobId: ID!, idempotencyKey: String!): JSON
+  transitionRepairJob(jobId: ID!, to: String!, expectedVersion: Int!, reason: String, cause: String, correction: String, idempotencyKey: String!): JSON
+  startShopInspection(repairOrderId: ID!, templateId: ID!, technicianId: ID, idempotencyKey: String!): JSON
+  recordInspectionItem(input: JSON!, idempotencyKey: String!): JSON
+  attachInspectionMedia(resultId: ID!, documentId: ID!, idempotencyKey: String!): JSON
+  completeShopInspection(inspectionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+  sendShopInspection(inspectionId: ID!, expectedVersion: Int!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
+  sendRepairEstimate(repairOrderId: ID!, jobIds: [ID!], expectedVersion: Int!, idempotencyKey: String!): JSON
+  requestCustomerAuthorization(estimateVersionId: ID!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
+  recordCustomerAuthorization(input: JSON!, idempotencyKey: String!): JSON
+  createCallbackTask(repairOrderId: ID!, kind: String, title: String!, detail: String, idempotencyKey: String!): JSON
+  closeCallbackTask(taskId: ID!, expectedVersion: Int!, outcome: String!, cancel: Boolean, idempotencyKey: String!): JSON
 }
 
 union UserAuthenticationWithPasswordResult = UserAuthenticationWithPasswordSuccess | UserAuthenticationWithPasswordFailure
@@ -6430,6 +9634,78 @@ type Query {
   checkIn(where: CheckInWhereUniqueInput!): CheckIn
   checkIns(where: CheckInWhereInput! = {}, orderBy: [CheckInOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CheckInWhereUniqueInput): [CheckIn!]
   checkInsCount(where: CheckInWhereInput! = {}): Int
+  collisionClaimRef(where: CollisionClaimRefWhereUniqueInput!): CollisionClaimRef
+  collisionClaimRefs(where: CollisionClaimRefWhereInput! = {}, orderBy: [CollisionClaimRefOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CollisionClaimRefWhereUniqueInput): [CollisionClaimRef!]
+  collisionClaimRefsCount(where: CollisionClaimRefWhereInput! = {}): Int
+  concern(where: ConcernWhereUniqueInput!): Concern
+  concerns(where: ConcernWhereInput! = {}, orderBy: [ConcernOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ConcernWhereUniqueInput): [Concern!]
+  concernsCount(where: ConcernWhereInput! = {}): Int
+  job(where: JobWhereUniqueInput!): Job
+  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
+  jobsCount(where: JobWhereInput! = {}): Int
+  jobLine(where: JobLineWhereUniqueInput!): JobLine
+  jobLines(where: JobLineWhereInput! = {}, orderBy: [JobLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobLineWhereUniqueInput): [JobLine!]
+  jobLinesCount(where: JobLineWhereInput! = {}): Int
+  jobTechShare(where: JobTechShareWhereUniqueInput!): JobTechShare
+  jobTechShares(where: JobTechShareWhereInput! = {}, orderBy: [JobTechShareOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobTechShareWhereUniqueInput): [JobTechShare!]
+  jobTechSharesCount(where: JobTechShareWhereInput! = {}): Int
+  payerSplit(where: PayerSplitWhereUniqueInput!): PayerSplit
+  payerSplits(where: PayerSplitWhereInput! = {}, orderBy: [PayerSplitOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PayerSplitWhereUniqueInput): [PayerSplit!]
+  payerSplitsCount(where: PayerSplitWhereInput! = {}): Int
+  qualityCheck(where: QualityCheckWhereUniqueInput!): QualityCheck
+  qualityChecks(where: QualityCheckWhereInput! = {}, orderBy: [QualityCheckOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: QualityCheckWhereUniqueInput): [QualityCheck!]
+  qualityChecksCount(where: QualityCheckWhereInput! = {}): Int
+  repairOrder(where: RepairOrderWhereUniqueInput!): RepairOrder
+  repairOrders(where: RepairOrderWhereInput! = {}, orderBy: [RepairOrderOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RepairOrderWhereUniqueInput): [RepairOrder!]
+  repairOrdersCount(where: RepairOrderWhereInput! = {}): Int
+  staffTask(where: StaffTaskWhereUniqueInput!): StaffTask
+  staffTasks(where: StaffTaskWhereInput! = {}, orderBy: [StaffTaskOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StaffTaskWhereUniqueInput): [StaffTask!]
+  staffTasksCount(where: StaffTaskWhereInput! = {}): Int
+  teardownDisclosure(where: TeardownDisclosureWhereUniqueInput!): TeardownDisclosure
+  teardownDisclosures(where: TeardownDisclosureWhereInput! = {}, orderBy: [TeardownDisclosureOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TeardownDisclosureWhereUniqueInput): [TeardownDisclosure!]
+  teardownDisclosuresCount(where: TeardownDisclosureWhereInput! = {}): Int
+  cannedJob(where: CannedJobWhereUniqueInput!): CannedJob
+  cannedJobs(where: CannedJobWhereInput! = {}, orderBy: [CannedJobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CannedJobWhereUniqueInput): [CannedJob!]
+  cannedJobsCount(where: CannedJobWhereInput! = {}): Int
+  cannedJobVersion(where: CannedJobVersionWhereUniqueInput!): CannedJobVersion
+  cannedJobVersions(where: CannedJobVersionWhereInput! = {}, orderBy: [CannedJobVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CannedJobVersionWhereUniqueInput): [CannedJobVersion!]
+  cannedJobVersionsCount(where: CannedJobVersionWhereInput! = {}): Int
+  inspection(where: InspectionWhereUniqueInput!): Inspection
+  inspections(where: InspectionWhereInput! = {}, orderBy: [InspectionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionWhereUniqueInput): [Inspection!]
+  inspectionsCount(where: InspectionWhereInput! = {}): Int
+  inspectionItemResult(where: InspectionItemResultWhereUniqueInput!): InspectionItemResult
+  inspectionItemResults(where: InspectionItemResultWhereInput! = {}, orderBy: [InspectionItemResultOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionItemResultWhereUniqueInput): [InspectionItemResult!]
+  inspectionItemResultsCount(where: InspectionItemResultWhereInput! = {}): Int
+  inspectionTemplate(where: InspectionTemplateWhereUniqueInput!): InspectionTemplate
+  inspectionTemplates(where: InspectionTemplateWhereInput! = {}, orderBy: [InspectionTemplateOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateWhereUniqueInput): [InspectionTemplate!]
+  inspectionTemplatesCount(where: InspectionTemplateWhereInput! = {}): Int
+  inspectionTemplateItem(where: InspectionTemplateItemWhereUniqueInput!): InspectionTemplateItem
+  inspectionTemplateItems(where: InspectionTemplateItemWhereInput! = {}, orderBy: [InspectionTemplateItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateItemWhereUniqueInput): [InspectionTemplateItem!]
+  inspectionTemplateItemsCount(where: InspectionTemplateItemWhereInput! = {}): Int
+  inspectionTemplateVersion(where: InspectionTemplateVersionWhereUniqueInput!): InspectionTemplateVersion
+  inspectionTemplateVersions(where: InspectionTemplateVersionWhereInput! = {}, orderBy: [InspectionTemplateVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateVersionWhereUniqueInput): [InspectionTemplateVersion!]
+  inspectionTemplateVersionsCount(where: InspectionTemplateVersionWhereInput! = {}): Int
+  laborOperation(where: LaborOperationWhereUniqueInput!): LaborOperation
+  laborOperations(where: LaborOperationWhereInput! = {}, orderBy: [LaborOperationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborOperationWhereUniqueInput): [LaborOperation!]
+  laborOperationsCount(where: LaborOperationWhereInput! = {}): Int
+  publishedService(where: PublishedServiceWhereUniqueInput!): PublishedService
+  publishedServices(where: PublishedServiceWhereInput! = {}, orderBy: [PublishedServiceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PublishedServiceWhereUniqueInput): [PublishedService!]
+  publishedServicesCount(where: PublishedServiceWhereInput! = {}): Int
+  serviceMenuItem(where: ServiceMenuItemWhereUniqueInput!): ServiceMenuItem
+  serviceMenuItems(where: ServiceMenuItemWhereInput! = {}, orderBy: [ServiceMenuItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ServiceMenuItemWhereUniqueInput): [ServiceMenuItem!]
+  serviceMenuItemsCount(where: ServiceMenuItemWhereInput! = {}): Int
+  authorization(where: AuthorizationWhereUniqueInput!): Authorization
+  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
+  authorizationsCount(where: AuthorizationWhereInput! = {}): Int
+  authorizationRequest(where: AuthorizationRequestWhereUniqueInput!): AuthorizationRequest
+  authorizationRequests(where: AuthorizationRequestWhereInput! = {}, orderBy: [AuthorizationRequestOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationRequestWhereUniqueInput): [AuthorizationRequest!]
+  authorizationRequestsCount(where: AuthorizationRequestWhereInput! = {}): Int
+  estimateVersion(where: EstimateVersionWhereUniqueInput!): EstimateVersion
+  estimateVersions(where: EstimateVersionWhereInput! = {}, orderBy: [EstimateVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: EstimateVersionWhereUniqueInput): [EstimateVersion!]
+  estimateVersionsCount(where: EstimateVersionWhereInput! = {}): Int
+  jobDecision(where: JobDecisionWhereUniqueInput!): JobDecision
+  jobDecisions(where: JobDecisionWhereInput! = {}, orderBy: [JobDecisionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobDecisionWhereUniqueInput): [JobDecision!]
+  jobDecisionsCount(where: JobDecisionWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult

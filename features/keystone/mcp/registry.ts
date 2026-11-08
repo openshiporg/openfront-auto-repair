@@ -36,6 +36,67 @@ export const DOMAIN_TOOLS: DomainTool[] = [
     field: 'loadNorthgateSetup',
     writes: true,
   },
+  // ── Repair orders (Phase 2). R = read, P = proposes (drafts a person reviews). No tool records an authorization. ──
+  {
+    name: 'getRepairOrder',
+    description: 'Read one repair order: status, board stage, concerns, jobs with prices and statuses, estimate versions and open tasks. Needs canReadRepairOrders.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string', minLength: 1, maxLength: 64 } }, required: ['id'], additionalProperties: false },
+    document: `query GetRepairOrder($id: ID!) { repairOrder(where: { id: $id }) {
+      id roNumber status boardStage promisedAt waiter holdReason currentTotalMinor authorizedTotalMinor
+      vehicle { year make model } concerns { id customerWords category }
+      jobs(orderBy: { number: asc }) { id number title status kind urgency totalMinor authorizedAmountMinor chargeCeilingMinor reauthorizationReason version
+        lines(orderBy: { sortOrder: asc }) { kind description partNumber condition quantityMilli soldCentiHours unitPriceMinor extendedMinor taxMinor } }
+      estimateVersions(orderBy: { versionNumber: desc }) { id reference status totalMinor sentAt }
+      tasks(where: { status: { equals: "open" } }) { id kind title dueAt }
+    } }`,
+    field: 'repairOrder',
+    writes: false,
+  },
+  {
+    name: 'listBoardRepairOrders',
+    description: 'Open repair orders on the work board for a shop, newest first. Needs canReadRepairOrders.',
+    inputSchema: { type: 'object', properties: { shopId: { type: 'string', minLength: 1, maxLength: 64 } }, required: ['shopId'], additionalProperties: false },
+    document: `query Board($shopId: ID!) { repairOrders(where: { shop: { id: { equals: $shopId } }, status: { in: ["checked_in", "in_service", "on_hold"] } }, orderBy: { openedAt: desc }, take: 100) {
+      id roNumber status boardStage promisedAt waiter holdReason currentTotalMinor vehicle { year make model }
+    } }`,
+    field: 'repairOrders',
+    writes: false,
+  },
+  {
+    name: 'proposeRepairJob',
+    description: 'Draft a job on a repair order from a canned job or lines. It is priced from the shop policy and stays a draft for a person to review and send; it is never sent or authorized by this tool. A labor operation with several variants is refused (GUIDE_AMBIGUOUS). Needs canWriteRepairOrders or canPriceJobs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        input: { type: 'object', description: '{ repairOrderId, title, cannedJobId?, concernId?, lines?: [{ kind, description, operationCode?, variant?, soldCentiHours?, partNumber?, condition?, quantityMilli?, unitCostMinor? }] }' },
+        idempotencyKey,
+      },
+      required: ['input', 'idempotencyKey'],
+      additionalProperties: false,
+    },
+    document: 'mutation ProposeRepairJob($input: JSON!, $idempotencyKey: String!) { addRepairJob(input: $input, idempotencyKey: $idempotencyKey) }',
+    field: 'addRepairJob',
+    writes: true,
+  },
+  {
+    name: 'requestCustomerCallback',
+    description: 'Create a staff callback task on a repair order. Use this when a customer says yes, asks a question, or wants a call: a person calls back and records the answer. Needs canReadRepairOrders.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repairOrderId: { type: 'string', minLength: 1, maxLength: 64 },
+        kind: { type: 'string', enum: ['authorization_callback', 'customer_callback', 'authorization_follow_up', 'other'] },
+        title: { type: 'string', minLength: 3, maxLength: 160 },
+        detail: { type: 'string', maxLength: 1000 },
+        idempotencyKey,
+      },
+      required: ['repairOrderId', 'title', 'idempotencyKey'],
+      additionalProperties: false,
+    },
+    document: 'mutation RequestCallback($repairOrderId: ID!, $kind: String, $title: String!, $detail: String, $idempotencyKey: String!) { createCallbackTask(repairOrderId: $repairOrderId, kind: $kind, title: $title, detail: $detail, idempotencyKey: $idempotencyKey) }',
+    field: 'createCallbackTask',
+    writes: true,
+  },
 ]
 
 export function registerDomainTools(tools: DomainTool[]) {
@@ -59,6 +120,7 @@ export function validateArguments(tool: DomainTool, args: Record<string, unknown
     if (spec.type === 'string' && typeof value !== 'string') problems.push(`${key} must be a string`)
     if (spec.type === 'integer' && !Number.isSafeInteger(value)) problems.push(`${key} must be an integer`)
     if (spec.type === 'boolean' && typeof value !== 'boolean') problems.push(`${key} must be true or false`)
+    if (spec.type === 'object' && (typeof value !== 'object' || value === null || Array.isArray(value))) problems.push(`${key} must be an object`)
     if (spec.enum && !spec.enum.includes(value)) problems.push(`${key} must be one of ${spec.enum.join(', ')}`)
     if (typeof value === 'string') {
       if (spec.minLength && value.length < spec.minLength) problems.push(`${key} is too short`)

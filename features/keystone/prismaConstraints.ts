@@ -32,6 +32,16 @@ export const COMPOUND_UNIQUES: Record<string, string[]> = {
   // Scheduling (SCHEMA §4).
   Appointment: ['@@index([shopId, startsAt], map: "Appointment_shop_starts_idx")', '@@index([shopId, date, status], map: "Appointment_shop_date_status_idx")'],
   BookingHold: ['@@index([shopId, date, status], map: "BookingHold_shop_date_status_idx")'],
+  // Repair orders, estimates and authorization (SCHEMA §5-7).
+  RepairOrder: ['@@index([shopId, status], map: "RepairOrder_shop_status_idx")', '@@index([vehicleId, createdAt], map: "RepairOrder_vehicle_created_idx")', '@@index([customerId, createdAt], map: "RepairOrder_customer_created_idx")'],
+  Job: ['@@unique([repairOrderId, number], map: "Job_ro_number_key")'],
+  EstimateVersion: ['@@unique([repairOrderId, versionNumber], map: "EstimateVersion_ro_number_key")'],
+  InspectionTemplateVersion: ['@@unique([templateId, versionNumber], map: "InspectionTemplateVersion_template_number_key")'],
+  InspectionItemResult: ['@@unique([inspectionId, templateItemId], map: "InspectionItemResult_inspection_item_key")'],
+  CannedJobVersion: ['@@unique([cannedJobId, versionNumber], map: "CannedJobVersion_job_number_key")'],
+  PublishedService: ['@@unique([shopId, slug], map: "PublishedService_shop_slug_key")'],
+  LaborOperation: ['@@index([code], map: "LaborOperation_code_idx")'],
+  StaffTask: ['@@index([shopId, status, dueAt], map: "StaffTask_shop_status_due_idx")'],
 }
 
 export function addDatabaseConstraints(schema: string): string {

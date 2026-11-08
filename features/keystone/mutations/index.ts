@@ -7,6 +7,7 @@ import * as setup from './setup'
 import * as audit from './audit'
 import * as approvals from './approvals'
 import * as p1 from './phase1'
+import * as p2 from './phase2'
 import '../lib/orgControls'
 import '../lib/policy'
 
@@ -46,6 +47,26 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         bookShopAppointment(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, customerId: ID, vehicleId: ID, lead: JSON, concernText: String, requestedServices: [String!], holdToken: String, confirm: Boolean, idempotencyKey: String!): JSON
         transitionAppointment(id: ID!, to: String!, expectedVersion: Int!, reason: String, startsAt: String, idempotencyKey: String!): JSON
         checkInShopVehicle(input: JSON!, idempotencyKey: String!): JSON
+        openShopRepairOrder(input: JSON!, idempotencyKey: String!): JSON
+        holdRepairOrder(repairOrderId: ID!, expectedVersion: Int!, hold: Boolean!, reason: String, note: String, idempotencyKey: String!): JSON
+        addRepairJob(input: JSON!, idempotencyKey: String!): JSON
+        saveJobLines(jobId: ID!, expectedVersion: Int!, lines: JSON!, idempotencyKey: String!): JSON
+        saveCannedJob(input: JSON!, idempotencyKey: String!): JSON
+        publishCannedJobVersion(versionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+        setCannedJobStatus(cannedJobId: ID!, active: Boolean!, idempotencyKey: String!): JSON
+        editRepairJobLines(jobId: ID!, expectedVersion: Int!, add: JSON, removeLineId: ID, choose: JSON, idempotencyKey: String!): JSON
+        repriceRepairJob(jobId: ID!, idempotencyKey: String!): JSON
+        transitionRepairJob(jobId: ID!, to: String!, expectedVersion: Int!, reason: String, cause: String, correction: String, idempotencyKey: String!): JSON
+        startShopInspection(repairOrderId: ID!, templateId: ID!, technicianId: ID, idempotencyKey: String!): JSON
+        recordInspectionItem(input: JSON!, idempotencyKey: String!): JSON
+        attachInspectionMedia(resultId: ID!, documentId: ID!, idempotencyKey: String!): JSON
+        completeShopInspection(inspectionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+        sendShopInspection(inspectionId: ID!, expectedVersion: Int!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
+        sendRepairEstimate(repairOrderId: ID!, jobIds: [ID!], expectedVersion: Int!, idempotencyKey: String!): JSON
+        requestCustomerAuthorization(estimateVersionId: ID!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
+        recordCustomerAuthorization(input: JSON!, idempotencyKey: String!): JSON
+        createCallbackTask(repairOrderId: ID!, kind: String, title: String!, detail: String, idempotencyKey: String!): JSON
+        closeCallbackTask(taskId: ID!, expectedVersion: Int!, outcome: String!, cancel: Boolean, idempotencyKey: String!): JSON
       }
     `,
     resolvers: {
@@ -75,6 +96,26 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         bookShopAppointment: op(p1.bookShopAppointment),
         transitionAppointment: op(p1.transitionAppointment),
         checkInShopVehicle: op(p1.checkInShopVehicle),
+        openShopRepairOrder: op(p2.openShopRepairOrder),
+        holdRepairOrder: op(p2.holdRepairOrder),
+        addRepairJob: op(p2.addRepairJob),
+        saveJobLines: op(p2.saveJobLines),
+        editRepairJobLines: op(p2.editRepairJobLines),
+        saveCannedJob: op(p2.saveCannedJob),
+        publishCannedJobVersion: op(p2.publishCannedJobVersion),
+        setCannedJobStatus: op(p2.setCannedJobStatus),
+        repriceRepairJob: op(p2.repriceRepairJob),
+        transitionRepairJob: op(p2.transitionRepairJob),
+        startShopInspection: op(p2.startShopInspection),
+        recordInspectionItem: op(p2.recordInspectionItem),
+        attachInspectionMedia: op(p2.attachInspectionMedia),
+        completeShopInspection: op(p2.completeShopInspection),
+        sendShopInspection: op(p2.sendShopInspection),
+        sendRepairEstimate: op(p2.sendRepairEstimate),
+        requestCustomerAuthorization: op(p2.requestCustomerAuthorization),
+        recordCustomerAuthorization: op(p2.recordCustomerAuthorization),
+        createCallbackTask: op(p2.createCallbackTask),
+        closeCallbackTask: op(p2.closeCallbackTask),
       },
     },
   })

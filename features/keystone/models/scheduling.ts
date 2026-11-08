@@ -105,6 +105,7 @@ export const CheckIn = list({
     valuablesNote: systemText(),
     recallWarning: json({ ...readOnly, ui: { ...readOnly.ui, description: 'Possible recalls shown at check-in (do-not-drive campaigns in red).' } }),
     jurisdictionPolicyVersion: relationship({ ref: 'JurisdictionPolicyVersion', ...readOnly }),
+    repairOrder: relationship({ ref: 'RepairOrder.checkIn', ...readOnly }),
     at: timestamp({ defaultValue: { kind: 'now' }, ...readOnly }),
     by: relationship({ ref: 'User', ...readOnly }),
     version: versionField(),

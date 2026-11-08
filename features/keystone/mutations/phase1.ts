@@ -16,7 +16,7 @@ type Ctx = { session: any; prisma: any }
 const KINDS: AppointmentKind[] = ['drop_off', 'waiter', 'pickup_delivery', 'mobile']
 
 /** The caller must belong to the shop (or see all shops). */
-function requireShop(context: Ctx, shopId: unknown): string {
+export function requireShop(context: Ctx, shopId: unknown): string {
   if (typeof shopId !== 'string' || !shopId) throw new DomainError(Codes.INVALID_INPUT, 'Choose a shop.', { field: 'shopId' })
   const ids = sessionShopIds(context.session)
   if (ids !== 'all' && !ids.includes(shopId)) throw new DomainError(Codes.NOT_AUTHORIZED, "You don't work at this shop.")

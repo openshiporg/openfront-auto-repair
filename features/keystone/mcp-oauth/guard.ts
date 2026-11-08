@@ -3,6 +3,7 @@
  * runs on every GraphQL operation from an MCP-token session:
  *
  * - without `mcp:write`, mutations are refused;
+ * - human-only commands (record an authorization, approve, publish policy) are refused;
  * - a connected app can never manage credentials: auth, password, token, API key
  *   and OAuth mutations are refused, and so are user updates that set a password
  *   or email.
@@ -27,6 +28,10 @@ export const READ_ONLY_MESSAGE =
 export const CREDENTIAL_MESSAGE =
   'Connected apps cannot sign in, sign out or change passwords, emails, tokens or keys. Do this in the site itself.'
 
+export const HUMAN_ONLY_MESSAGE =
+  'Connected apps and assistants cannot record customer authorizations, approve, or publish policy. A person does this in the dashboard.'
+/** Human-only commands (INTEGRATIONS §8 "never exposed"): refused for every MCP session, write scope or not. */
+export const HUMAN_ONLY_MUTATIONS = new Set(['recordCustomerAuthorization', 'decideApprovalRequest', 'publishPolicyVersion', 'requestOrgControls', 'closeCallbackTask'])
 const CREDENTIAL_MUTATION = /password|passcode|magicauth|apikey|oauth|token|endsession|initialuser|^authenticate/i
 const USER_UPDATE_MUTATION = /^update.*user/i
 const CREDENTIAL_FIELDS = ['password', 'email']
@@ -89,6 +94,7 @@ export function mcpOperationProblem({
   )
   for (const field of rootFields(operation.selectionSet, fragments)) {
     const name = field.name.value
+    if (HUMAN_ONLY_MUTATIONS.has(name)) return HUMAN_ONLY_MESSAGE
     if (CREDENTIAL_MUTATION.test(name)) return CREDENTIAL_MESSAGE
     if (USER_UPDATE_MUTATION.test(name) && setsCredential(field, variables ?? {})) return CREDENTIAL_MESSAGE
   }

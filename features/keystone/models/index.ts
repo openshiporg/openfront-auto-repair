@@ -6,6 +6,9 @@ import * as platform from './platform'
 import * as policy from './policy'
 import * as customers from './customers'
 import * as scheduling from './scheduling'
+import * as repairOrders from './repairOrders'
+import * as inspections from './inspections'
+import * as estimates from './estimates'
 
 export const models = {
   User,
@@ -16,6 +19,9 @@ export const models = {
   ...policy,
   ...customers,
   ...scheduling,
+  ...repairOrders,
+  ...inspections,
+  ...estimates,
 }
 
 export default models

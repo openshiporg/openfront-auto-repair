@@ -4,6 +4,7 @@ import { Codes, DomainError } from '../lib/errors'
 import type { UnitOfWork } from '../lib/unitOfWork'
 import { CUSTOMERS, seedAppointments, seedBookingRules, seedCustomers, seedFleets, seedRecordedVehicleData } from '../seed/customers'
 import { seedOrgPlatform } from '../seed/platform'
+import { seedGoldenRepairOrder, seedServiceCatalog } from '../seed/repairOrders'
 import { SHOP_POLICY, seedJurisdictions, seedShopPolicy } from '../seed/policy'
 
 type Counts = Record<string, number>
@@ -15,7 +16,7 @@ export type SetupScope = 'spine' | 'all'
 
 /**
  * The load runs as a chain of steps, each its own idempotent command, so a retry resumes where it stopped.
- * `spine`: organisation, shops, people, policies and booking rules. `all` adds the demo customers, vehicles, fleets and appointments.
+ * `spine`: organisation, shops, people, policies, booking rules and the service catalog. `all` adds the demo customers, vehicles, fleets, appointments and the golden brake repair order.
  */
 export function northgateSteps(actor: Actor, scope: SetupScope = 'all'): { name: string; run: (uow: UnitOfWork) => Promise<Counts> }[] {
   const steps: { name: string; run: (uow: UnitOfWork) => Promise<Counts> }[] = [
@@ -23,6 +24,7 @@ export function northgateSteps(actor: Actor, scope: SetupScope = 'all'): { name:
     { name: 'jurisdictions', run: uow => seedJurisdictions(uow, actor) },
     ...SHOP_POLICY.map(shop => ({ name: `policy_${shop.code.toLowerCase()}`, run: (uow: UnitOfWork) => seedShopPolicy(uow, actor, shop.id) })),
     { name: 'booking_rules', run: async uow => ({ bookingRules: await seedBookingRules(uow, actor) }) },
+    { name: 'service_catalog', run: uow => seedServiceCatalog(uow, actor) },
   ]
   if (scope === 'spine') return steps
   for (let from = 0; from < CUSTOMERS.length; from += CUSTOMER_BATCH) {
@@ -31,6 +33,7 @@ export function northgateSteps(actor: Actor, scope: SetupScope = 'all'): { name:
   steps.push({ name: 'fleets', run: async uow => { const r = await seedFleets(uow, actor); return { fleetAccounts: r.accounts, fleetVehicles: r.vehicles } } })
   steps.push({ name: 'vehicle_data', run: async uow => ({ vehicleData: await seedRecordedVehicleData(uow, actor) }) })
   steps.push({ name: 'appointments', run: async uow => ({ appointments: await seedAppointments(uow, actor) }) })
+  steps.push({ name: 'golden_repair_order', run: uow => seedGoldenRepairOrder(uow, actor) })
   return steps
 }
 

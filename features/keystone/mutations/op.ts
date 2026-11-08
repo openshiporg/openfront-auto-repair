@@ -3,7 +3,7 @@ import { isDomainError } from '../lib/errors'
 
 // Business-rule messages reach the caller with their stable code; database and driver detail never does.
 const UNSAFE = /prisma|invocation|\bat\s+\S+\s*\(|node_modules|postgres(ql)?:\/\/|\bSQL\b|ECONN|query engine|\.ts:\d+|\.js:\d+/i
-const SAFE_DETAIL_KEYS = new Set(['currentStatus', 'currentVersion', 'to', 'reason', 'field', 'problems', 'replay', 'ceilingMinor', 'priceMinor', 'authorizedMinor', 'previous', 'existingId'])
+const SAFE_DETAIL_KEYS = new Set(['currentStatus', 'currentVersion', 'to', 'reason', 'field', 'problems', 'replay', 'ceilingMinor', 'priceMinor', 'authorizedMinor', 'previous', 'existingId', 'candidates', 'missing'])
 
 export const op = <A, R>(fn: (root: unknown, args: A, context: any) => Promise<R>) => async (root: unknown, args: A, context: any): Promise<R> => {
   try {

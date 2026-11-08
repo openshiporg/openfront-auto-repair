@@ -1,6 +1,6 @@
 import { toJsonValue } from './canonical'
 import { type Db } from './db'
-import { principalKey, type Actor } from './actor'
+import { dbActorKind, principalKey, type Actor } from './actor'
 import { claimReceipt, writeReceipt } from './idempotency'
 import { runInTransaction, type UnitOfWork } from './unitOfWork'
 
@@ -32,7 +32,7 @@ export async function command<T>(db: Db, spec: CommandSpec, work: (uow: UnitOfWo
         const value = toJsonValue<T>(await work(uow))
         await writeReceipt(uow.tx, { key: spec.idempotencyKey, command: spec.name, principalKey: principal, params: spec.params, response: value, now: uow.now })
         return { replay: false, value }
-      }, { requestId: spec.requestId ?? null, now: spec.now, actorKind: spec.actor.kind })
+      }, { requestId: spec.requestId ?? null, now: spec.now, actorKind: dbActorKind(spec.actor) })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       const code = (error as { code?: string })?.code ?? ''

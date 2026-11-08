@@ -1,9 +1,10 @@
 import { bigInt, decimal, integer, select, text } from '@keystone-6/core/fields'
 
 /** Ledger cash in minor units (SCHEMA G2). */
-export const minor = (options: { required?: boolean; defaultValue?: bigint; description?: string } = {}) =>
+export const minor = (options: { required?: boolean; defaultValue?: bigint; description?: string; access?: { read?: (args: any) => boolean; create?: (args: any) => boolean; update?: (args: any) => boolean } } = {}) =>
   bigInt({
     ...(options.defaultValue !== undefined ? { defaultValue: options.defaultValue } : {}),
+    ...(options.access ? { access: options.access } : {}),
     validation: { isRequired: options.required ?? options.defaultValue !== undefined },
     ...(options.description ? { ui: { description: options.description } } : {}),
   })
@@ -87,6 +88,27 @@ export const fixedChoice = (values: readonly string[]) =>
     type: 'string',
     options: values.map(option),
     validation: { isRequired: true },
+    access: { create: () => false, update: () => false },
+    ui: { createView: { fieldMode: 'hidden' }, itemView: { fieldMode: 'read' } },
+  })
+
+/** A choice set by server code with a default (election, hold reason, condition): visible, never edited through the API. */
+export const systemChoice = (values: readonly string[], initial: string = values[0]) =>
+  select({
+    type: 'string',
+    options: values.map(option),
+    defaultValue: initial,
+    validation: { isRequired: true },
+    access: { create: () => false, update: () => false },
+    ui: { createView: { fieldMode: 'hidden' }, itemView: { fieldMode: 'read' } },
+  })
+
+/** A server-set choice that may be empty (a part line's condition before it is chosen). */
+export const optionalChoice = (values: readonly string[]) =>
+  select({
+    type: 'string',
+    options: values.map(option),
+    validation: { isRequired: false },
     access: { create: () => false, update: () => false },
     ui: { createView: { fieldMode: 'hidden' }, itemView: { fieldMode: 'read' } },
   })

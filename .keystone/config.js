@@ -11,9 +11,9 @@ var __export = (target, all) => {
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    for (let key2 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key2) && key2 !== except)
+        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc = __getOwnPropDesc(from, key2)) || desc.enumerable });
   }
   return to;
 };
@@ -36,7 +36,7 @@ module.exports = __toCommonJS(keystone_exports);
 
 // features/keystone/index.ts
 var import_auth = require("@keystone-6/auth");
-var import_core13 = require("@keystone-6/core");
+var import_core16 = require("@keystone-6/core");
 var import_config = require("dotenv/config");
 
 // features/keystone/models/User.ts
@@ -605,6 +605,7 @@ var import_fields7 = require("@keystone-6/core/fields");
 var import_fields6 = require("@keystone-6/core/fields");
 var minor = (options = {}) => (0, import_fields6.bigInt)({
   ...options.defaultValue !== void 0 ? { defaultValue: options.defaultValue } : {},
+  ...options.access ? { access: options.access } : {},
   validation: { isRequired: options.required ?? options.defaultValue !== void 0 },
   ...options.description ? { ui: { description: options.description } } : {}
 });
@@ -660,6 +661,21 @@ var fixedChoice = (values) => (0, import_fields6.select)({
   access: { create: () => false, update: () => false },
   ui: { createView: { fieldMode: "hidden" }, itemView: { fieldMode: "read" } }
 });
+var systemChoice = (values, initial = values[0]) => (0, import_fields6.select)({
+  type: "string",
+  options: values.map(option),
+  defaultValue: initial,
+  validation: { isRequired: true },
+  access: { create: () => false, update: () => false },
+  ui: { createView: { fieldMode: "hidden" }, itemView: { fieldMode: "read" } }
+});
+var optionalChoice = (values) => (0, import_fields6.select)({
+  type: "string",
+  options: values.map(option),
+  validation: { isRequired: false },
+  access: { create: () => false, update: () => false },
+  ui: { createView: { fieldMode: "hidden" }, itemView: { fieldMode: "read" } }
+});
 
 // features/keystone/models/listAccess.ts
 var rule = (permission) => permission === "signedIn" ? isSignedIn : Array.isArray(permission) ? anyOf(...permission) : permissions[permission];
@@ -678,7 +694,7 @@ function shopFilter(path = "shop") {
     const ids = sessionShopIds(session);
     if (ids === "all") return true;
     const leaf = { id: { in: ids } };
-    return path.split(".").reverse().reduce((inner, key) => ({ [key]: inner }), leaf);
+    return path.split(".").reverse().reduce((inner, key2) => ({ [key2]: inner }), leaf);
   };
 }
 function shopScoped(spec, path = "shop") {
@@ -709,9 +725,9 @@ function dec(value) {
     if (!Number.isSafeInteger(value)) throw new Error(`Refusing float ${value}: pass the exact decimal as a string`);
     return new Decimal(value);
   }
-  const text11 = String(value).trim();
-  if (!DECIMAL_TEXT.test(text11)) throw new Error(`Not a decimal number: ${JSON.stringify(text11).slice(0, 40)}`);
-  return new Decimal(text11);
+  const text15 = String(value).trim();
+  if (!DECIMAL_TEXT.test(text15)) throw new Error(`Not a decimal number: ${JSON.stringify(text15).slice(0, 40)}`);
+  return new Decimal(text15);
 }
 function toScale(value, scale, rounding = Decimal.ROUND_HALF_EVEN) {
   const places = typeof scale === "number" ? scale : Scale[scale];
@@ -737,19 +753,19 @@ function canonicalize(value) {
     const decimalLike = value;
     if (typeof decimalLike.isFinite === "function" && typeof decimalLike.isNaN === "function") return plain(decimalLike.toString());
     return Object.fromEntries(
-      Object.entries(value).filter(([, entry]) => entry !== void 0).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, entry]) => [key, canonicalize(entry)])
+      Object.entries(value).filter(([, entry]) => entry !== void 0).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key2, entry]) => [key2, canonicalize(entry)])
     );
   }
   throw new Error(`Canonical JSON cannot hold a ${typeof value}`);
 }
 var canonicalJson = (value) => JSON.stringify(canonicalize(value));
-var sha256 = (text11) => (0, import_node_crypto2.createHash)("sha256").update(text11).digest("hex");
+var sha256 = (text15) => (0, import_node_crypto2.createHash)("sha256").update(text15).digest("hex");
 var payloadHash = (value) => sha256(canonicalJson(value));
 var toJsonValue = (value) => canonicalize(value);
 
 // features/keystone/lib/db.ts
-async function advisoryLock(tx, key) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+async function advisoryLock(tx, key2) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key2}, 0))`;
 }
 var MODEL_NAME = /^[A-Z][A-Za-z0-9]*$/;
 function tableName(model) {
@@ -1882,9 +1898,642 @@ var CheckIn = (0, import_core11.list)({
     valuablesNote: systemText(),
     recallWarning: (0, import_fields10.json)({ ...readOnly, ui: { ...readOnly.ui, description: "Possible recalls shown at check-in (do-not-drive campaigns in red)." } }),
     jurisdictionPolicyVersion: (0, import_fields10.relationship)({ ref: "JurisdictionPolicyVersion", ...readOnly }),
+    repairOrder: (0, import_fields10.relationship)({ ref: "RepairOrder.checkIn", ...readOnly }),
     at: (0, import_fields10.timestamp)({ defaultValue: { kind: "now" }, ...readOnly }),
     by: (0, import_fields10.relationship)({ ref: "User", ...readOnly }),
     version: versionField(),
+    ...trackingFields
+  }
+});
+
+// features/keystone/models/repairOrders.ts
+var repairOrders_exports = {};
+__export(repairOrders_exports, {
+  CollisionClaimRef: () => CollisionClaimRef,
+  Concern: () => Concern,
+  Job: () => Job,
+  JobLine: () => JobLine,
+  JobTechShare: () => JobTechShare,
+  PayerSplit: () => PayerSplit,
+  QualityCheck: () => QualityCheck,
+  RepairOrder: () => RepairOrder,
+  StaffTask: () => StaffTask,
+  TeardownDisclosure: () => TeardownDisclosure
+});
+var import_core12 = require("@keystone-6/core");
+var import_fields11 = require("@keystone-6/core/fields");
+
+// lib/board.ts
+function boardStage(input) {
+  switch (input.status) {
+    case "draft":
+      return "draft";
+    case "checked_in":
+      return input.jobs.length || input.inspections.some((i) => i.status !== "assigned") ? stageInService(input) : "checked_in";
+    case "on_hold":
+      return "on_hold";
+    case "ready_to_invoice":
+      return "ready";
+    case "invoiced":
+      return "invoiced";
+    case "closed":
+      return "closed";
+    case "void":
+      return "void";
+    default:
+      return stageInService(input);
+  }
+}
+function stageInService(input) {
+  const jobs = input.jobs;
+  if (jobs.some((j) => j.status === "offered" || j.status === "needs_reauthorization")) return "awaiting_authorization";
+  if (jobs.some((j) => (j.status === "authorized" || j.status === "in_progress") && j.waitingParts)) return "waiting_parts";
+  if (jobs.some((j) => j.status === "in_progress")) return "in_progress";
+  if (input.qualityCheckPending) return "quality_check";
+  if (input.inspections.some((i) => i.status === "in_progress" || i.status === "assigned")) return "inspecting";
+  if (jobs.length && jobs.every((j) => ["authorized", "completed", "declined", "deferred", "voided"].includes(j.status)) && jobs.some((j) => j.status === "authorized")) return "in_progress";
+  return "estimating";
+}
+
+// features/keystone/models/repairOrders.ts
+var sys5 = () => false;
+var readRO = ["canReadRepairOrders"];
+var roScoped = (path) => shopScoped(governed([...readRO]), path);
+var cost = { read: anyOf("canSeeCost"), create: sys5, update: sys5 };
+var RO_STATUSES = ["draft", "checked_in", "in_service", "on_hold", "ready_to_invoice", "invoiced", "closed", "void"];
+var JOB_STATUSES = ["draft", "priced", "offered", "authorized", "declined", "deferred", "in_progress", "needs_reauthorization", "completed", "voided"];
+var PART_CONDITIONS = ["new", "used", "rebuilt", "reconditioned", "oem_crash", "non_oem_aftermarket_crash"];
+var HOLD_REASONS = ["none", "customer_unreachable", "parts_backorder", "sublet_out", "teardown_wait", "other"];
+var RepairOrder = (0, import_core12.list)({
+  access: shopScoped(governed([...readRO])),
+  ui: { labelField: "roNumber", listView: { initialColumns: ["roNumber", "shop", "customer", "vehicle", "status", "promisedAt"] } },
+  fields: {
+    shop: (0, import_fields11.relationship)({ ref: "Shop", ...readOnly }),
+    roNumber: systemText({ indexed: "unique", required: true }),
+    kind: systemChoice(["standard", "comeback", "internal", "fleet"]),
+    customer: (0, import_fields11.relationship)({ ref: "Customer", ...readOnly }),
+    businessAccount: (0, import_fields11.relationship)({ ref: "BusinessAccount", ...readOnly }),
+    vehicle: (0, import_fields11.relationship)({ ref: "Vehicle", ...readOnly }),
+    serviceAdvisor: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
+    appointment: (0, import_fields11.relationship)({ ref: "Appointment", ...readOnly }),
+    checkIn: (0, import_fields11.relationship)({ ref: "CheckIn.repairOrder", ...readOnly }),
+    concerns: (0, import_fields11.relationship)({ ref: "Concern.repairOrder", many: true, ...readOnly }),
+    jobs: (0, import_fields11.relationship)({ ref: "Job.repairOrder", many: true, ...readOnly }),
+    inspections: (0, import_fields11.relationship)({ ref: "Inspection.repairOrder", many: true, ...readOnly }),
+    estimateVersions: (0, import_fields11.relationship)({ ref: "EstimateVersion.repairOrder", many: true, ...readOnly }),
+    authorizationRequests: (0, import_fields11.relationship)({ ref: "AuthorizationRequest.repairOrder", many: true, ...readOnly }),
+    odometerIn: (0, import_fields11.relationship)({ ref: "OdometerReading", ...readOnly }),
+    odometerOut: (0, import_fields11.relationship)({ ref: "OdometerReading", ...readOnly }),
+    // Pinned at open (I-O2). Prices, disclosures and tolerances on this RO come from these, never from the shop's current pointers.
+    jurisdictionPolicyVersion: (0, import_fields11.relationship)({ ref: "JurisdictionPolicyVersion", ...readOnly }),
+    shopPolicyVersion: (0, import_fields11.relationship)({ ref: "ShopPolicyVersion", ...readOnly }),
+    laborRateClassSetVersion: (0, import_fields11.relationship)({ ref: "LaborRateClassSetVersion", ...readOnly }),
+    laborMatrixVersion: (0, import_fields11.relationship)({ ref: "LaborMatrixVersion", ...readOnly }),
+    partsMatrixVersion: (0, import_fields11.relationship)({ ref: "PartsMatrixVersion", ...readOnly }),
+    feePolicyVersion: (0, import_fields11.relationship)({ ref: "FeePolicyVersion", ...readOnly }),
+    taxRuleSetVersion: (0, import_fields11.relationship)({ ref: "TaxRuleSetVersion", ...readOnly }),
+    warrantyTermSetVersion: (0, import_fields11.relationship)({ ref: "WarrantyTermSetVersion", ...readOnly }),
+    replacedPartsElection: systemChoice(["not_asked", "return", "do_not_return", "show_only"]),
+    electedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    designee: (0, import_fields11.json)({ ...readOnly, access: { read: anyOf("canReadCustomerPII", "canRecordAuthorizations"), create: sys5, update: sys5 }, ui: { ...readOnly.ui, description: "{ name, relationship, contact, namedAt } \u2014 a person the customer named on the work order who may authorize (CA \xA73354(c))." } }),
+    promisedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    holdReason: systemChoice(HOLD_REASONS),
+    holdNote: systemText(),
+    heldAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    waiter: (0, import_fields11.checkbox)({ defaultValue: false, ...readOnly }),
+    keyTag: systemText(),
+    authorizedTotalMinor: minor({ defaultValue: 0n }),
+    currentTotalMinor: minor({ defaultValue: 0n }),
+    boardStage: (0, import_fields11.virtual)({
+      field: import_core12.graphql.field({
+        type: import_core12.graphql.String,
+        async resolve(item, _args, context) {
+          const jobs = await context.sudo().prisma.job.findMany({ where: { repairOrderId: item.id }, select: { status: true } });
+          const inspections = await context.sudo().prisma.inspection.findMany({ where: { repairOrderId: item.id }, select: { status: true } });
+          return boardStage({ status: item.status, jobs, inspections });
+        }
+      })
+    }),
+    lockedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    releasedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    releasedBy: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
+    collisionClaimRef: (0, import_fields11.relationship)({ ref: "CollisionClaimRef.repairOrder", ...readOnly }),
+    qualityChecks: (0, import_fields11.relationship)({ ref: "QualityCheck.repairOrder", many: true, ...readOnly }),
+    tasks: (0, import_fields11.relationship)({ ref: "StaffTask.repairOrder", many: true, ...readOnly }),
+    openedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    openedBy: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
+    voidReason: systemText(),
+    status: lifecycle(RO_STATUSES),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var Concern = (0, import_core12.list)({
+  access: roScoped("repairOrder.shop"),
+  ui: { labelField: "customerWords", listView: { initialColumns: ["repairOrder", "customerWords", "category"] } },
+  fields: {
+    repairOrder: (0, import_fields11.relationship)({ ref: "RepairOrder.concerns", ...readOnly }),
+    customerWords: systemText({ required: true }),
+    category: systemChoice(["other", "noise", "leak", "warning_light", "performance", "maintenance", "inspection_request"]),
+    diagnosis: systemText(),
+    cause: systemText(),
+    correction: systemText(),
+    jobs: (0, import_fields11.relationship)({ ref: "Job.concern", many: true, ...readOnly }),
+    sortOrder: (0, import_fields11.integer)({ defaultValue: 0, ...readOnly }),
+    ...trackingFields
+  }
+});
+var Job = (0, import_core12.list)({
+  access: roScoped("repairOrder.shop"),
+  ui: { labelField: "title", listView: { initialColumns: ["repairOrder", "number", "title", "status", "totalMinor"] } },
+  fields: {
+    repairOrder: (0, import_fields11.relationship)({ ref: "RepairOrder.jobs", ...readOnly }),
+    number: (0, import_fields11.integer)({ validation: { isRequired: true }, ...readOnly }),
+    title: systemText({ required: true }),
+    customerDescription: systemText(),
+    kind: systemChoice(["repair", "maintenance", "diagnosis", "inspection", "teardown", "reassembly", "tire", "sublet", "comeback", "internal"]),
+    concern: (0, import_fields11.relationship)({ ref: "Concern.jobs", ...readOnly }),
+    source: systemChoice(["manual", "canned_job", "service_menu", "inspection_finding", "diagnosis", "comeback", "recommendation", "agent"]),
+    cannedJobVersion: (0, import_fields11.relationship)({ ref: "CannedJobVersion", ...readOnly }),
+    inspectionItemResult: (0, import_fields11.relationship)({ ref: "InspectionItemResult.recommendedJobs", ...readOnly }),
+    lines: (0, import_fields11.relationship)({ ref: "JobLine.job", many: true, ...readOnly }),
+    techShares: (0, import_fields11.relationship)({ ref: "JobTechShare.job", many: true, ...readOnly }),
+    payerSplits: (0, import_fields11.relationship)({ ref: "PayerSplit.job", many: true, ...readOnly }),
+    urgency: systemChoice(["none", "green", "yellow", "red"]),
+    warrantyTerm: (0, import_fields11.relationship)({ ref: "WarrantyTerm", ...readOnly }),
+    contentHash: systemText(),
+    priceSnapshot: (0, import_fields11.json)({ ...readOnly }),
+    subtotalMinor: minor({ defaultValue: 0n }),
+    taxMinor: minor({ defaultValue: 0n }),
+    totalMinor: minor({ defaultValue: 0n }),
+    laborMinor: minor({ defaultValue: 0n }),
+    partsMinor: minor({ defaultValue: 0n }),
+    feesMinor: minor({ defaultValue: 0n }),
+    costMinor: minor({ defaultValue: 0n, access: cost }),
+    marginMinor: minor({ defaultValue: 0n, access: cost }),
+    offeredInVersion: (0, import_fields11.relationship)({ ref: "EstimateVersion", ...readOnly }),
+    authorizedAmountMinor: minor({ defaultValue: 0n }),
+    authorizedSubtotalMinor: minor({ defaultValue: 0n }),
+    authorizedContentHash: systemText(),
+    authorizedIdentityHash: systemText(),
+    chargeCeilingMinor: minor({ defaultValue: 0n }),
+    currentAuthorization: (0, import_fields11.relationship)({ ref: "Authorization", ...readOnly }),
+    authorizations: (0, import_fields11.relationship)({ ref: "Authorization.job", many: true, ...readOnly }),
+    decisions: (0, import_fields11.relationship)({ ref: "JobDecision.job", many: true, ...readOnly }),
+    belowThresholdRecordedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    noChargeReason: systemText(),
+    teardownDisclosure: (0, import_fields11.relationship)({ ref: "TeardownDisclosure.job", ...readOnly }),
+    reauthorizationReason: systemText(),
+    workStartedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    completedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    status: lifecycle(JOB_STATUSES),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var JobLine = (0, import_core12.list)({
+  access: roScoped("job.repairOrder.shop"),
+  ui: { labelField: "description", listView: { initialColumns: ["job", "kind", "description", "extendedMinor", "taxMinor"] } },
+  fields: {
+    job: (0, import_fields11.relationship)({ ref: "Job.lines", ...readOnly }),
+    kind: systemChoice(["labor", "part", "fee", "sublet", "tire", "core", "discount", "refrigerant"]),
+    description: systemText({ required: true }),
+    auto: (0, import_fields11.checkbox)({ defaultValue: false, ...readOnly, ui: { ...readOnly.ui, description: "Computed by pricing (fees); replaced on every reprice." } }),
+    // Labor (G15: only the shop's own times or a guide reference; no licensed text).
+    rateClass: (0, import_fields11.relationship)({ ref: "LaborRateClass", ...readOnly }),
+    soldCentiHours: centiHours({ defaultValue: 0, min: 0 }),
+    guideCentiHours: centiHours({ defaultValue: 0, min: 0 }),
+    overlapCentiHours: centiHours({ defaultValue: 0, min: 0 }),
+    guideSnapshot: (0, import_fields11.json)({ ...readOnly }),
+    rateMinor: minor({ defaultValue: 0n }),
+    // Part and tire.
+    partNumber: systemText(),
+    brand: systemText(),
+    partCategory: systemText(),
+    condition: optionalChoice(PART_CONDITIONS),
+    quantityMilli: milli({ defaultValue: 1e3, min: 0 }),
+    unitOfMeasure: systemText(),
+    unitCostMinor: minor({ defaultValue: 0n, access: cost }),
+    unitPriceMinor: minor({ defaultValue: 0n }),
+    matrixTierSnapshot: (0, import_fields11.json)({ ...readOnly, access: cost }),
+    fulfilment: systemChoice(["order_on_authorization", "stock", "ordered", "customer_supplied"]),
+    isNewTire: (0, import_fields11.checkbox)({ defaultValue: false, ...readOnly }),
+    tireSize: systemText(),
+    // Sublet (I-R10): the vendor is named on the estimate.
+    subletVendorName: systemText(),
+    subletCostMinor: minor({ defaultValue: 0n, access: cost }),
+    // Fee.
+    feeRule: (0, import_fields11.relationship)({ ref: "FeeRule", ...readOnly }),
+    feeCode: systemText(),
+    taxCategory: (0, import_fields11.relationship)({ ref: "TaxCategory", ...readOnly }),
+    taxCategoryCode: systemText(),
+    taxable: (0, import_fields11.checkbox)({ defaultValue: false, ...readOnly }),
+    taxRate: pct({ defaultValue: "0.000000" }),
+    extendedMinor: minor({ defaultValue: 0n }),
+    taxMinor: minor({ defaultValue: 0n }),
+    override: (0, import_fields11.json)({ ...readOnly }),
+    sortOrder: (0, import_fields11.integer)({ defaultValue: 0, ...readOnly }),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var JobTechShare = (0, import_core12.list)({
+  access: roScoped("job.repairOrder.shop"),
+  fields: {
+    job: (0, import_fields11.relationship)({ ref: "Job.techShares", ...readOnly }),
+    technician: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
+    sharePct: pct({ defaultValue: "1.000000" }),
+    ...trackingFields
+  }
+});
+var PayerSplit = (0, import_core12.list)({
+  access: roScoped("job.repairOrder.shop"),
+  fields: {
+    job: (0, import_fields11.relationship)({ ref: "Job.payerSplits", ...readOnly }),
+    payerKind: systemChoice(["customer", "business_account", "service_contract", "insurer", "shop_warranty", "manufacturer_goodwill"]),
+    businessAccount: (0, import_fields11.relationship)({ ref: "BusinessAccount", ...readOnly }),
+    payorName: systemText(),
+    authorizationNumber: systemText(),
+    claimNumber: systemText(),
+    percent: pct({ defaultValue: "1.000000" }),
+    fixedMinor: minor(),
+    deductibleMinor: minor(),
+    warrantyTaxTreatment: systemChoice(["n_a", "mandatory_no_deductible", "mandatory_deductible", "optional_repairer", "optional_manufacturer"]),
+    ...trackingFields
+  }
+});
+var TeardownDisclosure = (0, import_core12.list)({
+  access: roScoped("job.repairOrder.shop"),
+  fields: {
+    job: (0, import_fields11.relationship)({ ref: "Job.teardownDisclosure", ...readOnly }),
+    teardownCostMinor: minor({ defaultValue: 0n }),
+    reassemblyCostMinor: minor({ defaultValue: 0n }),
+    areaDescription: systemText(),
+    destroyedParts: (0, import_fields11.json)({ defaultValue: [], ...readOnly }),
+    restorationWarning: (0, import_fields11.checkbox)({ defaultValue: false, ...readOnly }),
+    maxReassemblyDays: (0, import_fields11.integer)({ defaultValue: 3, ...readOnly }),
+    disclosureText: systemText(),
+    disclosureTextVersion: systemText(),
+    lockedAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    ...trackingFields
+  }
+});
+var QualityCheck = (0, import_core12.list)({
+  access: roScoped("repairOrder.shop"),
+  fields: {
+    repairOrder: (0, import_fields11.relationship)({ ref: "RepairOrder.qualityChecks", ...readOnly }),
+    performedBy: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
+    roadTest: (0, import_fields11.checkbox)({ defaultValue: false, ...readOnly }),
+    checklist: (0, import_fields11.json)({ defaultValue: [], ...readOnly }),
+    notes: systemText(),
+    at: (0, import_fields11.timestamp)({ ...readOnly }),
+    result: lifecycle(["pending", "passed", "failed"]),
+    ...trackingFields
+  }
+});
+var CollisionClaimRef = (0, import_core12.list)({
+  access: roScoped("repairOrder.shop"),
+  fields: {
+    repairOrder: (0, import_fields11.relationship)({ ref: "RepairOrder.collisionClaimRef", ...readOnly }),
+    insurer: systemText(),
+    claimNumber: systemText(),
+    adjuster: (0, import_fields11.json)({ ...readOnly }),
+    drpProgram: systemText(),
+    externalEstimateSystem: systemChoice(["other", "ccc_one", "mitchell", "audatex"]),
+    externalEstimateRef: systemText(),
+    thirdPartyEstimate: (0, import_fields11.relationship)({ ref: "Document", ...readOnly }),
+    notes: systemText(),
+    ...trackingFields
+  }
+});
+var StaffTask = (0, import_core12.list)({
+  access: shopScoped(governed(["canReadRepairOrders", "canManageSchedule"])),
+  ui: { labelField: "title", listView: { initialColumns: ["shop", "kind", "title", "dueAt", "status"] } },
+  fields: {
+    shop: (0, import_fields11.relationship)({ ref: "Shop", ...readOnly }),
+    kind: systemChoice(["authorization_callback", "authorization_follow_up", "customer_callback", "reassembly_due", "other"]),
+    title: systemText({ required: true }),
+    detail: systemText(),
+    repairOrder: (0, import_fields11.relationship)({ ref: "RepairOrder.tasks", ...readOnly }),
+    authorizationRequest: (0, import_fields11.relationship)({ ref: "AuthorizationRequest", ...readOnly }),
+    assignee: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
+    createdByUser: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
+    createdByAgent: (0, import_fields11.relationship)({ ref: "AgentIdentity", ...readOnly }),
+    source: systemChoice(["staff", "agent", "voice", "timer", "public_api"]),
+    evidence: (0, import_fields11.json)({ ...readOnly }),
+    dueAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    doneAt: (0, import_fields11.timestamp)({ ...readOnly }),
+    doneBy: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
+    outcome: systemText(),
+    status: lifecycle(["open", "done", "cancelled"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+
+// features/keystone/models/inspections.ts
+var inspections_exports = {};
+__export(inspections_exports, {
+  CannedJob: () => CannedJob,
+  CannedJobVersion: () => CannedJobVersion,
+  Inspection: () => Inspection,
+  InspectionItemResult: () => InspectionItemResult,
+  InspectionTemplate: () => InspectionTemplate,
+  InspectionTemplateItem: () => InspectionTemplateItem,
+  InspectionTemplateVersion: () => InspectionTemplateVersion,
+  LaborOperation: () => LaborOperation,
+  PublishedService: () => PublishedService,
+  ServiceMenuItem: () => ServiceMenuItem
+});
+var import_core13 = require("@keystone-6/core");
+var import_fields12 = require("@keystone-6/core/fields");
+var sys6 = () => false;
+var InspectionTemplate = (0, import_core13.list)({
+  access: { operation: { query: isSignedIn, create: permissions.canManagePolicies, update: permissions.canManagePolicies, delete: sys6 } },
+  hooks: auditedHooks("InspectionTemplate"),
+  ui: { labelField: "name", listView: { initialColumns: ["name", "kind", "shop"] } },
+  fields: {
+    name: (0, import_fields12.text)({ validation: { isRequired: true } }),
+    kind: choice(["courtesy", "multi_point", "pre_purchase", "state_safety", "custom"], "multi_point"),
+    shop: (0, import_fields12.relationship)({ ref: "Shop", ui: { description: "Empty = every shop." } }),
+    versions: (0, import_fields12.relationship)({ ref: "InspectionTemplateVersion.template", many: true, ...readOnly }),
+    ...trackingFields
+  }
+});
+var InspectionTemplateVersion = (0, import_core13.list)({
+  access: governed("signedIn"),
+  ui: { labelField: "versionNumber" },
+  fields: {
+    template: (0, import_fields12.relationship)({ ref: "InspectionTemplate.versions", ...readOnly }),
+    versionNumber: (0, import_fields12.integer)({ validation: { isRequired: true }, ...readOnly }),
+    items: (0, import_fields12.relationship)({ ref: "InspectionTemplateItem.templateVersion", many: true, ...readOnly }),
+    status: lifecycle(["draft", "published", "retired"]),
+    publishedAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    retiredAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var InspectionTemplateItem = (0, import_core13.list)({
+  access: governed("signedIn"),
+  ui: { labelField: "label", listView: { initialColumns: ["templateVersion", "section", "label", "sortOrder"] } },
+  fields: {
+    templateVersion: (0, import_fields12.relationship)({ ref: "InspectionTemplateVersion.items", ...readOnly }),
+    code: systemText({ required: true }),
+    section: systemText({ required: true }),
+    label: systemText({ required: true }),
+    measurement: (0, import_fields12.json)({ ...readOnly, ui: { ...readOnly.ui, description: "{ unit, positions[], thresholds: [{ max|min, condition }] } \u2014 integer values in the unit (32nds of an inch, tenths of a mm)." } }),
+    photoRequiredOn: (0, import_fields12.json)({ defaultValue: ["red"], ...readOnly }),
+    cannedJobCode: systemText(),
+    required: (0, import_fields12.checkbox)({ defaultValue: true, ...readOnly }),
+    sortOrder: (0, import_fields12.integer)({ defaultValue: 0, ...readOnly }),
+    ...trackingFields
+  }
+});
+var Inspection = (0, import_core13.list)({
+  access: shopScoped(governed(["canReadRepairOrders", "canPerformInspections"]), "repairOrder.shop"),
+  ui: { labelField: "id", listView: { initialColumns: ["repairOrder", "technician", "status", "completedAt"] } },
+  fields: {
+    repairOrder: (0, import_fields12.relationship)({ ref: "RepairOrder.inspections", ...readOnly }),
+    templateVersion: (0, import_fields12.relationship)({ ref: "InspectionTemplateVersion", ...readOnly }),
+    technician: (0, import_fields12.relationship)({ ref: "User", ...readOnly }),
+    results: (0, import_fields12.relationship)({ ref: "InspectionItemResult.inspection", many: true, ...readOnly }),
+    startedAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    completedAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    sentAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    viewedAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    status: lifecycle(["assigned", "in_progress", "completed", "sent", "reviewed"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var InspectionItemResult = (0, import_core13.list)({
+  access: shopScoped(governed(["canReadRepairOrders", "canPerformInspections"]), "inspection.repairOrder.shop"),
+  ui: { labelField: "id", listView: { initialColumns: ["inspection", "templateItem", "condition"] } },
+  fields: {
+    inspection: (0, import_fields12.relationship)({ ref: "Inspection.results", ...readOnly }),
+    templateItem: (0, import_fields12.relationship)({ ref: "InspectionTemplateItem", ...readOnly }),
+    condition: systemChoice(["not_inspected", "green", "yellow", "red", "na"]),
+    derivedCondition: systemChoice(["none", "green", "yellow", "red"]),
+    overrideReason: systemText(),
+    measurements: (0, import_fields12.json)({ defaultValue: [], ...readOnly }),
+    notes: systemText(),
+    media: (0, import_fields12.relationship)({ ref: "Document", many: true, ...readOnly }),
+    recommendedJobs: (0, import_fields12.relationship)({ ref: "Job.inspectionItemResult", many: true, ...readOnly }),
+    recordedBy: (0, import_fields12.relationship)({ ref: "User", ...readOnly }),
+    recordedAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var LaborOperation = (0, import_core13.list)({
+  access: { operation: { query: isSignedIn, create: permissions.canManagePolicies, update: permissions.canManagePolicies, delete: sys6 } },
+  hooks: auditedHooks("LaborOperation"),
+  ui: { labelField: "description", listView: { initialColumns: ["code", "description", "variant", "centiHours", "rateClassCode", "active"] } },
+  fields: {
+    shop: (0, import_fields12.relationship)({ ref: "Shop", ui: { description: "Empty = every shop." } }),
+    code: (0, import_fields12.text)({ validation: { isRequired: true, match: { regex: /^[A-Z0-9][A-Z0-9-]{1,39}$/, explanation: "Capitals, digits and dashes, e.g. BRK-PAD-F" } } }),
+    description: (0, import_fields12.text)({ validation: { isRequired: true } }),
+    variant: (0, import_fields12.text)({ ui: { description: 'Distinguishes rows with the same code (e.g. "with electronic parking brake"). Several matching variants make pricing ask a person to choose.' } }),
+    vehicleFilter: (0, import_fields12.json)({ defaultValue: {}, ui: { description: "{ makes?: string[], models?: string[], yearFrom?, yearTo?, engines?: string[] }; empty = all vehicles." } }),
+    centiHours: centiHours({ required: true, min: 1 }),
+    skillLevel: choice(["a", "b", "c"], "b"),
+    rateClassCode: choice(["general", "diagnostic", "electrical", "european", "fleet", "warranty_internal"], "general"),
+    includes: (0, import_fields12.json)({ defaultValue: [] }),
+    overlaps: (0, import_fields12.json)({ defaultValue: [], ui: { description: "[{ operationCode, deductCentiHours }]" } }),
+    source: choice(["shop_time", "imported", "tech_estimate"], "shop_time"),
+    active: (0, import_fields12.checkbox)({ defaultValue: true }),
+    ...trackingFields
+  }
+});
+var CannedJob = (0, import_core13.list)({
+  access: { operation: { query: isSignedIn, create: sys6, update: sys6, delete: sys6 } },
+  ui: { labelField: "name", listView: { initialColumns: ["code", "name", "category", "active"] } },
+  fields: {
+    shop: (0, import_fields12.relationship)({ ref: "Shop", ...readOnly }),
+    code: systemText({ required: true }),
+    name: systemText({ required: true }),
+    category: systemText(),
+    active: (0, import_fields12.checkbox)({ defaultValue: true, ...readOnly }),
+    versions: (0, import_fields12.relationship)({ ref: "CannedJobVersion.cannedJob", many: true, ...readOnly }),
+    currentVersion: (0, import_fields12.relationship)({ ref: "CannedJobVersion", ...readOnly }),
+    ...trackingFields
+  }
+});
+var CannedJobVersion = (0, import_core13.list)({
+  access: governed("signedIn"),
+  ui: { labelField: "versionNumber" },
+  fields: {
+    cannedJob: (0, import_fields12.relationship)({ ref: "CannedJob.versions", ...readOnly }),
+    versionNumber: (0, import_fields12.integer)({ validation: { isRequired: true }, ...readOnly }),
+    kind: systemChoice(["repair", "maintenance", "diagnosis", "inspection", "teardown", "tire", "sublet"]),
+    // Template lines can carry part cost: visible to cost and catalog managers only.
+    lines: (0, import_fields12.json)({ defaultValue: [], ...readOnly, access: { read: anyOf("canSeeCost", "canManagePolicies"), create: () => false, update: () => false }, ui: { ...readOnly.ui, description: "Line templates: { kind: labor, operationCode | description, centiHours, rateClass } \xB7 { kind: part, description, partCategory, condition, quantityMilli, unitCostMinor? } \xB7 { kind: sublet, \u2026 }" } }),
+    customerDescription: systemText(),
+    defaultWarrantyCode: systemText(),
+    notes: systemText(),
+    author: (0, import_fields12.relationship)({ ref: "User", ...readOnly }),
+    publishedBy: (0, import_fields12.relationship)({ ref: "User", ...readOnly }),
+    publishedAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    retiredAt: (0, import_fields12.timestamp)({ ...readOnly }),
+    status: lifecycle(["draft", "published", "retired"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var ServiceMenuItem = (0, import_core13.list)({
+  access: shopScoped({ operation: { query: isSignedIn, create: permissions.canManagePolicies, update: permissions.canManagePolicies, delete: sys6 } }),
+  hooks: auditedHooks("ServiceMenuItem"),
+  ui: { labelField: "name", listView: { initialColumns: ["shop", "name", "fixedPriceMinor", "publishable"] } },
+  fields: {
+    shop: (0, import_fields12.relationship)({ ref: "Shop" }),
+    name: (0, import_fields12.text)({ validation: { isRequired: true } }),
+    fixedPriceMinor: minor({ description: "A menu price in cents (optional). Line pricing still runs; the difference is a discount line." }),
+    cannedJob: (0, import_fields12.relationship)({ ref: "CannedJob" }),
+    vehicleFilter: (0, import_fields12.json)({ defaultValue: {} }),
+    publishable: (0, import_fields12.checkbox)({ defaultValue: false }),
+    ...trackingFields
+  }
+});
+var PublishedService = (0, import_core13.list)({
+  access: shopScoped({ operation: { query: isSignedIn, create: permissions.canManagePolicies, update: permissions.canManagePolicies, delete: sys6 } }),
+  hooks: auditedHooks("PublishedService"),
+  ui: { labelField: "name", listView: { initialColumns: ["shop", "name", "slug", "fromPriceMinor", "isPublished"] } },
+  fields: {
+    shop: (0, import_fields12.relationship)({ ref: "Shop" }),
+    name: (0, import_fields12.text)({ validation: { isRequired: true } }),
+    slug: (0, import_fields12.text)({ validation: { isRequired: true, match: { regex: /^[a-z0-9]+(-[a-z0-9]+)*$/, explanation: "lower-case words joined by dashes" } } }),
+    description: (0, import_fields12.text)({ ui: { displayMode: "textarea" } }),
+    fromPriceMinor: minor(),
+    estimatedCentiHours: centiHours({ min: 0 }),
+    bookable: (0, import_fields12.checkbox)({ defaultValue: true }),
+    cannedJob: (0, import_fields12.relationship)({ ref: "CannedJob" }),
+    sortOrder: (0, import_fields12.integer)({ defaultValue: 0 }),
+    isPublished: (0, import_fields12.checkbox)({ defaultValue: false }),
+    ...trackingFields
+  }
+});
+
+// features/keystone/models/estimates.ts
+var estimates_exports = {};
+__export(estimates_exports, {
+  Authorization: () => Authorization,
+  AuthorizationRequest: () => AuthorizationRequest,
+  EstimateVersion: () => EstimateVersion,
+  JobDecision: () => JobDecision,
+  PublicAccessToken: () => PublicAccessToken
+});
+var import_core14 = require("@keystone-6/core");
+var import_fields13 = require("@keystone-6/core/fields");
+var sys7 = () => false;
+var readRO2 = governed(["canReadRepairOrders"]);
+var pii2 = { read: anyOf("canReadCustomerPII", "canRecordAuthorizations"), create: sys7, update: sys7 };
+var EstimateVersion = (0, import_core14.list)({
+  access: shopScoped(readRO2, "repairOrder.shop"),
+  ui: { labelField: "reference", listView: { initialColumns: ["reference", "repairOrder", "versionNumber", "totalMinor", "status", "sentAt"] } },
+  fields: {
+    repairOrder: (0, import_fields13.relationship)({ ref: "RepairOrder.estimateVersions", ...readOnly }),
+    versionNumber: (0, import_fields13.integer)({ validation: { isRequired: true }, ...readOnly }),
+    reference: systemText({ indexed: "unique", required: true }),
+    snapshot: (0, import_fields13.json)({ ...readOnly, ui: { ...readOnly.ui, description: "What the customer saw: jobs, lines, conditions, fees, tax, totals, disclosures, policy versions, shop registrations." } }),
+    contentHash: systemText(),
+    jobHashes: (0, import_fields13.json)({ defaultValue: {}, ...readOnly, ui: { ...readOnly.ui, description: "{ jobId: contentHash } \u2014 an authorization binds to one of these (I-R3)." } }),
+    includedJobIds: (0, import_fields13.json)({ defaultValue: [], ...readOnly }),
+    disclosuresChecked: (0, import_fields13.json)({ defaultValue: [], ...readOnly }),
+    subtotalMinor: minor({ defaultValue: 0n }),
+    taxMinor: minor({ defaultValue: 0n }),
+    totalMinor: minor({ defaultValue: 0n }),
+    document: (0, import_fields13.relationship)({ ref: "Document", ...readOnly }),
+    sentAt: (0, import_fields13.timestamp)({ ...readOnly }),
+    sentBy: (0, import_fields13.relationship)({ ref: "User", ...readOnly }),
+    authorizations: (0, import_fields13.relationship)({ ref: "Authorization.estimateVersion", many: true, ...readOnly }),
+    status: lifecycle(["draft", "sent", "superseded"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var AuthorizationRequest = (0, import_core14.list)({
+  access: shopScoped(readRO2, "repairOrder.shop"),
+  ui: { labelField: "id", listView: { initialColumns: ["repairOrder", "estimateVersion", "channel", "status", "expiresAt"] } },
+  fields: {
+    repairOrder: (0, import_fields13.relationship)({ ref: "RepairOrder.authorizationRequests", ...readOnly }),
+    estimateVersion: (0, import_fields13.relationship)({ ref: "EstimateVersion", ...readOnly }),
+    channel: systemChoice(["sms", "email", "in_person", "phone_call", "fleet_portal"]),
+    contact: (0, import_fields13.relationship)({ ref: "CustomerContact", ...readOnly }),
+    contactLabel: systemText(),
+    tokenHash: systemText({ indexed: "unique" }),
+    expiresAt: (0, import_fields13.timestamp)({ ...readOnly }),
+    deliveredAt: (0, import_fields13.timestamp)({ ...readOnly }),
+    viewedAt: (0, import_fields13.timestamp)({ ...readOnly }),
+    answeredAt: (0, import_fields13.timestamp)({ ...readOnly }),
+    viewerEvidence: (0, import_fields13.json)({ ...readOnly, access: pii2 }),
+    answer: (0, import_fields13.json)({ ...readOnly, ui: { ...readOnly.ui, description: "The stored answer, returned unchanged when the same answer is posted again." } }),
+    consentTextVersion: systemText(),
+    createdByUser: (0, import_fields13.relationship)({ ref: "User", ...readOnly }),
+    createdByAgent: (0, import_fields13.relationship)({ ref: "AgentIdentity", ...readOnly }),
+    depositRequestedMinor: minor(),
+    status: lifecycle(["created", "delivered", "viewed", "answered", "expired", "withdrawn"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var Authorization = (0, import_core14.list)({
+  access: shopScoped(readRO2, "job.repairOrder.shop"),
+  ui: { labelField: "id", listView: { initialColumns: ["job", "estimateVersion", "amountMinor", "method", "actorName", "authorizedAt", "status"] } },
+  fields: {
+    job: (0, import_fields13.relationship)({ ref: "Job.authorizations", ...readOnly }),
+    estimateVersion: (0, import_fields13.relationship)({ ref: "EstimateVersion.authorizations", ...readOnly }),
+    jobContentHash: systemText({ required: true }),
+    amountMinor: minor({ required: true }),
+    subtotalMinor: minor({ defaultValue: 0n }),
+    method: systemChoice(["in_person_signature", "written_form", "oral_phone", "electronic_link", "fleet_portal", "fleet_po"]),
+    actorKind: systemChoice(["customer", "designee", "fleet_approver"]),
+    actorName: systemText({ required: true }),
+    contactUsed: (0, import_fields13.text)({ access: pii2, ui: { createView: { fieldMode: "hidden" }, itemView: { fieldMode: "read" }, description: "The phone number or email contacted (\xA73353.1(c)/(d))." } }),
+    evidence: (0, import_fields13.json)({ ...readOnly, access: pii2, ui: { ...readOnly.ui, description: "The method-specific evidence (16 CCR \xA73353.1): who, when, how reached, by whom recorded." } }),
+    authorizedAt: (0, import_fields13.timestamp)({ validation: { isRequired: true }, ...readOnly }),
+    recordedByUser: (0, import_fields13.relationship)({ ref: "User", ...readOnly }),
+    authorizationRequest: (0, import_fields13.relationship)({ ref: "AuthorizationRequest", ...readOnly }),
+    signature: (0, import_fields13.relationship)({ ref: "Document", ...readOnly }),
+    consentTextVersion: systemText(),
+    poNumber: systemText(),
+    status: lifecycle(["recorded", "superseded", "revoked"]),
+    ...trackingFields
+  }
+});
+var JobDecision = (0, import_core14.list)({
+  access: shopScoped(readRO2, "job.repairOrder.shop"),
+  ui: { labelField: "decision", listView: { initialColumns: ["job", "decision", "actorName", "method", "at"] } },
+  fields: {
+    job: (0, import_fields13.relationship)({ ref: "Job.decisions", ...readOnly }),
+    estimateVersion: (0, import_fields13.relationship)({ ref: "EstimateVersion", ...readOnly }),
+    decision: systemChoice(["declined", "deferred"]),
+    actorName: systemText({ required: true }),
+    method: systemChoice(["in_person_signature", "written_form", "oral_phone", "electronic_link", "fleet_portal", "fleet_po"]),
+    at: (0, import_fields13.timestamp)({ validation: { isRequired: true }, ...readOnly }),
+    reason: systemText(),
+    deferUntil: (0, import_fields13.timestamp)({ ...readOnly }),
+    deferMiles: (0, import_fields13.integer)({ ...readOnly }),
+    recordedByUser: (0, import_fields13.relationship)({ ref: "User", ...readOnly }),
+    authorizationRequest: (0, import_fields13.relationship)({ ref: "AuthorizationRequest", ...readOnly }),
+    ...trackingFields
+  }
+});
+var PublicAccessToken = (0, import_core14.list)({
+  access: serverOnly,
+  graphql: { omit: true },
+  ui: { isHidden: true },
+  fields: {
+    purpose: systemChoice(["authorization", "inspection", "invoice_pay", "portal_magic_link", "fleet_magic_link"]),
+    subjectType: systemText({ required: true }),
+    subjectId: systemText({ required: true }),
+    shop: (0, import_fields13.relationship)({ ref: "Shop" }),
+    tokenHash: systemText({ indexed: "unique", required: true }),
+    expiresAt: (0, import_fields13.timestamp)({ validation: { isRequired: true } }),
+    usedAt: (0, import_fields13.timestamp)(),
+    useCount: (0, import_fields13.integer)({ defaultValue: 0 }),
+    maxUses: (0, import_fields13.integer)({ defaultValue: 50 }),
+    revokedAt: (0, import_fields13.timestamp)(),
     ...trackingFields
   }
 });
@@ -1898,11 +2547,14 @@ var models = {
   ...platform_exports,
   ...policy_exports,
   ...customers_exports,
-  ...scheduling_exports
+  ...scheduling_exports,
+  ...repairOrders_exports,
+  ...inspections_exports,
+  ...estimates_exports
 };
 
 // features/keystone/index.ts
-var import_session = require("@keystone-6/core/session");
+var import_session2 = require("@keystone-6/core/session");
 
 // features/keystone/mutations/index.ts
 var import_schema = require("@graphql-tools/schema");
@@ -1922,7 +2574,7 @@ async function updateActiveUser(_root, { data }, context) {
   const session = context.session;
   if (!isSignedIn({ session })) throw new Error("Not authenticated");
   const allowed = /* @__PURE__ */ new Set(["email", "name", "password", "onboardingStatus"]);
-  if (Object.keys(data || {}).some((key) => !allowed.has(key))) throw new Error("Unsupported profile field");
+  if (Object.keys(data || {}).some((key2) => !allowed.has(key2))) throw new Error("Unsupported profile field");
   return context.db.User.updateOne({ where: { id: session.itemId }, data });
 }
 var updateActiveUser_default = updateActiveUser;
@@ -1980,19 +2632,28 @@ var Codes = {
   POLICY_MISSING: "POLICY_MISSING",
   SIGNATURE_REQUIRED: "SIGNATURE_REQUIRED",
   ODOMETER_REQUIRED: "ODOMETER_REQUIRED",
-  DUPLICATE: "DUPLICATE"
+  DUPLICATE: "DUPLICATE",
+  GUIDE_AMBIGUOUS: "GUIDE_AMBIGUOUS",
+  PRICE_OVERRIDE_REQUIRED: "PRICE_OVERRIDE_REQUIRED",
+  CONTENT_CHANGED: "CONTENT_CHANGED",
+  TOKEN_INVALID: "TOKEN_INVALID",
+  TOKEN_EXPIRED: "TOKEN_EXPIRED",
+  ESTIMATE_SUPERSEDED: "ESTIMATE_SUPERSEDED",
+  EVIDENCE_MISSING: "EVIDENCE_MISSING",
+  METHOD_NOT_ALLOWED: "METHOD_NOT_ALLOWED",
+  RO_LOCKED: "RO_LOCKED"
 };
 
 // features/keystone/mutations/op.ts
 var UNSAFE = /prisma|invocation|\bat\s+\S+\s*\(|node_modules|postgres(ql)?:\/\/|\bSQL\b|ECONN|query engine|\.ts:\d+|\.js:\d+/i;
-var SAFE_DETAIL_KEYS = /* @__PURE__ */ new Set(["currentStatus", "currentVersion", "to", "reason", "field", "problems", "replay", "ceilingMinor", "priceMinor", "authorizedMinor", "previous", "existingId"]);
+var SAFE_DETAIL_KEYS = /* @__PURE__ */ new Set(["currentStatus", "currentVersion", "to", "reason", "field", "problems", "replay", "ceilingMinor", "priceMinor", "authorizedMinor", "previous", "existingId", "candidates", "missing"]);
 var op = (fn) => async (root, args, context) => {
   try {
     return await fn(root, args, context);
   } catch (error) {
     if (error instanceof import_graphql.GraphQLError) throw error;
     if (isDomainError(error)) {
-      const details = Object.fromEntries(Object.entries(error.details).filter(([key]) => SAFE_DETAIL_KEYS.has(key)));
+      const details = Object.fromEntries(Object.entries(error.details).filter(([key2]) => SAFE_DETAIL_KEYS.has(key2)));
       throw new import_graphql.GraphQLError(error.message, { extensions: { code: error.code, ...details } });
     }
     const message = typeof error?.message === "string" ? error.message : "";
@@ -2002,12 +2663,56 @@ var op = (fn) => async (root, args, context) => {
   }
 };
 
+// features/keystone/mcp-oauth/session.ts
+async function resolveMcpAccessToken(context, token, listKey = "User") {
+  try {
+    const sudo = context.sudo();
+    const record = await sudo.db.OAuthToken.findOne({ where: { token: digestToken(token) } });
+    if (!record || record.tokenType !== "access_token" || record.isRevoked !== "false" || !record.userId || !record.expiresAt || new Date(record.expiresAt).getTime() <= Date.now()) {
+      return void 0;
+    }
+    const app = await sudo.db.OAuthApp.findOne({ where: { clientId: record.clientId } });
+    if (!app || app.status !== "active") return void 0;
+    const mcp = {
+      clientId: record.clientId,
+      scopes: storedScopes(record.scopes),
+      tokenId: String(record.id)
+    };
+    return { itemId: String(record.userId), listKey, mcp };
+  } catch {
+    return void 0;
+  }
+}
+function withMcpBearerSessions(strategy, listKey = "User") {
+  return {
+    ...strategy,
+    async get({ context }) {
+      const token = bearerToken(context?.req?.headers?.authorization);
+      if (isMcpAccessToken(token)) return resolveMcpAccessToken(context, token, listKey);
+      return strategy.get({ context });
+    }
+  };
+}
+function mcpSessionMarker(session) {
+  const marker = session?.mcp;
+  return marker && typeof marker.clientId === "string" && Array.isArray(marker.scopes) ? marker : null;
+}
+
 // features/keystone/lib/actor.ts
 function actorFromSession(session) {
   if (!session || !isSignedIn({ session })) throw new DomainError(Codes.NOT_AUTHORIZED, "Sign in to continue.");
   const role = session.data.role;
   const granted = new Set(role ? permissionNames.filter((name) => role[name] === true) : []);
-  return { kind: "user", userId: session.itemId, name: session.data.name, permissions: granted };
+  const channel = mcpSessionMarker(session) ? "mcp" : "web";
+  return { kind: "user", userId: session.itemId, name: session.data.name, permissions: granted, channel };
+}
+var isMachine = (actor) => actor.kind === "agent" || actor.kind === "user" && actor.channel === "mcp";
+var dbActorKind = (actor) => isMachine(actor) ? "agent" : actor.kind;
+function requireHuman(actor, action) {
+  if (isMachine(actor)) throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, `Only a person can ${action}. An assistant can draft it or create a callback task for staff.`);
+}
+function can(actor, permission) {
+  return actor.kind === "user" && actor.permissions.has(permission);
 }
 function requirePermission(actor, ...anyOf2) {
   if (actor.kind === "system") return;
@@ -2022,9 +2727,9 @@ var actorAgentId = (actor) => actor.kind === "agent" ? actor.agentId : null;
 
 // features/keystone/lib/idempotency.ts
 var IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{8,200}$/;
-function assertIdempotencyKey(key) {
-  if (typeof key !== "string" || !key.trim()) throw new DomainError(Codes.IDEMPOTENCY_KEY_REQUIRED, "An idempotency key is required.");
-  if (!IDEMPOTENCY_KEY.test(key)) throw new DomainError(Codes.INVALID_INPUT, "The idempotency key must be 8 to 200 letters, digits or . _ : -");
+function assertIdempotencyKey(key2) {
+  if (typeof key2 !== "string" || !key2.trim()) throw new DomainError(Codes.IDEMPOTENCY_KEY_REQUIRED, "An idempotency key is required.");
+  if (!IDEMPOTENCY_KEY.test(key2)) throw new DomainError(Codes.INVALID_INPUT, "The idempotency key must be 8 to 200 letters, digits or . _ : -");
 }
 async function claimReceipt(tx, input) {
   assertIdempotencyKey(input.key);
@@ -2111,7 +2816,7 @@ async function command(db, spec, work) {
         const value = toJsonValue(await work(uow));
         await writeReceipt(uow.tx, { key: spec.idempotencyKey, command: spec.name, principalKey: principal, params: spec.params, response: value, now: uow.now });
         return { replay: false, value };
-      }, { requestId: spec.requestId ?? null, now: spec.now, actorKind: spec.actor.kind });
+      }, { requestId: spec.requestId ?? null, now: spec.now, actorKind: dbActorKind(spec.actor) });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const code = error?.code ?? "";
@@ -2207,18 +2912,18 @@ var recallSchema = import_zod.z.object({
     Notes: nullableText
   }).passthrough())
 });
-var clip = (text11) => text11.length > MAX_TEXT ? `${text11.slice(0, MAX_TEXT)}\u2026` : text11;
+var clip = (text15) => text15.length > MAX_TEXT ? `${text15.slice(0, MAX_TEXT)}\u2026` : text15;
 var present = (value) => {
-  const text11 = value === null || value === void 0 ? "" : String(value).trim();
-  return text11 && text11 !== "Not Applicable" ? text11 : void 0;
+  const text15 = value === null || value === void 0 ? "" : String(value).trim();
+  return text15 && text15 !== "Not Applicable" ? text15 : void 0;
 };
 var int = (value) => {
-  const text11 = present(value);
-  return text11 && /^\d+$/.test(text11) ? Number(text11) : void 0;
+  const text15 = present(value);
+  return text15 && /^\d+$/.test(text15) ? Number(text15) : void 0;
 };
-function nhtsaDate(text11) {
-  const m = text11.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : text11;
+function nhtsaDate(text15) {
+  const m = text15.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : text15;
 }
 function parseDecode(vin2, body) {
   const parsed = decodeSchema.parse(body);
@@ -2490,35 +3195,35 @@ function fromRows(code, timeZone, calendar, exceptions) {
 var import_node_crypto4 = require("node:crypto");
 async function nextReference(tx, prefix, now = /* @__PURE__ */ new Date(), width = 6) {
   if (!/^[A-Z]{2,5}$/.test(prefix)) throw new Error("Reference prefix must be 2-5 capital letters");
-  const key = `${prefix}-${now.getUTCFullYear()}`;
-  await advisoryLock(tx, `sequence:${key}`);
-  const row = await tx.sequence.upsert({ where: { key }, create: { key, nextValue: 2 }, update: { nextValue: { increment: 1 } } });
+  const key2 = `${prefix}-${now.getUTCFullYear()}`;
+  await advisoryLock(tx, `sequence:${key2}`);
+  const row = await tx.sequence.upsert({ where: { key: key2 }, create: { key: key2, nextValue: 2 }, update: { nextValue: { increment: 1 } } });
   const value = row.nextValue - 1;
-  return `${key}-${String(value).padStart(width, "0")}`;
+  return `${key2}-${String(value).padStart(width, "0")}`;
 }
 async function nextShopReference(tx, prefix, shopCode, now = /* @__PURE__ */ new Date(), width = 6) {
   if (!/^[A-Z]{2,5}$/.test(prefix) || !/^[A-Z]{2,5}$/.test(shopCode)) throw new Error("Reference prefix and shop code must be 2-5 capital letters");
-  const key = `${prefix}-${shopCode}-${now.getUTCFullYear()}`;
-  await advisoryLock(tx, `sequence:${key}`);
-  const row = await tx.sequence.upsert({ where: { key }, create: { key, nextValue: 2 }, update: { nextValue: { increment: 1 } } });
-  return `${key}-${String(row.nextValue - 1).padStart(width, "0")}`;
+  const key2 = `${prefix}-${shopCode}-${now.getUTCFullYear()}`;
+  await advisoryLock(tx, `sequence:${key2}`);
+  const row = await tx.sequence.upsert({ where: { key: key2 }, create: { key: key2, nextValue: 2 }, update: { nextValue: { increment: 1 } } });
+  return `${key2}-${String(row.nextValue - 1).padStart(width, "0")}`;
 }
 
 // features/keystone/lib/customers.ts
 var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function normalizeContact(kind, value) {
-  const text11 = String(value ?? "").trim();
+  const text15 = String(value ?? "").trim();
   if (kind === "email") {
-    const email3 = text11.toLowerCase();
-    if (!EMAIL.test(email3) || email3.length > 254) throw new DomainError(Codes.INVALID_INPUT, `${text11.slice(0, 60)} is not an email address.`, { field: "value" });
+    const email3 = text15.toLowerCase();
+    if (!EMAIL.test(email3) || email3.length > 254) throw new DomainError(Codes.INVALID_INPUT, `${text15.slice(0, 60)} is not an email address.`, { field: "value" });
     return email3;
   }
-  const digits = text11.replace(/[^\d+]/g, "");
+  const digits = text15.replace(/[^\d+]/g, "");
   let e164 = "";
   if (/^\+\d{8,15}$/.test(digits)) e164 = digits;
   else if (/^\d{10}$/.test(digits)) e164 = `+1${digits}`;
   else if (/^1\d{10}$/.test(digits)) e164 = `+${digits}`;
-  if (!e164) throw new DomainError(Codes.INVALID_INPUT, `${text11.slice(0, 30)} is not a phone number. Use 10 digits or +country code.`, { field: "value" });
+  if (!e164) throw new DomainError(Codes.INVALID_INPUT, `${text15.slice(0, 30)} is not a phone number. Use 10 digits or +country code.`, { field: "value" });
   return e164;
 }
 var contactHash = (kind, normalized) => sha256(`${kind === "email" ? "email" : "phone"}:${normalized}`);
@@ -2538,9 +3243,9 @@ async function findByContacts(tx, contacts, excludeCustomerId) {
   });
 }
 var clean = (value, max = 120) => {
-  const text11 = String(value ?? "").trim();
-  if (text11.length > max) throw new DomainError(Codes.INVALID_INPUT, `Keep this under ${max} characters.`);
-  return text11;
+  const text15 = String(value ?? "").trim();
+  if (text15.length > max) throw new DomainError(Codes.INVALID_INPUT, `Keep this under ${max} characters.`);
+  return text15;
 };
 async function upsertCustomer(uow, actor, input) {
   const { tx } = uow;
@@ -2553,11 +3258,11 @@ async function upsertCustomer(uow, actor, input) {
   const contacts = (input.contacts ?? []).map((c) => ({ ...c, normalized: normalizeContact(c.kind, c.value) }));
   const seen = /* @__PURE__ */ new Set();
   for (const c of contacts) {
-    const key = contactHash(c.kind, c.normalized);
-    if (seen.has(key)) throw new DomainError(Codes.INVALID_INPUT, "The same contact is listed twice.", { field: "contacts" });
-    seen.add(key);
+    const key2 = contactHash(c.kind, c.normalized);
+    if (seen.has(key2)) throw new DomainError(Codes.INVALID_INPUT, "The same contact is listed twice.", { field: "contacts" });
+    seen.add(key2);
   }
-  for (const key of [...seen].sort()) await advisoryLock(tx, `contact:${key}`);
+  for (const key2 of [...seen].sort()) await advisoryLock(tx, `contact:${key2}`);
   if (!input.allowDuplicate) {
     const clash = await findByContacts(tx, contacts, input.id ?? void 0);
     if (clash.length) throw new DomainError(Codes.DUPLICATE, "A customer with this phone number or email already exists. Open that customer, or confirm this is a different person.", { existingId: clash[0].customerId, field: "contacts" });
@@ -2644,6 +3349,16 @@ async function recordConsent(uow, actor, input) {
   });
   auditCreate(uow, actor, "ContactConsent", row.id, `consent.${input.action}`, { contactId: contact.id, customerId: contact.customerId, channel: input.channel, purpose: input.purpose, method: input.method });
   return { id: row.id };
+}
+function currentConsent(events) {
+  const sorted = [...events].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  const state = {};
+  for (const channel of ["sms", "email", "voice"]) for (const purpose of ["transactional", "marketing"]) state[`${channel}:${purpose}`] = "unknown";
+  for (const e of sorted) {
+    const purposes = e.purpose === "all" ? ["transactional", "marketing"] : [e.purpose];
+    for (const p of purposes) state[`${e.channel}:${p}`] = e.action;
+  }
+  return state;
 }
 async function createBusinessAccount(uow, actor, input) {
   const name = clean(input.name, 200);
@@ -2902,7 +3617,7 @@ async function markNoShow(uow, actor, input) {
 }
 
 // features/keystone/lib/vehicles.ts
-var text10 = (value, max = 80) => {
+var text13 = (value, max = 80) => {
   const t = String(value ?? "").trim();
   if (t.length > max) throw new DomainError(Codes.INVALID_INPUT, `Keep this under ${max} characters.`);
   return t;
@@ -2911,15 +3626,15 @@ var PLATE = /^[A-Z0-9 -]{1,10}$/;
 var STATE = /^[A-Z]{2}$/;
 async function upsertVehicle(uow, actor, input) {
   const { tx, now } = uow;
-  const rawVin = text10(input.vin, 40);
+  const rawVin = text13(input.vin, 40);
   const vin2 = rawVin ? normalizeVin(rawVin) : null;
   const check = checkVin(vin2);
   if (vin2 && check.validity === "invalid_format") throw new DomainError(Codes.INVALID_INPUT, check.message, { field: "vin" });
-  const noVinReason = vin2 ? "" : text10(input.noVinReason, 200);
+  const noVinReason = vin2 ? "" : text13(input.noVinReason, 200);
   if (!vin2 && !noVinReason && !input.id) throw new DomainError(Codes.INVALID_INPUT, "Enter the VIN, or say why there is none (e.g. a trailer or a pre-1981 vehicle).", { field: "vin" });
   const year = input.year ?? null;
   if (year !== null && (!Number.isInteger(year) || year < 1900 || year > now.getUTCFullYear() + 2)) throw new DomainError(Codes.INVALID_INPUT, "Enter a model year such as 2018.", { field: "year" });
-  const fields = { year, make: text10(input.make), model: text10(input.model), trim: text10(input.trim), engine: text10(input.engine, 120), color: text10(input.color, 40) };
+  const fields = { year, make: text13(input.make), model: text13(input.model), trim: text13(input.trim), engine: text13(input.engine, 120), color: text13(input.color, 40) };
   let id;
   let existing = false;
   if (vin2) await advisoryLock(tx, `vin:${vin2}`);
@@ -2986,7 +3701,7 @@ async function recordOdometer(uow, actor, input) {
   const previous = vehicle.lastOdometer;
   const comparable = previous !== null && unit === vehicle.lastOdometerUnit;
   let anomaly = "none";
-  const reason = text10(input.overrideReason, 300);
+  const reason = text13(input.overrideReason, 300);
   if (comparable && input.value < previous) {
     if (!reason) throw new DomainError(Codes.ODOMETER_REGRESSION, `The odometer reads lower than last time (${previous.toLocaleString("en-US")} ${unit}). Check it, or give a reason (cluster replaced, unit mix-up).`, { previous, field: "odometer" });
     anomaly = "lower_than_previous";
@@ -3583,6 +4298,9 @@ async function seedOrgPlatform(uow, actor) {
   return created;
 }
 
+// features/keystone/seed/repairOrders.ts
+var import_node_crypto7 = require("node:crypto");
+
 // features/keystone/lib/ceiling.ts
 var PCT = /^(0(\.\d{1,6})?|1(\.0{1,6})?)$/;
 var big = (value, field) => {
@@ -3818,7 +4536,7 @@ async function policyContent(tx, kind, versionId) {
 var contentHash = (content) => sha256(canonicalJson(content));
 function diffContent(before, after) {
   const keys = [.../* @__PURE__ */ new Set([...Object.keys(before ?? {}), ...Object.keys(after)])].sort();
-  return keys.filter((key) => canonicalJson((before ?? {})[key] ?? null) !== canonicalJson(after[key] ?? null)).map((key) => ({ field: key, before: (before ?? {})[key] ?? null, after: after[key] ?? null }));
+  return keys.filter((key2) => canonicalJson((before ?? {})[key2] ?? null) !== canonicalJson(after[key2] ?? null)).map((key2) => ({ field: key2, before: (before ?? {})[key2] ?? null, after: after[key2] ?? null }));
 }
 var AUTH_METHODS = ["in_person_signature", "written_form", "oral_phone", "electronic_link", "fleet_portal", "fleet_po"];
 var AUTONOMY = ["off", "propose_only", "auto_within_policy"];
@@ -4035,6 +4753,1722 @@ async function shopLaw(tx, shopId) {
   const pack = await tx.jurisdictionPack.findUniqueOrThrow({ where: { id: law.packId } });
   const shopPolicy = shop.shopPolicyId ? await tx.shopPolicyVersion.findUnique({ where: { id: shop.shopPolicyId } }) : null;
   return { shop, law, pack, shopPolicy, verified: pack.verified };
+}
+
+// features/keystone/lib/checkIn.ts
+function workOrderText(input) {
+  const lines = [
+    `${input.legalName} (${input.shopName})`,
+    input.registrations?.barArd ? `Automotive Repair Dealer registration ${String(input.registrations.barArd)}` : null,
+    "",
+    "You asked us to look at:",
+    ...input.concerns.map((c, i) => `${i + 1}. ${c}`),
+    "",
+    input.odometer !== null && input.odometer !== void 0 ? `Odometer in: ${input.odometer.toLocaleString("en-US")}` : null,
+    input.promisedAt ? `Promised: ${input.promisedAt.toLocaleString("en-US", { timeZone: input.timeZone, dateStyle: "medium", timeStyle: "short" })}` : null,
+    "",
+    ...input.notices.filter((n) => n.where === "work_order").map((n) => n.text),
+    input.replacedPartsOfferText ?? null
+  ];
+  return lines.filter((l) => l !== null).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+var MAX_STROKES = 400;
+function checkSignature(signature) {
+  if (!signature) return null;
+  const signerName = String(signature.signerName ?? "").trim();
+  if (!signerName || signerName.length > 120) throw new DomainError(Codes.SIGNATURE_REQUIRED, "Enter the name of the person signing.", { field: "signerName" });
+  const strokes = Array.isArray(signature.strokes) ? signature.strokes : [];
+  if (strokes.length > MAX_STROKES || strokes.some((s) => !Array.isArray(s) || s.length > 2e3 || s.some((p) => !Array.isArray(p) || p.length !== 2 || !p.every(Number.isFinite)))) {
+    throw new DomainError(Codes.INVALID_INPUT, "The signature could not be read. Clear it and sign again.", { field: "signature" });
+  }
+  const points = strokes.reduce((n, s) => n + s.length, 0);
+  if (points < 8 && !signature.typedAcknowledgement) throw new DomainError(Codes.SIGNATURE_REQUIRED, "Ask the customer to sign in the box.", { field: "signature" });
+  if (!["in_person", "electronic_link"].includes(signature.method)) throw new DomainError(Codes.INVALID_INPUT, "Choose how the work order was signed.");
+  return { method: signature.method, signerName, strokes: strokes.map((s) => s.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10])), typedAcknowledgement: Boolean(signature.typedAcknowledgement) };
+}
+async function checkInVehicle(uow, actor, input) {
+  const { tx, now } = uow;
+  const { shop, law, shopPolicy } = await shopLaw(tx, input.shopId);
+  const full = await tx.shop.findUniqueOrThrow({ where: { id: input.shopId }, select: { code: true, name: true, legalName: true, registrations: true, timeZone: true } });
+  const concerns = (input.concerns ?? []).map((c) => String(c).trim()).filter(Boolean).map((c) => c.slice(0, 500));
+  if (!concerns.length) throw new DomainError(Codes.INVALID_INPUT, "Write down at least one concern in the customer's words.", { field: "concerns" });
+  if (concerns.length > 20) throw new DomainError(Codes.INVALID_INPUT, "Twenty concerns at most. Group related ones.", { field: "concerns" });
+  if (law.requireOdometerIn && !input.odometer) throw new DomainError(Codes.ODOMETER_REQUIRED, "Record the odometer reading. This state requires it on the invoice.", { field: "odometer" });
+  const promisedRequired = shopPolicy?.promisedTimeRequired ?? true;
+  if (promisedRequired && !input.promisedAt) throw new DomainError(Codes.INVALID_INPUT, "Give the customer a promised time.", { field: "promisedAt" });
+  if (input.promisedAt && input.promisedAt.getTime() <= now.getTime()) throw new DomainError(Codes.INVALID_INPUT, "The promised time must be later than now.", { field: "promisedAt" });
+  const signature = checkSignature(input.signature);
+  if (law.requireSignedWorkOrder && !signature) throw new DomainError(Codes.SIGNATURE_REQUIRED, "The customer must sign the work order before work starts.", { field: "signature" });
+  const customer = await tx.customer.findUnique({ where: { id: input.customerId }, select: { id: true, status: true } });
+  if (!customer || customer.status !== "active") throw new DomainError(Codes.NOT_FOUND, "Customer not found.");
+  const vehicle = await tx.vehicle.findUnique({ where: { id: input.vehicleId }, select: { id: true, status: true } });
+  if (!vehicle || vehicle.status !== "active") throw new DomainError(Codes.NOT_FOUND, "Vehicle not found.");
+  await advisoryLock(tx, `checkin:${input.vehicleId}`);
+  const open = await tx.checkIn.findFirst({ where: { vehicleId: input.vehicleId, shopId: input.shopId, at: { gt: new Date(now.getTime() - 12 * 36e5) } }, select: { reference: true } });
+  if (open) throw new DomainError(Codes.DUPLICATE, `This vehicle was checked in ${open.reference} in the last 12 hours.`);
+  const reference = await nextShopReference(tx, "CI", shop.code, now);
+  const notices = Array.isArray(law.requiredNotices) ? law.requiredNotices : [];
+  const text15 = workOrderText({
+    shopName: full.name,
+    legalName: full.legalName,
+    registrations: full.registrations ?? {},
+    concerns,
+    notices,
+    replacedPartsOfferText: law.replacedPartsOfferRequired ? law.replacedPartsOfferText : null,
+    promisedAt: input.promisedAt ?? null,
+    odometer: input.odometer?.value ?? null,
+    timeZone: full.timeZone
+  });
+  const latestRecall = await tx.recallCheck.findFirst({ where: { vehicleId: input.vehicleId }, orderBy: { checkedAt: "desc" }, select: { id: true, campaignCount: true, parkItAny: true, checkedAt: true, campaigns: true } });
+  const recallWarning = latestRecall && latestRecall.campaignCount > 0 ? { recallCheckId: latestRecall.id, count: latestRecall.campaignCount, doNotDrive: latestRecall.parkItAny, checkedAt: latestRecall.checkedAt, campaigns: (latestRecall.campaigns ?? []).slice(0, 10).map((c) => ({ number: c.nhtsaCampaignNumber, component: c.component, parkIt: c.parkIt, parkOutSide: c.parkOutSide })) } : null;
+  const row = await tx.checkIn.create({
+    data: {
+      shopId: input.shopId,
+      reference,
+      ...input.appointmentId ? { appointment: { connect: { id: input.appointmentId } } } : {},
+      customerId: input.customerId,
+      vehicleId: input.vehicleId,
+      concerns,
+      keyTag: input.keyTag?.trim().slice(0, 20) ?? "",
+      waiter: input.waiter ?? false,
+      promisedAt: input.promisedAt ?? null,
+      contactPreference: input.contactPreference ?? "sms",
+      transportationNeed: input.transportationNeed ?? "none",
+      signatureMethod: signature?.method ?? "in_person",
+      signerName: signature?.signerName ?? "",
+      signature: signature ?? void 0,
+      signatureHash: signature ? sha256(canonicalJson(signature)) : "",
+      workOrderText: text15,
+      workOrderHash: sha256(text15),
+      signedAt: signature ? now : null,
+      valuablesNote: input.valuablesNote?.trim().slice(0, 500) ?? "",
+      recallWarning: recallWarning ?? void 0,
+      jurisdictionPolicyVersionId: law.id,
+      at: now,
+      byId: actorUserId(actor)
+    }
+  });
+  let odometer = null;
+  if (input.odometer) {
+    odometer = await recordOdometer(uow, actor, { vehicleId: input.vehicleId, value: input.odometer.value, unit: input.odometer.unit, source: "ro_in", overrideReason: input.odometer.overrideReason, checkInId: row.id });
+    await tx.checkIn.update({ where: { id: row.id }, data: { odometerInId: odometer.id } });
+  }
+  if (input.appointmentId) {
+    await transition(uow, {
+      model: "Appointment",
+      id: input.appointmentId,
+      from: ["requested", "confirmed"],
+      to: "arrived",
+      actor,
+      eventType: "appointment.arrived",
+      guard: (a) => {
+        if (a.shopId !== input.shopId) throw new DomainError(Codes.INVALID_INPUT, "The appointment is at another shop.");
+        if (a.vehicleId && a.vehicleId !== input.vehicleId) throw new DomainError(Codes.INVALID_INPUT, "The appointment is for another vehicle.");
+      },
+      data: { customerId: input.customerId, vehicleId: input.vehicleId }
+    });
+  }
+  auditCreate(uow, actor, "CheckIn", row.id, "vehicle.checked_in", { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text15), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id });
+  uow.emit({ topic: "vehicle.checked_in", aggregateType: "CheckIn", aggregateId: row.id, payload: { reference, shopId: input.shopId }, dedupeKey: `checkin:${row.id}` });
+  return { id: row.id, reference, recallWarning, odometerAnomaly: odometer?.anomaly ?? null };
+}
+
+// features/keystone/lib/money.ts
+var MINOR_DIGITS = { USD: 2, EUR: 2, GBP: 2, CHF: 2, CAD: 2, AUD: 2, SEK: 2, JPY: 0, KRW: 0, BHD: 3, KWD: 3 };
+var isCurrencyCode = (code) => typeof code === "string" && /^[A-Z]{3}$/.test(code);
+function minorDigits(currencyCode) {
+  if (!isCurrencyCode(currencyCode)) throw new Error(`Invalid currency code: ${String(currencyCode).slice(0, 8)}`);
+  return MINOR_DIGITS[currencyCode] ?? 2;
+}
+function formatMinor(minor2, currencyCode = "USD") {
+  const digits = minorDigits(currencyCode);
+  const negative = minor2 < 0n;
+  const abs = negative ? -minor2 : minor2;
+  const base = 10n ** BigInt(digits);
+  const whole = (abs / base).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const fraction = digits ? "." + (abs % base).toString().padStart(digits, "0") : "";
+  const symbol = currencyCode === "USD" ? "$" : `${currencyCode} `;
+  return `${negative ? "\u2212" : ""}${symbol}${whole}${fraction}`;
+}
+var sumMinor = (values) => values.reduce((a, b) => a + b, 0n);
+
+// features/keystone/lib/pricing.ts
+var PART_CONDITIONS2 = ["new", "used", "rebuilt", "reconditioned", "oem_crash", "non_oem_aftermarket_crash"];
+var PART_KINDS = ["part", "tire", "core", "refrigerant"];
+var roundMinor = (value) => BigInt(toScale(value, 0));
+var qty = (milli2) => dec(milli2).div(1e3);
+function partsMultiplier(matrix, unitCostMinor, category) {
+  const override = category ? matrix.categoryOverrides?.[category] : void 0;
+  if (override) return { multiplier: override, source: "category" };
+  const tier = matrix.tiers.find((t) => unitCostMinor >= BigInt(t.minCostMinor) && (t.maxCostMinor === null || t.maxCostMinor === void 0 || unitCostMinor < BigInt(t.maxCostMinor)));
+  if (!tier) throw new DomainError(Codes.POLICY_INVALID, `The parts matrix has no tier for a cost of ${unitCostMinor} cents.`);
+  return { multiplier: tier.multiplier, source: "tier" };
+}
+function floorPriceMinor(unitCostMinor, marginFloorPct) {
+  const floor = dec(marginFloorPct);
+  if (floor.gte(1)) return unitCostMinor;
+  return BigInt(toScale(dec(unitCostMinor).div(ONE.minus(floor)), 0, Decimal.ROUND_CEIL));
+}
+function laborFactor(policy, rateClassCode, centiHours2) {
+  const m = policy.laborMatrix;
+  if (!m.bands?.length) return ONE;
+  if (m.appliesToClasses?.length && !m.appliesToClasses.includes(rateClassCode)) return ONE;
+  const band = m.bands.find((b) => centiHours2 >= (b.minCentiHours ?? 0) && (b.maxCentiHours === null || b.maxCentiHours === void 0 || centiHours2 < b.maxCentiHours));
+  return band ? dec(band.factor) : ONE;
+}
+var FEE_TAX_CATEGORY = { ca_tire_fee: "fee_tire", ca_battery_fee: "fee_battery", battery_deposit: "battery_deposit" };
+function unitsOf(lines, itemCategory) {
+  const matching = lines.filter((l) => {
+    if (itemCategory === "tire_new") return l.kind === "tire" && l.isNewTire && (l.condition ?? "new") === "new";
+    return PART_KINDS.includes(l.kind) && l.kind !== "core" && l.partCategory === itemCategory;
+  });
+  return matching.reduce((n, l) => n + Math.floor(l.quantityMilli / 1e3), 0);
+}
+function priceJob(inputs, policy) {
+  const problems = [];
+  const belowFloor = [];
+  const tax = new Map(policy.taxRules.map((r) => [r.categoryCode, r]));
+  const defaultClass = policy.rateClasses.find((c) => c.isDefault) ?? policy.rateClasses[0];
+  const lines = [];
+  const base = (input) => ({
+    ref: input.ref,
+    kind: input.kind,
+    auto: false,
+    description: String(input.description ?? "").trim(),
+    rateClassCode: null,
+    rateMinor: 0n,
+    soldCentiHours: 0,
+    guideCentiHours: input.guideCentiHours ?? 0,
+    overlapCentiHours: input.overlapCentiHours ?? 0,
+    partNumber: input.partNumber?.trim() ?? "",
+    brand: input.brand?.trim() ?? "",
+    partCategory: input.partCategory?.trim() ?? "",
+    condition: input.condition ?? null,
+    quantityMilli: input.quantityMilli ?? 1e3,
+    unitCostMinor: input.unitCostMinor ?? 0n,
+    unitPriceMinor: 0n,
+    matrixTier: null,
+    isNewTire: Boolean(input.isNewTire),
+    subletVendorName: input.subletVendorName?.trim() ?? "",
+    subletCostMinor: input.subletCostMinor ?? 0n,
+    feeRuleId: null,
+    feeCode: "",
+    taxCategoryCode: "",
+    taxable: false,
+    taxRate: "0.000000",
+    extendedMinor: 0n,
+    taxMinor: 0n
+  });
+  for (const input of inputs) {
+    const line = base(input);
+    if (!line.description) problems.push(`${input.ref}: describe the line.`);
+    switch (input.kind) {
+      case "labor": {
+        const cls = input.rateClassCode ? policy.rateClasses.find((c) => c.code === input.rateClassCode) : defaultClass;
+        if (!cls) {
+          problems.push(`${input.ref}: labor rate class ${input.rateClassCode} is not in this repair order's rates.`);
+          break;
+        }
+        const hours = input.soldCentiHours ?? 0;
+        if (!Number.isInteger(hours) || hours <= 0) problems.push(`${input.ref}: labor needs sold hours above zero.`);
+        line.rateClassCode = cls.code;
+        line.rateMinor = cls.rateMinor;
+        line.soldCentiHours = Math.max(0, hours);
+        line.taxCategoryCode = input.fabrication ? "labor_fabrication" : cls.taxCategoryCode || "labor_repair";
+        line.extendedMinor = roundMinor(dec(cls.rateMinor).times(line.soldCentiHours).div(100).times(laborFactor(policy, cls.code, line.soldCentiHours)));
+        break;
+      }
+      case "part":
+      case "tire":
+      case "core":
+      case "refrigerant": {
+        if (!Number.isInteger(line.quantityMilli) || line.quantityMilli <= 0) problems.push(`${input.ref}: quantity must be above zero.`);
+        if (input.unitCostMinor === null || input.unitCostMinor === void 0) problems.push(`${input.ref}: enter the part cost (a quote or stock cost).`);
+        if (input.kind !== "core" && policy.law.requirePartCondition && !(line.condition && PART_CONDITIONS2.includes(line.condition))) problems.push(`${input.ref}: part condition (new, used, rebuilt or reconditioned) is required.`);
+        if (input.kind === "tire") line.partCategory = line.partCategory || "tires";
+        const category = input.kind === "tire" ? "tires" : line.partCategory;
+        if (input.kind === "core") {
+          line.unitPriceMinor = input.unitPriceOverrideMinor ?? line.unitCostMinor;
+          line.matrixTier = { multiplier: "1", source: "override", belowFloor: false };
+        } else {
+          const { multiplier, source } = partsMultiplier(policy.partsMatrix, line.unitCostMinor, category);
+          const matrixPrice = roundMinor(dec(line.unitCostMinor).times(dec(multiplier)));
+          if (input.unitPriceOverrideMinor !== null && input.unitPriceOverrideMinor !== void 0) {
+            const floor = floorPriceMinor(line.unitCostMinor, policy.partsMatrix.marginFloorPct);
+            const below = input.unitPriceOverrideMinor < floor;
+            if (below) belowFloor.push(input.ref);
+            line.unitPriceMinor = input.unitPriceOverrideMinor;
+            line.matrixTier = { multiplier, source: "override", belowFloor: below };
+          } else {
+            line.unitPriceMinor = matrixPrice;
+            line.matrixTier = { multiplier, source, belowFloor: false };
+          }
+        }
+        line.taxCategoryCode = input.kind === "tire" ? "tires" : "parts";
+        line.extendedMinor = roundMinor(dec(line.unitPriceMinor).times(qty(line.quantityMilli)));
+        break;
+      }
+      case "sublet": {
+        if (!line.subletVendorName && policy.law.subletDisclosureRequired) problems.push(`${input.ref}: name the sublet shop (it is printed on the estimate).`);
+        const price = input.subletPriceMinor ?? input.subletCostMinor ?? null;
+        if (price === null) problems.push(`${input.ref}: enter the sublet price.`);
+        line.unitPriceMinor = price ?? 0n;
+        line.taxCategoryCode = "sublet_labor";
+        line.extendedMinor = line.unitPriceMinor;
+        break;
+      }
+      case "discount": {
+        const amount = input.discountMinor ?? 0n;
+        if (amount <= 0n) problems.push(`${input.ref}: a discount needs an amount above zero.`);
+        const target = lines.find((l) => l.ref === input.discountTargetRef);
+        if (!target) problems.push(`${input.ref}: choose the line the discount applies to.`);
+        line.taxCategoryCode = target?.taxCategoryCode ?? "parts";
+        line.extendedMinor = -amount;
+        break;
+      }
+      case "fee": {
+        if (/suppl/i.test(line.description) && !policy.law.shopSuppliesGenericAllowed) {
+          throw new DomainError(Codes.SHOP_SUPPLIES_PROHIBITED, "This state's rules don't allow a generic shop-supplies charge. Add the supplies as itemised parts.", { field: "kind" });
+        }
+        problems.push(`${input.ref}: fees come from the fee policy; add the item they apply to instead.`);
+        break;
+      }
+    }
+    lines.push(line);
+  }
+  for (const rule2 of policy.feeRules) {
+    if (rule2.code === "shop_supplies_pct" && !policy.law.shopSuppliesGenericAllowed) continue;
+    let amount = null;
+    let units = 0;
+    if (rule2.kind === "per_unit" && rule2.perUnitMinor !== null) {
+      units = unitsOf(lines, rule2.itemCategory);
+      if (units > 0) amount = rule2.perUnitMinor * BigInt(units);
+    } else if (rule2.kind === "percent_of_base" && rule2.percent) {
+      const baseMinor = sumMinor(lines.filter((l) => rule2.base === "labor" ? l.kind === "labor" : rule2.base === "parts" ? PART_KINDS.includes(l.kind) : l.kind === "labor" || PART_KINDS.includes(l.kind)).map((l) => l.extendedMinor));
+      if (baseMinor > 0n) {
+        amount = roundMinor(dec(baseMinor).times(dec(rule2.percent)));
+        if (rule2.minMinor !== null && amount < rule2.minMinor) amount = rule2.minMinor;
+        if (rule2.maxMinor !== null && amount > rule2.maxMinor) amount = rule2.maxMinor;
+      }
+    }
+    if (amount === null || amount === 0n) continue;
+    const category = FEE_TAX_CATEGORY[rule2.code] ?? (rule2.taxTreatment === "taxable" ? "parts" : "");
+    const line = base({ ref: `fee:${rule2.code}`, kind: "fee", description: rule2.invoiceText || rule2.code });
+    Object.assign(line, { auto: true, feeRuleId: rule2.id, feeCode: rule2.code, quantityMilli: units ? units * 1e3 : 1e3, unitPriceMinor: units ? rule2.perUnitMinor : amount, extendedMinor: amount, taxCategoryCode: category });
+    if (rule2.taxTreatment === "non_taxable") line.taxCategoryCode = category || "fee_tire";
+    lines.push(line);
+  }
+  for (const line of lines) {
+    const rule2 = tax.get(line.taxCategoryCode);
+    if (!rule2) {
+      problems.push(`${line.ref}: no tax rule for category ${line.taxCategoryCode || "(none)"}.`);
+      continue;
+    }
+    line.taxable = rule2.taxable;
+    line.taxRate = rule2.taxable ? toScale(rule2.rate, "pct") : "0.000000";
+  }
+  if (policy.taxRounding === "per_invoice_category") {
+    const byCategory = /* @__PURE__ */ new Map();
+    for (const l of lines.filter((x) => x.taxable)) byCategory.set(l.taxCategoryCode, [...byCategory.get(l.taxCategoryCode) ?? [], l]);
+    for (const group of byCategory.values()) {
+      const exact2 = group.map((l) => dec(l.extendedMinor).times(dec(l.taxRate)));
+      const total = roundMinor(exact2.reduce((a, b) => a.plus(b), ZERO));
+      const floors = exact2.map((x) => BigInt(toScale(x, 0, Decimal.ROUND_FLOOR)));
+      let leftover = total - sumMinor(floors);
+      const order = exact2.map((x, i) => ({ i, r: x.minus(x.floor()) })).sort((a, b) => b.r.comparedTo(a.r) || a.i - b.i);
+      for (let k = 0; leftover > 0n; k = (k + 1) % order.length, leftover -= 1n) floors[order[k].i] += 1n;
+      group.forEach((l, i) => {
+        l.taxMinor = floors[i];
+      });
+    }
+  } else {
+    for (const line of lines) line.taxMinor = line.taxable ? roundMinor(dec(line.extendedMinor).times(dec(line.taxRate))) : 0n;
+  }
+  const sumKind = (kinds) => sumMinor(lines.filter((l) => kinds.includes(l.kind)).map((l) => l.extendedMinor));
+  const subtotalMinor = sumMinor(lines.map((l) => l.extendedMinor));
+  const taxMinor = sumMinor(lines.map((l) => l.taxMinor));
+  const costMinor = sumMinor(lines.filter((l) => PART_KINDS.includes(l.kind)).map((l) => roundMinor(dec(l.unitCostMinor).times(qty(l.quantityMilli))))) + sumMinor(lines.filter((l) => l.kind === "sublet").map((l) => l.subletCostMinor));
+  const result = {
+    lines,
+    laborMinor: sumKind(["labor"]),
+    partsMinor: sumKind(["part", "tire", "core", "refrigerant"]),
+    subletMinor: sumKind(["sublet"]),
+    feesMinor: sumKind(["fee"]),
+    discountMinor: -sumKind(["discount"]),
+    subtotalMinor,
+    taxMinor,
+    totalMinor: subtotalMinor + taxMinor,
+    costMinor,
+    // Gross margin before labor cost (technician pay is Phase 5).
+    marginMinor: subtotalMinor - sumKind(["fee"]) - costMinor,
+    problems,
+    belowFloor,
+    contentHash: ""
+  };
+  result.contentHash = jobContentHash(result);
+  return result;
+}
+function jobContentHash(price) {
+  return sha256(canonicalJson({
+    lines: price.lines.map((l) => ({
+      kind: l.kind,
+      description: l.description,
+      rateClass: l.rateClassCode,
+      rate: l.rateMinor,
+      hours: l.soldCentiHours,
+      partNumber: l.partNumber,
+      brand: l.brand,
+      condition: l.condition,
+      quantityMilli: l.quantityMilli,
+      unitPrice: l.unitPriceMinor,
+      sublet: l.subletVendorName,
+      fee: l.feeCode,
+      taxCategory: l.taxCategoryCode,
+      extended: l.extendedMinor,
+      tax: l.taxMinor
+    })),
+    subtotal: price.subtotalMinor,
+    tax: price.taxMinor,
+    total: price.totalMinor
+  }));
+}
+var identityHash = (lines) => sha256(canonicalJson(lines.map((l) => [l.kind, l.description, l.partNumber, l.condition, l.rateClassCode, l.subletVendorName]).sort((a, b) => canonicalJson(a).localeCompare(canonicalJson(b)))));
+
+// features/integrations/labor-guide/match.ts
+var has = (list12, value) => !Array.isArray(list12) || !list12.length || (value ? list12.some((v) => String(v).toLowerCase() === value.toLowerCase()) : false);
+function fitsVehicle(filter, vehicle) {
+  const f = filter && typeof filter === "object" ? filter : {};
+  if (!has(f.makes, vehicle.make) || !has(f.models, vehicle.model) || !has(f.engines, vehicle.engine)) return false;
+  if (Number.isInteger(f.yearFrom) && (!vehicle.year || vehicle.year < f.yearFrom)) return false;
+  if (Number.isInteger(f.yearTo) && (!vehicle.year || vehicle.year > f.yearTo)) return false;
+  return true;
+}
+var specificity = (filter) => {
+  const f = filter && typeof filter === "object" ? filter : {};
+  return (f.makes?.length ? 4 : 0) + (f.models?.length ? 2 : 0) + (f.engines?.length ? 1 : 0) + (f.yearFrom || f.yearTo ? 1 : 0);
+};
+
+// features/integrations/labor-guide/fixture.ts
+var COPY = "Sandbox labor times (illustrative, not a licensed guide)";
+var ROWS = [
+  { operationId: "BRK-PAD-F", description: "Front brake pads, replace", centiHours: 110, copyright: COPY },
+  { operationId: "BRK-ROT-F", description: "Front brake rotors, replace (includes pads)", centiHours: 160, includes: ["BRK-PAD-F"], overlapsWith: [{ operationId: "BRK-PAD-F", deductCentiHours: 110 }], copyright: COPY },
+  { operationId: "BRK-PAD-F", description: "Front brake pads, replace", variant: "with wear sensor", centiHours: 130, copyright: COPY, filter: { makes: ["BMW"] } },
+  { operationId: "OIL-CHG", description: "Engine oil and filter, change", centiHours: 50, copyright: COPY },
+  { operationId: "DIAG-1", description: "Diagnose concern, first hour", centiHours: 100, rateClass: "diagnostic", copyright: COPY }
+];
+function fixtureLaborGuide() {
+  const fits = (vehicle) => ROWS.filter((r) => fitsVehicle(r.filter, vehicle));
+  const strip = ({ filter: _f, ...op2 }) => op2;
+  return {
+    key: "fixture",
+    capabilities: () => ({ search: true, maintenance: false, fluids: false }),
+    async searchOperations(vehicle, query) {
+      const text15 = query.text?.toLowerCase();
+      const rows = fits(vehicle).filter((r) => (!query.code || r.operationId === query.code) && (!text15 || r.description.toLowerCase().includes(text15)));
+      return { kind: "ok", value: rows.slice(0, query.limit ?? 20).map(strip) };
+    },
+    async getOperation(vehicle, operationId) {
+      const rows = fits(vehicle).filter((r) => r.operationId === operationId);
+      if (!rows.length) return { kind: "error", code: "NOT_FOUND", retryable: false };
+      return { kind: "ok", value: strip(rows[0]) };
+    }
+  };
+}
+
+// features/integrations/labor-guide/shopLibrary.ts
+function shopLibraryGuide(load, shopName = "Shop") {
+  const toOp = (r) => ({
+    operationId: r.code,
+    description: r.description,
+    ...r.variant ? { variant: r.variant } : {},
+    centiHours: r.centiHours,
+    skillLevel: ["a", "b", "c"].includes(r.skillLevel) ? r.skillLevel : "b",
+    rateClass: r.rateClassCode,
+    includes: Array.isArray(r.includes) ? r.includes.map(String) : [],
+    overlapsWith: Array.isArray(r.overlaps) ? r.overlaps.map((o) => ({ operationId: String(o.operationCode ?? o.operationId), deductCentiHours: Number(o.deductCentiHours) || 0 })) : [],
+    copyright: `${shopName} labor times`
+  });
+  const best = (rows) => {
+    if (!rows.length) return rows;
+    const byShop = rows.some((r) => r.shopId) ? rows.filter((r) => r.shopId) : rows;
+    const top = Math.max(...byShop.map((r) => specificity(r.vehicleFilter)));
+    return byShop.filter((r) => specificity(r.vehicleFilter) === top);
+  };
+  return {
+    key: "shop-library",
+    capabilities: () => ({ search: true, maintenance: false, fluids: false }),
+    async searchOperations(vehicle, query) {
+      const text15 = query.text?.toLowerCase();
+      const rows = (await load()).filter((r) => r.active && fitsVehicle(r.vehicleFilter, vehicle) && (!query.code || r.code === query.code) && (!text15 || r.description.toLowerCase().includes(text15) || r.code.toLowerCase().includes(text15)));
+      const chosen = query.code ? best(rows) : rows;
+      return { kind: "ok", value: chosen.slice(0, query.limit ?? 20).map(toOp) };
+    },
+    async getOperation(vehicle, operationId) {
+      const rows = best((await load()).filter((r) => r.active && r.code === operationId && fitsVehicle(r.vehicleFilter, vehicle)));
+      if (!rows.length) return { kind: "error", code: "NOT_FOUND", retryable: false };
+      return { kind: "ok", value: toOp(rows[0]) };
+    }
+  };
+}
+
+// features/integrations/labor-guide/types.ts
+var guideSnapshot = (adapter, op2, at) => ({
+  provider: adapter,
+  operationId: op2.operationId,
+  variant: op2.variant ?? null,
+  centiHours: op2.centiHours,
+  copyright: op2.copyright,
+  at: at.toISOString()
+});
+
+// features/integrations/labor-guide/index.ts
+function laborGuide(load, shopName) {
+  return process.env.LABOR_GUIDE_PROVIDER === "fixture" ? fixtureLaborGuide() : shopLibraryGuide(load, shopName);
+}
+
+// features/keystone/lib/repairOrders.ts
+var OPEN_RO = ["checked_in", "in_service", "on_hold"];
+var EDITABLE_JOB = ["draft", "priced", "offered", "authorized", "in_progress", "needs_reauthorization"];
+var AUTHORIZED_LIKE = ["authorized", "in_progress", "needs_reauthorization"];
+var POINTERS = {
+  jurisdictionPolicyVersionId: "jurisdictionPolicyId",
+  shopPolicyVersionId: "shopPolicyId",
+  laborRateClassSetVersionId: "laborRateClassSetId",
+  laborMatrixVersionId: "laborMatrixId",
+  partsMatrixVersionId: "partsMatrixId",
+  feePolicyVersionId: "feePolicyId",
+  taxRuleSetVersionId: "taxRuleSetId",
+  warrantyTermSetVersionId: "warrantyTermSetId"
+};
+var CONCERN_CATEGORIES = [
+  [/nois|squeal|grind|rattl|clunk|knock|squeak|hum/i, "noise"],
+  [/leak|drip|puddle/i, "leak"],
+  [/light|warning|check engine|abs|tpms|dash/i, "warning_light"],
+  [/oil change|maintenance|service|tire rotation|filter/i, "maintenance"],
+  [/inspect|check over|look at/i, "inspection_request"],
+  [/stall|hesitat|misfire|power|start|rough|vibrat|pull/i, "performance"]
+];
+var concernCategory = (words) => CONCERN_CATEGORIES.find(([re]) => re.test(words))?.[1] ?? "other";
+async function openRepairOrder(uow, actor, input) {
+  const { tx, now } = uow;
+  const checkIn = await lockRow(tx, "CheckIn", input.checkInId);
+  if (checkIn.repairOrderId) throw new DomainError(Codes.DUPLICATE, "This check-in already has a repair order.", { existingId: checkIn.repairOrderId });
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: checkIn.shopId } });
+  const missing = Object.entries(POINTERS).filter(([, pointer]) => !shop[pointer]).map(([field]) => field);
+  if (missing.length) throw new DomainError(Codes.POLICY_MISSING, `${shop.code} has unpublished policies (${missing.join(", ")}). Publish them under Settings \u2192 Policies first.`, { problems: missing });
+  const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: shop.jurisdictionPolicyId } });
+  const concerns = Array.isArray(checkIn.concerns) ? checkIn.concerns : [];
+  if (!concerns.length) throw new DomainError(Codes.GUARD_FAILED, "The check-in has no concerns. Record at least one before opening the repair order.");
+  if (law.requireOdometerIn && !checkIn.odometerInId) throw new DomainError(Codes.ODOMETER_REQUIRED, "Record the odometer in before opening the repair order.");
+  if (law.requireSignedWorkOrder && !checkIn.signedAt) throw new DomainError(Codes.SIGNATURE_REQUIRED, "The work order must be signed before the repair order opens.");
+  let designee = null;
+  if (input.designee) {
+    const rules2 = law.designeeRules ?? {};
+    if (rules2.allowed === false) throw new DomainError(Codes.GUARD_FAILED, "This state's rules don't allow a designee.");
+    const name = String(input.designee.name ?? "").trim().slice(0, 120);
+    const relationship11 = String(input.designee.relationship ?? "").trim().slice(0, 80);
+    const contact = String(input.designee.contact ?? "").trim().slice(0, 120);
+    if (!name || !relationship11 || !contact) throw new DomainError(Codes.INVALID_INPUT, "A designee needs a name, a relationship and a contact.", { field: "designee" });
+    if (/insur|adjust|shop|northgate/i.test(relationship11)) throw new DomainError(Codes.INVALID_INPUT, "A designee cannot be the shop or an insurer (16 CCR \xA73354(c)).", { field: "designee" });
+    designee = { name, relationship: relationship11, contact, namedAt: now.toISOString() };
+  }
+  const roNumber = await nextShopReference(tx, "RO", shop.code, now);
+  const pins = Object.fromEntries(Object.entries(POINTERS).map(([field, pointer]) => [field, shop[pointer]]));
+  const ro = await tx.repairOrder.create({
+    data: {
+      shopId: shop.id,
+      roNumber,
+      kind: input.kind ?? "standard",
+      customerId: checkIn.customerId,
+      vehicleId: checkIn.vehicleId,
+      serviceAdvisorId: input.serviceAdvisorId ?? actorUserId(actor),
+      appointmentId: (await tx.appointment.findFirst({ where: { checkIn: { id: checkIn.id } }, select: { id: true } }))?.id ?? null,
+      odometerInId: checkIn.odometerInId,
+      promisedAt: checkIn.promisedAt,
+      waiter: checkIn.waiter,
+      keyTag: checkIn.keyTag,
+      designee: designee ?? void 0,
+      openedAt: now,
+      openedById: actorUserId(actor),
+      status: "draft",
+      ...pins
+    }
+  });
+  for (const [i, words] of concerns.entries()) {
+    await tx.concern.create({ data: { repairOrderId: ro.id, customerWords: words, category: concernCategory(words), sortOrder: i } });
+  }
+  await tx.checkIn.update({ where: { id: checkIn.id }, data: { repairOrderId: ro.id } });
+  auditCreate(uow, actor, "RepairOrder", ro.id, "ro.created", { roNumber, shopId: shop.id, checkIn: checkIn.reference, pins, designee: designee ? { relationship: designee.relationship } : null });
+  await transition(uow, { model: "RepairOrder", id: ro.id, from: ["draft"], to: "checked_in", actor, eventType: "ro.checked_in" });
+  uow.emit({ topic: "ro.checked_in", aggregateType: "RepairOrder", aggregateId: ro.id, payload: { roNumber, shopId: shop.id }, dedupeKey: `ro.checked_in:${ro.id}` });
+  return { id: ro.id, roNumber };
+}
+async function markInService(uow, actor, repairOrderId, cause) {
+  const ro = await uow.tx.repairOrder.findUniqueOrThrow({ where: { id: repairOrderId }, select: { status: true } });
+  if (ro.status === "checked_in") await transition(uow, { model: "RepairOrder", id: repairOrderId, from: ["checked_in"], to: "in_service", actor, eventType: "ro.in_service", metadata: { cause } });
+}
+async function assertOpen(tx, repairOrderId) {
+  const ro = await tx.repairOrder.findUnique({ where: { id: repairOrderId } });
+  if (!ro) throw new DomainError(Codes.NOT_FOUND, "Repair order not found.");
+  if (!OPEN_RO.includes(ro.status) || ro.lockedAt) throw new DomainError(Codes.RO_LOCKED, `${ro.roNumber} is ${ro.status.replaceAll("_", " ")}; it can't change.`, { currentStatus: ro.status });
+  return ro;
+}
+async function setHold(uow, actor, input) {
+  const reasons = ["customer_unreachable", "parts_backorder", "sublet_out", "teardown_wait", "other"];
+  if (input.hold) {
+    if (!reasons.includes(String(input.reason))) throw new DomainError(Codes.INVALID_INPUT, `Choose why the car is on hold: ${reasons.join(", ").replaceAll("_", " ")}.`, { field: "reason" });
+    return transition(uow, { model: "RepairOrder", id: input.repairOrderId, from: ["in_service", "checked_in"], to: "on_hold", expectedVersion: input.expectedVersion, actor, eventType: "ro.on_hold", reason: input.reason, data: { holdReason: input.reason, holdNote: String(input.note ?? "").slice(0, 300), heldAt: uow.now } });
+  }
+  return transition(uow, { model: "RepairOrder", id: input.repairOrderId, from: ["on_hold"], to: "in_service", expectedVersion: input.expectedVersion, actor, eventType: "ro.resumed", data: { holdReason: "none", holdNote: "", heldAt: null } });
+}
+async function pricingPolicy(tx, ro) {
+  if (!ro.laborRateClassSetVersionId || !ro.partsMatrixVersionId || !ro.feePolicyVersionId || !ro.taxRuleSetVersionId || !ro.jurisdictionPolicyVersionId) throw new DomainError(Codes.POLICY_MISSING, "This repair order has no pinned pricing policy.");
+  const [classes, laborMatrix, partsMatrix, feeRules, taxSet, taxRules, law] = await Promise.all([
+    tx.laborRateClass.findMany({ where: { setId: ro.laborRateClassSetVersionId }, include: { taxCategory: { select: { code: true } } } }),
+    ro.laborMatrixVersionId ? tx.laborMatrixVersion.findUnique({ where: { id: ro.laborMatrixVersionId } }) : null,
+    tx.partsMatrixVersion.findUniqueOrThrow({ where: { id: ro.partsMatrixVersionId } }),
+    tx.feeRule.findMany({ where: { policyId: ro.feePolicyVersionId }, orderBy: { code: "asc" } }),
+    tx.taxRuleSetVersion.findUniqueOrThrow({ where: { id: ro.taxRuleSetVersionId } }),
+    tx.taxRule.findMany({ where: { ruleSetId: ro.taxRuleSetVersionId }, include: { category: { select: { code: true } } } }),
+    tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId } })
+  ]);
+  return {
+    rateClasses: classes.map((c) => ({ id: c.id, code: c.code, rateMinor: c.rateMinor, taxCategoryCode: c.taxCategory?.code ?? "labor_repair", isDefault: c.isDefault })),
+    laborMatrix: { bands: (laborMatrix?.bands ?? []).map((b) => ({ ...b, factor: String(b.factor) })), appliesToClasses: laborMatrix?.appliesToClasses ?? [] },
+    partsMatrix: { tiers: partsMatrix.tiers ?? [], categoryOverrides: partsMatrix.categoryOverrides ?? {}, marginFloorPct: partsMatrix.marginFloorPct.toString() },
+    feeRules: feeRules.map((r) => ({ id: r.id, code: r.code, kind: r.kind, base: r.base, percent: r.percent?.toString() ?? null, flatMinor: r.flatMinor, perUnitMinor: r.perUnitMinor, minMinor: r.minMinor, maxMinor: r.maxMinor, itemCategory: r.itemCategory, taxTreatment: r.taxTreatment, refundable: r.refundable, invoiceText: r.invoiceText })),
+    taxRules: taxRules.map((r) => ({ categoryCode: r.category?.code ?? "", categoryId: r.categoryId ?? "", taxable: r.taxable, rate: r.rate.toString() })),
+    taxRounding: taxSet.rounding === "per_invoice_category" ? "per_invoice_category" : "per_line",
+    law: { requirePartCondition: law.requirePartCondition, shopSuppliesGenericAllowed: law.shopSuppliesGenericAllowed, subletDisclosureRequired: law.subletDisclosureRequired }
+  };
+}
+var KINDS = ["labor", "part", "tire", "core", "sublet", "discount", "refrigerant", "fee"];
+var int2 = (v, field, min = 0) => {
+  if (v === null || v === void 0 || v === "") return null;
+  const n = typeof v === "number" ? v : /^-?\d+$/.test(String(v)) ? Number(String(v)) : NaN;
+  if (!Number.isSafeInteger(n) || n < min) throw new DomainError(Codes.INVALID_INPUT, `${field} must be a whole number of at least ${min}.`, { field });
+  return n;
+};
+var cents = (v, field) => {
+  if (v === null || v === void 0 || v === "") return null;
+  const text15 = String(v).trim();
+  if (!/^\d{1,12}$/.test(text15)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
+  return BigInt(text15);
+};
+var str = (v, max) => v === null || v === void 0 ? null : String(v).trim().slice(0, max);
+function parseLines(raw) {
+  if (!Array.isArray(raw)) throw new DomainError(Codes.INVALID_INPUT, "Lines must be a list.", { field: "lines" });
+  if (raw.length > 60) throw new DomainError(Codes.INVALID_INPUT, "Sixty lines at most on one job.", { field: "lines" });
+  return raw.map((r, i) => {
+    const kind = r?.kind;
+    if (!KINDS.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, `Line ${i + 1}: unknown kind.`, { field: "kind" });
+    return {
+      ref: `L${i + 1}`,
+      kind,
+      description: str(r.description, 300) ?? "",
+      rateClassCode: str(r.rateClassCode, 40),
+      soldCentiHours: int2(r.soldCentiHours, "soldCentiHours"),
+      guideCentiHours: int2(r.guideCentiHours, "guideCentiHours"),
+      overlapCentiHours: int2(r.overlapCentiHours, "overlapCentiHours"),
+      fabrication: Boolean(r.fabrication),
+      operationCode: str(r.operationCode, 40),
+      partNumber: str(r.partNumber, 60),
+      brand: str(r.brand, 60),
+      partCategory: str(r.partCategory, 40),
+      condition: str(r.condition, 40) || null,
+      quantityMilli: int2(r.quantityMilli, "quantityMilli", 1),
+      unitCostMinor: cents(r.unitCostMinor, "unitCostMinor"),
+      unitPriceOverrideMinor: cents(r.unitPriceOverrideMinor, "unitPriceOverrideMinor"),
+      isNewTire: Boolean(r.isNewTire),
+      subletVendorName: str(r.subletVendorName, 120),
+      subletCostMinor: cents(r.subletCostMinor, "subletCostMinor"),
+      subletPriceMinor: cents(r.subletPriceMinor, "subletPriceMinor"),
+      discountMinor: cents(r.discountMinor, "discountMinor"),
+      discountTargetRef: str(r.discountTargetRef, 10),
+      ...r.variant ? { variant: str(r.variant, 120) } : {}
+    };
+  });
+}
+function linesToInputs(rows) {
+  return rows.filter((r) => !r.auto).sort((a, b) => a.sortOrder - b.sortOrder).map((r, i) => ({
+    ref: `L${i + 1}`,
+    kind: r.kind,
+    description: r.description,
+    rateClassCode: r.override?.rateClassCode ?? null,
+    soldCentiHours: r.soldCentiHours,
+    guideCentiHours: r.guideCentiHours,
+    overlapCentiHours: r.overlapCentiHours,
+    fabrication: r.taxCategoryCode === "labor_fabrication",
+    operationCode: r.guideSnapshot?.operationId ?? null,
+    partNumber: r.partNumber,
+    brand: r.brand,
+    partCategory: r.partCategory,
+    condition: r.condition ?? null,
+    quantityMilli: r.quantityMilli,
+    unitCostMinor: r.kind === "labor" || r.kind === "sublet" || r.kind === "discount" ? null : r.unitCostMinor,
+    unitPriceOverrideMinor: r.override?.unitPriceOverrideMinor ? BigInt(r.override.unitPriceOverrideMinor) : null,
+    isNewTire: r.isNewTire,
+    subletVendorName: r.subletVendorName,
+    subletCostMinor: r.subletCostMinor,
+    subletPriceMinor: r.kind === "sublet" ? r.unitPriceMinor : null,
+    discountMinor: r.kind === "discount" ? -BigInt(r.extendedMinor) : null,
+    discountTargetRef: r.override?.discountTargetRef ?? null,
+    ...r.guideSnapshot ? { variant: r.override?.variant ?? r.guideSnapshot.variant ?? "" } : {}
+  }));
+}
+async function resolveGuide(tx, shopId, vehicleId2, actor, line) {
+  if (line.kind !== "labor" || !line.operationCode) return null;
+  const vehicle = vehicleId2 ? await tx.vehicle.findUnique({ where: { id: vehicleId2 }, select: { year: true, make: true, model: true, engine: true } }) : null;
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { name: true } });
+  const load = async () => await tx.laborOperation.findMany({ where: { code: line.operationCode, OR: [{ shopId }, { shopId: null }] } });
+  const guide = laborGuide(load, shop.name);
+  const found = await guide.searchOperations(vehicle ?? {}, { code: line.operationCode });
+  if (found.kind === "error") throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "The labor guide did not answer. Enter the hours by hand.", { reason: found.code });
+  let rows = found.value;
+  if (line.variant !== void 0 && line.variant !== null) rows = rows.filter((r) => (r.variant ?? "") === line.variant);
+  if (!rows.length) throw new DomainError(Codes.NOT_FOUND, `No labor time ${line.operationCode} fits this vehicle.`, { field: "operationCode" });
+  if (rows.length > 1) {
+    const candidates = rows.map((r) => ({ operationCode: line.operationCode, operationId: r.operationId, variant: r.variant ?? "", centiHours: r.centiHours, description: r.description }));
+    throw new DomainError(Codes.GUIDE_AMBIGUOUS, isMachine(actor) ? "Several labor-guide variants match. A person must choose one." : `Several versions of ${line.operationCode} fit this vehicle. Choose one.`, { candidates });
+  }
+  return { op: rows[0], snapshot: guideSnapshot(guide.key, rows[0], /* @__PURE__ */ new Date()) };
+}
+var JOB_KINDS = ["repair", "maintenance", "diagnosis", "inspection", "teardown", "reassembly", "tire", "sublet", "comeback", "internal"];
+async function addJob(uow, actor, input) {
+  const { tx, now } = uow;
+  const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
+  await assertOpen(tx, ro.id);
+  const title = String(input.title ?? "").trim().slice(0, 160);
+  let lines = input.lines === void 0 ? [] : parseLines(input.lines);
+  let kind = input.kind ?? "repair";
+  let cannedJobVersionId = null;
+  let customerDescription = str(input.customerDescription, 1e3) ?? "";
+  if (input.cannedJobId) {
+    const canned = await tx.cannedJob.findUnique({ where: { id: input.cannedJobId }, include: { currentVersion: true } });
+    if (!canned?.currentVersion || canned.currentVersion.status !== "published") throw new DomainError(Codes.NOT_FOUND, "That canned job has no published version.");
+    cannedJobVersionId = canned.currentVersion.id;
+    if (input.lines === void 0) lines = parseLines(canned.currentVersion.lines);
+    kind = canned.currentVersion.kind;
+    customerDescription = customerDescription || canned.currentVersion.customerDescription;
+  }
+  if (!title) throw new DomainError(Codes.INVALID_INPUT, "Give the job a title.", { field: "title" });
+  if (!JOB_KINDS.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, "Unknown job kind.", { field: "kind" });
+  if (input.concernId) {
+    const concern = await tx.concern.findUnique({ where: { id: input.concernId }, select: { repairOrderId: true } });
+    if (concern?.repairOrderId !== ro.id) throw new DomainError(Codes.INVALID_INPUT, "That concern is on another repair order.", { field: "concernId" });
+  }
+  const last = await tx.job.findFirst({ where: { repairOrderId: ro.id }, orderBy: { number: "desc" }, select: { number: true } });
+  const job = await tx.job.create({
+    data: {
+      repairOrderId: ro.id,
+      number: (last?.number ?? 0) + 1,
+      title,
+      kind,
+      concernId: input.concernId ?? null,
+      customerDescription,
+      cannedJobVersionId,
+      inspectionItemResultId: input.inspectionItemResultId ?? null,
+      source: input.source ?? (cannedJobVersionId ? "canned_job" : isMachine(actor) ? "agent" : "manual"),
+      urgency: input.urgency ?? "none",
+      status: "draft"
+    }
+  });
+  await tx.payerSplit.create({ data: { jobId: job.id, payerKind: "customer", percent: "1.000000" } });
+  if (kind === "teardown") await saveTeardown(uow, job.id, ro.jurisdictionPolicyVersionId, input.teardown);
+  auditCreate(uow, actor, "Job", job.id, "job.created", { repairOrderId: ro.id, number: job.number, title, kind, cannedJobVersionId, source: job.source });
+  await markInService(uow, actor, ro.id, "job");
+  let priced = null;
+  try {
+    priced = lines.length ? await writeAndPrice(uow, actor, job.id, lines) : null;
+  } catch (error) {
+    if (!(error instanceof DomainError && error.code === Codes.GUIDE_AMBIGUOUS && input.lines === void 0 && cannedJobVersionId)) throw error;
+    const pending = toJsonValue({ at: now, problems: [error.message], pendingLines: input.cannedJobId ? (await tx.cannedJobVersion.findUniqueOrThrow({ where: { id: cannedJobVersionId } })).lines : [], candidates: error.details.candidates ?? [] });
+    await tx.job.update({ where: { id: job.id }, data: { priceSnapshot: pending } });
+    return { id: job.id, number: job.number, status: "draft", problems: [error.message], totalMinor: "0", candidates: error.details.candidates ?? [] };
+  }
+  return { id: job.id, number: job.number, status: priced?.status ?? "draft", problems: priced?.problems ?? [], totalMinor: priced?.totalMinor ?? "0" };
+}
+async function saveTeardown(uow, jobId, lawId, input) {
+  const law = await uow.tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: lawId } });
+  const rules2 = law.teardownRules ?? {};
+  if (!input) throw new DomainError(Codes.DISCLOSURE_MISSING, "A teardown job needs its disclosure: teardown cost, reassembly cost and the area to be torn down (16 CCR \xA73353(c)).", { field: "teardown", missing: ["teardown"] });
+  const row = await uow.tx.teardownDisclosure.create({
+    data: {
+      teardownCostMinor: cents(input.teardownCostMinor, "teardownCostMinor") ?? 0n,
+      reassemblyCostMinor: cents(input.reassemblyCostMinor, "reassemblyCostMinor") ?? 0n,
+      areaDescription: String(input.areaDescription ?? "").slice(0, 300),
+      maxReassemblyDays: int2(input.maxReassemblyDays, "maxReassemblyDays", 1) ?? rules2.maxReassemblyDaysDefault ?? 3,
+      restorationWarning: Boolean(input.restorationWarning),
+      disclosureText: rules2.disclosureText ?? "",
+      disclosureTextVersion: lawId
+    }
+  });
+  await uow.tx.job.update({ where: { id: jobId }, data: { teardownDisclosureId: row.id } });
+}
+async function setJobLines(uow, actor, input) {
+  const lines = parseLines(input.lines);
+  const job = await uow.tx.job.findUnique({ where: { id: input.jobId }, select: { version: true } });
+  if (!job) throw new DomainError(Codes.NOT_FOUND, "Job not found.");
+  if (job.version !== input.expectedVersion) throw new DomainError(Codes.STALE_STATE, "The job changed since you loaded it. Reload and try again.", { currentVersion: job.version });
+  return writeAndPrice(uow, actor, input.jobId, lines);
+}
+async function jobAt(uow, jobId, expectedVersion) {
+  const job = await uow.tx.job.findUnique({ where: { id: jobId }, select: { version: true, priceSnapshot: true } });
+  if (!job) throw new DomainError(Codes.NOT_FOUND, "Job not found.");
+  if (job.version !== expectedVersion) throw new DomainError(Codes.STALE_STATE, "The job changed since you loaded it. Reload and try again.", { currentVersion: job.version });
+  return job;
+}
+async function editJobLines(uow, actor, input) {
+  const job = await jobAt(uow, input.jobId, input.expectedVersion);
+  const rows = await uow.tx.jobLine.findMany({ where: { jobId: input.jobId } });
+  const pending = job.priceSnapshot?.pendingLines;
+  let lines = rows.length || !Array.isArray(pending) ? linesToInputs(rows.filter((r) => r.id !== input.removeLineId)) : parseLines(pending);
+  if (input.removeLineId && !rows.some((r) => r.id === input.removeLineId && !r.auto)) throw new DomainError(Codes.NOT_FOUND, "That line is not on this job.", { field: "removeLineId" });
+  if (input.add !== void 0 && input.add !== null) lines = [...lines, ...parseLines(Array.isArray(input.add) ? input.add : [input.add])];
+  if (input.choose) {
+    const { operationCode, variant } = input.choose;
+    if (!lines.some((l) => l.kind === "labor" && l.operationCode === operationCode)) throw new DomainError(Codes.NOT_FOUND, `No ${operationCode} labor line on this job.`, { field: "operationCode" });
+    lines = lines.map((l) => l.kind === "labor" && l.operationCode === operationCode ? { ...l, variant: String(variant).slice(0, 120) } : l);
+  }
+  if (lines.length > 60) throw new DomainError(Codes.INVALID_INPUT, "Sixty lines at most on one job.", { field: "lines" });
+  return writeAndPrice(uow, actor, input.jobId, lines.map((l, i) => ({ ...l, ref: `L${i + 1}` })));
+}
+async function repriceJob(uow, actor, jobId) {
+  const rows = await uow.tx.jobLine.findMany({ where: { jobId } });
+  return writeAndPrice(uow, actor, jobId, linesToInputs(rows));
+}
+async function writeAndPrice(uow, actor, jobId, inputs) {
+  const { tx, now } = uow;
+  const head = await tx.job.findUnique({ where: { id: jobId }, select: { repairOrderId: true } });
+  if (!head?.repairOrderId) throw new DomainError(Codes.NOT_FOUND, "Job not found.");
+  const ro = await lockRow(tx, "RepairOrder", head.repairOrderId);
+  await advisoryLock(tx, `ro-pricing:${ro.id}`);
+  await assertOpen(tx, ro.id);
+  const job = await lockRow(tx, "Job", jobId);
+  if (!EDITABLE_JOB.includes(job.status)) throw new DomainError(Codes.INVALID_TRANSITION, `Job ${job.number} is ${job.status.replaceAll("_", " ")}; its lines can't change.`, { currentStatus: job.status });
+  const guides = {};
+  const overlaps = {};
+  for (const line of inputs) {
+    const resolved = await resolveGuide(tx, ro.shopId, ro.vehicleId, actor, line);
+    if (!resolved) continue;
+    line.guideCentiHours = resolved.op.centiHours;
+    if (!line.soldCentiHours) line.soldCentiHours = resolved.op.centiHours;
+    if (!line.rateClassCode && resolved.op.rateClass) line.rateClassCode = resolved.op.rateClass;
+    if (!line.description) line.description = resolved.op.description + (resolved.op.variant ? ` (${resolved.op.variant})` : "");
+    line.variant = resolved.op.variant ?? "";
+    guides[line.ref] = resolved.snapshot;
+    overlaps[line.ref] = resolved.op.overlapsWith ?? [];
+  }
+  const codes = new Set(inputs.filter((l) => l.kind === "labor" && l.operationCode).map((l) => l.operationCode));
+  for (const line of inputs) {
+    const deduct = (overlaps[line.ref] ?? []).filter((o) => codes.has(o.operationId)).reduce((n, o) => n + (Number.isSafeInteger(o.deductCentiHours) ? o.deductCentiHours : 0), 0);
+    if (deduct > 0 && line.soldCentiHours === line.guideCentiHours) {
+      line.overlapCentiHours = deduct;
+      line.soldCentiHours = Math.max(1, (line.soldCentiHours ?? 0) - deduct);
+    }
+  }
+  const policy = await pricingPolicy(tx, ro);
+  const price = priceJob(inputs, policy);
+  await tx.jobLine.deleteMany({ where: { jobId } });
+  const taxCategories = new Map((await tx.taxCategory.findMany({ select: { id: true, code: true } })).map((c) => [c.code, c.id]));
+  const rateClassIds = new Map(policy.rateClasses.map((c) => [c.code, c.id]));
+  for (const [i, l] of price.lines.entries()) {
+    const input = inputs.find((x) => x.ref === l.ref);
+    await tx.jobLine.create({
+      data: {
+        jobId,
+        kind: l.kind,
+        description: l.description,
+        auto: l.auto,
+        rateClassId: l.rateClassCode ? rateClassIds.get(l.rateClassCode) ?? null : null,
+        soldCentiHours: l.soldCentiHours,
+        guideCentiHours: l.guideCentiHours,
+        overlapCentiHours: l.overlapCentiHours,
+        guideSnapshot: guides[l.ref] ?? void 0,
+        rateMinor: l.rateMinor,
+        partNumber: l.partNumber,
+        brand: l.brand,
+        partCategory: l.partCategory,
+        condition: l.condition,
+        quantityMilli: l.quantityMilli,
+        unitCostMinor: l.unitCostMinor,
+        unitPriceMinor: l.unitPriceMinor,
+        matrixTierSnapshot: l.matrixTier ?? void 0,
+        isNewTire: l.isNewTire,
+        subletVendorName: l.subletVendorName,
+        subletCostMinor: l.subletCostMinor,
+        feeRuleId: l.feeRuleId,
+        feeCode: l.feeCode,
+        taxCategoryId: taxCategories.get(l.taxCategoryCode) ?? null,
+        taxCategoryCode: l.taxCategoryCode,
+        taxable: l.taxable,
+        taxRate: l.taxRate,
+        extendedMinor: l.extendedMinor,
+        taxMinor: l.taxMinor,
+        sortOrder: i,
+        override: toJsonValue({ rateClassCode: input?.rateClassCode ?? null, variant: input?.variant ?? null, unitPriceOverrideMinor: input?.unitPriceOverrideMinor ?? null, discountTargetRef: input?.discountTargetRef ?? null })
+      }
+    });
+  }
+  const problems = [...price.problems];
+  const floorApprovedBy = price.belowFloor.length && can(actor, "canApprovePriceOverride") ? actorUserId(actor) : null;
+  if (price.belowFloor.length && !floorApprovedBy) problems.push(`Price below the margin floor on ${price.belowFloor.join(", ")}: a manager must approve the override.`);
+  const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId }, select: { toleranceRule: true } });
+  const rule2 = parseToleranceRule(law.toleranceRule);
+  const identity = identityHash(price.lines.filter((l) => !l.auto));
+  const snapshot = toJsonValue({ at: now, problems, belowFloor: price.belowFloor, floorApprovedBy, policy: pinsOf(ro), totals: totalsOf(price), identityHash: identity });
+  const amounts = { subtotalMinor: price.subtotalMinor, taxMinor: price.taxMinor, totalMinor: price.totalMinor, laborMinor: price.laborMinor, partsMinor: price.partsMinor, feesMinor: price.feesMinor, costMinor: price.costMinor, marginMinor: price.marginMinor };
+  let to = job.status;
+  let reason = null;
+  if (AUTHORIZED_LIKE.includes(job.status)) {
+    const compared = rule2.includesTax ? price.totalMinor : price.subtotalMinor;
+    const ceiling = chargeCeilingMinor(rule2, rule2.includesTax ? job.authorizedAmountMinor : job.authorizedSubtotalMinor);
+    if (price.contentHash === job.authorizedContentHash) to = job.workStartedAt ? "in_progress" : "authorized";
+    else if (compared > ceiling) {
+      to = "needs_reauthorization";
+      reason = `New price ${formatMinor(compared)} is above the authorized ceiling ${formatMinor(ceiling)}.`;
+    } else if (identity !== job.authorizedIdentityHash) {
+      to = "needs_reauthorization";
+      reason = "A part, condition or labor class changed on authorized work (I-R5).";
+    } else if (problems.length) {
+      to = "needs_reauthorization";
+      reason = problems[0];
+    }
+  } else {
+    to = problems.length || !price.lines.length ? "draft" : "priced";
+  }
+  const data = { ...amounts, contentHash: price.lines.length && !problems.length ? price.contentHash : "", priceSnapshot: snapshot, reauthorizationReason: to === "needs_reauthorization" ? reason ?? "" : "" };
+  if (to === job.status) {
+    await tx.job.update({ where: { id: jobId }, data: { ...data, version: { increment: 1 } } });
+    auditCreate(uow, actor, "Job", jobId, "job.repriced", { contentHash: data.contentHash, totalMinor: price.totalMinor, lines: price.lines.length, problems: problems.length });
+  } else {
+    await transition(uow, { model: "Job", id: jobId, from: [job.status], to, actor, eventType: to === "needs_reauthorization" ? "job.needs_reauthorization" : `job.${to}`, reason, data });
+    if (to === "needs_reauthorization") uow.emit({ topic: "job.needs_reauthorization", aggregateType: "Job", aggregateId: jobId, payload: { repairOrderId: ro.id, number: job.number }, dedupeKey: `job.reauth:${jobId}:${price.contentHash}` });
+  }
+  await refreshRoTotals(tx, ro.id);
+  return { id: jobId, status: to, problems, contentHash: data.contentHash, totalMinor: price.totalMinor.toString(), subtotalMinor: price.subtotalMinor.toString(), taxMinor: price.taxMinor.toString(), reason };
+}
+var pinsOf = (ro) => Object.fromEntries(Object.keys(POINTERS).map((k) => [k, ro[k]]));
+var totalsOf = (p) => ({ labor: p.laborMinor, parts: p.partsMinor, sublet: p.subletMinor, fees: p.feesMinor, discount: p.discountMinor, subtotal: p.subtotalMinor, tax: p.taxMinor, total: p.totalMinor });
+async function refreshRoTotals(tx, repairOrderId) {
+  const jobs = await tx.job.findMany({ where: { repairOrderId, status: { notIn: ["declined", "deferred", "voided"] } }, select: { totalMinor: true, authorizedAmountMinor: true, status: true } });
+  const current = jobs.reduce((n, j) => n + j.totalMinor, 0n);
+  const authorized = jobs.filter((j) => ["authorized", "in_progress", "needs_reauthorization", "completed"].includes(j.status)).reduce((n, j) => n + j.authorizedAmountMinor, 0n);
+  await tx.repairOrder.update({ where: { id: repairOrderId }, data: { currentTotalMinor: current, authorizedTotalMinor: authorized } });
+}
+async function startJob(uow, actor, input) {
+  const job = await uow.tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { repairOrderId: true } });
+  await assertOpen(uow.tx, job.repairOrderId);
+  const row = await transition(uow, {
+    model: "Job",
+    id: input.jobId,
+    from: ["authorized"],
+    to: "in_progress",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "job.started",
+    data: { workStartedAt: uow.now },
+    guard: (j) => {
+      if (!j.currentAuthorizationId && !j.noChargeReason && !j.belowThresholdRecordedAt) throw new DomainError(Codes.AUTHORIZATION_REQUIRED, "Work cannot start before the customer authorizes it.");
+    }
+  });
+  await markInService(uow, actor, job.repairOrderId, "job_started");
+  return { id: row.id, status: "in_progress" };
+}
+async function completeJob(uow, actor, input) {
+  const cause = String(input.cause ?? "").trim().slice(0, 1e3);
+  const correction = String(input.correction ?? "").trim().slice(0, 1e3);
+  if (!cause || !correction) throw new DomainError(Codes.INVALID_INPUT, "Write the cause and the correction before completing the job.", { field: !cause ? "cause" : "correction" });
+  const job = await uow.tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { concernId: true, repairOrderId: true } });
+  await assertOpen(uow.tx, job.repairOrderId);
+  await transition(uow, { model: "Job", id: input.jobId, from: ["in_progress"], to: "completed", expectedVersion: input.expectedVersion, actor, eventType: "job.completed", data: { completedAt: uow.now } });
+  if (job.concernId) await uow.tx.concern.update({ where: { id: job.concernId }, data: { cause, correction } });
+  return { id: input.jobId, status: "completed" };
+}
+async function voidJob(uow, actor, input) {
+  const reason = String(input.reason ?? "").trim().slice(0, 300);
+  if (!reason) throw new DomainError(Codes.INVALID_INPUT, "Say why the job is removed.", { field: "reason" });
+  await transition(uow, { model: "Job", id: input.jobId, from: ["draft", "priced", "offered", "declined", "deferred"], to: "voided", expectedVersion: input.expectedVersion, actor, eventType: "job.voided", reason });
+  const job = await uow.tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { repairOrderId: true } });
+  await refreshRoTotals(uow.tx, job.repairOrderId);
+  return { id: input.jobId, status: "voided" };
+}
+
+// features/keystone/lib/publicTokens.ts
+var import_node_crypto6 = require("node:crypto");
+var DEV_KEY = "openfront-auto-repair-development-public-token-key";
+function key() {
+  const configured = process.env.PUBLIC_TOKEN_SECRET || process.env.SESSION_SECRET;
+  if (configured && configured.length >= 32) return configured;
+  if (process.env.NODE_ENV === "production") throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "Customer links are not configured on this server.");
+  return DEV_KEY;
+}
+var hashToken = (purpose, token) => (0, import_node_crypto6.createHmac)("sha256", key()).update(`${purpose}\0${token}`, "utf8").digest("hex");
+var deriveToken = (purpose, id) => (0, import_node_crypto6.createHmac)("sha256", key()).update(`token\0${purpose}\0${id}`, "utf8").digest("base64url");
+var newTokenId = () => (0, import_node_crypto6.randomUUID)();
+async function createAccessToken(uow, input) {
+  const id = newTokenId();
+  const token = deriveToken(input.purpose, id);
+  const ttl = Math.min(720, Math.max(1, Math.trunc(input.ttlHours)));
+  const expiresAt = new Date(uow.now.getTime() + ttl * 36e5);
+  const tokenHash = hashToken(input.purpose, token);
+  await uow.tx.publicAccessToken.create({ data: { id, purpose: input.purpose, subjectType: input.subjectType, subjectId: input.subjectId, shopId: input.shopId, tokenHash, expiresAt, maxUses: input.maxUses ?? 50 } });
+  return { id, token, tokenHash, expiresAt };
+}
+
+// features/keystone/lib/inspections.ts
+var RANK = { green: 1, yellow: 2, red: 3 };
+function deriveCondition(spec, values) {
+  if (!spec || !values.length) return null;
+  let worst = "green";
+  for (const { value } of values) {
+    const hit = spec.thresholds.find((t) => (t.max === void 0 || value <= t.max) && (t.min === void 0 || value >= t.min));
+    const c = hit?.condition ?? "green";
+    if (RANK[c] > RANK[worst]) worst = c;
+  }
+  return worst;
+}
+async function createInspection(uow, actor, input) {
+  const { tx } = uow;
+  const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
+  await assertOpen(tx, ro.id);
+  const version = await tx.inspectionTemplateVersion.findFirst({ where: { templateId: input.templateId, status: "published" }, orderBy: { versionNumber: "desc" }, include: { items: true } });
+  if (!version) throw new DomainError(Codes.NOT_FOUND, "That inspection template has no published version.");
+  const open = await tx.inspection.findFirst({ where: { repairOrderId: ro.id, templateVersion: { templateId: input.templateId }, status: { in: ["assigned", "in_progress"] } }, select: { id: true } });
+  if (open) throw new DomainError(Codes.DUPLICATE, "This inspection is already open on the repair order.", { existingId: open.id });
+  const technicianId = input.technicianId ?? actorUserId(actor);
+  const row = await tx.inspection.create({ data: { repairOrderId: ro.id, templateVersionId: version.id, technicianId, status: "assigned" } });
+  for (const item of version.items) await tx.inspectionItemResult.create({ data: { inspectionId: row.id, templateItemId: item.id, condition: "not_inspected" } });
+  auditCreate(uow, actor, "Inspection", row.id, "inspection.created", { repairOrderId: ro.id, templateVersionId: version.id, technicianId, items: version.items.length });
+  return { id: row.id, items: version.items.length };
+}
+async function startInspection(uow, actor, input) {
+  const row = await transition(uow, { model: "Inspection", id: input.inspectionId, from: ["assigned"], to: "in_progress", expectedVersion: input.expectedVersion, actor, eventType: "inspection.started", data: { startedAt: uow.now } });
+  await assertOpen(uow.tx, String(row.repairOrderId));
+  await markInService(uow, actor, String(row.repairOrderId), "inspection");
+  return { id: input.inspectionId, status: "in_progress" };
+}
+async function recordItemResult(uow, actor, input) {
+  const { tx, now } = uow;
+  const result = await lockRow(tx, "InspectionItemResult", input.resultId);
+  if (result.version !== input.expectedVersion) throw new DomainError(Codes.STALE_STATE, "This item changed since you loaded it. Reload and try again.", { currentVersion: result.version });
+  const inspection = await tx.inspection.findUniqueOrThrow({ where: { id: result.inspectionId } });
+  if (inspection.status !== "in_progress") throw new DomainError(Codes.INVALID_TRANSITION, `The inspection is ${inspection.status.replaceAll("_", " ")}. Start it first.`, { currentStatus: inspection.status });
+  const item = await tx.inspectionTemplateItem.findUniqueOrThrow({ where: { id: result.templateItemId } });
+  const spec = item.measurement ?? null;
+  const measurements = (input.measurements ?? []).slice(0, 8).map((m) => {
+    if (!Number.isSafeInteger(m?.value) || m.value < 0 || m.value > 1e5) throw new DomainError(Codes.INVALID_INPUT, `Measurements are whole ${spec?.unit ?? "units"}.`, { field: "measurements" });
+    const position = m.position ? String(m.position).slice(0, 20) : void 0;
+    if (position && spec?.positions?.length && !spec.positions.includes(position)) throw new DomainError(Codes.INVALID_INPUT, `Unknown position ${position}.`, { field: "measurements" });
+    return { position, value: m.value, unit: spec?.unit ?? "" };
+  });
+  if (measurements.length && !spec) throw new DomainError(Codes.INVALID_INPUT, "This item takes no measurements.", { field: "measurements" });
+  const derived = deriveCondition(spec, measurements);
+  const chosen = input.condition ?? derived ?? null;
+  if (!chosen || !["green", "yellow", "red", "na"].includes(chosen)) throw new DomainError(Codes.INVALID_INPUT, "Choose green, yellow, red or not applicable.", { field: "condition" });
+  const overrideReason = String(input.overrideReason ?? "").trim().slice(0, 300);
+  if (derived && chosen !== derived && !overrideReason) throw new DomainError(Codes.INVALID_INPUT, `The measurements say ${derived}. Give a reason to mark it ${chosen}.`, { field: "overrideReason" });
+  await tx.inspectionItemResult.update({
+    where: { id: result.id },
+    data: { condition: chosen, derivedCondition: derived ?? "none", overrideReason: derived && chosen !== derived ? overrideReason : "", measurements, notes: String(input.notes ?? "").slice(0, 1e3), recordedById: actorUserId(actor), recordedAt: now, version: { increment: 1 } }
+  });
+  auditCreate(uow, actor, "InspectionItemResult", result.id, "inspection.item_recorded", { code: item.code, condition: chosen, derived, measurements: measurements.length, override: Boolean(derived && chosen !== derived) });
+  return { id: result.id, condition: chosen, derivedCondition: derived, version: result.version + 1 };
+}
+async function attachMedia(uow, actor, input) {
+  const { tx } = uow;
+  const result = await lockRow(tx, "InspectionItemResult", input.resultId);
+  const inspection = await tx.inspection.findUniqueOrThrow({ where: { id: result.inspectionId }, include: { repairOrder: { select: { shopId: true } } } });
+  if (!["in_progress", "completed"].includes(inspection.status)) throw new DomainError(Codes.INVALID_TRANSITION, "Photos can be added while the inspection is open.", { currentStatus: inspection.status });
+  const doc = await tx.document.findUnique({ where: { id: input.documentId } });
+  if (!doc || !["inspection_photo", "inspection_video"].includes(doc.kind) || doc.shopId !== inspection.repairOrder?.shopId) throw new DomainError(Codes.NOT_FOUND, "Photo not found.");
+  await tx.inspectionItemResult.update({ where: { id: result.id }, data: { media: { connect: { id: doc.id } }, version: { increment: 1 } } });
+  auditCreate(uow, actor, "InspectionItemResult", result.id, "inspection.media_attached", { documentId: doc.id, sha256: doc.sha256 });
+  return { id: result.id, documentId: doc.id };
+}
+async function completeInspection(uow, actor, input) {
+  const { tx } = uow;
+  const inspection = await tx.inspection.findUniqueOrThrow({ where: { id: input.inspectionId }, include: { results: { include: { templateItem: true, media: { select: { id: true } } } } } });
+  const problems = [];
+  for (const r of inspection.results) {
+    const item = r.templateItem;
+    if (item.required && r.condition === "not_inspected") problems.push(`${item.label}: not inspected`);
+    const photoOn = Array.isArray(item.photoRequiredOn) ? item.photoRequiredOn : [];
+    if (photoOn.includes(r.condition) && !r.media.length) problems.push(`${item.label}: a photo is required for ${r.condition}`);
+  }
+  if (problems.length) throw new DomainError(Codes.GUARD_FAILED, `Finish the inspection first: ${problems.slice(0, 4).join("; ")}${problems.length > 4 ? "\u2026" : ""}`, { problems });
+  await transition(uow, { model: "Inspection", id: input.inspectionId, from: ["in_progress"], to: "completed", expectedVersion: input.expectedVersion, actor, eventType: "inspection.completed", data: { completedAt: uow.now } });
+  const ro = await tx.repairOrder.findUniqueOrThrow({ where: { id: inspection.repairOrderId }, select: { id: true, shopId: true } });
+  const jobs = [];
+  for (const r of inspection.results.filter((x) => (x.condition === "red" || x.condition === "yellow") && x.templateItem?.cannedJobCode)) {
+    const canned = await tx.cannedJob.findFirst({ where: { code: r.templateItem.cannedJobCode, active: true, OR: [{ shopId: ro.shopId }, { shopId: null }] }, orderBy: { shopId: "asc" } });
+    if (!canned) continue;
+    const already = await tx.job.findFirst({ where: { repairOrderId: ro.id, inspectionItemResultId: r.id }, select: { id: true } });
+    if (already) continue;
+    const job = await addJob(uow, actor, { repairOrderId: ro.id, title: canned.name, cannedJobId: canned.id, inspectionItemResultId: r.id, source: "inspection_finding", urgency: r.condition });
+    jobs.push(job.id);
+  }
+  return { id: input.inspectionId, status: "completed", proposedJobs: jobs };
+}
+async function sendInspection(uow, actor, input) {
+  const { tx, now } = uow;
+  const inspection = await tx.inspection.findUniqueOrThrow({ where: { id: input.inspectionId }, include: { repairOrder: { select: { id: true, shopId: true, customerId: true, shopPolicyVersionId: true } } } });
+  if (input.channel !== "in_person") await requireTransactionalConsent(uow, inspection.repairOrder.customerId, input.contactId ?? null, input.channel);
+  await transition(uow, { model: "Inspection", id: input.inspectionId, from: ["completed"], to: "sent", expectedVersion: input.expectedVersion, actor, eventType: "inspection.sent", metadata: { channel: input.channel }, data: { sentAt: now } });
+  const policy = inspection.repairOrder.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: inspection.repairOrder.shopPolicyVersionId }, select: { authorizationLinkTtlHours: true } }) : null;
+  const { id: tokenId, expiresAt } = await createAccessToken(uow, { purpose: "inspection", subjectType: "Inspection", subjectId: inspection.id, shopId: inspection.repairOrder.shopId, ttlHours: policy?.authorizationLinkTtlHours ?? 72, maxUses: 50 });
+  uow.emit({ topic: "inspection.sent", aggregateType: "Inspection", aggregateId: inspection.id, payload: { repairOrderId: inspection.repairOrderId, channel: input.channel }, dedupeKey: `inspection.sent:${inspection.id}` });
+  return { id: inspection.id, status: "sent", tokenId, expiresAt: expiresAt.toISOString() };
+}
+async function requireTransactionalConsent(uow, customerId2, contactId, channel) {
+  const kinds = channel === "sms" ? ["mobile"] : ["email"];
+  const contacts = await uow.tx.customerContact.findMany({ where: { customerId: customerId2, status: "active", kind: { in: kinds }, ...contactId ? { id: contactId } : {} }, include: { consents: true }, orderBy: { isPrimary: "desc" } });
+  for (const c of contacts) {
+    const state = currentConsent(c.consents.map((e) => ({ channel: e.channel, purpose: e.purpose, action: e.action, at: e.at })));
+    if (state[`${channel}:transactional`] === "granted") return c;
+  }
+  throw new DomainError(Codes.CONSENT_BLOCKED, channel === "sms" ? "The customer has not agreed to service texts (or replied STOP). Use email or show it in person." : "The customer has no email with service consent. Use another channel.", { field: "channel" });
+}
+
+// features/keystone/lib/authorization.ts
+var CONSENT_TEXT_VERSION = "estimate-consent-v1";
+var CONSENT_TEXT = "By approving, I authorize the work and the amounts shown for the jobs I selected. I understand the shop will not do other work, or charge more than the amount shown, without my further authorization.";
+var STAFF_METHODS = ["in_person_signature", "oral_phone", "written_form", "fleet_po"];
+async function disclosureProblems(tx, ro, jobIds) {
+  const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId } });
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: ro.shopId }, select: { registrations: true } });
+  const jobs = await tx.job.findMany({ where: { id: { in: jobIds } }, include: { lines: true, payerSplits: true, teardownDisclosure: true } });
+  const missing = [];
+  for (const job of jobs) {
+    for (const line of job.lines) {
+      if (law.requirePartCondition && ["part", "tire", "refrigerant"].includes(line.kind) && !line.condition) missing.push(`part_condition: job ${job.number} "${line.description}"`);
+      if (law.subletDisclosureRequired && line.kind === "sublet" && !line.subletVendorName) missing.push(`sublet_vendor: job ${job.number}`);
+    }
+    if (job.kind === "teardown" && !job.teardownDisclosure) missing.push(`teardown_terms: job ${job.number}`);
+    if (job.payerSplits.some((p) => ["insurer", "service_contract"].includes(p.payerKind)) && !law.thirdPartyPayorNoticeText) missing.push("third_party_payor_notice");
+  }
+  if (law.replacedPartsOfferRequired && !law.replacedPartsOfferText) missing.push("replaced_parts_offer");
+  const required = Array.isArray(law.invoiceRequiredFields) ? law.invoiceRequiredFields : [];
+  if (required.includes("registrationNumber") && !(shop.registrations ?? {}).barArd) missing.push("shop_registration_number");
+  return missing;
+}
+async function issueEstimate(uow, actor, input) {
+  const { tx, now } = uow;
+  const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
+  if (ro.version !== input.expectedVersion) throw new DomainError(Codes.STALE_STATE, `${ro.roNumber} changed since you loaded it. Reload and try again.`, { currentVersion: ro.version });
+  await assertOpen(tx, ro.id);
+  const all = await tx.job.findMany({ where: { repairOrderId: ro.id }, orderBy: { number: "asc" }, include: { lines: { orderBy: { sortOrder: "asc" } }, teardownDisclosure: true } });
+  const live = all.filter((j) => !["declined", "deferred", "voided", "completed"].includes(j.status));
+  const chosen = input.jobIds?.length ? live.filter((j) => input.jobIds.includes(j.id)) : live;
+  if (!chosen.length) throw new DomainError(Codes.GUARD_FAILED, "Add a job before sending an estimate.");
+  if (input.jobIds?.length && chosen.length !== input.jobIds.length) throw new DomainError(Codes.INVALID_INPUT, "Some jobs are not on this repair order or are closed.", { field: "jobIds" });
+  const missing = await disclosureProblems(tx, ro, chosen.map((j) => j.id));
+  if (missing.length) throw new DomainError(Codes.DISCLOSURE_MISSING, `The estimate can't be sent yet: ${missing.slice(0, 4).join("; ")}${missing.length > 4 ? "\u2026" : ""}.`, { problems: missing, missing });
+  const unpriced = chosen.filter((j) => !j.contentHash || j.status === "draft");
+  if (unpriced.length) throw new DomainError(Codes.GUARD_FAILED, `Price every job first: job ${unpriced.map((j) => j.number).join(", ")}.`, { problems: unpriced.map((j) => `job ${j.number}`) });
+  const [law, shop, customer, vehicle] = await Promise.all([
+    tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId } }),
+    tx.shop.findUniqueOrThrow({ where: { id: ro.shopId }, select: { code: true, name: true, legalName: true, registrations: true, timeZone: true } }),
+    ro.customerId ? tx.customer.findUnique({ where: { id: ro.customerId }, select: { displayName: true, firstName: true } }) : null,
+    ro.vehicleId ? tx.vehicle.findUnique({ where: { id: ro.vehicleId }, select: { year: true, make: true, model: true, vin: true } }) : null
+  ]);
+  const last = await tx.estimateVersion.findFirst({ where: { repairOrderId: ro.id }, orderBy: { versionNumber: "desc" } });
+  const versionNumber = (last?.versionNumber ?? 0) + 1;
+  const notices = (Array.isArray(law.requiredNotices) ? law.requiredNotices : []).filter((n) => n.where === "estimate");
+  const jobHashes = Object.fromEntries(chosen.map((j) => [j.id, j.contentHash]));
+  const snapshot = toJsonValue({
+    roNumber: ro.roNumber,
+    versionNumber,
+    issuedAt: now,
+    shop: { code: shop.code, name: shop.name, legalName: shop.legalName, registrations: shop.registrations ?? {} },
+    customer: { name: customer?.displayName ?? "" },
+    vehicle: vehicle ? { label: [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" "), vinLast8: vehicle.vin ? vehicle.vin.slice(-8) : "" } : null,
+    jobs: chosen.map((j) => ({
+      id: j.id,
+      number: j.number,
+      title: j.title,
+      description: j.customerDescription,
+      kind: j.kind,
+      urgency: j.urgency,
+      status: j.status,
+      contentHash: j.contentHash,
+      authorizedAlready: j.status !== "needs_reauthorization" && j.authorizedContentHash === j.contentHash && Boolean(j.currentAuthorizationId),
+      lines: j.lines.map((l) => ({
+        kind: l.kind,
+        description: l.description,
+        partNumber: l.partNumber,
+        brand: l.brand,
+        condition: l.condition,
+        quantityMilli: l.quantityMilli,
+        hours: l.kind === "labor" ? l.soldCentiHours : null,
+        unitPriceMinor: l.unitPriceMinor,
+        extendedMinor: l.extendedMinor,
+        taxMinor: l.taxMinor,
+        taxable: l.taxable,
+        taxCategory: l.taxCategoryCode,
+        sublet: l.subletVendorName || null,
+        fee: l.feeCode || null
+      })),
+      laborMinor: j.laborMinor,
+      partsMinor: j.partsMinor,
+      feesMinor: j.feesMinor,
+      subtotalMinor: j.subtotalMinor,
+      taxMinor: j.taxMinor,
+      totalMinor: j.totalMinor,
+      teardown: j.teardownDisclosure ? { teardownCostMinor: j.teardownDisclosure.teardownCostMinor, reassemblyCostMinor: j.teardownDisclosure.reassemblyCostMinor, area: j.teardownDisclosure.areaDescription, maxReassemblyDays: j.teardownDisclosure.maxReassemblyDays, text: j.teardownDisclosure.disclosureText } : null
+    })),
+    totals: {
+      laborMinor: chosen.reduce((n, j) => n + j.laborMinor, 0n),
+      partsMinor: chosen.reduce((n, j) => n + j.partsMinor, 0n),
+      feesMinor: chosen.reduce((n, j) => n + j.feesMinor, 0n),
+      subtotalMinor: chosen.reduce((n, j) => n + j.subtotalMinor, 0n),
+      taxMinor: chosen.reduce((n, j) => n + j.taxMinor, 0n),
+      totalMinor: chosen.reduce((n, j) => n + j.totalMinor, 0n)
+    },
+    disclosures: {
+      notices: notices.map((n) => ({ key: n.key, text: n.text })),
+      replacedPartsOffer: law.replacedPartsOfferRequired ? law.replacedPartsOfferText : null,
+      nonReturnableNote: law.nonReturnableNoteText || null,
+      tolerance: law.toleranceRule,
+      consentText: CONSENT_TEXT,
+      consentTextVersion: CONSENT_TEXT_VERSION
+    },
+    policy: { jurisdiction: ro.jurisdictionPolicyVersionId, laborRates: ro.laborRateClassSetVersionId, partsMatrix: ro.partsMatrixVersionId, fees: ro.feePolicyVersionId, tax: ro.taxRuleSetVersionId, warranty: ro.warrantyTermSetVersionId }
+  });
+  const contentHash2 = sha256(canonicalJson(snapshot));
+  const totals = snapshot.totals;
+  const row = await tx.estimateVersion.create({
+    data: {
+      repairOrderId: ro.id,
+      versionNumber,
+      reference: `${ro.roNumber}-E${versionNumber}`,
+      snapshot,
+      contentHash: contentHash2,
+      jobHashes,
+      includedJobIds: chosen.map((j) => j.id),
+      disclosuresChecked: ["part_condition", "sublet_vendor", "teardown_terms", "third_party_payor_notice", "replaced_parts_offer", "shop_registration_number"],
+      subtotalMinor: BigInt(totals.subtotalMinor),
+      taxMinor: BigInt(totals.taxMinor),
+      totalMinor: BigInt(totals.totalMinor),
+      status: "draft"
+    }
+  });
+  auditCreate(uow, actor, "EstimateVersion", row.id, "estimate.created", { reference: row.reference, versionNumber, contentHash: contentHash2, jobs: chosen.length });
+  if (last?.status === "sent") {
+    await transition(uow, { model: "EstimateVersion", id: last.id, from: ["sent"], to: "superseded", actor, eventType: "estimate.superseded", metadata: { by: row.reference } });
+    for (const request of await tx.authorizationRequest.findMany({ where: { estimateVersionId: last.id, status: { in: ["created", "delivered", "viewed"] } }, select: { id: true } })) {
+      await transition(uow, { model: "AuthorizationRequest", id: request.id, from: ["created", "delivered", "viewed"], to: "withdrawn", actor, eventType: "authorization_request.withdrawn", reason: "superseded" });
+    }
+  }
+  await transition(uow, { model: "EstimateVersion", id: row.id, from: ["draft"], to: "sent", actor, eventType: "estimate.sent", data: { sentAt: now, sentById: actorUserId(actor) } });
+  for (const job of chosen) {
+    if (job.status === "priced" || job.status === "offered") {
+      await transition(uow, { model: "Job", id: job.id, from: [job.status], to: "offered", actor, eventType: "job.offered", data: { offeredInVersionId: row.id } });
+    } else {
+      await tx.job.update({ where: { id: job.id }, data: { offeredInVersionId: row.id, version: { increment: 1 } } });
+    }
+  }
+  uow.emit({ topic: "estimate.sent", aggregateType: "EstimateVersion", aggregateId: row.id, payload: { repairOrderId: ro.id, reference: row.reference }, dedupeKey: `estimate.sent:${row.id}` });
+  return { id: row.id, reference: row.reference, versionNumber, contentHash: contentHash2, totalMinor: String(totals.totalMinor) };
+}
+async function currentSentVersion(tx, estimateVersionId) {
+  const ev = await tx.estimateVersion.findUnique({ where: { id: estimateVersionId } });
+  if (!ev) throw new DomainError(Codes.NOT_FOUND, "Estimate not found.");
+  if (ev.status !== "sent") throw new DomainError(Codes.ESTIMATE_SUPERSEDED, `Estimate ${ev.reference} has been replaced by a newer version.`, { currentStatus: ev.status });
+  return ev;
+}
+async function requestAuthorization(uow, actor, input) {
+  const { tx, now } = uow;
+  const ev = await currentSentVersion(tx, input.estimateVersionId);
+  const ro = await tx.repairOrder.findUniqueOrThrow({ where: { id: ev.repairOrderId } });
+  await assertOpen(tx, ro.id);
+  if (!["sms", "email", "in_person", "phone_call"].includes(input.channel)) throw new DomainError(Codes.INVALID_INPUT, "Choose text, email, in person or phone.", { field: "channel" });
+  const contact = input.channel === "sms" || input.channel === "email" ? await requireTransactionalConsent(uow, ro.customerId, input.contactId ?? null, input.channel) : null;
+  const policy = ro.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: ro.shopPolicyVersionId }, select: { authorizationLinkTtlHours: true } }) : null;
+  const ttl = Math.min(720, Math.max(1, policy?.authorizationLinkTtlHours ?? 72));
+  const id = newTokenId();
+  const row = await tx.authorizationRequest.create({
+    data: {
+      id,
+      repairOrderId: ro.id,
+      estimateVersionId: ev.id,
+      channel: input.channel,
+      contactId: contact?.id ?? null,
+      contactLabel: contact?.label ?? "",
+      tokenHash: hashToken("authorization", deriveToken("authorization", id)),
+      expiresAt: new Date(now.getTime() + ttl * 36e5),
+      consentTextVersion: CONSENT_TEXT_VERSION,
+      createdByUserId: actor.kind === "user" ? actor.userId : null,
+      createdByAgentId: actor.kind === "agent" ? actor.agentId : null,
+      depositRequestedMinor: input.depositRequestedMinor ? BigInt(String(input.depositRequestedMinor).replace(/\D/g, "") || "0") : null,
+      status: input.channel === "in_person" ? "delivered" : "created",
+      deliveredAt: input.channel === "in_person" ? now : null
+    }
+  });
+  auditCreate(uow, actor, "AuthorizationRequest", row.id, "authorization_request.created", { estimate: ev.reference, channel: input.channel, contact: contact?.label ?? null, expiresAt: row.expiresAt });
+  if (contact) uow.emit({ topic: "authorization.link", aggregateType: "AuthorizationRequest", aggregateId: row.id, payload: { channel: input.channel, contactId: contact.id, repairOrderId: ro.id }, dedupeKey: `authorization.link:${row.id}` });
+  return { id: row.id, expiresAt: row.expiresAt?.toISOString() ?? null, status: row.status };
+}
+var authorizationLink = (requestId) => {
+  const token = deriveToken("authorization", requestId);
+  return { token, path: `/api/public/authorizations/${token}` };
+};
+async function recordAuthorization(uow, actor, input) {
+  requireHuman(actor, "record a customer authorization");
+  const { tx, now } = uow;
+  const ev = await currentSentVersion(tx, input.estimateVersionId);
+  const ro = await lockRow(tx, "RepairOrder", ev.repairOrderId);
+  await assertOpen(tx, ro.id);
+  const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId } });
+  const allowed = Array.isArray(law.allowedAuthorizationMethods) ? law.allowedAuthorizationMethods : [];
+  if (!STAFF_METHODS.includes(input.method) || !allowed.includes(input.method)) throw new DomainError(Codes.METHOD_NOT_ALLOWED, `${String(input.method).replaceAll("_", " ")} is not an allowed way to authorize here.`, { field: "method" });
+  const actorName = String(input.actorName ?? "").trim().slice(0, 120);
+  if (!actorName) throw new DomainError(Codes.EVIDENCE_MISSING, "Enter the name of the person who authorized.", { field: "actorName" });
+  const actorKind = input.actorKind ?? "customer";
+  if (actorKind === "designee") {
+    const designee = ro.designee ?? null;
+    if (!designee?.name || designee.name.trim().toLowerCase() !== actorName.toLowerCase()) throw new DomainError(Codes.EVIDENCE_MISSING, "Only the designee named on the signed work order can authorize for the customer (16 CCR \xA73354(c)).", { field: "actorName" });
+  }
+  const at = input.at ? new Date(input.at) : now;
+  if (Number.isNaN(at.getTime()) || at.getTime() > now.getTime() + 6e4 || at.getTime() < now.getTime() - 7 * 864e5) throw new DomainError(Codes.INVALID_INPUT, "The time of the authorization must be within the last week.", { field: "at" });
+  const evidence = { staffUserId: actorUserId(actor), at: at.toISOString() };
+  let contactUsed = "";
+  let signatureDocumentId = null;
+  if (input.method === "oral_phone") {
+    const phone2 = String(input.phoneNumber ?? "").replace(/[^\d+]/g, "");
+    if (phone2.replace(/\D/g, "").length < 10) throw new DomainError(Codes.EVIDENCE_MISSING, "Record the phone number you called (16 CCR \xA73353.1(c)).", { field: "phoneNumber" });
+    contactUsed = phone2;
+    Object.assign(evidence, { personName: actorName, phoneNumber: phone2 });
+  } else if (input.method === "in_person_signature") {
+    const signature = checkSignature(input.signature ? { ...input.signature, method: "in_person" } : null);
+    if (!signature) throw new DomainError(Codes.SIGNATURE_REQUIRED, "Ask the customer to sign.", { field: "signature" });
+    const digest = sha256(canonicalJson(signature));
+    const doc = await tx.document.create({ data: { shopId: ro.shopId, title: `Authorization signature ${ev.reference}`, kind: "signature", visibility: "staff", storageKey: `inline:authorization:${digest}`, sha256: digest, mimeType: "application/json", bytes: canonicalJson(signature).length } });
+    signatureDocumentId = doc.id;
+    Object.assign(evidence, { signerName: signature.signerName, signature, witness: actorUserId(actor) });
+  } else if (input.method === "written_form") {
+    const doc = input.documentId ? await tx.document.findUnique({ where: { id: input.documentId } }) : null;
+    if (!doc || doc.shopId !== ro.shopId) throw new DomainError(Codes.EVIDENCE_MISSING, "Attach the signed form.", { field: "documentId" });
+    signatureDocumentId = doc.id;
+    Object.assign(evidence, { documentId: doc.id, documentSha256: doc.sha256 });
+  } else if (input.method === "fleet_po") {
+    if (!String(input.poNumber ?? "").trim()) throw new DomainError(Codes.PO_REQUIRED, "Enter the purchase order number.", { field: "poNumber" });
+    Object.assign(evidence, { poNumber: String(input.poNumber).trim().slice(0, 60) });
+  }
+  const rules2 = law.authorizationEvidenceRules ?? {};
+  const needed = Array.isArray(rules2[input.method]) ? rules2[input.method] : [];
+  const have = { ...evidence, personName: evidence.personName ?? actorName, amountMinor: "per job", staffUserId: actorUserId(actor) };
+  const absent = needed.filter((k) => have[k] === void 0 || have[k] === null || have[k] === "");
+  if (absent.length) throw new DomainError(Codes.EVIDENCE_MISSING, `Missing evidence for ${input.method.replaceAll("_", " ")}: ${absent.join(", ")}.`, { problems: absent });
+  let requestId = null;
+  if (input.authorizationRequestId) {
+    const request = await tx.authorizationRequest.findUnique({ where: { id: input.authorizationRequestId } });
+    if (!request || request.estimateVersionId !== ev.id) throw new DomainError(Codes.INVALID_INPUT, "That request is for another estimate.", { field: "authorizationRequestId" });
+    requestId = request.id;
+  }
+  const result = await applyAnswers(uow, actor, ev, ro, law, input.answers, input.replacedPartsElection ?? null, {
+    method: input.method,
+    actorKind,
+    actorName,
+    contactUsed,
+    evidence,
+    recordedByUserId: actorUserId(actor),
+    authorizationRequestId: requestId,
+    signatureDocumentId,
+    poNumber: String(input.poNumber ?? "").trim().slice(0, 60),
+    at
+  });
+  if (requestId) {
+    const request = await tx.authorizationRequest.findUniqueOrThrow({ where: { id: requestId } });
+    if (["created", "delivered", "viewed"].includes(request.status)) {
+      await transition(uow, { model: "AuthorizationRequest", id: requestId, from: ["created", "delivered", "viewed"], to: "answered", actor, eventType: "authorization_request.answered", data: { answeredAt: now, answer: toJsonValue(result) } });
+    }
+  }
+  return result;
+}
+async function applyAnswers(uow, actor, ev, ro, law, answers, election, e) {
+  const { tx, now } = uow;
+  if (!Array.isArray(answers) || !answers.length) throw new DomainError(Codes.INVALID_INPUT, "Answer at least one job.", { field: "answers" });
+  const hashes = ev.jobHashes ?? {};
+  const seen = /* @__PURE__ */ new Set();
+  const approved = [];
+  const decided = [];
+  const rule2 = parseToleranceRule(law.toleranceRule);
+  for (const answer of answers) {
+    if (!answer || seen.has(answer.jobId)) throw new DomainError(Codes.INVALID_INPUT, "Answer each job once.", { field: "answers" });
+    seen.add(answer.jobId);
+    if (!["approve", "decline", "defer"].includes(answer.decision)) throw new DomainError(Codes.INVALID_INPUT, "Each job is approved, declined or deferred.", { field: "decision" });
+    if (!(answer.jobId in hashes)) throw new DomainError(Codes.INVALID_INPUT, "That job is not on this estimate.", { field: "jobId" });
+    const job = await lockRow(tx, "Job", answer.jobId);
+    if (job.repairOrderId !== ro.id) throw new DomainError(Codes.INVALID_INPUT, "That job is on another repair order.");
+    if (job.contentHash !== hashes[job.id]) {
+      throw new DomainError(Codes.CONTENT_CHANGED, `Job ${job.number} changed after this estimate was sent. Send the new version before recording an answer.`, { field: "jobId", reason: "hash_mismatch" });
+    }
+    if (answer.decision === "approve") {
+      if (job.status === "authorized" || job.status === "in_progress") {
+        if (job.authorizedContentHash === job.contentHash) continue;
+      }
+      if (!["offered", "needs_reauthorization"].includes(job.status)) throw new DomainError(Codes.INVALID_TRANSITION, `Job ${job.number} is ${job.status.replaceAll("_", " ")} and can't be authorized now.`, { currentStatus: job.status });
+      const identity = String(job.priceSnapshot?.identityHash ?? "");
+      if (job.currentAuthorizationId) {
+        await tx.authorization.update({ where: { id: job.currentAuthorizationId }, data: { status: "superseded" } });
+        auditCreate(uow, actor, "Authorization", job.currentAuthorizationId, "authorization.superseded", { estimate: ev.reference });
+      }
+      const authorization = await tx.authorization.create({
+        data: {
+          jobId: job.id,
+          estimateVersionId: ev.id,
+          jobContentHash: job.contentHash,
+          amountMinor: job.totalMinor,
+          subtotalMinor: job.subtotalMinor,
+          method: e.method,
+          actorKind: e.actorKind,
+          actorName: e.actorName,
+          contactUsed: e.contactUsed,
+          evidence: toJsonValue({ ...e.evidence, amountMinor: job.totalMinor }),
+          authorizedAt: e.at,
+          recordedByUserId: e.recordedByUserId,
+          authorizationRequestId: e.authorizationRequestId,
+          signatureId: e.signatureDocumentId,
+          consentTextVersion: e.method === "electronic_link" ? CONSENT_TEXT_VERSION : "",
+          poNumber: e.poNumber,
+          status: "recorded"
+        }
+      });
+      const ceiling = chargeCeilingMinor(rule2, rule2.includesTax ? job.totalMinor : job.subtotalMinor);
+      const to = job.status === "needs_reauthorization" && job.workStartedAt ? "in_progress" : "authorized";
+      await transition(uow, {
+        model: "Job",
+        id: job.id,
+        from: [job.status],
+        to,
+        actor,
+        eventType: "job.authorized",
+        metadata: { method: e.method, estimate: ev.reference, authorizationId: authorization.id },
+        data: { authorizedAmountMinor: job.totalMinor, authorizedSubtotalMinor: job.subtotalMinor, authorizedContentHash: job.contentHash, authorizedIdentityHash: identity, chargeCeilingMinor: ceiling, currentAuthorizationId: authorization.id, reauthorizationReason: "" }
+      });
+      if (job.teardownDisclosureId) await tx.teardownDisclosure.update({ where: { id: job.teardownDisclosureId }, data: { lockedAt: now } });
+      auditCreate(uow, actor, "Authorization", authorization.id, "authorization.recorded", { jobId: job.id, estimate: ev.reference, amountMinor: job.totalMinor, method: e.method, actorKind: e.actorKind, contentHash: job.contentHash });
+      approved.push({ jobId: job.id, number: job.number, amountMinor: job.totalMinor.toString(), authorizationId: authorization.id });
+    } else {
+      if (job.status !== "offered") throw new DomainError(Codes.INVALID_TRANSITION, `Job ${job.number} is ${job.status.replaceAll("_", " ")}; only an offered job can be declined or deferred.`, { currentStatus: job.status });
+      const deferUntil = answer.deferUntil ? new Date(answer.deferUntil) : null;
+      const decision = await tx.jobDecision.create({
+        data: {
+          jobId: job.id,
+          estimateVersionId: ev.id,
+          decision: answer.decision === "decline" ? "declined" : "deferred",
+          actorName: e.actorName,
+          method: e.method,
+          at: e.at,
+          reason: String(answer.reason ?? "").slice(0, 300),
+          deferUntil: deferUntil && !Number.isNaN(deferUntil.getTime()) ? deferUntil : null,
+          deferMiles: Number.isSafeInteger(answer.deferMiles) ? answer.deferMiles : null,
+          recordedByUserId: e.recordedByUserId,
+          authorizationRequestId: e.authorizationRequestId
+        }
+      });
+      const to = answer.decision === "decline" ? "declined" : "deferred";
+      await transition(uow, { model: "Job", id: job.id, from: ["offered"], to, actor, eventType: `job.${to}`, metadata: { decisionId: decision.id, method: e.method } });
+      decided.push({ jobId: job.id, number: job.number, decision: to });
+    }
+  }
+  if (approved.length) {
+    const needsElection = law.replacedPartsOfferRequired && await tx.jobLine.count({ where: { jobId: { in: approved.map((a) => a.jobId) }, kind: { in: ["part", "tire"] } } }) > 0;
+    if (needsElection && !["return", "do_not_return", "show_only"].includes(String(election))) {
+      throw new DomainError(Codes.DISCLOSURE_MISSING, "Ask whether the customer wants the replaced parts back (16 CCR \xA73355) and record the answer.", { field: "replacedPartsElection", problems: ["replaced_parts_election"] });
+    }
+    if (election) await tx.repairOrder.update({ where: { id: ro.id }, data: { replacedPartsElection: election, electedAt: now } });
+  }
+  await refreshRoTotals(tx, ro.id);
+  await tx.repairOrder.update({ where: { id: ro.id }, data: { version: { increment: 1 } } });
+  uow.emit({ topic: "authorization.recorded", aggregateType: "RepairOrder", aggregateId: ro.id, payload: { estimate: ev.reference, approved: approved.map((a) => a.jobId), decided: decided.map((d2) => d2.jobId), method: e.method }, dedupeKey: `authorization.recorded:${ev.id}:${sha256(canonicalJson(answers))}` });
+  return { estimate: ev.reference, approved, decided, replacedPartsElection: election };
+}
+async function createStaffTask(uow, actor, input) {
+  const title = String(input.title ?? "").trim().slice(0, 160);
+  if (!title) throw new DomainError(Codes.INVALID_INPUT, "Give the task a title.", { field: "title" });
+  const row = await uow.tx.staffTask.create({
+    data: {
+      shopId: input.shopId,
+      repairOrderId: input.repairOrderId ?? null,
+      authorizationRequestId: input.authorizationRequestId ?? null,
+      kind: input.kind,
+      title,
+      detail: String(input.detail ?? "").slice(0, 1e3),
+      source: input.source,
+      evidence: toJsonValue(input.evidence ?? {}),
+      dueAt: input.dueAt ?? new Date(uow.now.getTime() + 30 * 6e4),
+      assigneeId: input.assigneeId ?? null,
+      createdByUserId: actor.kind === "user" ? actor.userId : null,
+      createdByAgentId: actor.kind === "agent" ? actor.agentId : null,
+      status: "open"
+    }
+  });
+  auditCreate(uow, actor, "StaffTask", row.id, "task.created", { kind: input.kind, source: input.source, repairOrderId: input.repairOrderId ?? null });
+  uow.emit({ topic: "task.created", aggregateType: "StaffTask", aggregateId: row.id, payload: { kind: input.kind, shopId: input.shopId }, dedupeKey: `task.created:${row.id}` });
+  return { id: row.id };
+}
+async function closeStaffTask(uow, actor, input) {
+  requireHuman(actor, "close a staff task");
+  const outcome = String(input.outcome ?? "").trim().slice(0, 500);
+  if (!outcome) throw new DomainError(Codes.INVALID_INPUT, "Write what happened.", { field: "outcome" });
+  await transition(uow, { model: "StaffTask", id: input.taskId, from: ["open"], to: input.cancel ? "cancelled" : "done", expectedVersion: input.expectedVersion, actor, eventType: input.cancel ? "task.cancelled" : "task.done", data: { outcome, doneAt: uow.now, doneById: actorUserId(actor) } });
+  return { id: input.taskId, status: input.cancel ? "cancelled" : "done" };
+}
+
+// features/keystone/seed/repairOrders.ts
+var NGA = "seed_shop_nga";
+var LABOR_OPERATIONS = [
+  { id: "seed_lop_brk_pad_f", code: "BRK-PAD-F", description: "Front brake pads, replace", centiHours: 110, skillLevel: "c", rateClassCode: "general", includes: ["Clean and lube slides", "Road test"] },
+  {
+    id: "seed_lop_brk_rot_f",
+    code: "BRK-ROT-F",
+    description: "Front brake rotors, replace (both)",
+    centiHours: 80,
+    skillLevel: "c",
+    rateClassCode: "general",
+    includes: ["Hub cleanup"],
+    overlaps: [{ operationCode: "BRK-PAD-F", deductCentiHours: 30 }]
+  },
+  // Two BMW 3-series variants: the guide must not guess (GUIDE_AMBIGUOUS). The xDrive one takes longer.
+  { id: "seed_lop_brk_pad_f_bmw", code: "BRK-PAD-F", variant: "With wear sensor (RWD)", description: "Front brake pads and wear sensor, replace", centiHours: 130, skillLevel: "c", rateClassCode: "general", vehicleFilter: { makes: ["BMW"], models: ["328i", "335i", "320i"] } },
+  { id: "seed_lop_brk_pad_f_bmw_x", code: "BRK-PAD-F", variant: "With wear sensor (xDrive)", description: "Front brake pads and wear sensor, replace", centiHours: 150, skillLevel: "c", rateClassCode: "general", vehicleFilter: { makes: ["BMW"], models: ["328i", "335i", "320i"] } },
+  { id: "seed_lop_oil", code: "OIL-CHG", description: "Engine oil and filter, change", centiHours: 50, skillLevel: "c", rateClassCode: "general", includes: ["Top off fluids", "Reset service indicator"] },
+  { id: "seed_lop_diag", code: "DIAG-1", description: "Diagnostic time, first hour", centiHours: 100, skillLevel: "a", rateClassCode: "diagnostic" },
+  { id: "seed_lop_rotate", code: "TIRE-ROT", description: "Rotate tires and set pressures", centiHours: 40, skillLevel: "c", rateClassCode: "general" },
+  { id: "seed_lop_mount4", code: "TIRE-MNT-4", description: "Mount and balance four tires", centiHours: 100, skillLevel: "c", rateClassCode: "general", includes: ["New valve stems", "TPMS relearn"] },
+  { id: "seed_lop_wiper", code: "WIPER-F", description: "Front wiper blades, replace", centiHours: 20, skillLevel: "c", rateClassCode: "general" },
+  { id: "seed_lop_cabin", code: "FILTER-CABIN", description: "Cabin air filter, replace", centiHours: 30, skillLevel: "c", rateClassCode: "general" }
+];
+var CANNED_JOBS = [
+  {
+    id: "seed_cj_brakes_front",
+    code: "BRAKES-FRONT",
+    name: "Front brake pads and rotors",
+    category: "brakes",
+    kind: "repair",
+    description: "Replace the front brake pads and both front rotors, clean and lubricate the caliper slides, and road test.",
+    lines: [
+      { kind: "labor", description: "Front brake pads, replace", operationCode: "BRK-PAD-F" },
+      { kind: "labor", description: "Front rotors, replace (overlap with pads)", operationCode: "BRK-ROT-F" },
+      { kind: "part", description: "Front brake pad set", partNumber: "P06075", brand: "Brembo", partCategory: "brakes", condition: "new", quantityMilli: 1e3, unitCostMinor: "4800" },
+      { kind: "part", description: "Front brake rotor", partNumber: "09.C394.13", brand: "Brembo", partCategory: "brakes", condition: "new", quantityMilli: 2e3, unitCostMinor: "6500" }
+    ]
+  },
+  {
+    id: "seed_cj_wear_sensor",
+    code: "BRAKE-SENSOR-F",
+    name: "Front brake wear sensor",
+    category: "brakes",
+    kind: "repair",
+    description: "Replace the front brake pad wear sensor.",
+    lines: [
+      { kind: "labor", description: "Front brake wear sensor, replace", rateClassCode: "general", soldCentiHours: 20 },
+      { kind: "part", description: "Brake pad wear sensor, front", partNumber: "34356792289", brand: "BMW", partCategory: "brakes", condition: "new", quantityMilli: 1e3, unitCostMinor: "1450" }
+    ]
+  },
+  {
+    id: "seed_cj_oil",
+    code: "OIL-SYN",
+    name: "Synthetic oil and filter change",
+    category: "maintenance",
+    kind: "maintenance",
+    description: "Drain and refill with full synthetic oil, new filter, top off fluids.",
+    lines: [
+      { kind: "labor", description: "Oil and filter change", operationCode: "OIL-CHG" },
+      { kind: "part", description: "Full synthetic oil 5W-30, quart", partNumber: "MOB1-5W30", brand: "Mobil 1", partCategory: "fluids", condition: "new", quantityMilli: 6500, unitCostMinor: "620" },
+      { kind: "part", description: "Oil filter", partNumber: "HU816X", brand: "MANN", partCategory: "filters", condition: "new", quantityMilli: 1e3, unitCostMinor: "950" }
+    ]
+  },
+  {
+    id: "seed_cj_wipers",
+    code: "WIPERS",
+    name: "Front wiper blades",
+    category: "maintenance",
+    kind: "maintenance",
+    description: "Replace both front wiper blades.",
+    lines: [
+      { kind: "labor", description: "Front wiper blades, replace", operationCode: "WIPER-F" },
+      { kind: "part", description: "Wiper blade set", partNumber: "BOSCH-3397", brand: "Bosch", partCategory: "wipers", condition: "new", quantityMilli: 1e3, unitCostMinor: "2400" }
+    ]
+  },
+  {
+    id: "seed_cj_cabin",
+    code: "CABIN-FILTER",
+    name: "Cabin air filter",
+    category: "maintenance",
+    kind: "maintenance",
+    description: "Replace the cabin air filter.",
+    lines: [
+      { kind: "labor", description: "Cabin air filter, replace", operationCode: "FILTER-CABIN" },
+      { kind: "part", description: "Cabin air filter (charcoal)", partNumber: "CUK8430-2", brand: "MANN", partCategory: "filters", condition: "new", quantityMilli: 1e3, unitCostMinor: "2200" }
+    ]
+  },
+  {
+    id: "seed_cj_diag",
+    code: "DIAG",
+    name: "Diagnosis, first hour",
+    category: "diagnosis",
+    kind: "diagnosis",
+    description: "Road test, scan and pinpoint testing to find the cause. We call you with the findings before any repair.",
+    lines: [{ kind: "labor", description: "Diagnostic time", operationCode: "DIAG-1" }]
+  },
+  {
+    id: "seed_cj_tires4",
+    code: "TIRES-4",
+    name: "Four new tires, mounted and balanced",
+    category: "tires",
+    kind: "tire",
+    description: "Four new tires, mounted and balanced, with new valve stems and a TPMS relearn.",
+    lines: [
+      { kind: "labor", description: "Mount and balance four tires", operationCode: "TIRE-MNT-4" },
+      { kind: "tire", description: "All-season tire 225/45R17", partNumber: "MICH-PRIM-22545", brand: "Michelin", partCategory: "tires", condition: "new", isNewTire: true, quantityMilli: 4e3, unitCostMinor: "12000" }
+    ]
+  }
+];
+var mm = (thresholds, unit, positions) => ({ unit, thresholds, ...positions ? { positions } : {} });
+var INSPECTION_ITEMS = [
+  { code: "brake_pads_front", section: "Brakes", label: "Front brake pads", measurement: mm([{ max: 3, condition: "red" }, { max: 5, condition: "yellow" }], "mm", ["LF", "RF"]), photoRequiredOn: ["red"], cannedJobCode: "BRAKES-FRONT" },
+  { code: "brake_pads_rear", section: "Brakes", label: "Rear brake pads", measurement: mm([{ max: 3, condition: "red" }, { max: 5, condition: "yellow" }], "mm", ["LR", "RR"]), photoRequiredOn: ["red"], cannedJobCode: "" },
+  { code: "brake_rotors_front", section: "Brakes", label: "Front rotors", measurement: null, photoRequiredOn: ["red"], cannedJobCode: "" },
+  { code: "brake_fluid", section: "Brakes", label: "Brake fluid", measurement: null, photoRequiredOn: [], cannedJobCode: "" },
+  { code: "tread_depth", section: "Tires", label: "Tire tread depth", measurement: mm([{ max: 2, condition: "red" }, { max: 4, condition: "yellow" }], "32nds", ["LF", "RF", "LR", "RR"]), photoRequiredOn: ["red"], cannedJobCode: "TIRES-4" },
+  { code: "tire_pressure", section: "Tires", label: "Tire pressures set", measurement: null, photoRequiredOn: [], cannedJobCode: "" },
+  { code: "wipers", section: "Visibility", label: "Wiper blades", measurement: null, photoRequiredOn: [], cannedJobCode: "WIPERS" },
+  { code: "lights", section: "Visibility", label: "Exterior lights", measurement: null, photoRequiredOn: [], cannedJobCode: "" },
+  { code: "battery", section: "Electrical", label: "Battery test", measurement: null, photoRequiredOn: [], cannedJobCode: "" },
+  { code: "cabin_filter", section: "Under hood", label: "Cabin air filter", measurement: null, photoRequiredOn: [], cannedJobCode: "CABIN-FILTER" },
+  { code: "engine_oil", section: "Under hood", label: "Engine oil level and condition", measurement: null, photoRequiredOn: [], cannedJobCode: "" },
+  { code: "coolant", section: "Under hood", label: "Coolant level", measurement: null, photoRequiredOn: [], cannedJobCode: "" },
+  { code: "belts_hoses", section: "Under hood", label: "Belts and hoses", measurement: null, photoRequiredOn: [], cannedJobCode: "" },
+  { code: "leaks", section: "Underneath", label: "Leaks", measurement: null, photoRequiredOn: ["red"], cannedJobCode: "" },
+  { code: "suspension", section: "Underneath", label: "Steering and suspension", measurement: null, photoRequiredOn: ["red"], cannedJobCode: "" }
+];
+var TEMPLATE_ID = "seed_tpl_mpi";
+var TEMPLATE_VERSION_ID = "seed_tpl_mpi_v1";
+async function seedServiceCatalog(uow, actor) {
+  const { tx, now } = uow;
+  const created = { laborOperations: 0, inspectionTemplates: 0, cannedJobs: 0 };
+  for (const op2 of LABOR_OPERATIONS) {
+    if (await tx.laborOperation.findUnique({ where: { id: op2.id }, select: { id: true } })) continue;
+    await tx.laborOperation.create({
+      data: {
+        id: op2.id,
+        code: op2.code,
+        description: op2.description,
+        variant: op2.variant ?? "",
+        centiHours: op2.centiHours,
+        skillLevel: op2.skillLevel,
+        rateClassCode: op2.rateClassCode,
+        includes: op2.includes ?? [],
+        overlaps: op2.overlaps ?? [],
+        vehicleFilter: op2.vehicleFilter ?? {},
+        source: "shop_time",
+        active: true
+      }
+    });
+    auditCreate(uow, actor, "LaborOperation", op2.id, "labor_operation.created", { code: op2.code, variant: op2.variant ?? "", centiHours: op2.centiHours }, { metadata: { seed: true } });
+    created.laborOperations += 1;
+  }
+  if (!await tx.inspectionTemplate.findUnique({ where: { id: TEMPLATE_ID }, select: { id: true } })) {
+    await tx.inspectionTemplate.create({ data: { id: TEMPLATE_ID, name: "Multi-point inspection", kind: "multi_point" } });
+    await tx.inspectionTemplateVersion.create({ data: { id: TEMPLATE_VERSION_ID, templateId: TEMPLATE_ID, versionNumber: 1, status: "draft" } });
+    for (const [i, item] of INSPECTION_ITEMS.entries()) {
+      await tx.inspectionTemplateItem.create({
+        data: { id: `${TEMPLATE_VERSION_ID}_${item.code}`, templateVersionId: TEMPLATE_VERSION_ID, code: item.code, section: item.section, label: item.label, measurement: item.measurement ?? void 0, photoRequiredOn: item.photoRequiredOn, cannedJobCode: item.cannedJobCode, required: true, sortOrder: (i + 1) * 10 }
+      });
+    }
+    await tx.inspectionTemplateVersion.update({ where: { id: TEMPLATE_VERSION_ID }, data: { status: "published", publishedAt: now, version: { increment: 1 } } });
+    auditCreate(uow, actor, "InspectionTemplate", TEMPLATE_ID, "inspection_template.published", { versionNumber: 1, items: INSPECTION_ITEMS.length }, { metadata: { seed: true } });
+    created.inspectionTemplates += 1;
+  }
+  for (const job of CANNED_JOBS) {
+    if (await tx.cannedJob.findUnique({ where: { id: job.id }, select: { id: true } })) continue;
+    const versionId = `${job.id}_v1`;
+    await tx.cannedJob.create({ data: { id: job.id, code: job.code, name: job.name, category: job.category, active: true } });
+    await tx.cannedJobVersion.create({ data: { id: versionId, cannedJobId: job.id, versionNumber: 1, kind: job.kind, lines: job.lines, customerDescription: job.description, status: "draft" } });
+    await tx.cannedJobVersion.update({ where: { id: versionId }, data: { status: "published", publishedAt: now, version: { increment: 1 } } });
+    await tx.cannedJob.update({ where: { id: job.id }, data: { currentVersionId: versionId } });
+    auditCreate(uow, actor, "CannedJob", job.id, "canned_job.published", { code: job.code, versionNumber: 1, lines: job.lines.length }, { metadata: { seed: true } });
+    created.cannedJobs += 1;
+  }
+  return created;
+}
+var GOLDEN_CUSTOMER = "seed_cust_05";
+var SIGN = (name) => ({ method: "in_person", signerName: name, strokes: [Array.from({ length: 14 }, (_, i) => [10 + i * 6, 30 + Math.round(12 * Math.sin(i / 2))])] });
+async function seedGoldenRepairOrder(uow, actor) {
+  const { tx, now } = uow;
+  if (await tx.repairOrder.findFirst({ where: { customerId: GOLDEN_CUSTOMER }, select: { id: true } })) return { repairOrders: 0 };
+  const owned = await tx.vehicleOwnership.findFirst({ where: { customerId: GOLDEN_CUSTOMER, endedAt: null }, include: { vehicle: true } });
+  if (!owned?.vehicle) return { repairOrders: 0 };
+  const advisor = await tx.user.findFirst({ where: { OR: [{ id: "seed_user_shah" }, { email: { startsWith: "priya.shah@" } }] }, select: { id: true, name: true } });
+  const tech = await tx.user.findFirst({ where: { OR: [{ id: "seed_user_ramirez" }, { email: { startsWith: "luis.ramirez@" } }] }, select: { id: true } });
+  if (!advisor || !tech) return { repairOrders: 0 };
+  const asAdvisor = { kind: "user", userId: advisor.id, name: advisor.name ?? "Priya Shah", permissions: /* @__PURE__ */ new Set(["canWriteRepairOrders", "canPriceJobs", "canSendEstimates", "canRecordAuthorizations"]), channel: "web" };
+  const asTech = { kind: "user", userId: tech.id, name: "Luis Ramirez", permissions: /* @__PURE__ */ new Set(["canPerformInspections"]), channel: "web" };
+  const appointment = await tx.appointment.findFirst({ where: { customerId: GOLDEN_CUSTOMER, status: { in: ["requested", "confirmed"] } }, orderBy: { startsAt: "asc" }, select: { id: true } });
+  const promisedAt = new Date(now.getTime() + 6 * 36e5);
+  const checkIn = await checkInVehicle(uow, asAdvisor, {
+    shopId: NGA,
+    appointmentId: appointment?.id ?? null,
+    customerId: GOLDEN_CUSTOMER,
+    vehicleId: owned.vehicleId,
+    odometer: { value: (owned.vehicle.lastOdometer ?? 121940) + 412 },
+    concerns: ["Grinding noise from the front when braking."],
+    promisedAt,
+    waiter: false,
+    keyTag: "14",
+    contactPreference: "sms",
+    signature: SIGN("Patricia Lindqvist")
+  });
+  const ro = await openRepairOrder(uow, asAdvisor, { checkInId: checkIn.id, serviceAdvisorId: advisor.id });
+  const inspection = await createInspection(uow, asTech, { repairOrderId: ro.id, templateId: TEMPLATE_ID, technicianId: tech.id });
+  await startInspection(uow, asTech, { inspectionId: inspection.id, expectedVersion: (await tx.inspection.findUniqueOrThrow({ where: { id: inspection.id } })).version });
+  const results = await tx.inspectionItemResult.findMany({ where: { inspectionId: inspection.id }, include: { templateItem: true } });
+  const plan = {
+    brake_pads_front: { measurements: [{ position: "LF", value: 2 }, { position: "RF", value: 3 }], notes: "Pads at 2 mm and 3 mm; the wear sensor is reading. Rotors scored from metal-to-metal contact." },
+    brake_pads_rear: { measurements: [{ position: "LR", value: 6 }, { position: "RR", value: 6 }] },
+    brake_rotors_front: { condition: "red", notes: "Both front rotors scored; below minimum thickness after machining." },
+    tread_depth: { measurements: [{ position: "LF", value: 6 }, { position: "RF", value: 6 }, { position: "LR", value: 7 }, { position: "RR", value: 7 }] },
+    cabin_filter: { condition: "yellow", notes: "Dirty; due at the next oil service." }
+  };
+  for (const r of results) {
+    const p = plan[r.templateItem.code] ?? { condition: "green" };
+    await recordItemResult(uow, asTech, { resultId: r.id, expectedVersion: r.version, condition: p.condition ?? null, measurements: p.measurements ?? null, notes: p.notes ?? null });
+    if (r.templateItem.code === "brake_pads_front" || r.templateItem.code === "brake_rotors_front") {
+      const digest = (0, import_node_crypto7.createHash)("sha256").update(`seed-photo:${r.id}`).digest("hex");
+      const doc = await tx.document.create({ data: { shopId: NGA, title: `${r.templateItem.label} (photo)`, kind: "inspection_photo", visibility: "customer_link", storageKey: `seed/inspection/${r.templateItem.code}.jpg`, sha256: digest, mimeType: "image/jpeg", bytes: 182400 } });
+      await tx.inspectionItemResult.update({ where: { id: r.id }, data: { media: { connect: { id: doc.id } } } });
+    }
+  }
+  const done = await completeInspection(uow, asTech, { inspectionId: inspection.id, expectedVersion: (await tx.inspection.findUniqueOrThrow({ where: { id: inspection.id } })).version });
+  const concern = await tx.concern.findFirst({ where: { repairOrderId: ro.id }, select: { id: true } });
+  let brakes = await tx.job.findFirst({ where: { repairOrderId: ro.id, title: "Front brake pads and rotors" } });
+  if (!brakes) {
+    await addJob(uow, asAdvisor, { repairOrderId: ro.id, title: "Front brake pads and rotors", cannedJobId: "seed_cj_brakes_front", concernId: concern?.id ?? null });
+    brakes = await tx.job.findFirstOrThrow({ where: { repairOrderId: ro.id, title: "Front brake pads and rotors" } });
+  }
+  if (concern) await tx.job.update({ where: { id: brakes.id }, data: { concernId: concern.id } });
+  if (brakes.status === "draft") {
+    const canned = CANNED_JOBS.find((j) => j.id === "seed_cj_brakes_front");
+    const lines = canned.lines.map((l) => l.operationCode === "BRK-PAD-F" ? { ...l, variant: "With wear sensor (RWD)" } : l);
+    const current = await tx.job.findUniqueOrThrow({ where: { id: brakes.id }, select: { version: true } });
+    await setJobLines(uow, asAdvisor, { jobId: brakes.id, expectedVersion: current.version, lines });
+  }
+  const fresh = await tx.repairOrder.findUniqueOrThrow({ where: { id: ro.id }, select: { version: true } });
+  const estimate = await issueEstimate(uow, asAdvisor, { repairOrderId: ro.id, expectedVersion: fresh.version });
+  await recordAuthorization(uow, asAdvisor, {
+    estimateVersionId: estimate.id,
+    method: "oral_phone",
+    actorName: "Patricia Lindqvist",
+    phoneNumber: "+19165550105",
+    answers: [{ jobId: brakes.id, decision: "approve" }],
+    replacedPartsElection: "show_only",
+    at: new Date(now.getTime() - 6e4).toISOString()
+  });
+  return { repairOrders: 1, jobs: await tx.job.count({ where: { repairOrderId: ro.id } }) };
 }
 
 // features/keystone/seed/policy.ts
@@ -4271,7 +6705,8 @@ function northgateSteps(actor, scope = "all") {
     { name: "platform", run: (uow) => seedOrgPlatform(uow, actor) },
     { name: "jurisdictions", run: (uow) => seedJurisdictions(uow, actor) },
     ...SHOP_POLICY.map((shop) => ({ name: `policy_${shop.code.toLowerCase()}`, run: (uow) => seedShopPolicy(uow, actor, shop.id) })),
-    { name: "booking_rules", run: async (uow) => ({ bookingRules: await seedBookingRules(uow, actor) }) }
+    { name: "booking_rules", run: async (uow) => ({ bookingRules: await seedBookingRules(uow, actor) }) },
+    { name: "service_catalog", run: (uow) => seedServiceCatalog(uow, actor) }
   ];
   if (scope === "spine") return steps;
   for (let from = 0; from < CUSTOMERS.length; from += CUSTOMER_BATCH) {
@@ -4283,6 +6718,7 @@ function northgateSteps(actor, scope = "all") {
   } });
   steps.push({ name: "vehicle_data", run: async (uow) => ({ vehicleData: await seedRecordedVehicleData(uow, actor) }) });
   steps.push({ name: "appointments", run: async (uow) => ({ appointments: await seedAppointments(uow, actor) }) });
+  steps.push({ name: "golden_repair_order", run: (uow) => seedGoldenRepairOrder(uow, actor) });
   return steps;
 }
 var add = (total, part) => {
@@ -4316,7 +6752,7 @@ function validateOrgControls(input) {
   const keys = Object.keys(input ?? {});
   if (!keys.length) throw new DomainError(Codes.INVALID_INPUT, "Nothing to change.");
   const out = {};
-  for (const key of keys) if (!KEYS.includes(key)) throw new DomainError(Codes.INVALID_INPUT, `${key} is not an organisation control.`, { field: key });
+  for (const key2 of keys) if (!KEYS.includes(key2)) throw new DomainError(Codes.INVALID_INPUT, `${key2} is not an organisation control.`, { field: key2 });
   if (input.strictAgentOwnerSoD !== void 0) {
     if (typeof input.strictAgentOwnerSoD !== "boolean") throw new DomainError(Codes.INVALID_INPUT, "strictAgentOwnerSoD must be true or false.");
     out.strictAgentOwnerSoD = input.strictAgentOwnerSoD;
@@ -4409,131 +6845,13 @@ async function requestOrgControls(_root, args, context) {
   return { replay: result.replay, ...result.value };
 }
 
-// features/keystone/lib/checkIn.ts
-function workOrderText(input) {
-  const lines = [
-    `${input.legalName} (${input.shopName})`,
-    input.registrations?.barArd ? `Automotive Repair Dealer registration ${String(input.registrations.barArd)}` : null,
-    "",
-    "You asked us to look at:",
-    ...input.concerns.map((c, i) => `${i + 1}. ${c}`),
-    "",
-    input.odometer !== null && input.odometer !== void 0 ? `Odometer in: ${input.odometer.toLocaleString("en-US")}` : null,
-    input.promisedAt ? `Promised: ${input.promisedAt.toLocaleString("en-US", { timeZone: input.timeZone, dateStyle: "medium", timeStyle: "short" })}` : null,
-    "",
-    ...input.notices.filter((n) => n.where === "work_order").map((n) => n.text),
-    input.replacedPartsOfferText ?? null
-  ];
-  return lines.filter((l) => l !== null).join("\n").replace(/\n{3,}/g, "\n\n").trim();
-}
-var MAX_STROKES = 400;
-function checkSignature(signature) {
-  if (!signature) return null;
-  const signerName = String(signature.signerName ?? "").trim();
-  if (!signerName || signerName.length > 120) throw new DomainError(Codes.SIGNATURE_REQUIRED, "Enter the name of the person signing.", { field: "signerName" });
-  const strokes = Array.isArray(signature.strokes) ? signature.strokes : [];
-  if (strokes.length > MAX_STROKES || strokes.some((s) => !Array.isArray(s) || s.length > 2e3 || s.some((p) => !Array.isArray(p) || p.length !== 2 || !p.every(Number.isFinite)))) {
-    throw new DomainError(Codes.INVALID_INPUT, "The signature could not be read. Clear it and sign again.", { field: "signature" });
-  }
-  const points = strokes.reduce((n, s) => n + s.length, 0);
-  if (points < 8 && !signature.typedAcknowledgement) throw new DomainError(Codes.SIGNATURE_REQUIRED, "Ask the customer to sign in the box.", { field: "signature" });
-  if (!["in_person", "electronic_link"].includes(signature.method)) throw new DomainError(Codes.INVALID_INPUT, "Choose how the work order was signed.");
-  return { method: signature.method, signerName, strokes: strokes.map((s) => s.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10])), typedAcknowledgement: Boolean(signature.typedAcknowledgement) };
-}
-async function checkInVehicle(uow, actor, input) {
-  const { tx, now } = uow;
-  const { shop, law, shopPolicy } = await shopLaw(tx, input.shopId);
-  const full = await tx.shop.findUniqueOrThrow({ where: { id: input.shopId }, select: { code: true, name: true, legalName: true, registrations: true, timeZone: true } });
-  const concerns = (input.concerns ?? []).map((c) => String(c).trim()).filter(Boolean).map((c) => c.slice(0, 500));
-  if (!concerns.length) throw new DomainError(Codes.INVALID_INPUT, "Write down at least one concern in the customer's words.", { field: "concerns" });
-  if (concerns.length > 20) throw new DomainError(Codes.INVALID_INPUT, "Twenty concerns at most. Group related ones.", { field: "concerns" });
-  if (law.requireOdometerIn && !input.odometer) throw new DomainError(Codes.ODOMETER_REQUIRED, "Record the odometer reading. This state requires it on the invoice.", { field: "odometer" });
-  const promisedRequired = shopPolicy?.promisedTimeRequired ?? true;
-  if (promisedRequired && !input.promisedAt) throw new DomainError(Codes.INVALID_INPUT, "Give the customer a promised time.", { field: "promisedAt" });
-  if (input.promisedAt && input.promisedAt.getTime() <= now.getTime()) throw new DomainError(Codes.INVALID_INPUT, "The promised time must be later than now.", { field: "promisedAt" });
-  const signature = checkSignature(input.signature);
-  if (law.requireSignedWorkOrder && !signature) throw new DomainError(Codes.SIGNATURE_REQUIRED, "The customer must sign the work order before work starts.", { field: "signature" });
-  const customer = await tx.customer.findUnique({ where: { id: input.customerId }, select: { id: true, status: true } });
-  if (!customer || customer.status !== "active") throw new DomainError(Codes.NOT_FOUND, "Customer not found.");
-  const vehicle = await tx.vehicle.findUnique({ where: { id: input.vehicleId }, select: { id: true, status: true } });
-  if (!vehicle || vehicle.status !== "active") throw new DomainError(Codes.NOT_FOUND, "Vehicle not found.");
-  await advisoryLock(tx, `checkin:${input.vehicleId}`);
-  const open = await tx.checkIn.findFirst({ where: { vehicleId: input.vehicleId, shopId: input.shopId, at: { gt: new Date(now.getTime() - 12 * 36e5) } }, select: { reference: true } });
-  if (open) throw new DomainError(Codes.DUPLICATE, `This vehicle was checked in ${open.reference} in the last 12 hours.`);
-  const reference = await nextShopReference(tx, "CI", shop.code, now);
-  const notices = Array.isArray(law.requiredNotices) ? law.requiredNotices : [];
-  const text11 = workOrderText({
-    shopName: full.name,
-    legalName: full.legalName,
-    registrations: full.registrations ?? {},
-    concerns,
-    notices,
-    replacedPartsOfferText: law.replacedPartsOfferRequired ? law.replacedPartsOfferText : null,
-    promisedAt: input.promisedAt ?? null,
-    odometer: input.odometer?.value ?? null,
-    timeZone: full.timeZone
-  });
-  const latestRecall = await tx.recallCheck.findFirst({ where: { vehicleId: input.vehicleId }, orderBy: { checkedAt: "desc" }, select: { id: true, campaignCount: true, parkItAny: true, checkedAt: true, campaigns: true } });
-  const recallWarning = latestRecall && latestRecall.campaignCount > 0 ? { recallCheckId: latestRecall.id, count: latestRecall.campaignCount, doNotDrive: latestRecall.parkItAny, checkedAt: latestRecall.checkedAt, campaigns: (latestRecall.campaigns ?? []).slice(0, 10).map((c) => ({ number: c.nhtsaCampaignNumber, component: c.component, parkIt: c.parkIt, parkOutSide: c.parkOutSide })) } : null;
-  const row = await tx.checkIn.create({
-    data: {
-      shopId: input.shopId,
-      reference,
-      ...input.appointmentId ? { appointment: { connect: { id: input.appointmentId } } } : {},
-      customerId: input.customerId,
-      vehicleId: input.vehicleId,
-      concerns,
-      keyTag: input.keyTag?.trim().slice(0, 20) ?? "",
-      waiter: input.waiter ?? false,
-      promisedAt: input.promisedAt ?? null,
-      contactPreference: input.contactPreference ?? "sms",
-      transportationNeed: input.transportationNeed ?? "none",
-      signatureMethod: signature?.method ?? "in_person",
-      signerName: signature?.signerName ?? "",
-      signature: signature ?? void 0,
-      signatureHash: signature ? sha256(canonicalJson(signature)) : "",
-      workOrderText: text11,
-      workOrderHash: sha256(text11),
-      signedAt: signature ? now : null,
-      valuablesNote: input.valuablesNote?.trim().slice(0, 500) ?? "",
-      recallWarning: recallWarning ?? void 0,
-      jurisdictionPolicyVersionId: law.id,
-      at: now,
-      byId: actorUserId(actor)
-    }
-  });
-  let odometer = null;
-  if (input.odometer) {
-    odometer = await recordOdometer(uow, actor, { vehicleId: input.vehicleId, value: input.odometer.value, unit: input.odometer.unit, source: "ro_in", overrideReason: input.odometer.overrideReason, checkInId: row.id });
-    await tx.checkIn.update({ where: { id: row.id }, data: { odometerInId: odometer.id } });
-  }
-  if (input.appointmentId) {
-    await transition(uow, {
-      model: "Appointment",
-      id: input.appointmentId,
-      from: ["requested", "confirmed"],
-      to: "arrived",
-      actor,
-      eventType: "appointment.arrived",
-      guard: (a) => {
-        if (a.shopId !== input.shopId) throw new DomainError(Codes.INVALID_INPUT, "The appointment is at another shop.");
-        if (a.vehicleId && a.vehicleId !== input.vehicleId) throw new DomainError(Codes.INVALID_INPUT, "The appointment is for another vehicle.");
-      },
-      data: { customerId: input.customerId, vehicleId: input.vehicleId }
-    });
-  }
-  auditCreate(uow, actor, "CheckIn", row.id, "vehicle.checked_in", { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text11), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id });
-  uow.emit({ topic: "vehicle.checked_in", aggregateType: "CheckIn", aggregateId: row.id, payload: { reference, shopId: input.shopId }, dedupeKey: `checkin:${row.id}` });
-  return { id: row.id, reference, recallWarning, odometerAnomaly: odometer?.anomaly ?? null };
-}
-
 // features/integrations/vehicle-data/index.ts
 function vehicleData() {
   return process.env.VEHICLE_DATA_PROVIDER === "fixture" ? fixtureAdapter() : nhtsaAdapter();
 }
 
 // features/keystone/mutations/phase1.ts
-var KINDS = ["drop_off", "waiter", "pickup_delivery", "mobile"];
+var KINDS2 = ["drop_off", "waiter", "pickup_delivery", "mobile"];
 function requireShop(context, shopId) {
   if (typeof shopId !== "string" || !shopId) throw new DomainError(Codes.INVALID_INPUT, "Choose a shop.", { field: "shopId" });
   const ids = sessionShopIds(context.session);
@@ -4635,7 +6953,7 @@ async function checkVehicleRecalls(_root, args, context) {
   return run(context, actor, "vehicle.recalls", args.idempotencyKey, { vehicleId: args.vehicleId, ...query }, (uow) => storeRecallCheck(uow, actor, args.vehicleId, query, result.value, observedAt, adapter.key === "fixture"));
 }
 var kindArg = (value) => {
-  if (!KINDS.includes(value)) throw new DomainError(Codes.INVALID_INPUT, "Choose drop-off, waiter, pickup or mobile.", { field: "kind" });
+  if (!KINDS2.includes(value)) throw new DomainError(Codes.INVALID_INPUT, "Choose drop-off, waiter, pickup or mobile.", { field: "kind" });
   return value;
 };
 async function holdAppointmentSlot(_root, args, context) {
@@ -4713,12 +7031,262 @@ async function checkAuthorizedCeiling(_root, args, context) {
   return { ok: true, ceilingMinor: result.ceilingMinor.toString(), comparedMinor: result.comparedMinor.toString(), policyVersionId: law.id };
 }
 
+// features/keystone/lib/cannedJobs.ts
+var KINDS3 = ["repair", "maintenance", "diagnosis", "inspection", "teardown", "tire", "sublet"];
+var text14 = (v, max) => String(v ?? "").trim().slice(0, max);
+async function saveCannedJobDraft(uow, actor, input) {
+  const { tx } = uow;
+  const lines = parseLines(input.lines);
+  if (!lines.length) throw new DomainError(Codes.INVALID_INPUT, "A canned job needs at least one line.", { field: "lines" });
+  const kind = input.kind ?? "repair";
+  if (!KINDS3.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, "Unknown job kind.", { field: "kind" });
+  const stored = lines.map((l) => Object.fromEntries(Object.entries(l).filter(([k, v]) => k !== "ref" && v !== null && v !== void 0 && v !== "" && v !== false).map(([k, v]) => [k, typeof v === "bigint" ? v.toString() : v])));
+  const content = { kind, customerDescription: text14(input.customerDescription, 1e3), notes: text14(input.notes, 1e3), lines: stored, authorId: actorUserId(actor) };
+  let jobId = input.cannedJobId ?? null;
+  if (!jobId) {
+    const code = text14(input.code, 40).toUpperCase().replace(/[^A-Z0-9-]/g, "-");
+    const name = text14(input.name, 120);
+    if (!code || !name) throw new DomainError(Codes.INVALID_INPUT, "Give the canned job a code and a name.", { field: !code ? "code" : "name" });
+    const clash = await tx.cannedJob.findFirst({ where: { code, shopId: input.shopId ?? null }, select: { id: true } });
+    if (clash) throw new DomainError(Codes.DUPLICATE, `${code} already exists.`, { existingId: clash.id });
+    const head = await tx.cannedJob.create({ data: { code, name, category: text14(input.category, 40), shopId: input.shopId ?? null, active: true } });
+    jobId = head.id;
+    auditCreate(uow, actor, "CannedJob", head.id, "canned_job.created", { code, name });
+  } else {
+    await lockRow(tx, "CannedJob", jobId);
+    if (input.name !== void 0 || input.category !== void 0) {
+      const name = text14(input.name, 120);
+      if (input.name !== void 0 && !name) throw new DomainError(Codes.INVALID_INPUT, "Give the canned job a name.", { field: "name" });
+      await tx.cannedJob.update({ where: { id: jobId }, data: { ...input.name !== void 0 ? { name } : {}, ...input.category !== void 0 ? { category: text14(input.category, 40) } : {} } });
+    }
+  }
+  const draft = await tx.cannedJobVersion.findFirst({ where: { cannedJobId: jobId, status: "draft" } });
+  if (draft) {
+    await tx.cannedJobVersion.update({ where: { id: draft.id }, data: { ...content, version: { increment: 1 } } });
+    auditCreate(uow, actor, "CannedJobVersion", draft.id, "canned_job.draft_saved", { versionNumber: draft.versionNumber, lines: stored.length });
+    return { cannedJobId: jobId, versionId: draft.id, versionNumber: draft.versionNumber, status: "draft" };
+  }
+  const last = await tx.cannedJobVersion.findFirst({ where: { cannedJobId: jobId }, orderBy: { versionNumber: "desc" }, select: { versionNumber: true } });
+  const row = await tx.cannedJobVersion.create({ data: { cannedJobId: jobId, versionNumber: (last?.versionNumber ?? 0) + 1, status: "draft", ...content } });
+  auditCreate(uow, actor, "CannedJobVersion", row.id, "canned_job.draft_created", { versionNumber: row.versionNumber, lines: stored.length });
+  return { cannedJobId: jobId, versionId: row.id, versionNumber: row.versionNumber, status: "draft" };
+}
+async function publishCannedJob(uow, actor, input) {
+  const { tx, now } = uow;
+  const row = await lockRow(tx, "CannedJobVersion", input.versionId);
+  if (row.status !== "draft") throw new DomainError(Codes.INVALID_TRANSITION, "Only a draft can be published.", { currentStatus: row.status });
+  if (row.version !== input.expectedVersion) throw new DomainError(Codes.STALE_STATE, "The draft changed since you loaded it. Reload and try again.", { currentVersion: row.version });
+  parseLines(row.lines);
+  await lockRow(tx, "CannedJob", row.cannedJobId);
+  const previous = await tx.cannedJobVersion.findFirst({ where: { cannedJobId: row.cannedJobId, status: "published" }, select: { id: true } });
+  if (previous) await tx.cannedJobVersion.update({ where: { id: previous.id }, data: { status: "retired", retiredAt: now, version: { increment: 1 } } });
+  await tx.cannedJobVersion.update({ where: { id: row.id }, data: { status: "published", publishedAt: now, publishedById: actorUserId(actor), version: { increment: 1 } } });
+  await tx.cannedJob.update({ where: { id: row.cannedJobId }, data: { currentVersionId: row.id } });
+  auditCreate(uow, actor, "CannedJobVersion", row.id, "canned_job.published", { versionNumber: row.versionNumber, retired: previous?.id ?? null });
+  return { id: row.id, status: "published", versionNumber: row.versionNumber };
+}
+async function setCannedJobActive(uow, actor, input) {
+  const row = await lockRow(uow.tx, "CannedJob", input.cannedJobId);
+  if (row.active === input.active) return { id: row.id, active: row.active };
+  await uow.tx.cannedJob.update({ where: { id: row.id }, data: { active: input.active } });
+  auditCreate(uow, actor, "CannedJob", row.id, input.active ? "canned_job.activated" : "canned_job.deactivated", { code: row.code });
+  return { id: row.id, active: input.active };
+}
+
+// features/keystone/mutations/phase2.ts
+var run2 = async (context, actor, name, idempotencyKey, params, work) => {
+  const result = await command(context.prisma, { name, actor, idempotencyKey, params }, work);
+  return { replay: result.replay, ...result.value };
+};
+async function roShop(context, repairOrderId) {
+  if (typeof repairOrderId !== "string" || !repairOrderId) throw new DomainError(Codes.INVALID_INPUT, "Choose a repair order.", { field: "repairOrderId" });
+  const row = await context.prisma.repairOrder.findUnique({ where: { id: repairOrderId }, select: { shopId: true } });
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Repair order not found.");
+  return requireShop(context, row.shopId);
+}
+async function jobShop(context, jobId) {
+  const row = typeof jobId === "string" ? await context.prisma.job.findUnique({ where: { id: jobId }, select: { repairOrderId: true } }) : null;
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Job not found.");
+  return roShop(context, row.repairOrderId);
+}
+async function estimateShop(context, estimateVersionId) {
+  const row = typeof estimateVersionId === "string" ? await context.prisma.estimateVersion.findUnique({ where: { id: estimateVersionId }, select: { repairOrderId: true } }) : null;
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Estimate not found.");
+  return roShop(context, row.repairOrderId);
+}
+async function inspectionShop(context, inspectionId) {
+  const row = typeof inspectionId === "string" ? await context.prisma.inspection.findUnique({ where: { id: inspectionId }, select: { repairOrderId: true } }) : null;
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Inspection not found.");
+  return roShop(context, row.repairOrderId);
+}
+async function resultShop(context, resultId) {
+  const row = typeof resultId === "string" ? await context.prisma.inspectionItemResult.findUnique({ where: { id: resultId }, select: { inspectionId: true } }) : null;
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Inspection item not found.");
+  return inspectionShop(context, row.inspectionId);
+}
+async function openShopRepairOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canWriteRepairOrders");
+  const checkIn = typeof args.input?.checkInId === "string" ? await context.prisma.checkIn.findUnique({ where: { id: args.input.checkInId }, select: { shopId: true } }) : null;
+  if (!checkIn) throw new DomainError(Codes.NOT_FOUND, "Check-in not found.");
+  requireShop(context, checkIn.shopId);
+  return run2(context, actor, "ro.open", args.idempotencyKey, args.input, (uow) => openRepairOrder(uow, actor, args.input));
+}
+async function holdRepairOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canWriteRepairOrders");
+  await roShop(context, args.repairOrderId);
+  return run2(context, actor, args.hold ? "ro.hold" : "ro.resume", args.idempotencyKey, args, async (uow) => {
+    await setHold(uow, actor, { repairOrderId: args.repairOrderId, expectedVersion: args.expectedVersion, hold: args.hold, reason: args.reason ?? void 0, note: args.note ?? void 0 });
+    return { id: args.repairOrderId, status: args.hold ? "on_hold" : "in_service" };
+  });
+}
+async function addRepairJob(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canWriteRepairOrders", "canPriceJobs");
+  await roShop(context, args.input?.repairOrderId);
+  const input = { ...args.input, source: isMachine(actor) ? "agent" : args.input.source };
+  return run2(context, actor, "job.add", args.idempotencyKey, args.input, (uow) => addJob(uow, actor, input));
+}
+async function saveJobLines(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canPriceJobs");
+  await jobShop(context, args.jobId);
+  return run2(context, actor, "job.lines", args.idempotencyKey, args, (uow) => setJobLines(uow, actor, args));
+}
+async function editRepairJobLines(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canPriceJobs");
+  if (args.choose) requireHuman(actor, "choose a labor-guide variant");
+  await jobShop(context, args.jobId);
+  return run2(context, actor, "job.lines_edit", args.idempotencyKey, args, (uow) => editJobLines(uow, actor, args));
+}
+async function repriceRepairJob(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canPriceJobs");
+  await jobShop(context, args.jobId);
+  return run2(context, actor, "job.reprice", args.idempotencyKey, args, (uow) => repriceJob(uow, actor, args.jobId));
+}
+async function transitionRepairJob(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  await jobShop(context, args.jobId);
+  switch (args.to) {
+    case "in_progress":
+      requirePermission(actor, "canWriteRepairOrders", "canClockSelf");
+      return run2(context, actor, "job.start", args.idempotencyKey, args, (uow) => startJob(uow, actor, args));
+    case "completed":
+      requirePermission(actor, "canWriteRepairOrders", "canClockSelf");
+      return run2(context, actor, "job.complete", args.idempotencyKey, args, (uow) => completeJob(uow, actor, { ...args, cause: args.cause ?? "", correction: args.correction ?? "" }));
+    case "voided":
+      requirePermission(actor, "canWriteRepairOrders");
+      return run2(context, actor, "job.void", args.idempotencyKey, args, (uow) => voidJob(uow, actor, { ...args, reason: args.reason ?? "" }));
+    default:
+      throw new DomainError(Codes.INVALID_INPUT, "Choose start, complete or remove. Authorization is recorded from the estimate.", { field: "to" });
+  }
+}
+async function startShopInspection(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canPerformInspections");
+  await roShop(context, args.repairOrderId);
+  return run2(context, actor, "inspection.create", args.idempotencyKey, args, async (uow) => {
+    const created = await createInspection(uow, actor, args);
+    const row = await uow.tx.inspection.findUniqueOrThrow({ where: { id: created.id }, select: { version: true } });
+    await startInspection(uow, actor, { inspectionId: created.id, expectedVersion: row.version });
+    return { ...created, status: "in_progress" };
+  });
+}
+async function recordInspectionItem(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canPerformInspections");
+  await resultShop(context, args.input?.resultId);
+  return run2(context, actor, "inspection.item", args.idempotencyKey, args.input, (uow) => recordItemResult(uow, actor, args.input));
+}
+async function attachInspectionMedia(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canPerformInspections");
+  await resultShop(context, args.resultId);
+  return run2(context, actor, "inspection.media", args.idempotencyKey, args, (uow) => attachMedia(uow, actor, args));
+}
+async function completeShopInspection(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canPerformInspections");
+  await inspectionShop(context, args.inspectionId);
+  return run2(context, actor, "inspection.complete", args.idempotencyKey, args, (uow) => completeInspection(uow, actor, args));
+}
+async function sendShopInspection(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canMessageCustomers", "canSendEstimates");
+  await inspectionShop(context, args.inspectionId);
+  const result = await run2(context, actor, "inspection.send", args.idempotencyKey, args, (uow) => sendInspection(uow, actor, args));
+  const token = deriveToken("inspection", result.tokenId);
+  return { id: result.id, status: result.status, replay: result.replay, expiresAt: result.expiresAt, token, path: `/api/public/inspections/${token}` };
+}
+async function sendRepairEstimate(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canSendEstimates");
+  await roShop(context, args.repairOrderId);
+  return run2(context, actor, "estimate.issue", args.idempotencyKey, args, (uow) => issueEstimate(uow, actor, args));
+}
+async function requestCustomerAuthorization(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canSendEstimates");
+  await estimateShop(context, args.estimateVersionId);
+  const result = await run2(context, actor, "authorization.request", args.idempotencyKey, args, (uow) => requestAuthorization(uow, actor, args));
+  return { ...result, ...authorizationLink(result.id) };
+}
+async function recordCustomerAuthorization(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requireHuman(actor, "record a customer authorization");
+  requirePermission(actor, "canRecordAuthorizations");
+  await estimateShop(context, args.input?.estimateVersionId);
+  return run2(context, actor, "authorization.record", args.idempotencyKey, args.input, (uow) => recordAuthorization(uow, actor, args.input));
+}
+async function createCallbackTask(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canReadRepairOrders");
+  const shopId = await roShop(context, args.repairOrderId);
+  const kind = ["authorization_callback", "authorization_follow_up", "customer_callback", "other"].includes(String(args.kind)) ? args.kind : "customer_callback";
+  return run2(context, actor, "task.create", args.idempotencyKey, args, (uow) => createStaffTask(uow, actor, {
+    shopId,
+    repairOrderId: args.repairOrderId,
+    kind,
+    title: args.title,
+    detail: args.detail ?? null,
+    source: isMachine(actor) ? "agent" : "staff"
+  }));
+}
+async function closeCallbackTask(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canWriteRepairOrders", "canManageSchedule");
+  const task = typeof args.taskId === "string" ? await context.prisma.staffTask.findUnique({ where: { id: args.taskId }, select: { shopId: true } }) : null;
+  if (!task) throw new DomainError(Codes.NOT_FOUND, "Task not found.");
+  requireShop(context, task.shopId);
+  return run2(context, actor, "task.close", args.idempotencyKey, args, (uow) => closeStaffTask(uow, actor, { ...args, cancel: Boolean(args.cancel) }));
+}
+async function saveCannedJob(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManagePolicies");
+  if (args.input?.shopId) requireShop(context, args.input.shopId);
+  return run2(context, actor, "canned_job.save", args.idempotencyKey, args.input, (uow) => saveCannedJobDraft(uow, actor, args.input));
+}
+async function publishCannedJobVersion(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManagePolicies");
+  requireHuman(actor, "publish a canned job");
+  return run2(context, actor, "canned_job.publish", args.idempotencyKey, args, (uow) => publishCannedJob(uow, actor, args));
+}
+async function setCannedJobStatus(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManagePolicies");
+  return run2(context, actor, args.active ? "canned_job.activate" : "canned_job.deactivate", args.idempotencyKey, args, (uow) => setCannedJobActive(uow, actor, args));
+}
+
 // features/keystone/mutations/index.ts
-var graphql2 = String.raw;
+var graphql3 = String.raw;
 function extendGraphqlSchema(baseSchema) {
   return (0, import_schema.mergeSchemas)({
     schemas: [baseSchema],
-    typeDefs: graphql2`
+    typeDefs: graphql3`
       scalar JSON
       type Query {
         redirectToInit: Boolean
@@ -4747,6 +7315,26 @@ function extendGraphqlSchema(baseSchema) {
         bookShopAppointment(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, customerId: ID, vehicleId: ID, lead: JSON, concernText: String, requestedServices: [String!], holdToken: String, confirm: Boolean, idempotencyKey: String!): JSON
         transitionAppointment(id: ID!, to: String!, expectedVersion: Int!, reason: String, startsAt: String, idempotencyKey: String!): JSON
         checkInShopVehicle(input: JSON!, idempotencyKey: String!): JSON
+        openShopRepairOrder(input: JSON!, idempotencyKey: String!): JSON
+        holdRepairOrder(repairOrderId: ID!, expectedVersion: Int!, hold: Boolean!, reason: String, note: String, idempotencyKey: String!): JSON
+        addRepairJob(input: JSON!, idempotencyKey: String!): JSON
+        saveJobLines(jobId: ID!, expectedVersion: Int!, lines: JSON!, idempotencyKey: String!): JSON
+        saveCannedJob(input: JSON!, idempotencyKey: String!): JSON
+        publishCannedJobVersion(versionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+        setCannedJobStatus(cannedJobId: ID!, active: Boolean!, idempotencyKey: String!): JSON
+        editRepairJobLines(jobId: ID!, expectedVersion: Int!, add: JSON, removeLineId: ID, choose: JSON, idempotencyKey: String!): JSON
+        repriceRepairJob(jobId: ID!, idempotencyKey: String!): JSON
+        transitionRepairJob(jobId: ID!, to: String!, expectedVersion: Int!, reason: String, cause: String, correction: String, idempotencyKey: String!): JSON
+        startShopInspection(repairOrderId: ID!, templateId: ID!, technicianId: ID, idempotencyKey: String!): JSON
+        recordInspectionItem(input: JSON!, idempotencyKey: String!): JSON
+        attachInspectionMedia(resultId: ID!, documentId: ID!, idempotencyKey: String!): JSON
+        completeShopInspection(inspectionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+        sendShopInspection(inspectionId: ID!, expectedVersion: Int!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
+        sendRepairEstimate(repairOrderId: ID!, jobIds: [ID!], expectedVersion: Int!, idempotencyKey: String!): JSON
+        requestCustomerAuthorization(estimateVersionId: ID!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
+        recordCustomerAuthorization(input: JSON!, idempotencyKey: String!): JSON
+        createCallbackTask(repairOrderId: ID!, kind: String, title: String!, detail: String, idempotencyKey: String!): JSON
+        closeCallbackTask(taskId: ID!, expectedVersion: Int!, outcome: String!, cancel: Boolean, idempotencyKey: String!): JSON
       }
     `,
     resolvers: {
@@ -4775,7 +7363,27 @@ function extendGraphqlSchema(baseSchema) {
         holdAppointmentSlot: op(holdAppointmentSlot),
         bookShopAppointment: op(bookShopAppointment),
         transitionAppointment: op(transitionAppointment),
-        checkInShopVehicle: op(checkInShopVehicle)
+        checkInShopVehicle: op(checkInShopVehicle),
+        openShopRepairOrder: op(openShopRepairOrder),
+        holdRepairOrder: op(holdRepairOrder),
+        addRepairJob: op(addRepairJob),
+        saveJobLines: op(saveJobLines),
+        editRepairJobLines: op(editRepairJobLines),
+        saveCannedJob: op(saveCannedJob),
+        publishCannedJobVersion: op(publishCannedJobVersion),
+        setCannedJobStatus: op(setCannedJobStatus),
+        repriceRepairJob: op(repriceRepairJob),
+        transitionRepairJob: op(transitionRepairJob),
+        startShopInspection: op(startShopInspection),
+        recordInspectionItem: op(recordInspectionItem),
+        attachInspectionMedia: op(attachInspectionMedia),
+        completeShopInspection: op(completeShopInspection),
+        sendShopInspection: op(sendShopInspection),
+        sendRepairEstimate: op(sendRepairEstimate),
+        requestCustomerAuthorization: op(requestCustomerAuthorization),
+        recordCustomerAuthorization: op(recordCustomerAuthorization),
+        createCallbackTask: op(createCallbackTask),
+        closeCallbackTask: op(closeCallbackTask)
       }
     }
   });
@@ -4847,37 +7455,6 @@ async function sendPasswordResetEmail(resetToken, to, baseUrl) {
   }
 }
 
-// features/keystone/mcp-oauth/session.ts
-async function resolveMcpAccessToken(context, token, listKey = "User") {
-  try {
-    const sudo = context.sudo();
-    const record = await sudo.db.OAuthToken.findOne({ where: { token: digestToken(token) } });
-    if (!record || record.tokenType !== "access_token" || record.isRevoked !== "false" || !record.userId || !record.expiresAt || new Date(record.expiresAt).getTime() <= Date.now()) {
-      return void 0;
-    }
-    const app = await sudo.db.OAuthApp.findOne({ where: { clientId: record.clientId } });
-    if (!app || app.status !== "active") return void 0;
-    const mcp = {
-      clientId: record.clientId,
-      scopes: storedScopes(record.scopes),
-      tokenId: String(record.id)
-    };
-    return { itemId: String(record.userId), listKey, mcp };
-  } catch {
-    return void 0;
-  }
-}
-function withMcpBearerSessions(strategy, listKey = "User") {
-  return {
-    ...strategy,
-    async get({ context }) {
-      const token = bearerToken(context?.req?.headers?.authorization);
-      if (isMcpAccessToken(token)) return resolveMcpAccessToken(context, token, listKey);
-      return strategy.get({ context });
-    }
-  };
-}
-
 // features/keystone/prismaConstraints.ts
 var COMPOUND_UNIQUES = {
   ShopCalendarException: ['@@unique([calendarId, date], map: "ShopCalendarException_calendar_date_key")'],
@@ -4908,7 +7485,17 @@ var COMPOUND_UNIQUES = {
   RecallCheck: ['@@index([vehicleId, checkedAt], map: "RecallCheck_vehicle_at_idx")'],
   // Scheduling (SCHEMA §4).
   Appointment: ['@@index([shopId, startsAt], map: "Appointment_shop_starts_idx")', '@@index([shopId, date, status], map: "Appointment_shop_date_status_idx")'],
-  BookingHold: ['@@index([shopId, date, status], map: "BookingHold_shop_date_status_idx")']
+  BookingHold: ['@@index([shopId, date, status], map: "BookingHold_shop_date_status_idx")'],
+  // Repair orders, estimates and authorization (SCHEMA §5-7).
+  RepairOrder: ['@@index([shopId, status], map: "RepairOrder_shop_status_idx")', '@@index([vehicleId, createdAt], map: "RepairOrder_vehicle_created_idx")', '@@index([customerId, createdAt], map: "RepairOrder_customer_created_idx")'],
+  Job: ['@@unique([repairOrderId, number], map: "Job_ro_number_key")'],
+  EstimateVersion: ['@@unique([repairOrderId, versionNumber], map: "EstimateVersion_ro_number_key")'],
+  InspectionTemplateVersion: ['@@unique([templateId, versionNumber], map: "InspectionTemplateVersion_template_number_key")'],
+  InspectionItemResult: ['@@unique([inspectionId, templateItemId], map: "InspectionItemResult_inspection_item_key")'],
+  CannedJobVersion: ['@@unique([cannedJobId, versionNumber], map: "CannedJobVersion_job_number_key")'],
+  PublishedService: ['@@unique([shopId, slug], map: "PublishedService_shop_slug_key")'],
+  LaborOperation: ['@@index([code], map: "LaborOperation_code_idx")'],
+  StaffTask: ['@@index([shopId, status, dueAt], map: "StaffTask_shop_status_due_idx")']
 };
 function addDatabaseConstraints(schema) {
   for (const [modelName, directives] of Object.entries(COMPOUND_UNIQUES)) {
@@ -4976,7 +7563,7 @@ var { withAuth } = (0, import_auth.createAuth)({
   `
 });
 var keystone_default = withAuth(
-  (0, import_core13.config)({
+  (0, import_core16.config)({
     db: {
       provider: "postgresql",
       url: databaseURL,
@@ -5000,7 +7587,7 @@ var keystone_default = withAuth(
       isAccessAllowed: ({ session }) => isSignedIn({ session }) && session?.data.role?.canAccessDashboard === true
     },
     // MCP OAuth bearer tokens resolve to the approving user; everything else is unchanged.
-    session: withMcpBearerSessions((0, import_session.statelessSessions)(sessionConfig)),
+    session: withMcpBearerSessions((0, import_session2.statelessSessions)(sessionConfig)),
     graphql: {
       extendGraphqlSchema
     }

@@ -62,6 +62,22 @@ model User {
   from_VehicleDecode_fetchedBy               VehicleDecode[]             @relation("VehicleDecode_fetchedBy")
   from_Appointment_assignedTech              Appointment[]               @relation("Appointment_assignedTech")
   from_CheckIn_by                            CheckIn[]                   @relation("CheckIn_by")
+  from_JobTechShare_technician               JobTechShare[]              @relation("JobTechShare_technician")
+  from_QualityCheck_performedBy              QualityCheck[]              @relation("QualityCheck_performedBy")
+  from_RepairOrder_serviceAdvisor            RepairOrder[]               @relation("RepairOrder_serviceAdvisor")
+  from_RepairOrder_releasedBy                RepairOrder[]               @relation("RepairOrder_releasedBy")
+  from_RepairOrder_openedBy                  RepairOrder[]               @relation("RepairOrder_openedBy")
+  from_StaffTask_assignee                    StaffTask[]                 @relation("StaffTask_assignee")
+  from_StaffTask_createdByUser               StaffTask[]                 @relation("StaffTask_createdByUser")
+  from_StaffTask_doneBy                      StaffTask[]                 @relation("StaffTask_doneBy")
+  from_CannedJobVersion_author               CannedJobVersion[]          @relation("CannedJobVersion_author")
+  from_CannedJobVersion_publishedBy          CannedJobVersion[]          @relation("CannedJobVersion_publishedBy")
+  from_Inspection_technician                 Inspection[]                @relation("Inspection_technician")
+  from_InspectionItemResult_recordedBy       InspectionItemResult[]      @relation("InspectionItemResult_recordedBy")
+  from_Authorization_recordedByUser          Authorization[]             @relation("Authorization_recordedByUser")
+  from_AuthorizationRequest_createdByUser    AuthorizationRequest[]      @relation("AuthorizationRequest_createdByUser")
+  from_EstimateVersion_sentBy                EstimateVersion[]           @relation("EstimateVersion_sentBy")
+  from_JobDecision_recordedByUser            JobDecision[]               @relation("JobDecision_recordedByUser")
 
   @@index([roleId])
 }
@@ -186,23 +202,25 @@ model OAuthToken {
 }
 
 model AgentIdentity {
-  id                                    String              @id @default(cuid())
-  name                                  String              @unique @default("")
-  kind                                  String              @default("llm_agent")
-  modelRef                              String              @default("")
-  owner                                 User?               @relation("AgentIdentity_owner", fields: [ownerId], references: [id])
-  ownerId                               String?             @map("owner")
-  shops                                 Shop[]              @relation("AgentIdentity_shops")
-  paused                                Boolean             @default(false)
-  status                                String              @default("active")
-  oauthApp                              OAuthApp?           @relation("AgentIdentity_oauthApp", fields: [oauthAppId], references: [id])
-  oauthAppId                            String?             @map("oauthApp")
-  version                               Int                 @default(0)
-  createdAt                             DateTime            @default(now())
-  updatedAt                             DateTime            @default(now()) @updatedAt
-  from_ApprovalRequest_requestedByAgent ApprovalRequest[]   @relation("ApprovalRequest_requestedByAgent")
-  from_AuditEvent_actorAgent            AuditEvent[]        @relation("AuditEvent_actorAgent")
-  from_MachineCredential_agent          MachineCredential[] @relation("MachineCredential_agent")
+  id                                       String                 @id @default(cuid())
+  name                                     String                 @unique @default("")
+  kind                                     String                 @default("llm_agent")
+  modelRef                                 String                 @default("")
+  owner                                    User?                  @relation("AgentIdentity_owner", fields: [ownerId], references: [id])
+  ownerId                                  String?                @map("owner")
+  shops                                    Shop[]                 @relation("AgentIdentity_shops")
+  paused                                   Boolean                @default(false)
+  status                                   String                 @default("active")
+  oauthApp                                 OAuthApp?              @relation("AgentIdentity_oauthApp", fields: [oauthAppId], references: [id])
+  oauthAppId                               String?                @map("oauthApp")
+  version                                  Int                    @default(0)
+  createdAt                                DateTime               @default(now())
+  updatedAt                                DateTime               @default(now()) @updatedAt
+  from_ApprovalRequest_requestedByAgent    ApprovalRequest[]      @relation("ApprovalRequest_requestedByAgent")
+  from_AuditEvent_actorAgent               AuditEvent[]           @relation("AuditEvent_actorAgent")
+  from_MachineCredential_agent             MachineCredential[]    @relation("MachineCredential_agent")
+  from_StaffTask_createdByAgent            StaffTask[]            @relation("StaffTask_createdByAgent")
+  from_AuthorizationRequest_createdByAgent AuthorizationRequest[] @relation("AuthorizationRequest_createdByAgent")
 
   @@index([ownerId])
   @@index([oauthAppId])
@@ -328,23 +346,27 @@ model CommandReceipt {
 }
 
 model Document {
-  id                       String     @id @default(cuid())
-  shop                     Shop?      @relation("Document_shop", fields: [shopId], references: [id])
-  shopId                   String?    @map("shop")
-  title                    String     @default("")
-  kind                     String     @default("other")
-  visibility               String     @default("staff")
-  storageKey               String     @default("")
-  sha256                   String     @default("")
-  mimeType                 String     @default("")
-  bytes                    Int?
-  documentVersion          Int?       @default(1)
-  supersedes               Document?  @relation("Document_supersedes", fields: [supersedesId], references: [id])
-  supersedesId             String?    @map("supersedes")
-  retentionUntil           DateTime?  @postgresql.Date
-  createdAt                DateTime   @default(now())
-  updatedAt                DateTime   @default(now()) @updatedAt
-  from_Document_supersedes Document[] @relation("Document_supersedes")
+  id                                        String                 @id @default(cuid())
+  shop                                      Shop?                  @relation("Document_shop", fields: [shopId], references: [id])
+  shopId                                    String?                @map("shop")
+  title                                     String                 @default("")
+  kind                                      String                 @default("other")
+  visibility                                String                 @default("staff")
+  storageKey                                String                 @default("")
+  sha256                                    String                 @default("")
+  mimeType                                  String                 @default("")
+  bytes                                     Int?
+  documentVersion                           Int?                   @default(1)
+  supersedes                                Document?              @relation("Document_supersedes", fields: [supersedesId], references: [id])
+  supersedesId                              String?                @map("supersedes")
+  retentionUntil                            DateTime?              @postgresql.Date
+  createdAt                                 DateTime               @default(now())
+  updatedAt                                 DateTime               @default(now()) @updatedAt
+  from_Document_supersedes                  Document[]             @relation("Document_supersedes")
+  from_CollisionClaimRef_thirdPartyEstimate CollisionClaimRef[]    @relation("CollisionClaimRef_thirdPartyEstimate")
+  from_InspectionItemResult_media           InspectionItemResult[] @relation("InspectionItemResult_media")
+  from_Authorization_signature              Authorization[]        @relation("Authorization_signature")
+  from_EstimateVersion_document             EstimateVersion[]      @relation("EstimateVersion_document")
 
   @@index([shopId])
   @@index([supersedesId])
@@ -532,6 +554,14 @@ model Shop {
   from_BookingHold_shop              BookingHold[]              @relation("BookingHold_shop")
   from_BookingRule_shop              BookingRule[]              @relation("BookingRule_shop")
   from_CheckIn_shop                  CheckIn[]                  @relation("CheckIn_shop")
+  from_RepairOrder_shop              RepairOrder[]              @relation("RepairOrder_shop")
+  from_StaffTask_shop                StaffTask[]                @relation("StaffTask_shop")
+  from_CannedJob_shop                CannedJob[]                @relation("CannedJob_shop")
+  from_InspectionTemplate_shop       InspectionTemplate[]       @relation("InspectionTemplate_shop")
+  from_LaborOperation_shop           LaborOperation[]           @relation("LaborOperation_shop")
+  from_PublishedService_shop         PublishedService[]         @relation("PublishedService_shop")
+  from_ServiceMenuItem_shop          ServiceMenuItem[]          @relation("ServiceMenuItem_shop")
+  from_PublicAccessToken_shop        PublicAccessToken[]        @relation("PublicAccessToken_shop")
 
   @@index([jurisdictionPackId])
   @@index([jurisdictionPolicyId])
@@ -606,25 +636,26 @@ model WorkerSchedule {
 }
 
 model FeePolicyVersion {
-  id                  String    @id @default(cuid())
-  shop                Shop?     @relation("FeePolicyVersion_shop", fields: [shopId], references: [id])
-  shopId              String?   @map("shop")
-  rules               FeeRule[] @relation("FeeRule_policy")
-  versionNumber       Int
-  status              String    @default("draft")
-  notes               String    @default("")
-  basedOnId           String    @default("")
-  author              User?     @relation("FeePolicyVersion_author", fields: [authorId], references: [id])
-  authorId            String?   @map("author")
-  publishedBy         User?     @relation("FeePolicyVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById       String?   @map("publishedBy")
-  publishedAt         DateTime?
-  effectiveFrom       DateTime?
-  retiredAt           DateTime?
-  version             Int       @default(0)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @default(now()) @updatedAt
-  from_Shop_feePolicy Shop[]    @relation("Shop_feePolicy")
+  id                                String        @id @default(cuid())
+  shop                              Shop?         @relation("FeePolicyVersion_shop", fields: [shopId], references: [id])
+  shopId                            String?       @map("shop")
+  rules                             FeeRule[]     @relation("FeeRule_policy")
+  versionNumber                     Int
+  status                            String        @default("draft")
+  notes                             String        @default("")
+  basedOnId                         String        @default("")
+  author                            User?         @relation("FeePolicyVersion_author", fields: [authorId], references: [id])
+  authorId                          String?       @map("author")
+  publishedBy                       User?         @relation("FeePolicyVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                     String?       @map("publishedBy")
+  publishedAt                       DateTime?
+  effectiveFrom                     DateTime?
+  retiredAt                         DateTime?
+  version                           Int           @default(0)
+  createdAt                         DateTime      @default(now())
+  updatedAt                         DateTime      @default(now()) @updatedAt
+  from_Shop_feePolicy               Shop[]        @relation("Shop_feePolicy")
+  from_RepairOrder_feePolicyVersion RepairOrder[] @relation("RepairOrder_feePolicyVersion")
 
   @@unique([shopId, versionNumber], map: "FeePolicyVersion_shop_number_key")
   @@index([shopId])
@@ -633,25 +664,26 @@ model FeePolicyVersion {
 }
 
 model FeeRule {
-  id               String            @id @default(cuid())
-  policy           FeePolicyVersion? @relation("FeeRule_policy", fields: [policyId], references: [id])
-  policyId         String?           @map("policy")
-  code             String            @default("haz_waste")
-  kind             String            @default("flat_per_ro")
-  base             String            @default("labor_and_parts")
-  percent          Decimal?          @postgresql.Decimal(12, 6)
-  flatMinor        BigInt?
-  perUnitMinor     BigInt?
-  minMinor         BigInt?
-  maxMinor         BigInt?
-  itemCategory     String            @default("")
-  taxTreatment     String            @default("follow_base")
-  separatelyStated Boolean           @default(true)
-  refundable       Boolean           @default(false)
-  refundWindowDays Int?
-  invoiceText      String            @default("")
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @default(now()) @updatedAt
+  id                   String            @id @default(cuid())
+  policy               FeePolicyVersion? @relation("FeeRule_policy", fields: [policyId], references: [id])
+  policyId             String?           @map("policy")
+  code                 String            @default("haz_waste")
+  kind                 String            @default("flat_per_ro")
+  base                 String            @default("labor_and_parts")
+  percent              Decimal?          @postgresql.Decimal(12, 6)
+  flatMinor            BigInt?
+  perUnitMinor         BigInt?
+  minMinor             BigInt?
+  maxMinor             BigInt?
+  itemCategory         String            @default("")
+  taxTreatment         String            @default("follow_base")
+  separatelyStated     Boolean           @default(true)
+  refundable           Boolean           @default(false)
+  refundWindowDays     Int?
+  invoiceText          String            @default("")
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @default(now()) @updatedAt
+  from_JobLine_feeRule JobLine[]         @relation("JobLine_feeRule")
 
   @@index([policyId])
 }
@@ -671,49 +703,50 @@ model JurisdictionPack {
 }
 
 model JurisdictionPolicyVersion {
-  id                                     String            @id @default(cuid())
-  pack                                   JurisdictionPack? @relation("JurisdictionPolicyVersion_pack", fields: [packId], references: [id])
-  packId                                 String?           @map("pack")
-  estimateThresholdMinor                 BigInt?
-  writtenEstimateWaiverAllowed           Boolean           @default(false)
-  waiverFormText                         String            @default("")
-  allowedAuthorizationMethods            Json?             @default("[]")
-  authorizationEvidenceRules             Json?             @default("{}")
-  toleranceRule                          Json?             @default("{\"kind\":\"fixed\",\"fixedMinor\":\"0\",\"includesTax\":true}")
-  requireOdometerIn                      Boolean           @default(true)
-  requireOdometerOut                     Boolean           @default(true)
-  requireSignedWorkOrder                 Boolean           @default(true)
-  requirePartCondition                   Boolean           @default(true)
-  crashPartOemDefault                    Boolean           @default(true)
-  shopSuppliesGenericAllowed             Boolean           @default(false)
-  replacedPartsOfferRequired             Boolean           @default(true)
-  replacedPartsOfferText                 String            @default("")
-  nonReturnableNoteText                  String            @default("")
-  teardownRules                          Json?             @default("{\"required\":true,\"maxReassemblyDaysDefault\":3,\"disclosureText\":\"\"}")
-  designeeRules                          Json?             @default("{}")
-  thirdPartyPayorNoticeText              String            @default("")
-  towingSeparateAuthorization            Boolean           @default(true)
-  subletDisclosureRequired               Boolean           @default(true)
-  invoiceRequiredFields                  Json?             @default("[]")
-  recordRetentionYears                   Int               @default(4)
-  surchargeAllowed                       Boolean           @default(false)
-  requiredNotices                        Json?             @default("[]")
-  versionNumber                          Int
-  status                                 String            @default("draft")
-  notes                                  String            @default("")
-  basedOnId                              String            @default("")
-  author                                 User?             @relation("JurisdictionPolicyVersion_author", fields: [authorId], references: [id])
-  authorId                               String?           @map("author")
-  publishedBy                            User?             @relation("JurisdictionPolicyVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById                          String?           @map("publishedBy")
-  publishedAt                            DateTime?
-  effectiveFrom                          DateTime?
-  retiredAt                              DateTime?
-  version                                Int               @default(0)
-  createdAt                              DateTime          @default(now())
-  updatedAt                              DateTime          @default(now()) @updatedAt
-  from_Shop_jurisdictionPolicy           Shop[]            @relation("Shop_jurisdictionPolicy")
-  from_CheckIn_jurisdictionPolicyVersion CheckIn[]         @relation("CheckIn_jurisdictionPolicyVersion")
+  id                                         String            @id @default(cuid())
+  pack                                       JurisdictionPack? @relation("JurisdictionPolicyVersion_pack", fields: [packId], references: [id])
+  packId                                     String?           @map("pack")
+  estimateThresholdMinor                     BigInt?
+  writtenEstimateWaiverAllowed               Boolean           @default(false)
+  waiverFormText                             String            @default("")
+  allowedAuthorizationMethods                Json?             @default("[]")
+  authorizationEvidenceRules                 Json?             @default("{}")
+  toleranceRule                              Json?             @default("{\"kind\":\"fixed\",\"fixedMinor\":\"0\",\"includesTax\":true}")
+  requireOdometerIn                          Boolean           @default(true)
+  requireOdometerOut                         Boolean           @default(true)
+  requireSignedWorkOrder                     Boolean           @default(true)
+  requirePartCondition                       Boolean           @default(true)
+  crashPartOemDefault                        Boolean           @default(true)
+  shopSuppliesGenericAllowed                 Boolean           @default(false)
+  replacedPartsOfferRequired                 Boolean           @default(true)
+  replacedPartsOfferText                     String            @default("")
+  nonReturnableNoteText                      String            @default("")
+  teardownRules                              Json?             @default("{\"required\":true,\"maxReassemblyDaysDefault\":3,\"disclosureText\":\"\"}")
+  designeeRules                              Json?             @default("{}")
+  thirdPartyPayorNoticeText                  String            @default("")
+  towingSeparateAuthorization                Boolean           @default(true)
+  subletDisclosureRequired                   Boolean           @default(true)
+  invoiceRequiredFields                      Json?             @default("[]")
+  recordRetentionYears                       Int               @default(4)
+  surchargeAllowed                           Boolean           @default(false)
+  requiredNotices                            Json?             @default("[]")
+  versionNumber                              Int
+  status                                     String            @default("draft")
+  notes                                      String            @default("")
+  basedOnId                                  String            @default("")
+  author                                     User?             @relation("JurisdictionPolicyVersion_author", fields: [authorId], references: [id])
+  authorId                                   String?           @map("author")
+  publishedBy                                User?             @relation("JurisdictionPolicyVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                              String?           @map("publishedBy")
+  publishedAt                                DateTime?
+  effectiveFrom                              DateTime?
+  retiredAt                                  DateTime?
+  version                                    Int               @default(0)
+  createdAt                                  DateTime          @default(now())
+  updatedAt                                  DateTime          @default(now()) @updatedAt
+  from_Shop_jurisdictionPolicy               Shop[]            @relation("Shop_jurisdictionPolicy")
+  from_CheckIn_jurisdictionPolicyVersion     CheckIn[]         @relation("CheckIn_jurisdictionPolicyVersion")
+  from_RepairOrder_jurisdictionPolicyVersion RepairOrder[]     @relation("RepairOrder_jurisdictionPolicyVersion")
 
   @@unique([packId, versionNumber], map: "JurisdictionPolicyVersion_pack_number_key")
   @@index([packId])
@@ -722,26 +755,27 @@ model JurisdictionPolicyVersion {
 }
 
 model LaborMatrixVersion {
-  id                    String    @id @default(cuid())
-  shop                  Shop?     @relation("LaborMatrixVersion_shop", fields: [shopId], references: [id])
-  shopId                String?   @map("shop")
-  bands                 Json?     @default("[]")
-  appliesToClasses      Json?     @default("[]")
-  versionNumber         Int
-  status                String    @default("draft")
-  notes                 String    @default("")
-  basedOnId             String    @default("")
-  author                User?     @relation("LaborMatrixVersion_author", fields: [authorId], references: [id])
-  authorId              String?   @map("author")
-  publishedBy           User?     @relation("LaborMatrixVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById         String?   @map("publishedBy")
-  publishedAt           DateTime?
-  effectiveFrom         DateTime?
-  retiredAt             DateTime?
-  version               Int       @default(0)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @default(now()) @updatedAt
-  from_Shop_laborMatrix Shop[]    @relation("Shop_laborMatrix")
+  id                                  String        @id @default(cuid())
+  shop                                Shop?         @relation("LaborMatrixVersion_shop", fields: [shopId], references: [id])
+  shopId                              String?       @map("shop")
+  bands                               Json?         @default("[]")
+  appliesToClasses                    Json?         @default("[]")
+  versionNumber                       Int
+  status                              String        @default("draft")
+  notes                               String        @default("")
+  basedOnId                           String        @default("")
+  author                              User?         @relation("LaborMatrixVersion_author", fields: [authorId], references: [id])
+  authorId                            String?       @map("author")
+  publishedBy                         User?         @relation("LaborMatrixVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                       String?       @map("publishedBy")
+  publishedAt                         DateTime?
+  effectiveFrom                       DateTime?
+  retiredAt                           DateTime?
+  version                             Int           @default(0)
+  createdAt                           DateTime      @default(now())
+  updatedAt                           DateTime      @default(now()) @updatedAt
+  from_Shop_laborMatrix               Shop[]        @relation("Shop_laborMatrix")
+  from_RepairOrder_laborMatrixVersion RepairOrder[] @relation("RepairOrder_laborMatrixVersion")
 
   @@unique([shopId, versionNumber], map: "LaborMatrixVersion_shop_number_key")
   @@index([shopId])
@@ -750,17 +784,18 @@ model LaborMatrixVersion {
 }
 
 model LaborRateClass {
-  id            String                    @id @default(cuid())
-  set           LaborRateClassSetVersion? @relation("LaborRateClass_set", fields: [setId], references: [id])
-  setId         String?                   @map("set")
-  code          String                    @default("general")
-  name          String                    @default("")
-  rateMinor     BigInt
-  taxCategory   TaxCategory?              @relation("LaborRateClass_taxCategory", fields: [taxCategoryId], references: [id])
-  taxCategoryId String?                   @map("taxCategory")
-  isDefault     Boolean                   @default(false)
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @default(now()) @updatedAt
+  id                     String                    @id @default(cuid())
+  set                    LaborRateClassSetVersion? @relation("LaborRateClass_set", fields: [setId], references: [id])
+  setId                  String?                   @map("set")
+  code                   String                    @default("general")
+  name                   String                    @default("")
+  rateMinor              BigInt
+  taxCategory            TaxCategory?              @relation("LaborRateClass_taxCategory", fields: [taxCategoryId], references: [id])
+  taxCategoryId          String?                   @map("taxCategory")
+  isDefault              Boolean                   @default(false)
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @default(now()) @updatedAt
+  from_JobLine_rateClass JobLine[]                 @relation("JobLine_rateClass")
 
   @@unique([setId, code], map: "LaborRateClass_set_code_key")
   @@index([setId])
@@ -768,25 +803,26 @@ model LaborRateClass {
 }
 
 model LaborRateClassSetVersion {
-  id                          String           @id @default(cuid())
-  shop                        Shop?            @relation("LaborRateClassSetVersion_shop", fields: [shopId], references: [id])
-  shopId                      String?          @map("shop")
-  classes                     LaborRateClass[] @relation("LaborRateClass_set")
-  versionNumber               Int
-  status                      String           @default("draft")
-  notes                       String           @default("")
-  basedOnId                   String           @default("")
-  author                      User?            @relation("LaborRateClassSetVersion_author", fields: [authorId], references: [id])
-  authorId                    String?          @map("author")
-  publishedBy                 User?            @relation("LaborRateClassSetVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById               String?          @map("publishedBy")
-  publishedAt                 DateTime?
-  effectiveFrom               DateTime?
-  retiredAt                   DateTime?
-  version                     Int              @default(0)
-  createdAt                   DateTime         @default(now())
-  updatedAt                   DateTime         @default(now()) @updatedAt
-  from_Shop_laborRateClassSet Shop[]           @relation("Shop_laborRateClassSet")
+  id                                        String           @id @default(cuid())
+  shop                                      Shop?            @relation("LaborRateClassSetVersion_shop", fields: [shopId], references: [id])
+  shopId                                    String?          @map("shop")
+  classes                                   LaborRateClass[] @relation("LaborRateClass_set")
+  versionNumber                             Int
+  status                                    String           @default("draft")
+  notes                                     String           @default("")
+  basedOnId                                 String           @default("")
+  author                                    User?            @relation("LaborRateClassSetVersion_author", fields: [authorId], references: [id])
+  authorId                                  String?          @map("author")
+  publishedBy                               User?            @relation("LaborRateClassSetVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                             String?          @map("publishedBy")
+  publishedAt                               DateTime?
+  effectiveFrom                             DateTime?
+  retiredAt                                 DateTime?
+  version                                   Int              @default(0)
+  createdAt                                 DateTime         @default(now())
+  updatedAt                                 DateTime         @default(now()) @updatedAt
+  from_Shop_laborRateClassSet               Shop[]           @relation("Shop_laborRateClassSet")
+  from_RepairOrder_laborRateClassSetVersion RepairOrder[]    @relation("RepairOrder_laborRateClassSetVersion")
 
   @@unique([shopId, versionNumber], map: "LaborRateClassSetVersion_shop_number_key")
   @@index([shopId])
@@ -795,28 +831,29 @@ model LaborRateClassSetVersion {
 }
 
 model PartsMatrixVersion {
-  id                    String    @id @default(cuid())
-  shop                  Shop?     @relation("PartsMatrixVersion_shop", fields: [shopId], references: [id])
-  shopId                String?   @map("shop")
-  tiers                 Json?     @default("[]")
-  categoryOverrides     Json?     @default("{}")
-  supplierOverrides     Json?     @default("{}")
-  marginFloorPct        Decimal   @default("0.300000") @postgresql.Decimal(12, 6)
-  versionNumber         Int
-  status                String    @default("draft")
-  notes                 String    @default("")
-  basedOnId             String    @default("")
-  author                User?     @relation("PartsMatrixVersion_author", fields: [authorId], references: [id])
-  authorId              String?   @map("author")
-  publishedBy           User?     @relation("PartsMatrixVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById         String?   @map("publishedBy")
-  publishedAt           DateTime?
-  effectiveFrom         DateTime?
-  retiredAt             DateTime?
-  version               Int       @default(0)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @default(now()) @updatedAt
-  from_Shop_partsMatrix Shop[]    @relation("Shop_partsMatrix")
+  id                                  String        @id @default(cuid())
+  shop                                Shop?         @relation("PartsMatrixVersion_shop", fields: [shopId], references: [id])
+  shopId                              String?       @map("shop")
+  tiers                               Json?         @default("[]")
+  categoryOverrides                   Json?         @default("{}")
+  supplierOverrides                   Json?         @default("{}")
+  marginFloorPct                      Decimal       @default("0.300000") @postgresql.Decimal(12, 6)
+  versionNumber                       Int
+  status                              String        @default("draft")
+  notes                               String        @default("")
+  basedOnId                           String        @default("")
+  author                              User?         @relation("PartsMatrixVersion_author", fields: [authorId], references: [id])
+  authorId                            String?       @map("author")
+  publishedBy                         User?         @relation("PartsMatrixVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                       String?       @map("publishedBy")
+  publishedAt                         DateTime?
+  effectiveFrom                       DateTime?
+  retiredAt                           DateTime?
+  version                             Int           @default(0)
+  createdAt                           DateTime      @default(now())
+  updatedAt                           DateTime      @default(now()) @updatedAt
+  from_Shop_partsMatrix               Shop[]        @relation("Shop_partsMatrix")
+  from_RepairOrder_partsMatrixVersion RepairOrder[] @relation("RepairOrder_partsMatrixVersion")
 
   @@unique([shopId, versionNumber], map: "PartsMatrixVersion_shop_number_key")
   @@index([shopId])
@@ -825,44 +862,45 @@ model PartsMatrixVersion {
 }
 
 model ShopPolicyVersion {
-  id                            String    @id @default(cuid())
-  shop                          Shop?     @relation("ShopPolicyVersion_shop", fields: [shopId], references: [id])
-  shopId                        String?   @map("shop")
-  flagHoursAt                   String    @default("job_completed")
-  comebackPayRule               String    @default("reverse")
-  allowConcurrentJobClocks      Boolean   @default(false)
-  requireQualityCheck           Boolean   @default(true)
-  diagnosisTrustThreshold       Decimal   @default("0.7000") @postgresql.Decimal(5, 4)
-  authorizationLinkTtlHours     Int       @default(72)
-  promisedTimeRequired          Boolean   @default(true)
-  noShowGraceMinutes            Int       @default(30)
-  discountLimitPctByRole        Json?     @default("{\"seed_role_advisor\":\"0.10\"}")
-  refundApprovalMinor           BigInt    @default(0)
-  creditMemoApprovalMinor       BigInt    @default(5000)
-  agentOrderLimitMinor          BigInt    @default(0)
-  agentAutonomy                 Json?     @default("{}")
-  proposalConfirmGranularity    String    @default("per_step")
-  declinedSafetyFollowUpPurpose String    @default("marketing")
-  followUpCadenceDays           Json?     @default("[3,30,90]")
-  depositPolicy                 Json?     @default("{}")
-  surchargePolicy               Json?     @default("{\"enabled\":false}")
-  inspectionClockMode           String    @default("job")
-  markupFactorDefault           Decimal   @default("1.000000") @postgresql.Decimal(12, 6)
-  versionNumber                 Int
-  status                        String    @default("draft")
-  notes                         String    @default("")
-  basedOnId                     String    @default("")
-  author                        User?     @relation("ShopPolicyVersion_author", fields: [authorId], references: [id])
-  authorId                      String?   @map("author")
-  publishedBy                   User?     @relation("ShopPolicyVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById                 String?   @map("publishedBy")
-  publishedAt                   DateTime?
-  effectiveFrom                 DateTime?
-  retiredAt                     DateTime?
-  version                       Int       @default(0)
-  createdAt                     DateTime  @default(now())
-  updatedAt                     DateTime  @default(now()) @updatedAt
-  from_Shop_shopPolicy          Shop[]    @relation("Shop_shopPolicy")
+  id                                 String        @id @default(cuid())
+  shop                               Shop?         @relation("ShopPolicyVersion_shop", fields: [shopId], references: [id])
+  shopId                             String?       @map("shop")
+  flagHoursAt                        String        @default("job_completed")
+  comebackPayRule                    String        @default("reverse")
+  allowConcurrentJobClocks           Boolean       @default(false)
+  requireQualityCheck                Boolean       @default(true)
+  diagnosisTrustThreshold            Decimal       @default("0.7000") @postgresql.Decimal(5, 4)
+  authorizationLinkTtlHours          Int           @default(72)
+  promisedTimeRequired               Boolean       @default(true)
+  noShowGraceMinutes                 Int           @default(30)
+  discountLimitPctByRole             Json?         @default("{\"seed_role_advisor\":\"0.10\"}")
+  refundApprovalMinor                BigInt        @default(0)
+  creditMemoApprovalMinor            BigInt        @default(5000)
+  agentOrderLimitMinor               BigInt        @default(0)
+  agentAutonomy                      Json?         @default("{}")
+  proposalConfirmGranularity         String        @default("per_step")
+  declinedSafetyFollowUpPurpose      String        @default("marketing")
+  followUpCadenceDays                Json?         @default("[3,30,90]")
+  depositPolicy                      Json?         @default("{}")
+  surchargePolicy                    Json?         @default("{\"enabled\":false}")
+  inspectionClockMode                String        @default("job")
+  markupFactorDefault                Decimal       @default("1.000000") @postgresql.Decimal(12, 6)
+  versionNumber                      Int
+  status                             String        @default("draft")
+  notes                              String        @default("")
+  basedOnId                          String        @default("")
+  author                             User?         @relation("ShopPolicyVersion_author", fields: [authorId], references: [id])
+  authorId                           String?       @map("author")
+  publishedBy                        User?         @relation("ShopPolicyVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                      String?       @map("publishedBy")
+  publishedAt                        DateTime?
+  effectiveFrom                      DateTime?
+  retiredAt                          DateTime?
+  version                            Int           @default(0)
+  createdAt                          DateTime      @default(now())
+  updatedAt                          DateTime      @default(now()) @updatedAt
+  from_Shop_shopPolicy               Shop[]        @relation("Shop_shopPolicy")
+  from_RepairOrder_shopPolicyVersion RepairOrder[] @relation("RepairOrder_shopPolicyVersion")
 
   @@unique([shopId, versionNumber], map: "ShopPolicyVersion_shop_number_key")
   @@index([shopId])
@@ -879,6 +917,7 @@ model TaxCategory {
   updatedAt                       DateTime         @default(now()) @updatedAt
   from_LaborRateClass_taxCategory LaborRateClass[] @relation("LaborRateClass_taxCategory")
   from_TaxRule_category           TaxRule[]        @relation("TaxRule_category")
+  from_JobLine_taxCategory        JobLine[]        @relation("JobLine_taxCategory")
 }
 
 model TaxRule {
@@ -900,26 +939,27 @@ model TaxRule {
 }
 
 model TaxRuleSetVersion {
-  id                   String    @id @default(cuid())
-  shop                 Shop?     @relation("TaxRuleSetVersion_shop", fields: [shopId], references: [id])
-  shopId               String?   @map("shop")
-  rounding             String    @default("per_line")
-  rules                TaxRule[] @relation("TaxRule_ruleSet")
-  versionNumber        Int
-  status               String    @default("draft")
-  notes                String    @default("")
-  basedOnId            String    @default("")
-  author               User?     @relation("TaxRuleSetVersion_author", fields: [authorId], references: [id])
-  authorId             String?   @map("author")
-  publishedBy          User?     @relation("TaxRuleSetVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById        String?   @map("publishedBy")
-  publishedAt          DateTime?
-  effectiveFrom        DateTime?
-  retiredAt            DateTime?
-  version              Int       @default(0)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @default(now()) @updatedAt
-  from_Shop_taxRuleSet Shop[]    @relation("Shop_taxRuleSet")
+  id                                 String        @id @default(cuid())
+  shop                               Shop?         @relation("TaxRuleSetVersion_shop", fields: [shopId], references: [id])
+  shopId                             String?       @map("shop")
+  rounding                           String        @default("per_line")
+  rules                              TaxRule[]     @relation("TaxRule_ruleSet")
+  versionNumber                      Int
+  status                             String        @default("draft")
+  notes                              String        @default("")
+  basedOnId                          String        @default("")
+  author                             User?         @relation("TaxRuleSetVersion_author", fields: [authorId], references: [id])
+  authorId                           String?       @map("author")
+  publishedBy                        User?         @relation("TaxRuleSetVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                      String?       @map("publishedBy")
+  publishedAt                        DateTime?
+  effectiveFrom                      DateTime?
+  retiredAt                          DateTime?
+  version                            Int           @default(0)
+  createdAt                          DateTime      @default(now())
+  updatedAt                          DateTime      @default(now()) @updatedAt
+  from_Shop_taxRuleSet               Shop[]        @relation("Shop_taxRuleSet")
+  from_RepairOrder_taxRuleSetVersion RepairOrder[] @relation("RepairOrder_taxRuleSetVersion")
 
   @@unique([shopId, versionNumber], map: "TaxRuleSetVersion_shop_number_key")
   @@index([shopId])
@@ -928,42 +968,44 @@ model TaxRuleSetVersion {
 }
 
 model WarrantyTerm {
-  id          String                  @id @default(cuid())
-  termSet     WarrantyTermSetVersion? @relation("WarrantyTerm_termSet", fields: [termSetId], references: [id])
-  termSetId   String?                 @map("termSet")
-  code        String                  @default("")
-  name        String                  @default("")
-  months      Int
-  miles       Int
-  appliesTo   Json?                   @default("[]")
-  invoiceText String                  @default("")
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @default(now()) @updatedAt
+  id                    String                  @id @default(cuid())
+  termSet               WarrantyTermSetVersion? @relation("WarrantyTerm_termSet", fields: [termSetId], references: [id])
+  termSetId             String?                 @map("termSet")
+  code                  String                  @default("")
+  name                  String                  @default("")
+  months                Int
+  miles                 Int
+  appliesTo             Json?                   @default("[]")
+  invoiceText           String                  @default("")
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @default(now()) @updatedAt
+  from_Job_warrantyTerm Job[]                   @relation("Job_warrantyTerm")
 
   @@unique([termSetId, code], map: "WarrantyTerm_set_code_key")
   @@index([termSetId])
 }
 
 model WarrantyTermSetVersion {
-  id                        String         @id @default(cuid())
-  shop                      Shop?          @relation("WarrantyTermSetVersion_shop", fields: [shopId], references: [id])
-  shopId                    String?        @map("shop")
-  terms                     WarrantyTerm[] @relation("WarrantyTerm_termSet")
-  versionNumber             Int
-  status                    String         @default("draft")
-  notes                     String         @default("")
-  basedOnId                 String         @default("")
-  author                    User?          @relation("WarrantyTermSetVersion_author", fields: [authorId], references: [id])
-  authorId                  String?        @map("author")
-  publishedBy               User?          @relation("WarrantyTermSetVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById             String?        @map("publishedBy")
-  publishedAt               DateTime?
-  effectiveFrom             DateTime?
-  retiredAt                 DateTime?
-  version                   Int            @default(0)
-  createdAt                 DateTime       @default(now())
-  updatedAt                 DateTime       @default(now()) @updatedAt
-  from_Shop_warrantyTermSet Shop[]         @relation("Shop_warrantyTermSet")
+  id                                      String         @id @default(cuid())
+  shop                                    Shop?          @relation("WarrantyTermSetVersion_shop", fields: [shopId], references: [id])
+  shopId                                  String?        @map("shop")
+  terms                                   WarrantyTerm[] @relation("WarrantyTerm_termSet")
+  versionNumber                           Int
+  status                                  String         @default("draft")
+  notes                                   String         @default("")
+  basedOnId                               String         @default("")
+  author                                  User?          @relation("WarrantyTermSetVersion_author", fields: [authorId], references: [id])
+  authorId                                String?        @map("author")
+  publishedBy                             User?          @relation("WarrantyTermSetVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                           String?        @map("publishedBy")
+  publishedAt                             DateTime?
+  effectiveFrom                           DateTime?
+  retiredAt                               DateTime?
+  version                                 Int            @default(0)
+  createdAt                               DateTime       @default(now())
+  updatedAt                               DateTime       @default(now()) @updatedAt
+  from_Shop_warrantyTermSet               Shop[]         @relation("Shop_warrantyTermSet")
+  from_RepairOrder_warrantyTermSetVersion RepairOrder[]  @relation("RepairOrder_warrantyTermSetVersion")
 
   @@unique([shopId, versionNumber], map: "WarrantyTermSetVersion_shop_number_key")
   @@index([shopId])
@@ -990,6 +1032,8 @@ model BusinessAccount {
   createdAt                             DateTime           @default(now())
   updatedAt                             DateTime           @default(now()) @updatedAt
   from_VehicleOwnership_businessAccount VehicleOwnership[] @relation("VehicleOwnership_businessAccount")
+  from_PayerSplit_businessAccount       PayerSplit[]       @relation("PayerSplit_businessAccount")
+  from_RepairOrder_businessAccount      RepairOrder[]      @relation("RepairOrder_businessAccount")
 }
 
 model ContactConsent {
@@ -1044,6 +1088,7 @@ model Customer {
   from_CustomerMergeEvent_survivor CustomerMergeEvent[] @relation("CustomerMergeEvent_survivor")
   from_CustomerMergeEvent_merged   CustomerMergeEvent[] @relation("CustomerMergeEvent_merged")
   from_CheckIn_customer            CheckIn[]            @relation("CheckIn_customer")
+  from_RepairOrder_customer        RepairOrder[]        @relation("RepairOrder_customer")
 
   @@index([lastName])
   @@index([displayName])
@@ -1055,19 +1100,20 @@ model Customer {
 }
 
 model CustomerContact {
-  id         String           @id @default(cuid())
-  customer   Customer?        @relation("CustomerContact_customer", fields: [customerId], references: [id])
-  customerId String?          @map("customer")
-  kind       String
-  value      String           @default("")
-  valueHash  String           @default("")
-  label      String           @default("")
-  isPrimary  Boolean          @default(false)
-  verifiedAt DateTime?
-  status     String           @default("active")
-  consents   ContactConsent[] @relation("ContactConsent_contact")
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @default(now()) @updatedAt
+  id                                String                 @id @default(cuid())
+  customer                          Customer?              @relation("CustomerContact_customer", fields: [customerId], references: [id])
+  customerId                        String?                @map("customer")
+  kind                              String
+  value                             String                 @default("")
+  valueHash                         String                 @default("")
+  label                             String                 @default("")
+  isPrimary                         Boolean                @default(false)
+  verifiedAt                        DateTime?
+  status                            String                 @default("active")
+  consents                          ContactConsent[]       @relation("ContactConsent_contact")
+  createdAt                         DateTime               @default(now())
+  updatedAt                         DateTime               @default(now()) @updatedAt
+  from_AuthorizationRequest_contact AuthorizationRequest[] @relation("AuthorizationRequest_contact")
 
   @@unique([customerId, kind, valueHash], map: "CustomerContact_customer_kind_hash_key")
   @@index([customerId])
@@ -1110,21 +1156,23 @@ model ExternalReference {
 }
 
 model OdometerReading {
-  id                      String    @id @default(cuid())
-  vehicle                 Vehicle?  @relation("OdometerReading_vehicle", fields: [vehicleId], references: [id])
-  vehicleId               String?   @map("vehicle")
-  value                   Int
-  unit                    String
-  source                  String
-  checkIn                 CheckIn?  @relation("OdometerReading_checkIn", fields: [checkInId], references: [id])
-  checkInId               String?   @map("checkIn")
-  recordedBy              User?     @relation("OdometerReading_recordedBy", fields: [recordedById], references: [id])
-  recordedById            String?   @map("recordedBy")
-  at                      DateTime? @default(now())
-  accepted                Boolean   @default(true)
-  anomaly                 String
-  overrideReason          String    @default("")
-  from_CheckIn_odometerIn CheckIn[] @relation("CheckIn_odometerIn")
+  id                           String        @id @default(cuid())
+  vehicle                      Vehicle?      @relation("OdometerReading_vehicle", fields: [vehicleId], references: [id])
+  vehicleId                    String?       @map("vehicle")
+  value                        Int
+  unit                         String
+  source                       String
+  checkIn                      CheckIn?      @relation("OdometerReading_checkIn", fields: [checkInId], references: [id])
+  checkInId                    String?       @map("checkIn")
+  recordedBy                   User?         @relation("OdometerReading_recordedBy", fields: [recordedById], references: [id])
+  recordedById                 String?       @map("recordedBy")
+  at                           DateTime?     @default(now())
+  accepted                     Boolean       @default(true)
+  anomaly                      String
+  overrideReason               String        @default("")
+  from_CheckIn_odometerIn      CheckIn[]     @relation("CheckIn_odometerIn")
+  from_RepairOrder_odometerIn  RepairOrder[] @relation("RepairOrder_odometerIn")
+  from_RepairOrder_odometerOut RepairOrder[] @relation("RepairOrder_odometerOut")
 
   @@index([vehicleId])
   @@index([checkInId])
@@ -1167,38 +1215,39 @@ model RecallCheck {
 }
 
 model Vehicle {
-  id                   String              @id @default(cuid())
-  vin                  String              @default("")
-  vinValid             String
-  noVinReason          String              @default("")
-  year                 Int?
-  make                 String              @default("")
-  model                String              @default("")
-  trim                 String              @default("")
-  engine               String              @default("")
-  drivetrain           String              @default("")
-  transmission         String              @default("")
-  fuelType             String              @default("")
-  bodyClass            String              @default("")
-  color                String              @default("")
-  currentDecode        VehicleDecode?      @relation("Vehicle_currentDecode", fields: [currentDecodeId], references: [id])
-  currentDecodeId      String?             @map("currentDecode")
-  decodes              VehicleDecode[]     @relation("VehicleDecode_vehicle")
-  recallChecks         RecallCheck[]       @relation("RecallCheck_vehicle")
-  ownerships           VehicleOwnership[]  @relation("VehicleOwnership_vehicle")
-  plates               PlateRegistration[] @relation("PlateRegistration_vehicle")
-  odometerReadings     OdometerReading[]   @relation("OdometerReading_vehicle")
-  appointments         Appointment[]       @relation("Appointment_vehicle")
-  lastOdometer         Int?
-  lastOdometerUnit     String              @default("mi")
-  tireSpec             Json?               @default("{}")
-  maintenanceIntervals Json?               @default("{}")
-  notes                String              @default("")
-  status               String              @default("active")
-  version              Int                 @default(0)
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @default(now()) @updatedAt
-  from_CheckIn_vehicle CheckIn[]           @relation("CheckIn_vehicle")
+  id                       String              @id @default(cuid())
+  vin                      String              @default("")
+  vinValid                 String
+  noVinReason              String              @default("")
+  year                     Int?
+  make                     String              @default("")
+  model                    String              @default("")
+  trim                     String              @default("")
+  engine                   String              @default("")
+  drivetrain               String              @default("")
+  transmission             String              @default("")
+  fuelType                 String              @default("")
+  bodyClass                String              @default("")
+  color                    String              @default("")
+  currentDecode            VehicleDecode?      @relation("Vehicle_currentDecode", fields: [currentDecodeId], references: [id])
+  currentDecodeId          String?             @map("currentDecode")
+  decodes                  VehicleDecode[]     @relation("VehicleDecode_vehicle")
+  recallChecks             RecallCheck[]       @relation("RecallCheck_vehicle")
+  ownerships               VehicleOwnership[]  @relation("VehicleOwnership_vehicle")
+  plates                   PlateRegistration[] @relation("PlateRegistration_vehicle")
+  odometerReadings         OdometerReading[]   @relation("OdometerReading_vehicle")
+  appointments             Appointment[]       @relation("Appointment_vehicle")
+  lastOdometer             Int?
+  lastOdometerUnit         String              @default("mi")
+  tireSpec                 Json?               @default("{}")
+  maintenanceIntervals     Json?               @default("{}")
+  notes                    String              @default("")
+  status                   String              @default("active")
+  version                  Int                 @default(0)
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @default(now()) @updatedAt
+  from_CheckIn_vehicle     CheckIn[]           @relation("CheckIn_vehicle")
+  from_RepairOrder_vehicle RepairOrder[]       @relation("RepairOrder_vehicle")
 
   @@index([vin])
   @@index([currentDecodeId])
@@ -1272,6 +1321,7 @@ model Appointment {
   createdAt                    DateTime      @default(now())
   updatedAt                    DateTime      @default(now()) @updatedAt
   from_BookingHold_appointment BookingHold[] @relation("BookingHold_appointment")
+  from_RepairOrder_appointment RepairOrder[] @relation("RepairOrder_appointment")
 
   @@index([shopId])
   @@index([customerId])
@@ -1347,6 +1397,8 @@ model CheckIn {
   recallWarning                Json?
   jurisdictionPolicyVersion    JurisdictionPolicyVersion? @relation("CheckIn_jurisdictionPolicyVersion", fields: [jurisdictionPolicyVersionId], references: [id])
   jurisdictionPolicyVersionId  String?                    @map("jurisdictionPolicyVersion")
+  repairOrder                  RepairOrder?               @relation("CheckIn_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId                String?                    @unique @map("repairOrder")
   at                           DateTime?                  @default(now())
   by                           User?                      @relation("CheckIn_by", fields: [byId], references: [id])
   byId                         String?                    @map("by")
@@ -1361,6 +1413,717 @@ model CheckIn {
   @@index([odometerInId])
   @@index([jurisdictionPolicyVersionId])
   @@index([byId])
+}
+
+model CollisionClaimRef {
+  id                     String       @id @default(cuid())
+  repairOrder            RepairOrder? @relation("CollisionClaimRef_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId          String?      @unique @map("repairOrder")
+  insurer                String       @default("")
+  claimNumber            String       @default("")
+  adjuster               Json?
+  drpProgram             String       @default("")
+  externalEstimateSystem String       @default("other")
+  externalEstimateRef    String       @default("")
+  thirdPartyEstimate     Document?    @relation("CollisionClaimRef_thirdPartyEstimate", fields: [thirdPartyEstimateId], references: [id])
+  thirdPartyEstimateId   String?      @map("thirdPartyEstimate")
+  notes                  String       @default("")
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @default(now()) @updatedAt
+
+  @@index([thirdPartyEstimateId])
+}
+
+model Concern {
+  id            String       @id @default(cuid())
+  repairOrder   RepairOrder? @relation("Concern_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId String?      @map("repairOrder")
+  customerWords String       @default("")
+  category      String       @default("other")
+  diagnosis     String       @default("")
+  cause         String       @default("")
+  correction    String       @default("")
+  jobs          Job[]        @relation("Job_concern")
+  sortOrder     Int?         @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
+
+  @@index([repairOrderId])
+}
+
+model Job {
+  id                       String                @id @default(cuid())
+  repairOrder              RepairOrder?          @relation("Job_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId            String?               @map("repairOrder")
+  number                   Int
+  title                    String                @default("")
+  customerDescription      String                @default("")
+  kind                     String                @default("repair")
+  concern                  Concern?              @relation("Job_concern", fields: [concernId], references: [id])
+  concernId                String?               @map("concern")
+  source                   String                @default("manual")
+  cannedJobVersion         CannedJobVersion?     @relation("Job_cannedJobVersion", fields: [cannedJobVersionId], references: [id])
+  cannedJobVersionId       String?               @map("cannedJobVersion")
+  inspectionItemResult     InspectionItemResult? @relation("Job_inspectionItemResult", fields: [inspectionItemResultId], references: [id])
+  inspectionItemResultId   String?               @map("inspectionItemResult")
+  lines                    JobLine[]             @relation("JobLine_job")
+  techShares               JobTechShare[]        @relation("JobTechShare_job")
+  payerSplits              PayerSplit[]          @relation("PayerSplit_job")
+  urgency                  String                @default("none")
+  warrantyTerm             WarrantyTerm?         @relation("Job_warrantyTerm", fields: [warrantyTermId], references: [id])
+  warrantyTermId           String?               @map("warrantyTerm")
+  contentHash              String                @default("")
+  priceSnapshot            Json?
+  subtotalMinor            BigInt                @default(0)
+  taxMinor                 BigInt                @default(0)
+  totalMinor               BigInt                @default(0)
+  laborMinor               BigInt                @default(0)
+  partsMinor               BigInt                @default(0)
+  feesMinor                BigInt                @default(0)
+  costMinor                BigInt                @default(0)
+  marginMinor              BigInt                @default(0)
+  offeredInVersion         EstimateVersion?      @relation("Job_offeredInVersion", fields: [offeredInVersionId], references: [id])
+  offeredInVersionId       String?               @map("offeredInVersion")
+  authorizedAmountMinor    BigInt                @default(0)
+  authorizedSubtotalMinor  BigInt                @default(0)
+  authorizedContentHash    String                @default("")
+  authorizedIdentityHash   String                @default("")
+  chargeCeilingMinor       BigInt                @default(0)
+  currentAuthorization     Authorization?        @relation("Job_currentAuthorization", fields: [currentAuthorizationId], references: [id])
+  currentAuthorizationId   String?               @map("currentAuthorization")
+  authorizations           Authorization[]       @relation("Authorization_job")
+  decisions                JobDecision[]         @relation("JobDecision_job")
+  belowThresholdRecordedAt DateTime?
+  noChargeReason           String                @default("")
+  teardownDisclosure       TeardownDisclosure?   @relation("Job_teardownDisclosure", fields: [teardownDisclosureId], references: [id])
+  teardownDisclosureId     String?               @unique @map("teardownDisclosure")
+  reauthorizationReason    String                @default("")
+  workStartedAt            DateTime?
+  completedAt              DateTime?
+  status                   String                @default("draft")
+  version                  Int                   @default(0)
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @default(now()) @updatedAt
+
+  @@unique([repairOrderId, number], map: "Job_ro_number_key")
+  @@index([repairOrderId])
+  @@index([concernId])
+  @@index([cannedJobVersionId])
+  @@index([inspectionItemResultId])
+  @@index([warrantyTermId])
+  @@index([offeredInVersionId])
+  @@index([currentAuthorizationId])
+}
+
+model JobLine {
+  id                 String          @id @default(cuid())
+  job                Job?            @relation("JobLine_job", fields: [jobId], references: [id])
+  jobId              String?         @map("job")
+  kind               String          @default("labor")
+  description        String          @default("")
+  auto               Boolean         @default(false)
+  rateClass          LaborRateClass? @relation("JobLine_rateClass", fields: [rateClassId], references: [id])
+  rateClassId        String?         @map("rateClass")
+  soldCentiHours     Int             @default(0)
+  guideCentiHours    Int             @default(0)
+  overlapCentiHours  Int             @default(0)
+  guideSnapshot      Json?
+  rateMinor          BigInt          @default(0)
+  partNumber         String          @default("")
+  brand              String          @default("")
+  partCategory       String          @default("")
+  condition          String?
+  quantityMilli      Int             @default(1000)
+  unitOfMeasure      String          @default("")
+  unitCostMinor      BigInt          @default(0)
+  unitPriceMinor     BigInt          @default(0)
+  matrixTierSnapshot Json?
+  fulfilment         String          @default("order_on_authorization")
+  isNewTire          Boolean         @default(false)
+  tireSize           String          @default("")
+  subletVendorName   String          @default("")
+  subletCostMinor    BigInt          @default(0)
+  feeRule            FeeRule?        @relation("JobLine_feeRule", fields: [feeRuleId], references: [id])
+  feeRuleId          String?         @map("feeRule")
+  feeCode            String          @default("")
+  taxCategory        TaxCategory?    @relation("JobLine_taxCategory", fields: [taxCategoryId], references: [id])
+  taxCategoryId      String?         @map("taxCategory")
+  taxCategoryCode    String          @default("")
+  taxable            Boolean         @default(false)
+  taxRate            Decimal         @default("0.000000") @postgresql.Decimal(12, 6)
+  extendedMinor      BigInt          @default(0)
+  taxMinor           BigInt          @default(0)
+  override           Json?
+  sortOrder          Int?            @default(0)
+  version            Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @default(now()) @updatedAt
+
+  @@index([jobId])
+  @@index([rateClassId])
+  @@index([feeRuleId])
+  @@index([taxCategoryId])
+}
+
+model JobTechShare {
+  id           String   @id @default(cuid())
+  job          Job?     @relation("JobTechShare_job", fields: [jobId], references: [id])
+  jobId        String?  @map("job")
+  technician   User?    @relation("JobTechShare_technician", fields: [technicianId], references: [id])
+  technicianId String?  @map("technician")
+  sharePct     Decimal  @default("1.000000") @postgresql.Decimal(12, 6)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@index([jobId])
+  @@index([technicianId])
+}
+
+model PayerSplit {
+  id                   String           @id @default(cuid())
+  job                  Job?             @relation("PayerSplit_job", fields: [jobId], references: [id])
+  jobId                String?          @map("job")
+  payerKind            String           @default("customer")
+  businessAccount      BusinessAccount? @relation("PayerSplit_businessAccount", fields: [businessAccountId], references: [id])
+  businessAccountId    String?          @map("businessAccount")
+  payorName            String           @default("")
+  authorizationNumber  String           @default("")
+  claimNumber          String           @default("")
+  percent              Decimal          @default("1.000000") @postgresql.Decimal(12, 6)
+  fixedMinor           BigInt?
+  deductibleMinor      BigInt?
+  warrantyTaxTreatment String           @default("n_a")
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @default(now()) @updatedAt
+
+  @@index([jobId])
+  @@index([businessAccountId])
+}
+
+model QualityCheck {
+  id            String       @id @default(cuid())
+  repairOrder   RepairOrder? @relation("QualityCheck_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId String?      @map("repairOrder")
+  performedBy   User?        @relation("QualityCheck_performedBy", fields: [performedById], references: [id])
+  performedById String?      @map("performedBy")
+  roadTest      Boolean      @default(false)
+  checklist     Json?        @default("[]")
+  notes         String       @default("")
+  at            DateTime?
+  result        String       @default("pending")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
+
+  @@index([repairOrderId])
+  @@index([performedById])
+}
+
+model RepairOrder {
+  id                          String                     @id @default(cuid())
+  shop                        Shop?                      @relation("RepairOrder_shop", fields: [shopId], references: [id])
+  shopId                      String?                    @map("shop")
+  roNumber                    String                     @unique @default("")
+  kind                        String                     @default("standard")
+  customer                    Customer?                  @relation("RepairOrder_customer", fields: [customerId], references: [id])
+  customerId                  String?                    @map("customer")
+  businessAccount             BusinessAccount?           @relation("RepairOrder_businessAccount", fields: [businessAccountId], references: [id])
+  businessAccountId           String?                    @map("businessAccount")
+  vehicle                     Vehicle?                   @relation("RepairOrder_vehicle", fields: [vehicleId], references: [id])
+  vehicleId                   String?                    @map("vehicle")
+  serviceAdvisor              User?                      @relation("RepairOrder_serviceAdvisor", fields: [serviceAdvisorId], references: [id])
+  serviceAdvisorId            String?                    @map("serviceAdvisor")
+  appointment                 Appointment?               @relation("RepairOrder_appointment", fields: [appointmentId], references: [id])
+  appointmentId               String?                    @map("appointment")
+  checkIn                     CheckIn?                   @relation("CheckIn_repairOrder")
+  concerns                    Concern[]                  @relation("Concern_repairOrder")
+  jobs                        Job[]                      @relation("Job_repairOrder")
+  inspections                 Inspection[]               @relation("Inspection_repairOrder")
+  estimateVersions            EstimateVersion[]          @relation("EstimateVersion_repairOrder")
+  authorizationRequests       AuthorizationRequest[]     @relation("AuthorizationRequest_repairOrder")
+  odometerIn                  OdometerReading?           @relation("RepairOrder_odometerIn", fields: [odometerInId], references: [id])
+  odometerInId                String?                    @map("odometerIn")
+  odometerOut                 OdometerReading?           @relation("RepairOrder_odometerOut", fields: [odometerOutId], references: [id])
+  odometerOutId               String?                    @map("odometerOut")
+  jurisdictionPolicyVersion   JurisdictionPolicyVersion? @relation("RepairOrder_jurisdictionPolicyVersion", fields: [jurisdictionPolicyVersionId], references: [id])
+  jurisdictionPolicyVersionId String?                    @map("jurisdictionPolicyVersion")
+  shopPolicyVersion           ShopPolicyVersion?         @relation("RepairOrder_shopPolicyVersion", fields: [shopPolicyVersionId], references: [id])
+  shopPolicyVersionId         String?                    @map("shopPolicyVersion")
+  laborRateClassSetVersion    LaborRateClassSetVersion?  @relation("RepairOrder_laborRateClassSetVersion", fields: [laborRateClassSetVersionId], references: [id])
+  laborRateClassSetVersionId  String?                    @map("laborRateClassSetVersion")
+  laborMatrixVersion          LaborMatrixVersion?        @relation("RepairOrder_laborMatrixVersion", fields: [laborMatrixVersionId], references: [id])
+  laborMatrixVersionId        String?                    @map("laborMatrixVersion")
+  partsMatrixVersion          PartsMatrixVersion?        @relation("RepairOrder_partsMatrixVersion", fields: [partsMatrixVersionId], references: [id])
+  partsMatrixVersionId        String?                    @map("partsMatrixVersion")
+  feePolicyVersion            FeePolicyVersion?          @relation("RepairOrder_feePolicyVersion", fields: [feePolicyVersionId], references: [id])
+  feePolicyVersionId          String?                    @map("feePolicyVersion")
+  taxRuleSetVersion           TaxRuleSetVersion?         @relation("RepairOrder_taxRuleSetVersion", fields: [taxRuleSetVersionId], references: [id])
+  taxRuleSetVersionId         String?                    @map("taxRuleSetVersion")
+  warrantyTermSetVersion      WarrantyTermSetVersion?    @relation("RepairOrder_warrantyTermSetVersion", fields: [warrantyTermSetVersionId], references: [id])
+  warrantyTermSetVersionId    String?                    @map("warrantyTermSetVersion")
+  replacedPartsElection       String                     @default("not_asked")
+  electedAt                   DateTime?
+  designee                    Json?
+  promisedAt                  DateTime?
+  holdReason                  String                     @default("none")
+  holdNote                    String                     @default("")
+  heldAt                      DateTime?
+  waiter                      Boolean                    @default(false)
+  keyTag                      String                     @default("")
+  authorizedTotalMinor        BigInt                     @default(0)
+  currentTotalMinor           BigInt                     @default(0)
+  lockedAt                    DateTime?
+  releasedAt                  DateTime?
+  releasedBy                  User?                      @relation("RepairOrder_releasedBy", fields: [releasedById], references: [id])
+  releasedById                String?                    @map("releasedBy")
+  collisionClaimRef           CollisionClaimRef?         @relation("CollisionClaimRef_repairOrder")
+  qualityChecks               QualityCheck[]             @relation("QualityCheck_repairOrder")
+  tasks                       StaffTask[]                @relation("StaffTask_repairOrder")
+  openedAt                    DateTime?
+  openedBy                    User?                      @relation("RepairOrder_openedBy", fields: [openedById], references: [id])
+  openedById                  String?                    @map("openedBy")
+  voidReason                  String                     @default("")
+  status                      String                     @default("draft")
+  version                     Int                        @default(0)
+  createdAt                   DateTime                   @default(now())
+  updatedAt                   DateTime                   @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([businessAccountId])
+  @@index([vehicleId])
+  @@index([serviceAdvisorId])
+  @@index([appointmentId])
+  @@index([odometerInId])
+  @@index([odometerOutId])
+  @@index([jurisdictionPolicyVersionId])
+  @@index([shopPolicyVersionId])
+  @@index([laborRateClassSetVersionId])
+  @@index([laborMatrixVersionId])
+  @@index([partsMatrixVersionId])
+  @@index([feePolicyVersionId])
+  @@index([taxRuleSetVersionId])
+  @@index([warrantyTermSetVersionId])
+  @@index([releasedById])
+  @@index([openedById])
+  @@index([shopId, status], map: "RepairOrder_shop_status_idx")
+  @@index([vehicleId, createdAt], map: "RepairOrder_vehicle_created_idx")
+  @@index([customerId, createdAt], map: "RepairOrder_customer_created_idx")
+}
+
+model StaffTask {
+  id                     String                @id @default(cuid())
+  shop                   Shop?                 @relation("StaffTask_shop", fields: [shopId], references: [id])
+  shopId                 String?               @map("shop")
+  kind                   String                @default("authorization_callback")
+  title                  String                @default("")
+  detail                 String                @default("")
+  repairOrder            RepairOrder?          @relation("StaffTask_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId          String?               @map("repairOrder")
+  authorizationRequest   AuthorizationRequest? @relation("StaffTask_authorizationRequest", fields: [authorizationRequestId], references: [id])
+  authorizationRequestId String?               @map("authorizationRequest")
+  assignee               User?                 @relation("StaffTask_assignee", fields: [assigneeId], references: [id])
+  assigneeId             String?               @map("assignee")
+  createdByUser          User?                 @relation("StaffTask_createdByUser", fields: [createdByUserId], references: [id])
+  createdByUserId        String?               @map("createdByUser")
+  createdByAgent         AgentIdentity?        @relation("StaffTask_createdByAgent", fields: [createdByAgentId], references: [id])
+  createdByAgentId       String?               @map("createdByAgent")
+  source                 String                @default("staff")
+  evidence               Json?
+  dueAt                  DateTime?
+  doneAt                 DateTime?
+  doneBy                 User?                 @relation("StaffTask_doneBy", fields: [doneById], references: [id])
+  doneById               String?               @map("doneBy")
+  outcome                String                @default("")
+  status                 String                @default("open")
+  version                Int                   @default(0)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([repairOrderId])
+  @@index([authorizationRequestId])
+  @@index([assigneeId])
+  @@index([createdByUserId])
+  @@index([createdByAgentId])
+  @@index([doneById])
+  @@index([shopId, status, dueAt], map: "StaffTask_shop_status_due_idx")
+}
+
+model TeardownDisclosure {
+  id                    String    @id @default(cuid())
+  job                   Job?      @relation("Job_teardownDisclosure")
+  teardownCostMinor     BigInt    @default(0)
+  reassemblyCostMinor   BigInt    @default(0)
+  areaDescription       String    @default("")
+  destroyedParts        Json?     @default("[]")
+  restorationWarning    Boolean   @default(false)
+  maxReassemblyDays     Int?      @default(3)
+  disclosureText        String    @default("")
+  disclosureTextVersion String    @default("")
+  lockedAt              DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @default(now()) @updatedAt
+}
+
+model CannedJob {
+  id                              String             @id @default(cuid())
+  shop                            Shop?              @relation("CannedJob_shop", fields: [shopId], references: [id])
+  shopId                          String?            @map("shop")
+  code                            String             @default("")
+  name                            String             @default("")
+  category                        String             @default("")
+  active                          Boolean            @default(true)
+  versions                        CannedJobVersion[] @relation("CannedJobVersion_cannedJob")
+  currentVersion                  CannedJobVersion?  @relation("CannedJob_currentVersion", fields: [currentVersionId], references: [id])
+  currentVersionId                String?            @map("currentVersion")
+  createdAt                       DateTime           @default(now())
+  updatedAt                       DateTime           @default(now()) @updatedAt
+  from_PublishedService_cannedJob PublishedService[] @relation("PublishedService_cannedJob")
+  from_ServiceMenuItem_cannedJob  ServiceMenuItem[]  @relation("ServiceMenuItem_cannedJob")
+
+  @@index([shopId])
+  @@index([currentVersionId])
+}
+
+model CannedJobVersion {
+  id                            String      @id @default(cuid())
+  cannedJob                     CannedJob?  @relation("CannedJobVersion_cannedJob", fields: [cannedJobId], references: [id])
+  cannedJobId                   String?     @map("cannedJob")
+  versionNumber                 Int
+  kind                          String      @default("repair")
+  lines                         Json?       @default("[]")
+  customerDescription           String      @default("")
+  defaultWarrantyCode           String      @default("")
+  notes                         String      @default("")
+  author                        User?       @relation("CannedJobVersion_author", fields: [authorId], references: [id])
+  authorId                      String?     @map("author")
+  publishedBy                   User?       @relation("CannedJobVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                 String?     @map("publishedBy")
+  publishedAt                   DateTime?
+  retiredAt                     DateTime?
+  status                        String      @default("draft")
+  version                       Int         @default(0)
+  createdAt                     DateTime    @default(now())
+  updatedAt                     DateTime    @default(now()) @updatedAt
+  from_Job_cannedJobVersion     Job[]       @relation("Job_cannedJobVersion")
+  from_CannedJob_currentVersion CannedJob[] @relation("CannedJob_currentVersion")
+
+  @@unique([cannedJobId, versionNumber], map: "CannedJobVersion_job_number_key")
+  @@index([cannedJobId])
+  @@index([authorId])
+  @@index([publishedById])
+}
+
+model Inspection {
+  id                String                     @id @default(cuid())
+  repairOrder       RepairOrder?               @relation("Inspection_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId     String?                    @map("repairOrder")
+  templateVersion   InspectionTemplateVersion? @relation("Inspection_templateVersion", fields: [templateVersionId], references: [id])
+  templateVersionId String?                    @map("templateVersion")
+  technician        User?                      @relation("Inspection_technician", fields: [technicianId], references: [id])
+  technicianId      String?                    @map("technician")
+  results           InspectionItemResult[]     @relation("InspectionItemResult_inspection")
+  startedAt         DateTime?
+  completedAt       DateTime?
+  sentAt            DateTime?
+  viewedAt          DateTime?
+  status            String                     @default("assigned")
+  version           Int                        @default(0)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @default(now()) @updatedAt
+
+  @@index([repairOrderId])
+  @@index([templateVersionId])
+  @@index([technicianId])
+}
+
+model InspectionItemResult {
+  id               String                  @id @default(cuid())
+  inspection       Inspection?             @relation("InspectionItemResult_inspection", fields: [inspectionId], references: [id])
+  inspectionId     String?                 @map("inspection")
+  templateItem     InspectionTemplateItem? @relation("InspectionItemResult_templateItem", fields: [templateItemId], references: [id])
+  templateItemId   String?                 @map("templateItem")
+  condition        String                  @default("not_inspected")
+  derivedCondition String                  @default("none")
+  overrideReason   String                  @default("")
+  measurements     Json?                   @default("[]")
+  notes            String                  @default("")
+  media            Document[]              @relation("InspectionItemResult_media")
+  recommendedJobs  Job[]                   @relation("Job_inspectionItemResult")
+  recordedBy       User?                   @relation("InspectionItemResult_recordedBy", fields: [recordedById], references: [id])
+  recordedById     String?                 @map("recordedBy")
+  recordedAt       DateTime?
+  version          Int                     @default(0)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @default(now()) @updatedAt
+
+  @@unique([inspectionId, templateItemId], map: "InspectionItemResult_inspection_item_key")
+  @@index([inspectionId])
+  @@index([templateItemId])
+  @@index([recordedById])
+}
+
+model InspectionTemplate {
+  id        String                      @id @default(cuid())
+  name      String                      @default("")
+  kind      String                      @default("multi_point")
+  shop      Shop?                       @relation("InspectionTemplate_shop", fields: [shopId], references: [id])
+  shopId    String?                     @map("shop")
+  versions  InspectionTemplateVersion[] @relation("InspectionTemplateVersion_template")
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @default(now()) @updatedAt
+
+  @@index([shopId])
+}
+
+model InspectionTemplateItem {
+  id                                     String                     @id @default(cuid())
+  templateVersion                        InspectionTemplateVersion? @relation("InspectionTemplateItem_templateVersion", fields: [templateVersionId], references: [id])
+  templateVersionId                      String?                    @map("templateVersion")
+  code                                   String                     @default("")
+  section                                String                     @default("")
+  label                                  String                     @default("")
+  measurement                            Json?
+  photoRequiredOn                        Json?                      @default("[\"red\"]")
+  cannedJobCode                          String                     @default("")
+  required                               Boolean                    @default(true)
+  sortOrder                              Int?                       @default(0)
+  createdAt                              DateTime                   @default(now())
+  updatedAt                              DateTime                   @default(now()) @updatedAt
+  from_InspectionItemResult_templateItem InspectionItemResult[]     @relation("InspectionItemResult_templateItem")
+
+  @@index([templateVersionId])
+}
+
+model InspectionTemplateVersion {
+  id                              String                   @id @default(cuid())
+  template                        InspectionTemplate?      @relation("InspectionTemplateVersion_template", fields: [templateId], references: [id])
+  templateId                      String?                  @map("template")
+  versionNumber                   Int
+  items                           InspectionTemplateItem[] @relation("InspectionTemplateItem_templateVersion")
+  status                          String                   @default("draft")
+  publishedAt                     DateTime?
+  retiredAt                       DateTime?
+  version                         Int                      @default(0)
+  createdAt                       DateTime                 @default(now())
+  updatedAt                       DateTime                 @default(now()) @updatedAt
+  from_Inspection_templateVersion Inspection[]             @relation("Inspection_templateVersion")
+
+  @@unique([templateId, versionNumber], map: "InspectionTemplateVersion_template_number_key")
+  @@index([templateId])
+}
+
+model LaborOperation {
+  id            String   @id @default(cuid())
+  shop          Shop?    @relation("LaborOperation_shop", fields: [shopId], references: [id])
+  shopId        String?  @map("shop")
+  code          String   @default("")
+  description   String   @default("")
+  variant       String   @default("")
+  vehicleFilter Json?    @default("{}")
+  centiHours    Int
+  skillLevel    String   @default("b")
+  rateClassCode String   @default("general")
+  includes      Json?    @default("[]")
+  overlaps      Json?    @default("[]")
+  source        String   @default("shop_time")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([code], map: "LaborOperation_code_idx")
+}
+
+model PublishedService {
+  id                  String     @id @default(cuid())
+  shop                Shop?      @relation("PublishedService_shop", fields: [shopId], references: [id])
+  shopId              String?    @map("shop")
+  name                String     @default("")
+  slug                String     @default("")
+  description         String     @default("")
+  fromPriceMinor      BigInt?
+  estimatedCentiHours Int?
+  bookable            Boolean    @default(true)
+  cannedJob           CannedJob? @relation("PublishedService_cannedJob", fields: [cannedJobId], references: [id])
+  cannedJobId         String?    @map("cannedJob")
+  sortOrder           Int?       @default(0)
+  isPublished         Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @default(now()) @updatedAt
+
+  @@unique([shopId, slug], map: "PublishedService_shop_slug_key")
+  @@index([shopId])
+  @@index([cannedJobId])
+}
+
+model ServiceMenuItem {
+  id              String     @id @default(cuid())
+  shop            Shop?      @relation("ServiceMenuItem_shop", fields: [shopId], references: [id])
+  shopId          String?    @map("shop")
+  name            String     @default("")
+  fixedPriceMinor BigInt?
+  cannedJob       CannedJob? @relation("ServiceMenuItem_cannedJob", fields: [cannedJobId], references: [id])
+  cannedJobId     String?    @map("cannedJob")
+  vehicleFilter   Json?      @default("{}")
+  publishable     Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([cannedJobId])
+}
+
+model Authorization {
+  id                            String                @id @default(cuid())
+  job                           Job?                  @relation("Authorization_job", fields: [jobId], references: [id])
+  jobId                         String?               @map("job")
+  estimateVersion               EstimateVersion?      @relation("Authorization_estimateVersion", fields: [estimateVersionId], references: [id])
+  estimateVersionId             String?               @map("estimateVersion")
+  jobContentHash                String                @default("")
+  amountMinor                   BigInt
+  subtotalMinor                 BigInt                @default(0)
+  method                        String                @default("in_person_signature")
+  actorKind                     String                @default("customer")
+  actorName                     String                @default("")
+  contactUsed                   String                @default("")
+  evidence                      Json?
+  authorizedAt                  DateTime
+  recordedByUser                User?                 @relation("Authorization_recordedByUser", fields: [recordedByUserId], references: [id])
+  recordedByUserId              String?               @map("recordedByUser")
+  authorizationRequest          AuthorizationRequest? @relation("Authorization_authorizationRequest", fields: [authorizationRequestId], references: [id])
+  authorizationRequestId        String?               @map("authorizationRequest")
+  signature                     Document?             @relation("Authorization_signature", fields: [signatureId], references: [id])
+  signatureId                   String?               @map("signature")
+  consentTextVersion            String                @default("")
+  poNumber                      String                @default("")
+  status                        String                @default("recorded")
+  createdAt                     DateTime              @default(now())
+  updatedAt                     DateTime              @default(now()) @updatedAt
+  from_Job_currentAuthorization Job[]                 @relation("Job_currentAuthorization")
+
+  @@index([jobId])
+  @@index([estimateVersionId])
+  @@index([recordedByUserId])
+  @@index([authorizationRequestId])
+  @@index([signatureId])
+}
+
+model AuthorizationRequest {
+  id                                      String           @id @default(cuid())
+  repairOrder                             RepairOrder?     @relation("AuthorizationRequest_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId                           String?          @map("repairOrder")
+  estimateVersion                         EstimateVersion? @relation("AuthorizationRequest_estimateVersion", fields: [estimateVersionId], references: [id])
+  estimateVersionId                       String?          @map("estimateVersion")
+  channel                                 String           @default("sms")
+  contact                                 CustomerContact? @relation("AuthorizationRequest_contact", fields: [contactId], references: [id])
+  contactId                               String?          @map("contact")
+  contactLabel                            String           @default("")
+  tokenHash                               String           @unique @default("")
+  expiresAt                               DateTime?
+  deliveredAt                             DateTime?
+  viewedAt                                DateTime?
+  answeredAt                              DateTime?
+  viewerEvidence                          Json?
+  answer                                  Json?
+  consentTextVersion                      String           @default("")
+  createdByUser                           User?            @relation("AuthorizationRequest_createdByUser", fields: [createdByUserId], references: [id])
+  createdByUserId                         String?          @map("createdByUser")
+  createdByAgent                          AgentIdentity?   @relation("AuthorizationRequest_createdByAgent", fields: [createdByAgentId], references: [id])
+  createdByAgentId                        String?          @map("createdByAgent")
+  depositRequestedMinor                   BigInt?
+  status                                  String           @default("created")
+  version                                 Int              @default(0)
+  createdAt                               DateTime         @default(now())
+  updatedAt                               DateTime         @default(now()) @updatedAt
+  from_StaffTask_authorizationRequest     StaffTask[]      @relation("StaffTask_authorizationRequest")
+  from_Authorization_authorizationRequest Authorization[]  @relation("Authorization_authorizationRequest")
+  from_JobDecision_authorizationRequest   JobDecision[]    @relation("JobDecision_authorizationRequest")
+
+  @@index([repairOrderId])
+  @@index([estimateVersionId])
+  @@index([contactId])
+  @@index([createdByUserId])
+  @@index([createdByAgentId])
+}
+
+model EstimateVersion {
+  id                                        String                 @id @default(cuid())
+  repairOrder                               RepairOrder?           @relation("EstimateVersion_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId                             String?                @map("repairOrder")
+  versionNumber                             Int
+  reference                                 String                 @unique @default("")
+  snapshot                                  Json?
+  contentHash                               String                 @default("")
+  jobHashes                                 Json?                  @default("{}")
+  includedJobIds                            Json?                  @default("[]")
+  disclosuresChecked                        Json?                  @default("[]")
+  subtotalMinor                             BigInt                 @default(0)
+  taxMinor                                  BigInt                 @default(0)
+  totalMinor                                BigInt                 @default(0)
+  document                                  Document?              @relation("EstimateVersion_document", fields: [documentId], references: [id])
+  documentId                                String?                @map("document")
+  sentAt                                    DateTime?
+  sentBy                                    User?                  @relation("EstimateVersion_sentBy", fields: [sentById], references: [id])
+  sentById                                  String?                @map("sentBy")
+  authorizations                            Authorization[]        @relation("Authorization_estimateVersion")
+  status                                    String                 @default("draft")
+  version                                   Int                    @default(0)
+  createdAt                                 DateTime               @default(now())
+  updatedAt                                 DateTime               @default(now()) @updatedAt
+  from_Job_offeredInVersion                 Job[]                  @relation("Job_offeredInVersion")
+  from_AuthorizationRequest_estimateVersion AuthorizationRequest[] @relation("AuthorizationRequest_estimateVersion")
+  from_JobDecision_estimateVersion          JobDecision[]          @relation("JobDecision_estimateVersion")
+
+  @@unique([repairOrderId, versionNumber], map: "EstimateVersion_ro_number_key")
+  @@index([repairOrderId])
+  @@index([documentId])
+  @@index([sentById])
+}
+
+model JobDecision {
+  id                     String                @id @default(cuid())
+  job                    Job?                  @relation("JobDecision_job", fields: [jobId], references: [id])
+  jobId                  String?               @map("job")
+  estimateVersion        EstimateVersion?      @relation("JobDecision_estimateVersion", fields: [estimateVersionId], references: [id])
+  estimateVersionId      String?               @map("estimateVersion")
+  decision               String                @default("declined")
+  actorName              String                @default("")
+  method                 String                @default("in_person_signature")
+  at                     DateTime
+  reason                 String                @default("")
+  deferUntil             DateTime?
+  deferMiles             Int?
+  recordedByUser         User?                 @relation("JobDecision_recordedByUser", fields: [recordedByUserId], references: [id])
+  recordedByUserId       String?               @map("recordedByUser")
+  authorizationRequest   AuthorizationRequest? @relation("JobDecision_authorizationRequest", fields: [authorizationRequestId], references: [id])
+  authorizationRequestId String?               @map("authorizationRequest")
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @default(now()) @updatedAt
+
+  @@index([jobId])
+  @@index([estimateVersionId])
+  @@index([recordedByUserId])
+  @@index([authorizationRequestId])
+}
+
+model PublicAccessToken {
+  id          String    @id @default(cuid())
+  purpose     String    @default("authorization")
+  subjectType String    @default("")
+  subjectId   String    @default("")
+  shop        Shop?     @relation("PublicAccessToken_shop", fields: [shopId], references: [id])
+  shopId      String?   @map("shop")
+  tokenHash   String    @unique @default("")
+  expiresAt   DateTime
+  usedAt      DateTime?
+  useCount    Int?      @default(0)
+  maxUses     Int?      @default(50)
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@index([shopId])
 }
 
 enum UserKindType {
