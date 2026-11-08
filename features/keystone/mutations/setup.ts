@@ -4,6 +4,7 @@ import { Codes, DomainError } from '../lib/errors'
 import type { UnitOfWork } from '../lib/unitOfWork'
 import { CUSTOMERS, seedAppointments, seedBookingRules, seedCustomers, seedFleets, seedRecordedVehicleData } from '../seed/customers'
 import { seedOrgPlatform } from '../seed/platform'
+import { seedParts } from '../seed/parts'
 import { seedGoldenRepairOrder, seedServiceCatalog } from '../seed/repairOrders'
 import { SHOP_POLICY, seedJurisdictions, seedShopPolicy } from '../seed/policy'
 
@@ -34,6 +35,7 @@ export function northgateSteps(actor: Actor, scope: SetupScope = 'all'): { name:
   steps.push({ name: 'vehicle_data', run: async uow => ({ vehicleData: await seedRecordedVehicleData(uow, actor) }) })
   steps.push({ name: 'appointments', run: async uow => ({ appointments: await seedAppointments(uow, actor) }) })
   steps.push({ name: 'golden_repair_order', run: uow => seedGoldenRepairOrder(uow, actor) })
+  steps.push({ name: 'parts_and_stock', run: uow => seedParts(uow, actor) })
   return steps
 }
 

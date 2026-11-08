@@ -4,6 +4,7 @@ import { DomainError, Codes } from './errors'
 import { assertWithinCeiling } from './ceiling'
 import { Decimal, dec } from './decimal'
 import { nextShopReference } from './sequence'
+import { createTireObligations } from './tires'
 import { sumMinor } from './money'
 import { toJsonValue } from './canonical'
 import { zonedDate } from '../../../lib/zonedTime'
@@ -172,6 +173,7 @@ export async function finalizeInvoices(uow: UnitOfWork, actor: Actor, input: Fin
     if (status !== 'finalized') await tx.invoice.update({ where: { id: row.id }, data: { status } })
     if (account) await tx.businessAccount.update({ where: { id: account.id }, data: { openBalanceMinor: { increment: plan.totals.totalMinor }, version: { increment: 1 } } })
     auditCreate(uow, actor, 'Invoice', row.id, 'invoice.finalized', { invoiceNumber, repairOrder: ro.roNumber, payer: plan.payer.kind, totalMinor: plan.totals.totalMinor, taxMinor: plan.totals.taxMinor, lines: plan.lines.length, retentionUntil: addYears(today, retentionYears) })
+    await createTireObligations(uow, actor, row.id)
     invoices.push({ id: row.id, invoiceNumber, payerKind: plan.payer.kind, totalMinor: plan.totals.totalMinor.toString() })
   }
 

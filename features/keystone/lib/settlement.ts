@@ -19,9 +19,9 @@ const reasonOf = (value: unknown, what: string) => {
   return r
 }
 
-type Approvable = { action: string; targetList: string; targetId: string; payload: unknown; permission: Permission; summary: string; approvalRequestId?: string | null }
+export type Approvable = { action: string; targetList: string; targetId: string; payload: unknown; permission: Permission; summary: string; approvalRequestId?: string | null }
 /** Either use the approval the caller brought, or open a request and tell the caller to wait for it. */
-async function needApproval(uow: UnitOfWork, actor: Actor, a: Approvable) {
+export async function needApproval(uow: UnitOfWork, actor: Actor, a: Approvable) {
   if (a.approvalRequestId) {
     await consumeApproval(uow, { requestId: a.approvalRequestId, action: a.action, targetList: a.targetList, targetId: a.targetId, payload: a.payload })
     return { approved: true as const, approvalRequestId: a.approvalRequestId }

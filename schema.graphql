@@ -10291,6 +10291,1813 @@ input WarrantyCoverageCreateInput {
   updatedAt: DateTime
 }
 
+type CoreObligation {
+  id: ID!
+  shop: Shop
+  job: Job
+  jobLine: JobLine
+  shopItem: ShopItem
+  partNumber: String
+  supplier: Supplier
+  supplierOrderLine: SupplierOrderLine
+  coreChargeMinor: BigInt
+  owedTo: String
+  returnedAt: DateTime
+  returnDocument: Document
+  returnNote: String
+  creditedAt: DateTime
+  supplierInvoiceLine: SupplierInvoiceLine
+  writeOffReason: String
+  approval: ApprovalRequest
+  dueAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CoreObligationWhereUniqueInput {
+  id: ID
+}
+
+input CoreObligationWhereInput {
+  AND: [CoreObligationWhereInput!]
+  OR: [CoreObligationWhereInput!]
+  NOT: [CoreObligationWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  job: JobWhereInput
+  jobLine: JobLineWhereInput
+  shopItem: ShopItemWhereInput
+  partNumber: StringFilter
+  supplier: SupplierWhereInput
+  supplierOrderLine: SupplierOrderLineWhereInput
+  coreChargeMinor: BigIntFilter
+  owedTo: StringFilter
+  returnedAt: DateTimeNullableFilter
+  returnDocument: DocumentWhereInput
+  returnNote: StringFilter
+  creditedAt: DateTimeNullableFilter
+  supplierInvoiceLine: SupplierInvoiceLineWhereInput
+  writeOffReason: StringFilter
+  approval: ApprovalRequestWhereInput
+  dueAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CoreObligationOrderByInput {
+  id: OrderDirection
+  partNumber: OrderDirection
+  coreChargeMinor: OrderDirection
+  owedTo: OrderDirection
+  returnedAt: OrderDirection
+  returnNote: OrderDirection
+  creditedAt: OrderDirection
+  writeOffReason: OrderDirection
+  dueAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CoreObligationUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  job: JobRelateToOneForUpdateInput
+  jobLine: JobLineRelateToOneForUpdateInput
+  shopItem: ShopItemRelateToOneForUpdateInput
+  partNumber: String
+  supplier: SupplierRelateToOneForUpdateInput
+  supplierOrderLine: SupplierOrderLineRelateToOneForUpdateInput
+  coreChargeMinor: BigInt
+  owedTo: String
+  returnedAt: DateTime
+  returnDocument: DocumentRelateToOneForUpdateInput
+  returnNote: String
+  creditedAt: DateTime
+  supplierInvoiceLine: SupplierInvoiceLineRelateToOneForUpdateInput
+  writeOffReason: String
+  approval: ApprovalRequestRelateToOneForUpdateInput
+  dueAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShopItemRelateToOneForUpdateInput {
+  create: ShopItemCreateInput
+  connect: ShopItemWhereUniqueInput
+  disconnect: Boolean
+}
+
+input SupplierRelateToOneForUpdateInput {
+  create: SupplierCreateInput
+  connect: SupplierWhereUniqueInput
+  disconnect: Boolean
+}
+
+input SupplierOrderLineRelateToOneForUpdateInput {
+  create: SupplierOrderLineCreateInput
+  connect: SupplierOrderLineWhereUniqueInput
+  disconnect: Boolean
+}
+
+input SupplierInvoiceLineRelateToOneForUpdateInput {
+  create: SupplierInvoiceLineCreateInput
+  connect: SupplierInvoiceLineWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CoreObligationUpdateArgs {
+  where: CoreObligationWhereUniqueInput!
+  data: CoreObligationUpdateInput!
+}
+
+input CoreObligationCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  job: JobRelateToOneForCreateInput
+  jobLine: JobLineRelateToOneForCreateInput
+  shopItem: ShopItemRelateToOneForCreateInput
+  partNumber: String
+  supplier: SupplierRelateToOneForCreateInput
+  supplierOrderLine: SupplierOrderLineRelateToOneForCreateInput
+  coreChargeMinor: BigInt
+  owedTo: String
+  returnedAt: DateTime
+  returnDocument: DocumentRelateToOneForCreateInput
+  returnNote: String
+  creditedAt: DateTime
+  supplierInvoiceLine: SupplierInvoiceLineRelateToOneForCreateInput
+  writeOffReason: String
+  approval: ApprovalRequestRelateToOneForCreateInput
+  dueAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShopItemRelateToOneForCreateInput {
+  create: ShopItemCreateInput
+  connect: ShopItemWhereUniqueInput
+}
+
+input SupplierRelateToOneForCreateInput {
+  create: SupplierCreateInput
+  connect: SupplierWhereUniqueInput
+}
+
+input SupplierOrderLineRelateToOneForCreateInput {
+  create: SupplierOrderLineCreateInput
+  connect: SupplierOrderLineWhereUniqueInput
+}
+
+input SupplierInvoiceLineRelateToOneForCreateInput {
+  create: SupplierInvoiceLineCreateInput
+  connect: SupplierInvoiceLineWhereUniqueInput
+}
+
+type CycleCount {
+  id: ID!
+  shop: Shop
+  reference: String
+  items: JSON
+  varianceValueMinor: BigInt
+  postedBy: User
+  postedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CycleCountWhereUniqueInput {
+  id: ID
+  reference: String
+}
+
+input CycleCountWhereInput {
+  AND: [CycleCountWhereInput!]
+  OR: [CycleCountWhereInput!]
+  NOT: [CycleCountWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  varianceValueMinor: BigIntFilter
+  postedBy: UserWhereInput
+  postedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CycleCountOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  varianceValueMinor: OrderDirection
+  postedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CycleCountUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  items: JSON
+  varianceValueMinor: BigInt
+  postedBy: UserRelateToOneForUpdateInput
+  postedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CycleCountUpdateArgs {
+  where: CycleCountWhereUniqueInput!
+  data: CycleCountUpdateInput!
+}
+
+input CycleCountCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  items: JSON
+  varianceValueMinor: BigInt
+  postedBy: UserRelateToOneForCreateInput
+  postedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type Discrepancy {
+  id: ID!
+  invoice: SupplierInvoice
+  line: SupplierInvoiceLine
+  kind: String
+  amountMinor: BigInt
+  detail: String
+  openedBy: User
+  openedByAgent: AgentIdentity
+  resolution: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiscrepancyWhereUniqueInput {
+  id: ID
+}
+
+input DiscrepancyWhereInput {
+  AND: [DiscrepancyWhereInput!]
+  OR: [DiscrepancyWhereInput!]
+  NOT: [DiscrepancyWhereInput!]
+  id: IDFilter
+  invoice: SupplierInvoiceWhereInput
+  line: SupplierInvoiceLineWhereInput
+  kind: StringFilter
+  amountMinor: BigIntFilter
+  detail: StringFilter
+  openedBy: UserWhereInput
+  openedByAgent: AgentIdentityWhereInput
+  resolution: StringFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input DiscrepancyOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  amountMinor: OrderDirection
+  detail: OrderDirection
+  resolution: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input DiscrepancyUpdateInput {
+  invoice: SupplierInvoiceRelateToOneForUpdateInput
+  line: SupplierInvoiceLineRelateToOneForUpdateInput
+  kind: String
+  amountMinor: BigInt
+  detail: String
+  openedBy: UserRelateToOneForUpdateInput
+  openedByAgent: AgentIdentityRelateToOneForUpdateInput
+  resolution: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierInvoiceRelateToOneForUpdateInput {
+  create: SupplierInvoiceCreateInput
+  connect: SupplierInvoiceWhereUniqueInput
+  disconnect: Boolean
+}
+
+input DiscrepancyUpdateArgs {
+  where: DiscrepancyWhereUniqueInput!
+  data: DiscrepancyUpdateInput!
+}
+
+input DiscrepancyCreateInput {
+  invoice: SupplierInvoiceRelateToOneForCreateInput
+  line: SupplierInvoiceLineRelateToOneForCreateInput
+  kind: String
+  amountMinor: BigInt
+  detail: String
+  openedBy: UserRelateToOneForCreateInput
+  openedByAgent: AgentIdentityRelateToOneForCreateInput
+  resolution: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierInvoiceRelateToOneForCreateInput {
+  create: SupplierInvoiceCreateInput
+  connect: SupplierInvoiceWhereUniqueInput
+}
+
+type JobTire {
+  id: ID!
+  job: Job
+  tireSize: String
+  position: String
+  tin: String
+  recordedBy: User
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobTireWhereUniqueInput {
+  id: ID
+  tin: String
+}
+
+input JobTireWhereInput {
+  AND: [JobTireWhereInput!]
+  OR: [JobTireWhereInput!]
+  NOT: [JobTireWhereInput!]
+  id: IDFilter
+  job: JobWhereInput
+  tireSize: StringFilter
+  position: StringFilter
+  tin: StringFilter
+  recordedBy: UserWhereInput
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JobTireOrderByInput {
+  id: OrderDirection
+  tireSize: OrderDirection
+  position: OrderDirection
+  tin: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input JobTireUpdateInput {
+  job: JobRelateToOneForUpdateInput
+  tireSize: String
+  position: String
+  tin: String
+  recordedBy: UserRelateToOneForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobTireUpdateArgs {
+  where: JobTireWhereUniqueInput!
+  data: JobTireUpdateInput!
+}
+
+input JobTireCreateInput {
+  job: JobRelateToOneForCreateInput
+  tireSize: String
+  position: String
+  tin: String
+  recordedBy: UserRelateToOneForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PartQuote {
+  id: ID!
+  shop: Shop
+  job: Job
+  jobLine: JobLine
+  supplier: Supplier
+  source: String
+  partNumber: String
+  brand: String
+  lineCode: String
+  description: String
+  unitCostMinor: BigInt
+  listPriceMinor: BigInt
+  coreChargeMinor: BigInt
+  availableQuantityMilli: Int
+  availability: String
+  etaAt: DateTime
+  supplierLocation: String
+  validUntil: DateTime
+  phoneEvidence: JSON
+  createdBy: User
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PartQuoteWhereUniqueInput {
+  id: ID
+}
+
+input PartQuoteWhereInput {
+  AND: [PartQuoteWhereInput!]
+  OR: [PartQuoteWhereInput!]
+  NOT: [PartQuoteWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  job: JobWhereInput
+  jobLine: JobLineWhereInput
+  supplier: SupplierWhereInput
+  source: StringFilter
+  partNumber: StringFilter
+  brand: StringFilter
+  lineCode: StringFilter
+  description: StringFilter
+  unitCostMinor: BigIntFilter
+  listPriceMinor: BigIntFilter
+  coreChargeMinor: BigIntFilter
+  availableQuantityMilli: IntFilter
+  availability: StringFilter
+  etaAt: DateTimeNullableFilter
+  supplierLocation: StringFilter
+  validUntil: DateTimeNullableFilter
+  createdBy: UserWhereInput
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input PartQuoteOrderByInput {
+  id: OrderDirection
+  source: OrderDirection
+  partNumber: OrderDirection
+  brand: OrderDirection
+  lineCode: OrderDirection
+  description: OrderDirection
+  unitCostMinor: OrderDirection
+  listPriceMinor: OrderDirection
+  coreChargeMinor: OrderDirection
+  availableQuantityMilli: OrderDirection
+  availability: OrderDirection
+  etaAt: OrderDirection
+  supplierLocation: OrderDirection
+  validUntil: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PartQuoteUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  job: JobRelateToOneForUpdateInput
+  jobLine: JobLineRelateToOneForUpdateInput
+  supplier: SupplierRelateToOneForUpdateInput
+  source: String
+  partNumber: String
+  brand: String
+  lineCode: String
+  description: String
+  unitCostMinor: BigInt
+  listPriceMinor: BigInt
+  coreChargeMinor: BigInt
+  availableQuantityMilli: Int
+  availability: String
+  etaAt: DateTime
+  supplierLocation: String
+  validUntil: DateTime
+  phoneEvidence: JSON
+  createdBy: UserRelateToOneForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PartQuoteUpdateArgs {
+  where: PartQuoteWhereUniqueInput!
+  data: PartQuoteUpdateInput!
+}
+
+input PartQuoteCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  job: JobRelateToOneForCreateInput
+  jobLine: JobLineRelateToOneForCreateInput
+  supplier: SupplierRelateToOneForCreateInput
+  source: String
+  partNumber: String
+  brand: String
+  lineCode: String
+  description: String
+  unitCostMinor: BigInt
+  listPriceMinor: BigInt
+  coreChargeMinor: BigInt
+  availableQuantityMilli: Int
+  availability: String
+  etaAt: DateTime
+  supplierLocation: String
+  validUntil: DateTime
+  phoneEvidence: JSON
+  createdBy: UserRelateToOneForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type Receipt {
+  id: ID!
+  order: SupplierOrder
+  receiptKey: String
+  receivedBy: User
+  at: DateTime
+  packingSlip: Document
+  lines(where: ReceiptLineWhereInput! = {}, orderBy: [ReceiptLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReceiptLineWhereUniqueInput): [ReceiptLine!]
+  linesCount(where: ReceiptLineWhereInput! = {}): Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ReceiptWhereUniqueInput {
+  id: ID
+  receiptKey: String
+}
+
+input ReceiptWhereInput {
+  AND: [ReceiptWhereInput!]
+  OR: [ReceiptWhereInput!]
+  NOT: [ReceiptWhereInput!]
+  id: IDFilter
+  order: SupplierOrderWhereInput
+  receiptKey: StringFilter
+  receivedBy: UserWhereInput
+  at: DateTimeNullableFilter
+  packingSlip: DocumentWhereInput
+  lines: ReceiptLineManyRelationFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ReceiptLineManyRelationFilter {
+  every: ReceiptLineWhereInput
+  some: ReceiptLineWhereInput
+  none: ReceiptLineWhereInput
+}
+
+input ReceiptOrderByInput {
+  id: OrderDirection
+  receiptKey: OrderDirection
+  at: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ReceiptUpdateInput {
+  order: SupplierOrderRelateToOneForUpdateInput
+  receiptKey: String
+  receivedBy: UserRelateToOneForUpdateInput
+  at: DateTime
+  packingSlip: DocumentRelateToOneForUpdateInput
+  lines: ReceiptLineRelateToManyForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierOrderRelateToOneForUpdateInput {
+  create: SupplierOrderCreateInput
+  connect: SupplierOrderWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ReceiptLineRelateToManyForUpdateInput {
+  disconnect: [ReceiptLineWhereUniqueInput!]
+  set: [ReceiptLineWhereUniqueInput!]
+  create: [ReceiptLineCreateInput!]
+  connect: [ReceiptLineWhereUniqueInput!]
+}
+
+input ReceiptUpdateArgs {
+  where: ReceiptWhereUniqueInput!
+  data: ReceiptUpdateInput!
+}
+
+input ReceiptCreateInput {
+  order: SupplierOrderRelateToOneForCreateInput
+  receiptKey: String
+  receivedBy: UserRelateToOneForCreateInput
+  at: DateTime
+  packingSlip: DocumentRelateToOneForCreateInput
+  lines: ReceiptLineRelateToManyForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierOrderRelateToOneForCreateInput {
+  create: SupplierOrderCreateInput
+  connect: SupplierOrderWhereUniqueInput
+}
+
+input ReceiptLineRelateToManyForCreateInput {
+  create: [ReceiptLineCreateInput!]
+  connect: [ReceiptLineWhereUniqueInput!]
+}
+
+type ReceiptLine {
+  id: ID!
+  receipt: Receipt
+  orderLine: SupplierOrderLine
+  quantityMilli: Int
+  condition: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ReceiptLineWhereUniqueInput {
+  id: ID
+}
+
+input ReceiptLineWhereInput {
+  AND: [ReceiptLineWhereInput!]
+  OR: [ReceiptLineWhereInput!]
+  NOT: [ReceiptLineWhereInput!]
+  id: IDFilter
+  receipt: ReceiptWhereInput
+  orderLine: SupplierOrderLineWhereInput
+  quantityMilli: IntFilter
+  condition: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ReceiptLineOrderByInput {
+  id: OrderDirection
+  quantityMilli: OrderDirection
+  condition: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ReceiptLineUpdateInput {
+  receipt: ReceiptRelateToOneForUpdateInput
+  orderLine: SupplierOrderLineRelateToOneForUpdateInput
+  quantityMilli: Int
+  condition: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ReceiptRelateToOneForUpdateInput {
+  create: ReceiptCreateInput
+  connect: ReceiptWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ReceiptLineUpdateArgs {
+  where: ReceiptLineWhereUniqueInput!
+  data: ReceiptLineUpdateInput!
+}
+
+input ReceiptLineCreateInput {
+  receipt: ReceiptRelateToOneForCreateInput
+  orderLine: SupplierOrderLineRelateToOneForCreateInput
+  quantityMilli: Int
+  condition: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ReceiptRelateToOneForCreateInput {
+  create: ReceiptCreateInput
+  connect: ReceiptWhereUniqueInput
+}
+
+type ShopItem {
+  id: ID!
+  shop: Shop
+  sku: String
+  partNumber: String
+  brand: String
+  lineCode: String
+  description: String
+  category: String
+  unitOfMeasure: String
+  isStocked: Boolean
+  binLocation: String
+  minQuantityMilli: Int
+  maxQuantityMilli: Int
+  coreChargeMinor: BigInt
+  preferredSupplier: Supplier
+  fitmentNotes: String
+  active: Boolean
+  stock: StockLevel
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShopItemWhereUniqueInput {
+  id: ID
+  stock: StockLevelWhereUniqueInput
+}
+
+input ShopItemWhereInput {
+  AND: [ShopItemWhereInput!]
+  OR: [ShopItemWhereInput!]
+  NOT: [ShopItemWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  sku: StringFilter
+  partNumber: StringFilter
+  brand: StringFilter
+  lineCode: StringFilter
+  description: StringFilter
+  category: StringFilter
+  unitOfMeasure: StringFilter
+  isStocked: BooleanFilter
+  binLocation: StringFilter
+  minQuantityMilli: IntFilter
+  maxQuantityMilli: IntFilter
+  coreChargeMinor: BigIntFilter
+  preferredSupplier: SupplierWhereInput
+  fitmentNotes: StringFilter
+  active: BooleanFilter
+  stock: StockLevelWhereInput
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ShopItemOrderByInput {
+  id: OrderDirection
+  sku: OrderDirection
+  partNumber: OrderDirection
+  brand: OrderDirection
+  lineCode: OrderDirection
+  description: OrderDirection
+  category: OrderDirection
+  unitOfMeasure: OrderDirection
+  isStocked: OrderDirection
+  binLocation: OrderDirection
+  minQuantityMilli: OrderDirection
+  maxQuantityMilli: OrderDirection
+  coreChargeMinor: OrderDirection
+  fitmentNotes: OrderDirection
+  active: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ShopItemUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  sku: String
+  partNumber: String
+  brand: String
+  lineCode: String
+  description: String
+  category: String
+  unitOfMeasure: String
+  isStocked: Boolean
+  binLocation: String
+  minQuantityMilli: Int
+  maxQuantityMilli: Int
+  coreChargeMinor: BigInt
+  preferredSupplier: SupplierRelateToOneForUpdateInput
+  fitmentNotes: String
+  active: Boolean
+  stock: StockLevelRelateToOneForUpdateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StockLevelRelateToOneForUpdateInput {
+  create: StockLevelCreateInput
+  connect: StockLevelWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ShopItemUpdateArgs {
+  where: ShopItemWhereUniqueInput!
+  data: ShopItemUpdateInput!
+}
+
+input ShopItemCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  sku: String
+  partNumber: String
+  brand: String
+  lineCode: String
+  description: String
+  category: String
+  unitOfMeasure: String
+  isStocked: Boolean
+  binLocation: String
+  minQuantityMilli: Int
+  maxQuantityMilli: Int
+  coreChargeMinor: BigInt
+  preferredSupplier: SupplierRelateToOneForCreateInput
+  fitmentNotes: String
+  active: Boolean
+  stock: StockLevelRelateToOneForCreateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StockLevelRelateToOneForCreateInput {
+  create: StockLevelCreateInput
+  connect: StockLevelWhereUniqueInput
+}
+
+type StockLevel {
+  id: ID!
+  shopItem: ShopItem
+  onHandMilli: Int
+  committedMilli: Int
+  onOrderMilli: Int
+  averageCostMinor: BigInt
+  lastCountedAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StockLevelWhereUniqueInput {
+  id: ID
+  shopItem: ShopItemWhereUniqueInput
+}
+
+input StockLevelWhereInput {
+  AND: [StockLevelWhereInput!]
+  OR: [StockLevelWhereInput!]
+  NOT: [StockLevelWhereInput!]
+  id: IDFilter
+  shopItem: ShopItemWhereInput
+  onHandMilli: IntFilter
+  committedMilli: IntFilter
+  onOrderMilli: IntFilter
+  averageCostMinor: BigIntFilter
+  lastCountedAt: DateTimeNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input StockLevelOrderByInput {
+  id: OrderDirection
+  onHandMilli: OrderDirection
+  committedMilli: OrderDirection
+  onOrderMilli: OrderDirection
+  averageCostMinor: OrderDirection
+  lastCountedAt: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input StockLevelUpdateInput {
+  shopItem: ShopItemRelateToOneForUpdateInput
+  onHandMilli: Int
+  committedMilli: Int
+  onOrderMilli: Int
+  averageCostMinor: BigInt
+  lastCountedAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StockLevelUpdateArgs {
+  where: StockLevelWhereUniqueInput!
+  data: StockLevelUpdateInput!
+}
+
+input StockLevelCreateInput {
+  shopItem: ShopItemRelateToOneForCreateInput
+  onHandMilli: Int
+  committedMilli: Int
+  onOrderMilli: Int
+  averageCostMinor: BigInt
+  lastCountedAt: DateTime
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type StockMovement {
+  id: ID!
+  shopItem: ShopItem
+  type: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  job: Job
+  supplierOrderLine: SupplierOrderLine
+  onHandDeltaMilli: Int
+  committedDeltaMilli: Int
+  onOrderDeltaMilli: Int
+  cycleCount: CycleCount
+  reason: String
+  idempotencyKey: String
+  actorUser: User
+  actorName: String
+  at: DateTime
+  after: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StockMovementWhereUniqueInput {
+  id: ID
+  idempotencyKey: String
+}
+
+input StockMovementWhereInput {
+  AND: [StockMovementWhereInput!]
+  OR: [StockMovementWhereInput!]
+  NOT: [StockMovementWhereInput!]
+  id: IDFilter
+  shopItem: ShopItemWhereInput
+  type: StringFilter
+  quantityMilli: IntFilter
+  unitCostMinor: BigIntFilter
+  job: JobWhereInput
+  supplierOrderLine: SupplierOrderLineWhereInput
+  onHandDeltaMilli: IntFilter
+  committedDeltaMilli: IntFilter
+  onOrderDeltaMilli: IntFilter
+  cycleCount: CycleCountWhereInput
+  reason: StringFilter
+  idempotencyKey: StringFilter
+  actorUser: UserWhereInput
+  actorName: StringFilter
+  at: DateTimeNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input StockMovementOrderByInput {
+  id: OrderDirection
+  type: OrderDirection
+  quantityMilli: OrderDirection
+  unitCostMinor: OrderDirection
+  onHandDeltaMilli: OrderDirection
+  committedDeltaMilli: OrderDirection
+  onOrderDeltaMilli: OrderDirection
+  reason: OrderDirection
+  idempotencyKey: OrderDirection
+  actorName: OrderDirection
+  at: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input StockMovementUpdateInput {
+  shopItem: ShopItemRelateToOneForUpdateInput
+  type: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  job: JobRelateToOneForUpdateInput
+  supplierOrderLine: SupplierOrderLineRelateToOneForUpdateInput
+  onHandDeltaMilli: Int
+  committedDeltaMilli: Int
+  onOrderDeltaMilli: Int
+  cycleCount: CycleCountRelateToOneForUpdateInput
+  reason: String
+  idempotencyKey: String
+  actorUser: UserRelateToOneForUpdateInput
+  actorName: String
+  at: DateTime
+  after: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CycleCountRelateToOneForUpdateInput {
+  create: CycleCountCreateInput
+  connect: CycleCountWhereUniqueInput
+  disconnect: Boolean
+}
+
+input StockMovementUpdateArgs {
+  where: StockMovementWhereUniqueInput!
+  data: StockMovementUpdateInput!
+}
+
+input StockMovementCreateInput {
+  shopItem: ShopItemRelateToOneForCreateInput
+  type: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  job: JobRelateToOneForCreateInput
+  supplierOrderLine: SupplierOrderLineRelateToOneForCreateInput
+  onHandDeltaMilli: Int
+  committedDeltaMilli: Int
+  onOrderDeltaMilli: Int
+  cycleCount: CycleCountRelateToOneForCreateInput
+  reason: String
+  idempotencyKey: String
+  actorUser: UserRelateToOneForCreateInput
+  actorName: String
+  at: DateTime
+  after: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CycleCountRelateToOneForCreateInput {
+  create: CycleCountCreateInput
+  connect: CycleCountWhereUniqueInput
+}
+
+type Supplier {
+  id: ID!
+  name: String
+  kind: String
+  adapter: String
+  phone: String
+  email: String
+  website: String
+  accountNumbersByShop: JSON
+  deliverySchedule: JSON
+  coreReturnWindowDays: Int
+  priceToleranceMinor: BigInt
+  preferred: Boolean
+  active: Boolean
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierWhereUniqueInput {
+  id: ID
+  name: String
+}
+
+input SupplierWhereInput {
+  AND: [SupplierWhereInput!]
+  OR: [SupplierWhereInput!]
+  NOT: [SupplierWhereInput!]
+  id: IDFilter
+  name: StringFilter
+  kind: StringFilter
+  adapter: StringFilter
+  phone: StringFilter
+  email: StringFilter
+  website: StringFilter
+  coreReturnWindowDays: IntFilter
+  priceToleranceMinor: BigIntFilter
+  preferred: BooleanFilter
+  active: BooleanFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input SupplierOrderByInput {
+  id: OrderDirection
+  name: OrderDirection
+  kind: OrderDirection
+  adapter: OrderDirection
+  phone: OrderDirection
+  email: OrderDirection
+  website: OrderDirection
+  coreReturnWindowDays: OrderDirection
+  priceToleranceMinor: OrderDirection
+  preferred: OrderDirection
+  active: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input SupplierUpdateInput {
+  name: String
+  kind: String
+  adapter: String
+  phone: String
+  email: String
+  website: String
+  accountNumbersByShop: JSON
+  deliverySchedule: JSON
+  coreReturnWindowDays: Int
+  priceToleranceMinor: BigInt
+  preferred: Boolean
+  active: Boolean
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierUpdateArgs {
+  where: SupplierWhereUniqueInput!
+  data: SupplierUpdateInput!
+}
+
+input SupplierCreateInput {
+  name: String
+  kind: String
+  adapter: String
+  phone: String
+  email: String
+  website: String
+  accountNumbersByShop: JSON
+  deliverySchedule: JSON
+  coreReturnWindowDays: Int
+  priceToleranceMinor: BigInt
+  preferred: Boolean
+  active: Boolean
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type SupplierInvoice {
+  id: ID!
+  shop: Shop
+  supplier: Supplier
+  invoiceNumber: String
+  invoiceDate: CalendarDay
+  totalMinor: BigInt
+  document: Document
+  lines(where: SupplierInvoiceLineWhereInput! = {}, orderBy: [SupplierInvoiceLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierInvoiceLineWhereUniqueInput): [SupplierInvoiceLine!]
+  linesCount(where: SupplierInvoiceLineWhereInput! = {}): Int
+  discrepancies(where: DiscrepancyWhereInput! = {}, orderBy: [DiscrepancyOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: DiscrepancyWhereUniqueInput): [Discrepancy!]
+  discrepanciesCount(where: DiscrepancyWhereInput! = {}): Int
+  approvedBy: User
+  approvedAt: DateTime
+  exportReference: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierInvoiceWhereUniqueInput {
+  id: ID
+}
+
+input SupplierInvoiceWhereInput {
+  AND: [SupplierInvoiceWhereInput!]
+  OR: [SupplierInvoiceWhereInput!]
+  NOT: [SupplierInvoiceWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  supplier: SupplierWhereInput
+  invoiceNumber: StringFilter
+  invoiceDate: CalendarDayNullableFilter
+  totalMinor: BigIntFilter
+  document: DocumentWhereInput
+  lines: SupplierInvoiceLineManyRelationFilter
+  discrepancies: DiscrepancyManyRelationFilter
+  approvedBy: UserWhereInput
+  approvedAt: DateTimeNullableFilter
+  exportReference: StringFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input SupplierInvoiceLineManyRelationFilter {
+  every: SupplierInvoiceLineWhereInput
+  some: SupplierInvoiceLineWhereInput
+  none: SupplierInvoiceLineWhereInput
+}
+
+input DiscrepancyManyRelationFilter {
+  every: DiscrepancyWhereInput
+  some: DiscrepancyWhereInput
+  none: DiscrepancyWhereInput
+}
+
+input SupplierInvoiceOrderByInput {
+  id: OrderDirection
+  invoiceNumber: OrderDirection
+  invoiceDate: OrderDirection
+  totalMinor: OrderDirection
+  approvedAt: OrderDirection
+  exportReference: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input SupplierInvoiceUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  supplier: SupplierRelateToOneForUpdateInput
+  invoiceNumber: String
+  invoiceDate: CalendarDay
+  totalMinor: BigInt
+  document: DocumentRelateToOneForUpdateInput
+  lines: SupplierInvoiceLineRelateToManyForUpdateInput
+  discrepancies: DiscrepancyRelateToManyForUpdateInput
+  approvedBy: UserRelateToOneForUpdateInput
+  approvedAt: DateTime
+  exportReference: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierInvoiceLineRelateToManyForUpdateInput {
+  disconnect: [SupplierInvoiceLineWhereUniqueInput!]
+  set: [SupplierInvoiceLineWhereUniqueInput!]
+  create: [SupplierInvoiceLineCreateInput!]
+  connect: [SupplierInvoiceLineWhereUniqueInput!]
+}
+
+input DiscrepancyRelateToManyForUpdateInput {
+  disconnect: [DiscrepancyWhereUniqueInput!]
+  set: [DiscrepancyWhereUniqueInput!]
+  create: [DiscrepancyCreateInput!]
+  connect: [DiscrepancyWhereUniqueInput!]
+}
+
+input SupplierInvoiceUpdateArgs {
+  where: SupplierInvoiceWhereUniqueInput!
+  data: SupplierInvoiceUpdateInput!
+}
+
+input SupplierInvoiceCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  supplier: SupplierRelateToOneForCreateInput
+  invoiceNumber: String
+  invoiceDate: CalendarDay
+  totalMinor: BigInt
+  document: DocumentRelateToOneForCreateInput
+  lines: SupplierInvoiceLineRelateToManyForCreateInput
+  discrepancies: DiscrepancyRelateToManyForCreateInput
+  approvedBy: UserRelateToOneForCreateInput
+  approvedAt: DateTime
+  exportReference: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierInvoiceLineRelateToManyForCreateInput {
+  create: [SupplierInvoiceLineCreateInput!]
+  connect: [SupplierInvoiceLineWhereUniqueInput!]
+}
+
+input DiscrepancyRelateToManyForCreateInput {
+  create: [DiscrepancyCreateInput!]
+  connect: [DiscrepancyWhereUniqueInput!]
+}
+
+type SupplierInvoiceLine {
+  id: ID!
+  invoice: SupplierInvoice
+  partNumber: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  coreCreditMinor: BigInt
+  matchedOrderLine: SupplierOrderLine
+  matchStatus: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierInvoiceLineWhereUniqueInput {
+  id: ID
+}
+
+input SupplierInvoiceLineWhereInput {
+  AND: [SupplierInvoiceLineWhereInput!]
+  OR: [SupplierInvoiceLineWhereInput!]
+  NOT: [SupplierInvoiceLineWhereInput!]
+  id: IDFilter
+  invoice: SupplierInvoiceWhereInput
+  partNumber: StringFilter
+  quantityMilli: IntFilter
+  unitCostMinor: BigIntFilter
+  coreCreditMinor: BigIntFilter
+  matchedOrderLine: SupplierOrderLineWhereInput
+  matchStatus: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input SupplierInvoiceLineOrderByInput {
+  id: OrderDirection
+  partNumber: OrderDirection
+  quantityMilli: OrderDirection
+  unitCostMinor: OrderDirection
+  coreCreditMinor: OrderDirection
+  matchStatus: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input SupplierInvoiceLineUpdateInput {
+  invoice: SupplierInvoiceRelateToOneForUpdateInput
+  partNumber: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  coreCreditMinor: BigInt
+  matchedOrderLine: SupplierOrderLineRelateToOneForUpdateInput
+  matchStatus: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierInvoiceLineUpdateArgs {
+  where: SupplierInvoiceLineWhereUniqueInput!
+  data: SupplierInvoiceLineUpdateInput!
+}
+
+input SupplierInvoiceLineCreateInput {
+  invoice: SupplierInvoiceRelateToOneForCreateInput
+  partNumber: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  coreCreditMinor: BigInt
+  matchedOrderLine: SupplierOrderLineRelateToOneForCreateInput
+  matchStatus: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type SupplierOrder {
+  id: ID!
+  shop: Shop
+  reference: String
+  supplier: Supplier
+  kind: String
+  placedVia: String
+  supplierConfirmation: String
+  etaAt: DateTime
+  totalMinor: BigInt
+  deliveryNote: String
+  lines(where: SupplierOrderLineWhereInput! = {}, orderBy: [SupplierOrderLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierOrderLineWhereUniqueInput): [SupplierOrderLine!]
+  linesCount(where: SupplierOrderLineWhereInput! = {}): Int
+  receipts(where: ReceiptWhereInput! = {}, orderBy: [ReceiptOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReceiptWhereUniqueInput): [Receipt!]
+  receiptsCount(where: ReceiptWhereInput! = {}): Int
+  placedAt: DateTime
+  createdBy: User
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierOrderWhereUniqueInput {
+  id: ID
+  reference: String
+}
+
+input SupplierOrderWhereInput {
+  AND: [SupplierOrderWhereInput!]
+  OR: [SupplierOrderWhereInput!]
+  NOT: [SupplierOrderWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  supplier: SupplierWhereInput
+  kind: StringFilter
+  placedVia: StringNullableFilter
+  supplierConfirmation: StringFilter
+  etaAt: DateTimeNullableFilter
+  totalMinor: BigIntFilter
+  deliveryNote: StringFilter
+  lines: SupplierOrderLineManyRelationFilter
+  receipts: ReceiptManyRelationFilter
+  placedAt: DateTimeNullableFilter
+  createdBy: UserWhereInput
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input SupplierOrderLineManyRelationFilter {
+  every: SupplierOrderLineWhereInput
+  some: SupplierOrderLineWhereInput
+  none: SupplierOrderLineWhereInput
+}
+
+input ReceiptManyRelationFilter {
+  every: ReceiptWhereInput
+  some: ReceiptWhereInput
+  none: ReceiptWhereInput
+}
+
+input SupplierOrderOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  kind: OrderDirection
+  placedVia: OrderDirection
+  supplierConfirmation: OrderDirection
+  etaAt: OrderDirection
+  totalMinor: OrderDirection
+  deliveryNote: OrderDirection
+  placedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input SupplierOrderUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  supplier: SupplierRelateToOneForUpdateInput
+  kind: String
+  placedVia: String
+  supplierConfirmation: String
+  etaAt: DateTime
+  totalMinor: BigInt
+  deliveryNote: String
+  lines: SupplierOrderLineRelateToManyForUpdateInput
+  receipts: ReceiptRelateToManyForUpdateInput
+  placedAt: DateTime
+  createdBy: UserRelateToOneForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierOrderLineRelateToManyForUpdateInput {
+  disconnect: [SupplierOrderLineWhereUniqueInput!]
+  set: [SupplierOrderLineWhereUniqueInput!]
+  create: [SupplierOrderLineCreateInput!]
+  connect: [SupplierOrderLineWhereUniqueInput!]
+}
+
+input ReceiptRelateToManyForUpdateInput {
+  disconnect: [ReceiptWhereUniqueInput!]
+  set: [ReceiptWhereUniqueInput!]
+  create: [ReceiptCreateInput!]
+  connect: [ReceiptWhereUniqueInput!]
+}
+
+input SupplierOrderUpdateArgs {
+  where: SupplierOrderWhereUniqueInput!
+  data: SupplierOrderUpdateInput!
+}
+
+input SupplierOrderCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  supplier: SupplierRelateToOneForCreateInput
+  kind: String
+  placedVia: String
+  supplierConfirmation: String
+  etaAt: DateTime
+  totalMinor: BigInt
+  deliveryNote: String
+  lines: SupplierOrderLineRelateToManyForCreateInput
+  receipts: ReceiptRelateToManyForCreateInput
+  placedAt: DateTime
+  createdBy: UserRelateToOneForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierOrderLineRelateToManyForCreateInput {
+  create: [SupplierOrderLineCreateInput!]
+  connect: [SupplierOrderLineWhereUniqueInput!]
+}
+
+input ReceiptRelateToManyForCreateInput {
+  create: [ReceiptCreateInput!]
+  connect: [ReceiptWhereUniqueInput!]
+}
+
+type SupplierOrderLine {
+  id: ID!
+  order: SupplierOrder
+  job: Job
+  jobLine: JobLine
+  shopItem: ShopItem
+  partQuote: PartQuote
+  partNumber: String
+  brand: String
+  description: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  coreChargeMinor: BigInt
+  receivedQuantityMilli: Int
+  invoicedQuantityMilli: Int
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierOrderLineWhereUniqueInput {
+  id: ID
+}
+
+input SupplierOrderLineWhereInput {
+  AND: [SupplierOrderLineWhereInput!]
+  OR: [SupplierOrderLineWhereInput!]
+  NOT: [SupplierOrderLineWhereInput!]
+  id: IDFilter
+  order: SupplierOrderWhereInput
+  job: JobWhereInput
+  jobLine: JobLineWhereInput
+  shopItem: ShopItemWhereInput
+  partQuote: PartQuoteWhereInput
+  partNumber: StringFilter
+  brand: StringFilter
+  description: StringFilter
+  quantityMilli: IntFilter
+  unitCostMinor: BigIntFilter
+  coreChargeMinor: BigIntFilter
+  receivedQuantityMilli: IntFilter
+  invoicedQuantityMilli: IntFilter
+  status: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input SupplierOrderLineOrderByInput {
+  id: OrderDirection
+  partNumber: OrderDirection
+  brand: OrderDirection
+  description: OrderDirection
+  quantityMilli: OrderDirection
+  unitCostMinor: OrderDirection
+  coreChargeMinor: OrderDirection
+  receivedQuantityMilli: OrderDirection
+  invoicedQuantityMilli: OrderDirection
+  status: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input SupplierOrderLineUpdateInput {
+  order: SupplierOrderRelateToOneForUpdateInput
+  job: JobRelateToOneForUpdateInput
+  jobLine: JobLineRelateToOneForUpdateInput
+  shopItem: ShopItemRelateToOneForUpdateInput
+  partQuote: PartQuoteRelateToOneForUpdateInput
+  partNumber: String
+  brand: String
+  description: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  coreChargeMinor: BigInt
+  receivedQuantityMilli: Int
+  invoicedQuantityMilli: Int
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PartQuoteRelateToOneForUpdateInput {
+  create: PartQuoteCreateInput
+  connect: PartQuoteWhereUniqueInput
+  disconnect: Boolean
+}
+
+input SupplierOrderLineUpdateArgs {
+  where: SupplierOrderLineWhereUniqueInput!
+  data: SupplierOrderLineUpdateInput!
+}
+
+input SupplierOrderLineCreateInput {
+  order: SupplierOrderRelateToOneForCreateInput
+  job: JobRelateToOneForCreateInput
+  jobLine: JobLineRelateToOneForCreateInput
+  shopItem: ShopItemRelateToOneForCreateInput
+  partQuote: PartQuoteRelateToOneForCreateInput
+  partNumber: String
+  brand: String
+  description: String
+  quantityMilli: Int
+  unitCostMinor: BigInt
+  coreChargeMinor: BigInt
+  receivedQuantityMilli: Int
+  invoicedQuantityMilli: Int
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PartQuoteRelateToOneForCreateInput {
+  create: PartQuoteCreateInput
+  connect: PartQuoteWhereUniqueInput
+}
+
+type SupplierReturn {
+  id: ID!
+  shop: Shop
+  supplier: Supplier
+  rmaNumber: String
+  lines: JSON
+  reason: String
+  creditMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierReturnWhereUniqueInput {
+  id: ID
+}
+
+input SupplierReturnWhereInput {
+  AND: [SupplierReturnWhereInput!]
+  OR: [SupplierReturnWhereInput!]
+  NOT: [SupplierReturnWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  supplier: SupplierWhereInput
+  rmaNumber: StringFilter
+  reason: StringFilter
+  creditMinor: BigIntFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input SupplierReturnOrderByInput {
+  id: OrderDirection
+  rmaNumber: OrderDirection
+  reason: OrderDirection
+  creditMinor: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input SupplierReturnUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  supplier: SupplierRelateToOneForUpdateInput
+  rmaNumber: String
+  lines: JSON
+  reason: String
+  creditMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierReturnUpdateArgs {
+  where: SupplierReturnWhereUniqueInput!
+  data: SupplierReturnUpdateInput!
+}
+
+input SupplierReturnCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  supplier: SupplierRelateToOneForCreateInput
+  rmaNumber: String
+  lines: JSON
+  reason: String
+  creditMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type TireRegistrationObligation {
+  id: ID!
+  shop: Shop
+  invoice: Invoice
+  invoiceLine: InvoiceLine
+  jobLine: JobLine
+  tireDescription: String
+  tins: JSON
+  purchaserName: String
+  purchaserAddress: JSON
+  dealerIdentity: JSON
+  method: String
+  dueAt: CalendarDay
+  evidence: JSON
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TireRegistrationObligationWhereUniqueInput {
+  id: ID
+}
+
+input TireRegistrationObligationWhereInput {
+  AND: [TireRegistrationObligationWhereInput!]
+  OR: [TireRegistrationObligationWhereInput!]
+  NOT: [TireRegistrationObligationWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  invoice: InvoiceWhereInput
+  invoiceLine: InvoiceLineWhereInput
+  jobLine: JobLineWhereInput
+  tireDescription: StringFilter
+  purchaserName: StringFilter
+  method: StringNullableFilter
+  dueAt: CalendarDayNullableFilter
+  completedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input TireRegistrationObligationOrderByInput {
+  id: OrderDirection
+  tireDescription: OrderDirection
+  purchaserName: OrderDirection
+  method: OrderDirection
+  dueAt: OrderDirection
+  completedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input TireRegistrationObligationUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  invoice: InvoiceRelateToOneForUpdateInput
+  invoiceLine: InvoiceLineRelateToOneForUpdateInput
+  jobLine: JobLineRelateToOneForUpdateInput
+  tireDescription: String
+  tins: JSON
+  purchaserName: String
+  purchaserAddress: JSON
+  dealerIdentity: JSON
+  method: String
+  dueAt: CalendarDay
+  evidence: JSON
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TireRegistrationObligationUpdateArgs {
+  where: TireRegistrationObligationWhereUniqueInput!
+  data: TireRegistrationObligationUpdateInput!
+}
+
+input TireRegistrationObligationCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  invoice: InvoiceRelateToOneForCreateInput
+  invoiceLine: InvoiceLineRelateToOneForCreateInput
+  jobLine: JobLineRelateToOneForCreateInput
+  tireDescription: String
+  tins: JSON
+  purchaserName: String
+  purchaserAddress: JSON
+  dealerIdentity: JSON
+  method: String
+  dueAt: CalendarDay
+  evidence: JSON
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -10813,6 +12620,108 @@ type Mutation {
   updateWarrantyCoverages(data: [WarrantyCoverageUpdateArgs!]!): [WarrantyCoverage]
   deleteWarrantyCoverage(where: WarrantyCoverageWhereUniqueInput!): WarrantyCoverage
   deleteWarrantyCoverages(where: [WarrantyCoverageWhereUniqueInput!]!): [WarrantyCoverage]
+  createCoreObligation(data: CoreObligationCreateInput!): CoreObligation
+  createCoreObligations(data: [CoreObligationCreateInput!]!): [CoreObligation]
+  updateCoreObligation(where: CoreObligationWhereUniqueInput!, data: CoreObligationUpdateInput!): CoreObligation
+  updateCoreObligations(data: [CoreObligationUpdateArgs!]!): [CoreObligation]
+  deleteCoreObligation(where: CoreObligationWhereUniqueInput!): CoreObligation
+  deleteCoreObligations(where: [CoreObligationWhereUniqueInput!]!): [CoreObligation]
+  createCycleCount(data: CycleCountCreateInput!): CycleCount
+  createCycleCounts(data: [CycleCountCreateInput!]!): [CycleCount]
+  updateCycleCount(where: CycleCountWhereUniqueInput!, data: CycleCountUpdateInput!): CycleCount
+  updateCycleCounts(data: [CycleCountUpdateArgs!]!): [CycleCount]
+  deleteCycleCount(where: CycleCountWhereUniqueInput!): CycleCount
+  deleteCycleCounts(where: [CycleCountWhereUniqueInput!]!): [CycleCount]
+  createDiscrepancy(data: DiscrepancyCreateInput!): Discrepancy
+  createDiscrepancies(data: [DiscrepancyCreateInput!]!): [Discrepancy]
+  updateDiscrepancy(where: DiscrepancyWhereUniqueInput!, data: DiscrepancyUpdateInput!): Discrepancy
+  updateDiscrepancies(data: [DiscrepancyUpdateArgs!]!): [Discrepancy]
+  deleteDiscrepancy(where: DiscrepancyWhereUniqueInput!): Discrepancy
+  deleteDiscrepancies(where: [DiscrepancyWhereUniqueInput!]!): [Discrepancy]
+  createJobTire(data: JobTireCreateInput!): JobTire
+  createJobTires(data: [JobTireCreateInput!]!): [JobTire]
+  updateJobTire(where: JobTireWhereUniqueInput!, data: JobTireUpdateInput!): JobTire
+  updateJobTires(data: [JobTireUpdateArgs!]!): [JobTire]
+  deleteJobTire(where: JobTireWhereUniqueInput!): JobTire
+  deleteJobTires(where: [JobTireWhereUniqueInput!]!): [JobTire]
+  createPartQuote(data: PartQuoteCreateInput!): PartQuote
+  createPartQuotes(data: [PartQuoteCreateInput!]!): [PartQuote]
+  updatePartQuote(where: PartQuoteWhereUniqueInput!, data: PartQuoteUpdateInput!): PartQuote
+  updatePartQuotes(data: [PartQuoteUpdateArgs!]!): [PartQuote]
+  deletePartQuote(where: PartQuoteWhereUniqueInput!): PartQuote
+  deletePartQuotes(where: [PartQuoteWhereUniqueInput!]!): [PartQuote]
+  createReceipt(data: ReceiptCreateInput!): Receipt
+  createReceipts(data: [ReceiptCreateInput!]!): [Receipt]
+  updateReceipt(where: ReceiptWhereUniqueInput!, data: ReceiptUpdateInput!): Receipt
+  updateReceipts(data: [ReceiptUpdateArgs!]!): [Receipt]
+  deleteReceipt(where: ReceiptWhereUniqueInput!): Receipt
+  deleteReceipts(where: [ReceiptWhereUniqueInput!]!): [Receipt]
+  createReceiptLine(data: ReceiptLineCreateInput!): ReceiptLine
+  createReceiptLines(data: [ReceiptLineCreateInput!]!): [ReceiptLine]
+  updateReceiptLine(where: ReceiptLineWhereUniqueInput!, data: ReceiptLineUpdateInput!): ReceiptLine
+  updateReceiptLines(data: [ReceiptLineUpdateArgs!]!): [ReceiptLine]
+  deleteReceiptLine(where: ReceiptLineWhereUniqueInput!): ReceiptLine
+  deleteReceiptLines(where: [ReceiptLineWhereUniqueInput!]!): [ReceiptLine]
+  createShopItem(data: ShopItemCreateInput!): ShopItem
+  createShopItems(data: [ShopItemCreateInput!]!): [ShopItem]
+  updateShopItem(where: ShopItemWhereUniqueInput!, data: ShopItemUpdateInput!): ShopItem
+  updateShopItems(data: [ShopItemUpdateArgs!]!): [ShopItem]
+  deleteShopItem(where: ShopItemWhereUniqueInput!): ShopItem
+  deleteShopItems(where: [ShopItemWhereUniqueInput!]!): [ShopItem]
+  createStockLevel(data: StockLevelCreateInput!): StockLevel
+  createStockLevels(data: [StockLevelCreateInput!]!): [StockLevel]
+  updateStockLevel(where: StockLevelWhereUniqueInput!, data: StockLevelUpdateInput!): StockLevel
+  updateStockLevels(data: [StockLevelUpdateArgs!]!): [StockLevel]
+  deleteStockLevel(where: StockLevelWhereUniqueInput!): StockLevel
+  deleteStockLevels(where: [StockLevelWhereUniqueInput!]!): [StockLevel]
+  createStockMovement(data: StockMovementCreateInput!): StockMovement
+  createStockMovements(data: [StockMovementCreateInput!]!): [StockMovement]
+  updateStockMovement(where: StockMovementWhereUniqueInput!, data: StockMovementUpdateInput!): StockMovement
+  updateStockMovements(data: [StockMovementUpdateArgs!]!): [StockMovement]
+  deleteStockMovement(where: StockMovementWhereUniqueInput!): StockMovement
+  deleteStockMovements(where: [StockMovementWhereUniqueInput!]!): [StockMovement]
+  createSupplier(data: SupplierCreateInput!): Supplier
+  createSuppliers(data: [SupplierCreateInput!]!): [Supplier]
+  updateSupplier(where: SupplierWhereUniqueInput!, data: SupplierUpdateInput!): Supplier
+  updateSuppliers(data: [SupplierUpdateArgs!]!): [Supplier]
+  deleteSupplier(where: SupplierWhereUniqueInput!): Supplier
+  deleteSuppliers(where: [SupplierWhereUniqueInput!]!): [Supplier]
+  createSupplierInvoice(data: SupplierInvoiceCreateInput!): SupplierInvoice
+  createSupplierInvoices(data: [SupplierInvoiceCreateInput!]!): [SupplierInvoice]
+  updateSupplierInvoice(where: SupplierInvoiceWhereUniqueInput!, data: SupplierInvoiceUpdateInput!): SupplierInvoice
+  updateSupplierInvoices(data: [SupplierInvoiceUpdateArgs!]!): [SupplierInvoice]
+  deleteSupplierInvoice(where: SupplierInvoiceWhereUniqueInput!): SupplierInvoice
+  deleteSupplierInvoices(where: [SupplierInvoiceWhereUniqueInput!]!): [SupplierInvoice]
+  createSupplierInvoiceLine(data: SupplierInvoiceLineCreateInput!): SupplierInvoiceLine
+  createSupplierInvoiceLines(data: [SupplierInvoiceLineCreateInput!]!): [SupplierInvoiceLine]
+  updateSupplierInvoiceLine(where: SupplierInvoiceLineWhereUniqueInput!, data: SupplierInvoiceLineUpdateInput!): SupplierInvoiceLine
+  updateSupplierInvoiceLines(data: [SupplierInvoiceLineUpdateArgs!]!): [SupplierInvoiceLine]
+  deleteSupplierInvoiceLine(where: SupplierInvoiceLineWhereUniqueInput!): SupplierInvoiceLine
+  deleteSupplierInvoiceLines(where: [SupplierInvoiceLineWhereUniqueInput!]!): [SupplierInvoiceLine]
+  createSupplierOrder(data: SupplierOrderCreateInput!): SupplierOrder
+  createSupplierOrders(data: [SupplierOrderCreateInput!]!): [SupplierOrder]
+  updateSupplierOrder(where: SupplierOrderWhereUniqueInput!, data: SupplierOrderUpdateInput!): SupplierOrder
+  updateSupplierOrders(data: [SupplierOrderUpdateArgs!]!): [SupplierOrder]
+  deleteSupplierOrder(where: SupplierOrderWhereUniqueInput!): SupplierOrder
+  deleteSupplierOrders(where: [SupplierOrderWhereUniqueInput!]!): [SupplierOrder]
+  createSupplierOrderLine(data: SupplierOrderLineCreateInput!): SupplierOrderLine
+  createSupplierOrderLines(data: [SupplierOrderLineCreateInput!]!): [SupplierOrderLine]
+  updateSupplierOrderLine(where: SupplierOrderLineWhereUniqueInput!, data: SupplierOrderLineUpdateInput!): SupplierOrderLine
+  updateSupplierOrderLines(data: [SupplierOrderLineUpdateArgs!]!): [SupplierOrderLine]
+  deleteSupplierOrderLine(where: SupplierOrderLineWhereUniqueInput!): SupplierOrderLine
+  deleteSupplierOrderLines(where: [SupplierOrderLineWhereUniqueInput!]!): [SupplierOrderLine]
+  createSupplierReturn(data: SupplierReturnCreateInput!): SupplierReturn
+  createSupplierReturns(data: [SupplierReturnCreateInput!]!): [SupplierReturn]
+  updateSupplierReturn(where: SupplierReturnWhereUniqueInput!, data: SupplierReturnUpdateInput!): SupplierReturn
+  updateSupplierReturns(data: [SupplierReturnUpdateArgs!]!): [SupplierReturn]
+  deleteSupplierReturn(where: SupplierReturnWhereUniqueInput!): SupplierReturn
+  deleteSupplierReturns(where: [SupplierReturnWhereUniqueInput!]!): [SupplierReturn]
+  createTireRegistrationObligation(data: TireRegistrationObligationCreateInput!): TireRegistrationObligation
+  createTireRegistrationObligations(data: [TireRegistrationObligationCreateInput!]!): [TireRegistrationObligation]
+  updateTireRegistrationObligation(where: TireRegistrationObligationWhereUniqueInput!, data: TireRegistrationObligationUpdateInput!): TireRegistrationObligation
+  updateTireRegistrationObligations(data: [TireRegistrationObligationUpdateArgs!]!): [TireRegistrationObligation]
+  deleteTireRegistrationObligation(where: TireRegistrationObligationWhereUniqueInput!): TireRegistrationObligation
+  deleteTireRegistrationObligations(where: [TireRegistrationObligationWhereUniqueInput!]!): [TireRegistrationObligation]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -10857,6 +12766,16 @@ type Mutation {
   requestCustomerAuthorization(estimateVersionId: ID!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
   recordCustomerAuthorization(input: JSON!, idempotencyKey: String!): JSON
   createCallbackTask(repairOrderId: ID!, kind: String, title: String!, detail: String, idempotencyKey: String!): JSON
+  finalizeShopInvoice(input: JSON!, idempotencyKey: String!): JSON
+  createInvoicePayLink(invoiceId: ID!, idempotencyKey: String!): JSON
+  takeShopPayment(input: JSON!, idempotencyKey: String!): JSON
+  checkShopPayment(paymentId: ID!): JSON
+  resolveShopPayments(shopId: ID!): JSON
+  refundShopPayment(input: JSON!, idempotencyKey: String!): JSON
+  issueShopCreditMemo(input: JSON!, idempotencyKey: String!): JSON
+  closeShopDay(shopId: ID!, businessDate: String!, drawerCountMinor: String!, varianceReason: String, idempotencyKey: String!): JSON
+  reopenShopDay(dayCloseId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+  releaseShopVehicle(repairOrderId: ID!, reason: String, approvalRequestId: ID, idempotencyKey: String!): JSON
   closeCallbackTask(taskId: ID!, expectedVersion: Int!, outcome: String!, cancel: Boolean, idempotencyKey: String!): JSON
 }
 
@@ -11147,12 +13066,65 @@ type Query {
   warrantyCoverage(where: WarrantyCoverageWhereUniqueInput!): WarrantyCoverage
   warrantyCoverages(where: WarrantyCoverageWhereInput! = {}, orderBy: [WarrantyCoverageOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyCoverageWhereUniqueInput): [WarrantyCoverage!]
   warrantyCoveragesCount(where: WarrantyCoverageWhereInput! = {}): Int
+  coreObligation(where: CoreObligationWhereUniqueInput!): CoreObligation
+  coreObligations(where: CoreObligationWhereInput! = {}, orderBy: [CoreObligationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CoreObligationWhereUniqueInput): [CoreObligation!]
+  coreObligationsCount(where: CoreObligationWhereInput! = {}): Int
+  cycleCount(where: CycleCountWhereUniqueInput!): CycleCount
+  cycleCounts(where: CycleCountWhereInput! = {}, orderBy: [CycleCountOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CycleCountWhereUniqueInput): [CycleCount!]
+  cycleCountsCount(where: CycleCountWhereInput! = {}): Int
+  discrepancy(where: DiscrepancyWhereUniqueInput!): Discrepancy
+  discrepancies(where: DiscrepancyWhereInput! = {}, orderBy: [DiscrepancyOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: DiscrepancyWhereUniqueInput): [Discrepancy!]
+  discrepanciesCount(where: DiscrepancyWhereInput! = {}): Int
+  jobTire(where: JobTireWhereUniqueInput!): JobTire
+  jobTires(where: JobTireWhereInput! = {}, orderBy: [JobTireOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobTireWhereUniqueInput): [JobTire!]
+  jobTiresCount(where: JobTireWhereInput! = {}): Int
+  partQuote(where: PartQuoteWhereUniqueInput!): PartQuote
+  partQuotes(where: PartQuoteWhereInput! = {}, orderBy: [PartQuoteOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PartQuoteWhereUniqueInput): [PartQuote!]
+  partQuotesCount(where: PartQuoteWhereInput! = {}): Int
+  receipt(where: ReceiptWhereUniqueInput!): Receipt
+  receipts(where: ReceiptWhereInput! = {}, orderBy: [ReceiptOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReceiptWhereUniqueInput): [Receipt!]
+  receiptsCount(where: ReceiptWhereInput! = {}): Int
+  receiptLine(where: ReceiptLineWhereUniqueInput!): ReceiptLine
+  receiptLines(where: ReceiptLineWhereInput! = {}, orderBy: [ReceiptLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReceiptLineWhereUniqueInput): [ReceiptLine!]
+  receiptLinesCount(where: ReceiptLineWhereInput! = {}): Int
+  shopItem(where: ShopItemWhereUniqueInput!): ShopItem
+  shopItems(where: ShopItemWhereInput! = {}, orderBy: [ShopItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopItemWhereUniqueInput): [ShopItem!]
+  shopItemsCount(where: ShopItemWhereInput! = {}): Int
+  stockLevel(where: StockLevelWhereUniqueInput!): StockLevel
+  stockLevels(where: StockLevelWhereInput! = {}, orderBy: [StockLevelOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StockLevelWhereUniqueInput): [StockLevel!]
+  stockLevelsCount(where: StockLevelWhereInput! = {}): Int
+  stockMovement(where: StockMovementWhereUniqueInput!): StockMovement
+  stockMovements(where: StockMovementWhereInput! = {}, orderBy: [StockMovementOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StockMovementWhereUniqueInput): [StockMovement!]
+  stockMovementsCount(where: StockMovementWhereInput! = {}): Int
+  supplier(where: SupplierWhereUniqueInput!): Supplier
+  suppliers(where: SupplierWhereInput! = {}, orderBy: [SupplierOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierWhereUniqueInput): [Supplier!]
+  suppliersCount(where: SupplierWhereInput! = {}): Int
+  supplierInvoice(where: SupplierInvoiceWhereUniqueInput!): SupplierInvoice
+  supplierInvoices(where: SupplierInvoiceWhereInput! = {}, orderBy: [SupplierInvoiceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierInvoiceWhereUniqueInput): [SupplierInvoice!]
+  supplierInvoicesCount(where: SupplierInvoiceWhereInput! = {}): Int
+  supplierInvoiceLine(where: SupplierInvoiceLineWhereUniqueInput!): SupplierInvoiceLine
+  supplierInvoiceLines(where: SupplierInvoiceLineWhereInput! = {}, orderBy: [SupplierInvoiceLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierInvoiceLineWhereUniqueInput): [SupplierInvoiceLine!]
+  supplierInvoiceLinesCount(where: SupplierInvoiceLineWhereInput! = {}): Int
+  supplierOrder(where: SupplierOrderWhereUniqueInput!): SupplierOrder
+  supplierOrders(where: SupplierOrderWhereInput! = {}, orderBy: [SupplierOrderOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierOrderWhereUniqueInput): [SupplierOrder!]
+  supplierOrdersCount(where: SupplierOrderWhereInput! = {}): Int
+  supplierOrderLine(where: SupplierOrderLineWhereUniqueInput!): SupplierOrderLine
+  supplierOrderLines(where: SupplierOrderLineWhereInput! = {}, orderBy: [SupplierOrderLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierOrderLineWhereUniqueInput): [SupplierOrderLine!]
+  supplierOrderLinesCount(where: SupplierOrderLineWhereInput! = {}): Int
+  supplierReturn(where: SupplierReturnWhereUniqueInput!): SupplierReturn
+  supplierReturns(where: SupplierReturnWhereInput! = {}, orderBy: [SupplierReturnOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierReturnWhereUniqueInput): [SupplierReturn!]
+  supplierReturnsCount(where: SupplierReturnWhereInput! = {}): Int
+  tireRegistrationObligation(where: TireRegistrationObligationWhereUniqueInput!): TireRegistrationObligation
+  tireRegistrationObligations(where: TireRegistrationObligationWhereInput! = {}, orderBy: [TireRegistrationObligationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TireRegistrationObligationWhereUniqueInput): [TireRegistrationObligation!]
+  tireRegistrationObligationsCount(where: TireRegistrationObligationWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult
   redirectToInit: Boolean
   verifyAuditChain: JSON
   checkAuthorizedCeiling(shopId: ID!, authorizedMinor: String!, priceMinor: String!, taxMinor: String): JSON
+  previewShopInvoice(repairOrderId: ID!): JSON
+  shopDaySummary(shopId: ID!, businessDate: String!): JSON
 }
 
 union AuthenticatedItem = User

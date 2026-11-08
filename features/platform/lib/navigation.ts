@@ -1,5 +1,5 @@
 import {
-  BookOpenCheck, CalendarDays, Car, ClipboardCheck, ClipboardList, Columns3, FileText, ListChecks, LucideIcon, Scale, Settings, Store, Users, Wrench, BookTemplate, Receipt, Landmark,
+  BookOpenCheck, CalendarDays, Car, ClipboardCheck, ClipboardList, Columns3, FileText, ListChecks, LucideIcon, Scale, Settings, Store, Users, Wrench, BookTemplate, Receipt, Landmark, Package,
 } from 'lucide-react'
 
 export interface PlatformNavItem {
@@ -33,6 +33,7 @@ export const platformNavItems: PlatformNavItem[] = [
   { title: 'Vehicles', href: '/platform/vehicles', color: 'cyan', description: 'VIN decode, recalls, ownership and odometer history.', icon: Car, group: 'standalone' },
   { title: 'Receivables', href: '/platform/receivables', color: 'green', description: 'Invoices still owing, with the overdue ones first.', icon: Receipt, group: 'standalone' },
   { title: 'Day close', href: '/platform/day-close', color: 'green', description: 'Takings by tender, the drawer count and the frozen day.', icon: Landmark, group: 'standalone' },
+  { title: 'Parts', href: '/platform/parts', color: 'blue', description: 'Quotes, supplier orders, stock, cores, supplier invoices and tire registrations.', icon: Package, group: 'standalone' },
   { title: 'Approvals', href: '/platform/approvals', color: 'amber', description: 'Maker-checker requests waiting for a second person.', icon: ClipboardCheck, group: 'standalone' },
 
   { title: 'Shops', href: '/platform/shops', color: 'slate', description: 'Shops, bays, hours and staff memberships.', icon: Store, group: 'settings' },
@@ -42,7 +43,7 @@ export const platformNavItems: PlatformNavItem[] = [
 ]
 
 /** Routes that exist in this build. Others stay out of the menu until their phase ships. */
-export const SHIPPED_ROUTES = new Set<string>(['/platform/board', '/platform/repair-orders', '/platform/inspections', '/platform/canned-jobs', '/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/receivables', '/platform/day-close', '/platform/shops', '/platform/policies', '/platform/audit'])
+export const SHIPPED_ROUTES = new Set<string>(['/platform/parts', '/platform/purchase-orders', '/platform/stock', '/platform/cores', '/platform/supplier-invoices', '/platform/tires', '/platform/board', '/platform/repair-orders', '/platform/inspections', '/platform/canned-jobs', '/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/receivables', '/platform/day-close', '/platform/shops', '/platform/policies', '/platform/audit'])
 
 const shipped = platformNavItems.filter(item => SHIPPED_ROUTES.has(item.href))
 
