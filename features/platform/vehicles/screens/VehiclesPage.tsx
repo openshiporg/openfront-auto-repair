@@ -78,7 +78,7 @@ export default async function VehiclesPage({ searchParams }: { searchParams?: Pr
               <span className="text-sm font-medium">
                 {!recall ? 'Recalls not checked yet' : recall.campaignCount === 0 ? 'No recalls listed for this year, make and model' : `${recall.campaignCount} possible recall${recall.campaignCount === 1 ? '' : 's'} for this year, make and model`}
               </span>
-              {recall ? <Meta>{recall.source === 'fixture' ? 'Recorded sample' : 'NHTSA'} · {when(recall.checkedAt, tz)}</Meta> : null}
+              {recall ? <Meta>{recall.source === 'fixture' ? 'NHTSA, saved copy' : 'NHTSA'} · {when(recall.checkedAt, tz)}</Meta> : null}
             </div>
             {recall?.campaignCount ? <p className="text-xs text-muted-foreground">NHTSA lists these by model, not by VIN. Confirm with the manufacturer or nhtsa.gov/recalls whether this vehicle is affected and still open.</p> : null}
             {(recall?.campaigns ?? []).slice(0, 10).map(c => (

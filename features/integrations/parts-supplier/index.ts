@@ -36,14 +36,14 @@ const CATALOG: Record<string, CatalogEntry> = {
   'ALT-11481': { partNumber: 'ALT-11481', brand: 'Bosch', description: 'Alternator, remanufactured', unitCostMinor: 18900n, listPriceMinor: 31900n, coreChargeMinor: 4500n },
   'BAT-H6-AGM': { partNumber: 'BAT-H6-AGM', brand: 'Interstate', description: 'AGM battery, group H6', unitCostMinor: 16400n, listPriceMinor: 24900n, coreChargeMinor: 2200n },
   'XPS-22545R17': { partNumber: 'XPS-22545R17', brand: 'Michelin', description: 'Tire 225/45R17 94W Pilot Sport', unitCostMinor: 17900n, listPriceMinor: 24900n, coreChargeMinor: 0n },
-  'TIMEOUT-1': { partNumber: 'TIMEOUT-1', brand: 'Standard', description: 'Fixture part whose order times out in transit', unitCostMinor: 3300n, listPriceMinor: 5500n, coreChargeMinor: 0n },
+  'KYB-339370': { partNumber: 'KYB-339370', brand: 'KYB', description: 'Front strut assembly, complete', unitCostMinor: 8800n, listPriceMinor: 13900n, coreChargeMinor: 0n },
 }
 
 type FixtureProfile = { markupBasisPoints: number; availability: SupplierQuote['availability']; etaHours: number; location: string; carries: (partNumber: string) => boolean }
 const PROFILES: Record<string, FixtureProfile> = {
   'Capitol Auto Parts': { markupBasisPoints: 0, availability: 'in_stock_local', etaHours: 2, location: 'Capitol Auto Parts, Sacramento counter', carries: p => p !== 'XPS-22545R17' },
   'Valley Warehouse Distributing': { markupBasisPoints: -400, availability: 'in_stock_dc', etaHours: 20, location: 'Valley Warehouse, West Sacramento DC', carries: p => p !== 'BAT-H6-AGM' },
-  'Sierra Tire Supply': { markupBasisPoints: 250, availability: 'special_order', etaHours: 30, location: 'Sierra Tire Supply, Rancho Cordova', carries: p => p === 'XPS-22545R17' || p === 'TIMEOUT-1' },
+  'Sierra Tire Supply': { markupBasisPoints: 250, availability: 'special_order', etaHours: 30, location: 'Sierra Tire Supply, Rancho Cordova', carries: p => p === 'XPS-22545R17' },
 }
 
 /** What the sandbox suppliers know about orders sent to them. Process memory: enough for the fixture, never for production. */
@@ -66,7 +66,7 @@ export function fixtureAdapter(supplierName: string): SupplierAdapter {
       const supplierOrderId = seen?.supplierOrderId ?? `${supplierName.split(' ').map(w => w[0]).join('')}-${100000 + received.size + 1}`
       received.set(request.reference, { supplierOrderId, times: (seen?.times ?? 0) + 1 })
       // The supplier took the order, and the answer never came back.
-      if (request.lines.some(l => l.partNumber === 'TIMEOUT-1')) throw new AmbiguousSendError('The supplier did not answer in time.')
+      if (request.lines.some(l => l.partNumber === 'KYB-339370')) throw new AmbiguousSendError('The supplier did not answer in time.')
       return { supplierOrderId }
     },
     async orderStatus(reference) {

@@ -94,7 +94,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
                         <span className="font-mono">{ct.label}</span>{' '}
                         {consentSummary(ct).map(s => (
                           <span key={s.channel} className="text-muted-foreground"> {s.channel}: {s.purposes.map(p => (
-                            <span key={p.purpose} className={p.action === 'revoked' ? 'text-red-600' : p.action === 'granted' ? 'text-emerald-700 dark:text-emerald-400' : ''}>{p.purpose === 'transactional' ? 'service' : 'marketing'} {p.action === 'granted' ? '✓' : p.action === 'revoked' ? '✕' : '?'} </span>
+                            <span key={p.purpose} className={p.action === 'revoked' ? 'text-red-600' : p.action === 'granted' ? 'text-emerald-700 dark:text-emerald-400' : ''}>{p.purpose === 'transactional' ? 'service' : 'marketing'} {p.action === 'granted' ? '✓' : p.action === 'revoked' ? '✕' : 'not asked'} </span>
                           ))}</span>
                         ))}
                       </span>
@@ -111,7 +111,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
                   <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/customers/${c.id}`}>Record</Link>
                 </div>
               </Row>
-            )) : <Empty>{search ? 'Nobody matches that name.' : 'No customers yet. Use “Set up your shop” to load the Northgate demo.'}</Empty>}
+            )) : <Empty>{search ? 'Nobody matches that name.' : 'No customers yet. Use “Set up your shop” to load Northgate Auto Group.'}</Empty>}
           </Section>
         </>
       )}

@@ -210,7 +210,7 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
   })
 
   it('an order that times out is unknown, is never sent again, and the resolver finds it without a duplicate', { timeout: 120_000 }, async () => {
-    const made = await createShopSupplierOrder(null, { input: { shopId: NGT, supplierId: sierra, kind: 'stock', lines: [{ partNumber: 'TIMEOUT-1', brand: 'Standard', description: 'Fixture part whose order times out in transit', quantityMilli: 2000, unitCostMinor: '3300' }] }, idempotencyKey: key('po') }, parts) as { id: string; reference: string }
+    const made = await createShopSupplierOrder(null, { input: { shopId: NGA, supplierId: valley, kind: 'stock', lines: [{ partNumber: 'KYB-339370', brand: 'KYB', description: 'Front strut assembly, complete', quantityMilli: 2000, unitCostMinor: '8450' }] }, idempotencyKey: key('po') }, parts) as { id: string; reference: string }
     const sent = await placeSupplierOrder(null, { orderId: made.id, idempotencyKey: key('pl') }, parts) as { status: string }
     expect(sent.status).toBe('unknown')
     expect(fixtureOrdersReceived(made.reference)).toBe(1)
@@ -224,7 +224,7 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     const viaAgent = { session: sessionFor('agent', PARTS, { mcp: { clientId: 'c', scopes: ['mcp:write'] } }), prisma }
     await expect(resolveUnknownSupplierOrder(null, { orderId: made.id, note: 'Looks placed', idempotencyKey: key('x') }, viaAgent)).rejects.toMatchObject({ code: 'AGENT_FORBIDDEN_ACTION' })
     // The resolver asks the supplier for its record of the reference and finds the one order.
-    const resolved = await resolveUnknownSupplierOrder(null, { orderId: made.id, note: 'Sierra has it under this reference', idempotencyKey: key('res') }, parts) as { status: string }
+    const resolved = await resolveUnknownSupplierOrder(null, { orderId: made.id, note: 'Valley Warehouse has it under this reference', idempotencyKey: key('res') }, parts) as { status: string }
     expect(resolved.status).toBe('placed')
     expect(fixtureOrdersReceived(made.reference)).toBe(1)
     expect((await prisma.supplierOrder.findUniqueOrThrow({ where: { id: made.id } })).placedAt).not.toBeNull()
