@@ -9433,6 +9433,7 @@ async function buildInvoicePlan(tx, repairOrderId, now) {
   if (!billable.length) problems.push("There is no completed work to invoice.");
   for (const j of billable.filter((x) => x.status === "completed")) {
     if (BigInt(j.totalMinor) === 0n && j.noChargeReason) continue;
+    if (j.noChargeReason?.startsWith("Comeback ") && j.payerSplits.some((s) => s.payerKind === "shop_warranty")) continue;
     try {
       const includesTax = law.toleranceRule?.includesTax === true;
       assertWithinCeiling({ rule: law.toleranceRule, authorizedMinor: includesTax ? j.authorizedAmountMinor : j.authorizedSubtotalMinor, priceMinor: j.subtotalMinor, taxMinor: j.taxMinor, jobId: j.id });
@@ -9459,6 +9460,32 @@ async function buildInvoicePlan(tx, repairOrderId, now) {
   const customerPayer = { key: "customer", kind: "customer", businessAccountId: null, customerId: ro.customerId, payorName: ro.customer?.displayName ?? "", authorizationNumber: "", claimNumber: "" };
   const defaultPayer = ro.businessAccountId && ro.businessAccount ? { key: payerKeyOf("business_account", ro.businessAccountId, ""), kind: "business_account", businessAccountId: ro.businessAccountId, customerId: ro.customerId, payorName: ro.businessAccount.name, authorizationNumber: "", claimNumber: "" } : customerPayer;
   for (const j of billable.filter((x) => x.status === "completed")) {
+    if (j.payerSplits.some((s) => s.payerKind === "shop_warranty") && j.noChargeReason?.startsWith("Comeback ")) {
+      payers.set(customerPayer.key, customerPayer);
+      const bucket = lineBuckets.get(customerPayer.key) ?? [];
+      for (const line of j.lines) {
+        bucket.push({
+          kind: line.kind,
+          extendedMinor: 0n,
+          taxMinor: 0n,
+          sourceJobLineId: line.id,
+          jobNumber: j.number,
+          jobTitle: j.title,
+          description: `${line.description} (covered by the shop's warranty)`,
+          partNumber: line.partNumber,
+          brand: line.brand,
+          condition: line.condition ?? "",
+          subletVendorName: line.subletVendorName,
+          quantityMilli: line.quantityMilli,
+          centiHours: line.soldCentiHours,
+          unitPriceMinor: 0n,
+          taxCategoryCode: line.taxCategoryCode,
+          sortOrder: j.number * 1e3 + (line.sortOrder ?? 0)
+        });
+      }
+      lineBuckets.set(customerPayer.key, bucket);
+      continue;
+    }
     const splits = j.payerSplits.filter((s) => s.payerKind !== "customer" || s.percent);
     const shares2 = [];
     for (const s of splits) {
@@ -11133,7 +11160,7 @@ async function linkComebackJob(uow, actor, row, comebackJobId) {
     await tx.payerSplit.deleteMany({ where: { jobId: j.id } });
     await tx.payerSplit.create({ data: { jobId: j.id, payerKind: "shop_warranty", percent: "1.000000", payorName: "Shop warranty", claimNumber: row.reference } });
     if (["draft", "priced", "offered"].includes(j.status)) {
-      await transition(uow, { model: "Job", id: j.id, from: [j.status], to: "authorized", actor, eventType: "job.covered_by_warranty", reason, data: { noChargeReason: reason, authorizedAmountMinor: 0n, authorizedSubtotalMinor: 0n, chargeCeilingMinor: 0n } });
+      await transition(uow, { model: "Job", id: j.id, from: [j.status], to: "authorized", actor, eventType: "job.covered_by_warranty", reason, data: { noChargeReason: reason, authorizedAmountMinor: 0n, authorizedSubtotalMinor: 0n, chargeCeilingMinor: 0n, authorizedContentHash: j.contentHash } });
     } else {
       await tx.job.update({ where: { id: j.id }, data: { noChargeReason: reason, version: { increment: 1 } } });
     }
@@ -11146,9 +11173,17 @@ async function resolveComeback(uow, actor, input) {
   const resolution = textOf(input.resolution, "Resolution", 800, true);
   const row = await lockRow(tx, "ComebackCase", input.comebackId);
   if (row.status === "open") throw new DomainError(Codes.GUARD_FAILED, "Diagnose the comeback before resolving it.");
-  const comebackJobId = input.comebackJobId ? await linkComebackJob(uow, actor, row, String(input.comebackJobId)) : null;
+  const comebackJobId = input.comebackJobId ? await linkComebackJob(uow, actor, row, String(input.comebackJobId)) : row.comebackJobId ?? null;
   await transition(uow, { model: "ComebackCase", id: row.id, from: ["diagnosed"], to: "resolved", expectedVersion: input.expectedVersion, actor, eventType: "comeback.resolved", data: { resolution, resolvedAt: uow.now, comebackJobId } });
   return { id: row.id, status: "resolved" };
+}
+async function attachComebackJob(uow, actor, input) {
+  const row = await lockRow(uow.tx, "ComebackCase", input.comebackId);
+  if (CLOSED_CASE.includes(row.status)) throw new DomainError(Codes.GUARD_FAILED, "This comeback is closed.");
+  const jobId = await linkComebackJob(uow, actor, row, String(input.comebackJobId));
+  await uow.tx.comebackCase.update({ where: { id: row.id }, data: { comebackJobId: jobId, version: { increment: 1 } } });
+  auditCreate(uow, actor, "ComebackCase", row.id, "comeback.job_attached", { reference: row.reference, jobId });
+  return { id: row.id, comebackJobId: jobId, noCharge: row.noCharge };
 }
 async function cancelComeback(uow, actor, input) {
   const reason = textOf(input.reason, "Reason", 300, true);
@@ -11333,6 +11368,12 @@ async function withdrawShopPartWarrantyClaim(_root, args, context) {
   await shopOf4(context, "partWarrantyClaim", args.claimId);
   return run5(context, actor, "warranty_claim.withdraw", args.idempotencyKey, args, (uow) => withdrawPartWarrantyClaim(uow, actor, args));
 }
+async function attachShopComebackJob(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageComebacks");
+  await shopOf4(context, "comebackCase", args.comebackId);
+  return run5(context, actor, "comeback.attach_job", args.idempotencyKey, args, (uow) => attachComebackJob(uow, actor, args));
+}
 
 // features/keystone/mutations/index.ts
 var graphql4 = String.raw;
@@ -11449,6 +11490,7 @@ function extendGraphqlSchema(baseSchema) {
         requestComebackGoodwill(comebackId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
         resolveShopComeback(comebackId: ID!, resolution: String!, comebackJobId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
         createShopPartWarrantyClaim(comebackId: ID!, supplierId: ID!, jobLineId: ID, laborReimbursementMinor: String, idempotencyKey: String!): JSON
+        attachShopComebackJob(comebackId: ID!, comebackJobId: ID!, idempotencyKey: String!): JSON
         cancelShopComeback(comebackId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         withdrawShopPartWarrantyClaim(claimId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         releaseShopJobReservations(jobId: ID!, reason: String!, idempotencyKey: String!): JSON
@@ -11556,6 +11598,7 @@ function extendGraphqlSchema(baseSchema) {
         requestComebackGoodwill: op(requestComebackGoodwill),
         resolveShopComeback: op(resolveShopComeback),
         createShopPartWarrantyClaim: op(createShopPartWarrantyClaim),
+        attachShopComebackJob: op(attachShopComebackJob),
         cancelShopComeback: op(cancelShopComeback),
         withdrawShopPartWarrantyClaim: op(withdrawShopPartWarrantyClaim),
         releaseShopJobReservations: op(releaseShopJobReservations),
