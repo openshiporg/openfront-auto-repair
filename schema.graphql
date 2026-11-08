@@ -12098,6 +12098,924 @@ input TireRegistrationObligationCreateInput {
   updatedAt: DateTime
 }
 
+type ClockCorrection {
+  id: ID!
+  shop: Shop
+  technician: TechnicianProfile
+  targetKind: String
+  targetId: String
+  before: JSON
+  after: JSON
+  reason: String
+  requestedBy: User
+  approval: ApprovalRequest
+  appliedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ClockCorrectionWhereUniqueInput {
+  id: ID
+}
+
+input ClockCorrectionWhereInput {
+  AND: [ClockCorrectionWhereInput!]
+  OR: [ClockCorrectionWhereInput!]
+  NOT: [ClockCorrectionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  technician: TechnicianProfileWhereInput
+  targetKind: StringFilter
+  targetId: StringFilter
+  reason: StringFilter
+  requestedBy: UserWhereInput
+  approval: ApprovalRequestWhereInput
+  appliedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ClockCorrectionOrderByInput {
+  id: OrderDirection
+  targetKind: OrderDirection
+  targetId: OrderDirection
+  reason: OrderDirection
+  appliedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ClockCorrectionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  technician: TechnicianProfileRelateToOneForUpdateInput
+  targetKind: String
+  targetId: String
+  before: JSON
+  after: JSON
+  reason: String
+  requestedBy: UserRelateToOneForUpdateInput
+  approval: ApprovalRequestRelateToOneForUpdateInput
+  appliedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TechnicianProfileRelateToOneForUpdateInput {
+  create: TechnicianProfileCreateInput
+  connect: TechnicianProfileWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ClockCorrectionUpdateArgs {
+  where: ClockCorrectionWhereUniqueInput!
+  data: ClockCorrectionUpdateInput!
+}
+
+input ClockCorrectionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  technician: TechnicianProfileRelateToOneForCreateInput
+  targetKind: String
+  targetId: String
+  before: JSON
+  after: JSON
+  reason: String
+  requestedBy: UserRelateToOneForCreateInput
+  approval: ApprovalRequestRelateToOneForCreateInput
+  appliedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TechnicianProfileRelateToOneForCreateInput {
+  create: TechnicianProfileCreateInput
+  connect: TechnicianProfileWhereUniqueInput
+}
+
+type ComebackCase {
+  id: ID!
+  shop: Shop
+  reference: String
+  originalJob: Job
+  comebackJob: Job
+  concern: String
+  coverage: WarrantyCoverage
+  coverageValid: Boolean
+  cause: String
+  diagnosis: String
+  noCharge: Boolean
+  goodwillApproval: ApprovalRequest
+  resolution: String
+  openedBy: User
+  resolvedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ComebackCaseWhereUniqueInput {
+  id: ID
+  reference: String
+}
+
+input ComebackCaseWhereInput {
+  AND: [ComebackCaseWhereInput!]
+  OR: [ComebackCaseWhereInput!]
+  NOT: [ComebackCaseWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  originalJob: JobWhereInput
+  comebackJob: JobWhereInput
+  concern: StringFilter
+  coverage: WarrantyCoverageWhereInput
+  coverageValid: BooleanFilter
+  cause: StringFilter
+  diagnosis: StringFilter
+  noCharge: BooleanFilter
+  goodwillApproval: ApprovalRequestWhereInput
+  resolution: StringFilter
+  openedBy: UserWhereInput
+  resolvedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ComebackCaseOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  concern: OrderDirection
+  coverageValid: OrderDirection
+  cause: OrderDirection
+  diagnosis: OrderDirection
+  noCharge: OrderDirection
+  resolution: OrderDirection
+  resolvedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ComebackCaseUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  originalJob: JobRelateToOneForUpdateInput
+  comebackJob: JobRelateToOneForUpdateInput
+  concern: String
+  coverage: WarrantyCoverageRelateToOneForUpdateInput
+  coverageValid: Boolean
+  cause: String
+  diagnosis: String
+  noCharge: Boolean
+  goodwillApproval: ApprovalRequestRelateToOneForUpdateInput
+  resolution: String
+  openedBy: UserRelateToOneForUpdateInput
+  resolvedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyCoverageRelateToOneForUpdateInput {
+  create: WarrantyCoverageCreateInput
+  connect: WarrantyCoverageWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ComebackCaseUpdateArgs {
+  where: ComebackCaseWhereUniqueInput!
+  data: ComebackCaseUpdateInput!
+}
+
+input ComebackCaseCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  originalJob: JobRelateToOneForCreateInput
+  comebackJob: JobRelateToOneForCreateInput
+  concern: String
+  coverage: WarrantyCoverageRelateToOneForCreateInput
+  coverageValid: Boolean
+  cause: String
+  diagnosis: String
+  noCharge: Boolean
+  goodwillApproval: ApprovalRequestRelateToOneForCreateInput
+  resolution: String
+  openedBy: UserRelateToOneForCreateInput
+  resolvedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyCoverageRelateToOneForCreateInput {
+  create: WarrantyCoverageCreateInput
+  connect: WarrantyCoverageWhereUniqueInput
+}
+
+type FlaggedHoursEntry {
+  id: ID!
+  shop: Shop
+  technician: TechnicianProfile
+  job: Job
+  centiHours: Int
+  kind: String
+  reason: String
+  sourceEvent: String
+  payPeriod: PayPeriod
+  flaggedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FlaggedHoursEntryWhereUniqueInput {
+  id: ID
+}
+
+input FlaggedHoursEntryWhereInput {
+  AND: [FlaggedHoursEntryWhereInput!]
+  OR: [FlaggedHoursEntryWhereInput!]
+  NOT: [FlaggedHoursEntryWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  technician: TechnicianProfileWhereInput
+  job: JobWhereInput
+  centiHours: IntFilter
+  kind: StringFilter
+  reason: StringFilter
+  sourceEvent: StringFilter
+  payPeriod: PayPeriodWhereInput
+  flaggedAt: DateTimeNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input FlaggedHoursEntryOrderByInput {
+  id: OrderDirection
+  centiHours: OrderDirection
+  kind: OrderDirection
+  reason: OrderDirection
+  sourceEvent: OrderDirection
+  flaggedAt: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input FlaggedHoursEntryUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  technician: TechnicianProfileRelateToOneForUpdateInput
+  job: JobRelateToOneForUpdateInput
+  centiHours: Int
+  kind: String
+  reason: String
+  sourceEvent: String
+  payPeriod: PayPeriodRelateToOneForUpdateInput
+  flaggedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PayPeriodRelateToOneForUpdateInput {
+  create: PayPeriodCreateInput
+  connect: PayPeriodWhereUniqueInput
+  disconnect: Boolean
+}
+
+input FlaggedHoursEntryUpdateArgs {
+  where: FlaggedHoursEntryWhereUniqueInput!
+  data: FlaggedHoursEntryUpdateInput!
+}
+
+input FlaggedHoursEntryCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  technician: TechnicianProfileRelateToOneForCreateInput
+  job: JobRelateToOneForCreateInput
+  centiHours: Int
+  kind: String
+  reason: String
+  sourceEvent: String
+  payPeriod: PayPeriodRelateToOneForCreateInput
+  flaggedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PayPeriodRelateToOneForCreateInput {
+  create: PayPeriodCreateInput
+  connect: PayPeriodWhereUniqueInput
+}
+
+type JobClock {
+  id: ID!
+  shop: Shop
+  technician: TechnicianProfile
+  job: Job
+  shiftClock: ShiftClock
+  startedAt: DateTime
+  stoppedAt: DateTime
+  workedCentiHours: Int
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobClockWhereUniqueInput {
+  id: ID
+}
+
+input JobClockWhereInput {
+  AND: [JobClockWhereInput!]
+  OR: [JobClockWhereInput!]
+  NOT: [JobClockWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  technician: TechnicianProfileWhereInput
+  job: JobWhereInput
+  shiftClock: ShiftClockWhereInput
+  startedAt: DateTimeNullableFilter
+  stoppedAt: DateTimeNullableFilter
+  workedCentiHours: IntFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input JobClockOrderByInput {
+  id: OrderDirection
+  startedAt: OrderDirection
+  stoppedAt: OrderDirection
+  workedCentiHours: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input JobClockUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  technician: TechnicianProfileRelateToOneForUpdateInput
+  job: JobRelateToOneForUpdateInput
+  shiftClock: ShiftClockRelateToOneForUpdateInput
+  startedAt: DateTime
+  stoppedAt: DateTime
+  workedCentiHours: Int
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShiftClockRelateToOneForUpdateInput {
+  create: ShiftClockCreateInput
+  connect: ShiftClockWhereUniqueInput
+  disconnect: Boolean
+}
+
+input JobClockUpdateArgs {
+  where: JobClockWhereUniqueInput!
+  data: JobClockUpdateInput!
+}
+
+input JobClockCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  technician: TechnicianProfileRelateToOneForCreateInput
+  job: JobRelateToOneForCreateInput
+  shiftClock: ShiftClockRelateToOneForCreateInput
+  startedAt: DateTime
+  stoppedAt: DateTime
+  workedCentiHours: Int
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShiftClockRelateToOneForCreateInput {
+  create: ShiftClockCreateInput
+  connect: ShiftClockWhereUniqueInput
+}
+
+type PartWarrantyClaim {
+  id: ID!
+  shop: Shop
+  comeback: ComebackCase
+  supplier: Supplier
+  jobLine: JobLine
+  claimNumber: String
+  laborReimbursementMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PartWarrantyClaimWhereUniqueInput {
+  id: ID
+}
+
+input PartWarrantyClaimWhereInput {
+  AND: [PartWarrantyClaimWhereInput!]
+  OR: [PartWarrantyClaimWhereInput!]
+  NOT: [PartWarrantyClaimWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  comeback: ComebackCaseWhereInput
+  supplier: SupplierWhereInput
+  jobLine: JobLineWhereInput
+  claimNumber: StringFilter
+  laborReimbursementMinor: BigIntFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input PartWarrantyClaimOrderByInput {
+  id: OrderDirection
+  claimNumber: OrderDirection
+  laborReimbursementMinor: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PartWarrantyClaimUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  comeback: ComebackCaseRelateToOneForUpdateInput
+  supplier: SupplierRelateToOneForUpdateInput
+  jobLine: JobLineRelateToOneForUpdateInput
+  claimNumber: String
+  laborReimbursementMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ComebackCaseRelateToOneForUpdateInput {
+  create: ComebackCaseCreateInput
+  connect: ComebackCaseWhereUniqueInput
+  disconnect: Boolean
+}
+
+input PartWarrantyClaimUpdateArgs {
+  where: PartWarrantyClaimWhereUniqueInput!
+  data: PartWarrantyClaimUpdateInput!
+}
+
+input PartWarrantyClaimCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  comeback: ComebackCaseRelateToOneForCreateInput
+  supplier: SupplierRelateToOneForCreateInput
+  jobLine: JobLineRelateToOneForCreateInput
+  claimNumber: String
+  laborReimbursementMinor: BigInt
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ComebackCaseRelateToOneForCreateInput {
+  create: ComebackCaseCreateInput
+  connect: ComebackCaseWhereUniqueInput
+}
+
+type PayPeriod {
+  id: ID!
+  shop: Shop
+  startsOn: CalendarDay
+  endsOn: CalendarDay
+  closedAt: DateTime
+  closedBy: User
+  approvedBy: User
+  exportedAt: DateTime
+  exportCsv: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PayPeriodWhereUniqueInput {
+  id: ID
+}
+
+input PayPeriodWhereInput {
+  AND: [PayPeriodWhereInput!]
+  OR: [PayPeriodWhereInput!]
+  NOT: [PayPeriodWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  startsOn: CalendarDayNullableFilter
+  endsOn: CalendarDayNullableFilter
+  closedAt: DateTimeNullableFilter
+  closedBy: UserWhereInput
+  approvedBy: UserWhereInput
+  exportedAt: DateTimeNullableFilter
+  exportCsv: StringFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input PayPeriodOrderByInput {
+  id: OrderDirection
+  startsOn: OrderDirection
+  endsOn: OrderDirection
+  closedAt: OrderDirection
+  exportedAt: OrderDirection
+  exportCsv: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PayPeriodUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  startsOn: CalendarDay
+  endsOn: CalendarDay
+  closedAt: DateTime
+  closedBy: UserRelateToOneForUpdateInput
+  approvedBy: UserRelateToOneForUpdateInput
+  exportedAt: DateTime
+  exportCsv: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PayPeriodUpdateArgs {
+  where: PayPeriodWhereUniqueInput!
+  data: PayPeriodUpdateInput!
+}
+
+input PayPeriodCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  startsOn: CalendarDay
+  endsOn: CalendarDay
+  closedAt: DateTime
+  closedBy: UserRelateToOneForCreateInput
+  approvedBy: UserRelateToOneForCreateInput
+  exportedAt: DateTime
+  exportCsv: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ShiftClock {
+  id: ID!
+  shop: Shop
+  technician: TechnicianProfile
+  clockInAt: DateTime
+  clockOutAt: DateTime
+  breaks: JSON
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShiftClockWhereUniqueInput {
+  id: ID
+}
+
+input ShiftClockWhereInput {
+  AND: [ShiftClockWhereInput!]
+  OR: [ShiftClockWhereInput!]
+  NOT: [ShiftClockWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  technician: TechnicianProfileWhereInput
+  clockInAt: DateTimeNullableFilter
+  clockOutAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ShiftClockOrderByInput {
+  id: OrderDirection
+  clockInAt: OrderDirection
+  clockOutAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ShiftClockUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  technician: TechnicianProfileRelateToOneForUpdateInput
+  clockInAt: DateTime
+  clockOutAt: DateTime
+  breaks: JSON
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ShiftClockUpdateArgs {
+  where: ShiftClockWhereUniqueInput!
+  data: ShiftClockUpdateInput!
+}
+
+input ShiftClockCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  technician: TechnicianProfileRelateToOneForCreateInput
+  clockInAt: DateTime
+  clockOutAt: DateTime
+  breaks: JSON
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type TechnicianCredential {
+  id: ID!
+  technician: TechnicianProfile
+  kind: String
+  identifier: String
+  issuedAt: CalendarDay
+  expiresAt: CalendarDay
+  verifiedBy: User
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TechnicianCredentialWhereUniqueInput {
+  id: ID
+}
+
+input TechnicianCredentialWhereInput {
+  AND: [TechnicianCredentialWhereInput!]
+  OR: [TechnicianCredentialWhereInput!]
+  NOT: [TechnicianCredentialWhereInput!]
+  id: IDFilter
+  technician: TechnicianProfileWhereInput
+  kind: StringFilter
+  identifier: StringFilter
+  issuedAt: CalendarDayNullableFilter
+  expiresAt: CalendarDayNullableFilter
+  verifiedBy: UserWhereInput
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input TechnicianCredentialOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  identifier: OrderDirection
+  issuedAt: OrderDirection
+  expiresAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input TechnicianCredentialUpdateInput {
+  technician: TechnicianProfileRelateToOneForUpdateInput
+  kind: String
+  identifier: String
+  issuedAt: CalendarDay
+  expiresAt: CalendarDay
+  verifiedBy: UserRelateToOneForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TechnicianCredentialUpdateArgs {
+  where: TechnicianCredentialWhereUniqueInput!
+  data: TechnicianCredentialUpdateInput!
+}
+
+input TechnicianCredentialCreateInput {
+  technician: TechnicianProfileRelateToOneForCreateInput
+  kind: String
+  identifier: String
+  issuedAt: CalendarDay
+  expiresAt: CalendarDay
+  verifiedBy: UserRelateToOneForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type TechnicianProfile {
+  id: ID!
+  user: User
+  shop: Shop
+  displayName: String
+  payPlan: String
+  flatRateMinor: BigInt
+  hourlyRateMinor: BigInt
+  skills: JSON
+  rateClasses: JSON
+  active: Boolean
+  credentials(where: TechnicianCredentialWhereInput! = {}, orderBy: [TechnicianCredentialOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TechnicianCredentialWhereUniqueInput): [TechnicianCredential!]
+  credentialsCount(where: TechnicianCredentialWhereInput! = {}): Int
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TechnicianProfileWhereUniqueInput {
+  id: ID
+}
+
+input TechnicianProfileWhereInput {
+  AND: [TechnicianProfileWhereInput!]
+  OR: [TechnicianProfileWhereInput!]
+  NOT: [TechnicianProfileWhereInput!]
+  id: IDFilter
+  user: UserWhereInput
+  shop: ShopWhereInput
+  displayName: StringFilter
+  payPlan: StringFilter
+  flatRateMinor: BigIntFilter
+  hourlyRateMinor: BigIntFilter
+  active: BooleanFilter
+  credentials: TechnicianCredentialManyRelationFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input TechnicianCredentialManyRelationFilter {
+  every: TechnicianCredentialWhereInput
+  some: TechnicianCredentialWhereInput
+  none: TechnicianCredentialWhereInput
+}
+
+input TechnicianProfileOrderByInput {
+  id: OrderDirection
+  displayName: OrderDirection
+  payPlan: OrderDirection
+  flatRateMinor: OrderDirection
+  hourlyRateMinor: OrderDirection
+  active: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input TechnicianProfileUpdateInput {
+  user: UserRelateToOneForUpdateInput
+  shop: ShopRelateToOneForUpdateInput
+  displayName: String
+  payPlan: String
+  flatRateMinor: BigInt
+  hourlyRateMinor: BigInt
+  skills: JSON
+  rateClasses: JSON
+  active: Boolean
+  credentials: TechnicianCredentialRelateToManyForUpdateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TechnicianCredentialRelateToManyForUpdateInput {
+  disconnect: [TechnicianCredentialWhereUniqueInput!]
+  set: [TechnicianCredentialWhereUniqueInput!]
+  create: [TechnicianCredentialCreateInput!]
+  connect: [TechnicianCredentialWhereUniqueInput!]
+}
+
+input TechnicianProfileUpdateArgs {
+  where: TechnicianProfileWhereUniqueInput!
+  data: TechnicianProfileUpdateInput!
+}
+
+input TechnicianProfileCreateInput {
+  user: UserRelateToOneForCreateInput
+  shop: ShopRelateToOneForCreateInput
+  displayName: String
+  payPlan: String
+  flatRateMinor: BigInt
+  hourlyRateMinor: BigInt
+  skills: JSON
+  rateClasses: JSON
+  active: Boolean
+  credentials: TechnicianCredentialRelateToManyForCreateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input TechnicianCredentialRelateToManyForCreateInput {
+  create: [TechnicianCredentialCreateInput!]
+  connect: [TechnicianCredentialWhereUniqueInput!]
+}
+
+type WaitingInterval {
+  id: ID!
+  jobClock: JobClock
+  reason: String
+  startedAt: DateTime
+  endedAt: DateTime
+  note: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WaitingIntervalWhereUniqueInput {
+  id: ID
+}
+
+input WaitingIntervalWhereInput {
+  AND: [WaitingIntervalWhereInput!]
+  OR: [WaitingIntervalWhereInput!]
+  NOT: [WaitingIntervalWhereInput!]
+  id: IDFilter
+  jobClock: JobClockWhereInput
+  reason: StringFilter
+  startedAt: DateTimeNullableFilter
+  endedAt: DateTimeNullableFilter
+  note: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input WaitingIntervalOrderByInput {
+  id: OrderDirection
+  reason: OrderDirection
+  startedAt: OrderDirection
+  endedAt: OrderDirection
+  note: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input WaitingIntervalUpdateInput {
+  jobClock: JobClockRelateToOneForUpdateInput
+  reason: String
+  startedAt: DateTime
+  endedAt: DateTime
+  note: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobClockRelateToOneForUpdateInput {
+  create: JobClockCreateInput
+  connect: JobClockWhereUniqueInput
+  disconnect: Boolean
+}
+
+input WaitingIntervalUpdateArgs {
+  where: WaitingIntervalWhereUniqueInput!
+  data: WaitingIntervalUpdateInput!
+}
+
+input WaitingIntervalCreateInput {
+  jobClock: JobClockRelateToOneForCreateInput
+  reason: String
+  startedAt: DateTime
+  endedAt: DateTime
+  note: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobClockRelateToOneForCreateInput {
+  create: JobClockCreateInput
+  connect: JobClockWhereUniqueInput
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -12722,6 +13640,66 @@ type Mutation {
   updateTireRegistrationObligations(data: [TireRegistrationObligationUpdateArgs!]!): [TireRegistrationObligation]
   deleteTireRegistrationObligation(where: TireRegistrationObligationWhereUniqueInput!): TireRegistrationObligation
   deleteTireRegistrationObligations(where: [TireRegistrationObligationWhereUniqueInput!]!): [TireRegistrationObligation]
+  createClockCorrection(data: ClockCorrectionCreateInput!): ClockCorrection
+  createClockCorrections(data: [ClockCorrectionCreateInput!]!): [ClockCorrection]
+  updateClockCorrection(where: ClockCorrectionWhereUniqueInput!, data: ClockCorrectionUpdateInput!): ClockCorrection
+  updateClockCorrections(data: [ClockCorrectionUpdateArgs!]!): [ClockCorrection]
+  deleteClockCorrection(where: ClockCorrectionWhereUniqueInput!): ClockCorrection
+  deleteClockCorrections(where: [ClockCorrectionWhereUniqueInput!]!): [ClockCorrection]
+  createComebackCase(data: ComebackCaseCreateInput!): ComebackCase
+  createComebackCases(data: [ComebackCaseCreateInput!]!): [ComebackCase]
+  updateComebackCase(where: ComebackCaseWhereUniqueInput!, data: ComebackCaseUpdateInput!): ComebackCase
+  updateComebackCases(data: [ComebackCaseUpdateArgs!]!): [ComebackCase]
+  deleteComebackCase(where: ComebackCaseWhereUniqueInput!): ComebackCase
+  deleteComebackCases(where: [ComebackCaseWhereUniqueInput!]!): [ComebackCase]
+  createFlaggedHoursEntry(data: FlaggedHoursEntryCreateInput!): FlaggedHoursEntry
+  createFlaggedHoursEntries(data: [FlaggedHoursEntryCreateInput!]!): [FlaggedHoursEntry]
+  updateFlaggedHoursEntry(where: FlaggedHoursEntryWhereUniqueInput!, data: FlaggedHoursEntryUpdateInput!): FlaggedHoursEntry
+  updateFlaggedHoursEntries(data: [FlaggedHoursEntryUpdateArgs!]!): [FlaggedHoursEntry]
+  deleteFlaggedHoursEntry(where: FlaggedHoursEntryWhereUniqueInput!): FlaggedHoursEntry
+  deleteFlaggedHoursEntries(where: [FlaggedHoursEntryWhereUniqueInput!]!): [FlaggedHoursEntry]
+  createJobClock(data: JobClockCreateInput!): JobClock
+  createJobClocks(data: [JobClockCreateInput!]!): [JobClock]
+  updateJobClock(where: JobClockWhereUniqueInput!, data: JobClockUpdateInput!): JobClock
+  updateJobClocks(data: [JobClockUpdateArgs!]!): [JobClock]
+  deleteJobClock(where: JobClockWhereUniqueInput!): JobClock
+  deleteJobClocks(where: [JobClockWhereUniqueInput!]!): [JobClock]
+  createPartWarrantyClaim(data: PartWarrantyClaimCreateInput!): PartWarrantyClaim
+  createPartWarrantyClaims(data: [PartWarrantyClaimCreateInput!]!): [PartWarrantyClaim]
+  updatePartWarrantyClaim(where: PartWarrantyClaimWhereUniqueInput!, data: PartWarrantyClaimUpdateInput!): PartWarrantyClaim
+  updatePartWarrantyClaims(data: [PartWarrantyClaimUpdateArgs!]!): [PartWarrantyClaim]
+  deletePartWarrantyClaim(where: PartWarrantyClaimWhereUniqueInput!): PartWarrantyClaim
+  deletePartWarrantyClaims(where: [PartWarrantyClaimWhereUniqueInput!]!): [PartWarrantyClaim]
+  createPayPeriod(data: PayPeriodCreateInput!): PayPeriod
+  createPayPeriods(data: [PayPeriodCreateInput!]!): [PayPeriod]
+  updatePayPeriod(where: PayPeriodWhereUniqueInput!, data: PayPeriodUpdateInput!): PayPeriod
+  updatePayPeriods(data: [PayPeriodUpdateArgs!]!): [PayPeriod]
+  deletePayPeriod(where: PayPeriodWhereUniqueInput!): PayPeriod
+  deletePayPeriods(where: [PayPeriodWhereUniqueInput!]!): [PayPeriod]
+  createShiftClock(data: ShiftClockCreateInput!): ShiftClock
+  createShiftClocks(data: [ShiftClockCreateInput!]!): [ShiftClock]
+  updateShiftClock(where: ShiftClockWhereUniqueInput!, data: ShiftClockUpdateInput!): ShiftClock
+  updateShiftClocks(data: [ShiftClockUpdateArgs!]!): [ShiftClock]
+  deleteShiftClock(where: ShiftClockWhereUniqueInput!): ShiftClock
+  deleteShiftClocks(where: [ShiftClockWhereUniqueInput!]!): [ShiftClock]
+  createTechnicianCredential(data: TechnicianCredentialCreateInput!): TechnicianCredential
+  createTechnicianCredentials(data: [TechnicianCredentialCreateInput!]!): [TechnicianCredential]
+  updateTechnicianCredential(where: TechnicianCredentialWhereUniqueInput!, data: TechnicianCredentialUpdateInput!): TechnicianCredential
+  updateTechnicianCredentials(data: [TechnicianCredentialUpdateArgs!]!): [TechnicianCredential]
+  deleteTechnicianCredential(where: TechnicianCredentialWhereUniqueInput!): TechnicianCredential
+  deleteTechnicianCredentials(where: [TechnicianCredentialWhereUniqueInput!]!): [TechnicianCredential]
+  createTechnicianProfile(data: TechnicianProfileCreateInput!): TechnicianProfile
+  createTechnicianProfiles(data: [TechnicianProfileCreateInput!]!): [TechnicianProfile]
+  updateTechnicianProfile(where: TechnicianProfileWhereUniqueInput!, data: TechnicianProfileUpdateInput!): TechnicianProfile
+  updateTechnicianProfiles(data: [TechnicianProfileUpdateArgs!]!): [TechnicianProfile]
+  deleteTechnicianProfile(where: TechnicianProfileWhereUniqueInput!): TechnicianProfile
+  deleteTechnicianProfiles(where: [TechnicianProfileWhereUniqueInput!]!): [TechnicianProfile]
+  createWaitingInterval(data: WaitingIntervalCreateInput!): WaitingInterval
+  createWaitingIntervals(data: [WaitingIntervalCreateInput!]!): [WaitingInterval]
+  updateWaitingInterval(where: WaitingIntervalWhereUniqueInput!, data: WaitingIntervalUpdateInput!): WaitingInterval
+  updateWaitingIntervals(data: [WaitingIntervalUpdateArgs!]!): [WaitingInterval]
+  deleteWaitingInterval(where: WaitingIntervalWhereUniqueInput!): WaitingInterval
+  deleteWaitingIntervals(where: [WaitingIntervalWhereUniqueInput!]!): [WaitingInterval]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -12777,6 +13755,37 @@ type Mutation {
   reopenShopDay(dayCloseId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
   releaseShopVehicle(repairOrderId: ID!, reason: String, approvalRequestId: ID, idempotencyKey: String!): JSON
   closeCallbackTask(taskId: ID!, expectedVersion: Int!, outcome: String!, cancel: Boolean, idempotencyKey: String!): JSON
+  saveShopPartItem(input: JSON!, idempotencyKey: String!): JSON
+  requestSupplierQuote(shopId: ID!, supplierId: ID!, partNumber: String!, quantityMilli: Int!, jobId: ID, jobLineId: ID, idempotencyKey: String!): JSON
+  recordSupplierQuote(input: JSON!, idempotencyKey: String!): JSON
+  selectSupplierQuote(quoteId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+  createShopSupplierOrder(input: JSON!, idempotencyKey: String!): JSON
+  placeSupplierOrder(orderId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+  recordPhoneOrder(orderId: ID!, spokeTo: String!, supplierConfirmation: String, etaHours: Int, expectedVersion: Int, idempotencyKey: String!): JSON
+  resolveUnknownSupplierOrder(orderId: ID!, found: Boolean, supplierConfirmation: String, note: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+  confirmShopSupplierOrder(orderId: ID!, supplierConfirmation: String, etaAt: String, expectedVersion: Int, idempotencyKey: String!): JSON
+  cancelShopSupplierOrder(orderId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+  receiveShopSupplierOrder(input: JSON!, idempotencyKey: String!): JSON
+  reserveJobPart(jobId: ID!, shopItemId: ID!, quantityMilli: Int!, idempotencyKey: String!): JSON
+  issueJobPart(jobId: ID!, shopItemId: ID!, quantityMilli: Int!, idempotencyKey: String!): JSON
+  returnJobPart(jobId: ID!, shopItemId: ID!, quantityMilli: Int!, idempotencyKey: String!): JSON
+  adjustShopStock(shopItemId: ID!, deltaMilli: Int!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+  startShopCycleCount(shopId: ID!, shopItemIds: [ID!]!, idempotencyKey: String!): JSON
+  recordShopCounts(cycleCountId: ID!, counts: JSON!, expectedVersion: Int, idempotencyKey: String!): JSON
+  postShopCycleCount(cycleCountId: ID!, approvalRequestId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+  markShopCoreReturned(coreId: ID!, note: String, documentId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+  writeOffShopCore(coreId: ID!, reason: String!, approvalRequestId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+  createShopSupplierReturn(input: JSON!, idempotencyKey: String!): JSON
+  advanceShopSupplierReturn(returnId: ID!, to: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+  recordShopSupplierInvoice(input: JSON!, idempotencyKey: String!): JSON
+  matchShopSupplierInvoice(invoiceId: ID!, idempotencyKey: String!): JSON
+  resolveSupplierDiscrepancy(discrepancyId: ID!, outcome: String!, resolution: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+  approveShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+  exportShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+  recordShopJobTire(jobId: ID!, tireSize: String, position: String!, tin: String!, idempotencyKey: String!): JSON
+  completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
+  confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+  sweepShopTireRegistrations(idempotencyKey: String!): JSON
 }
 
 union UserAuthenticationWithPasswordResult = UserAuthenticationWithPasswordSuccess | UserAuthenticationWithPasswordFailure
@@ -13117,6 +14126,36 @@ type Query {
   tireRegistrationObligation(where: TireRegistrationObligationWhereUniqueInput!): TireRegistrationObligation
   tireRegistrationObligations(where: TireRegistrationObligationWhereInput! = {}, orderBy: [TireRegistrationObligationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TireRegistrationObligationWhereUniqueInput): [TireRegistrationObligation!]
   tireRegistrationObligationsCount(where: TireRegistrationObligationWhereInput! = {}): Int
+  clockCorrection(where: ClockCorrectionWhereUniqueInput!): ClockCorrection
+  clockCorrections(where: ClockCorrectionWhereInput! = {}, orderBy: [ClockCorrectionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ClockCorrectionWhereUniqueInput): [ClockCorrection!]
+  clockCorrectionsCount(where: ClockCorrectionWhereInput! = {}): Int
+  comebackCase(where: ComebackCaseWhereUniqueInput!): ComebackCase
+  comebackCases(where: ComebackCaseWhereInput! = {}, orderBy: [ComebackCaseOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ComebackCaseWhereUniqueInput): [ComebackCase!]
+  comebackCasesCount(where: ComebackCaseWhereInput! = {}): Int
+  flaggedHoursEntry(where: FlaggedHoursEntryWhereUniqueInput!): FlaggedHoursEntry
+  flaggedHoursEntries(where: FlaggedHoursEntryWhereInput! = {}, orderBy: [FlaggedHoursEntryOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FlaggedHoursEntryWhereUniqueInput): [FlaggedHoursEntry!]
+  flaggedHoursEntriesCount(where: FlaggedHoursEntryWhereInput! = {}): Int
+  jobClock(where: JobClockWhereUniqueInput!): JobClock
+  jobClocks(where: JobClockWhereInput! = {}, orderBy: [JobClockOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobClockWhereUniqueInput): [JobClock!]
+  jobClocksCount(where: JobClockWhereInput! = {}): Int
+  partWarrantyClaim(where: PartWarrantyClaimWhereUniqueInput!): PartWarrantyClaim
+  partWarrantyClaims(where: PartWarrantyClaimWhereInput! = {}, orderBy: [PartWarrantyClaimOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PartWarrantyClaimWhereUniqueInput): [PartWarrantyClaim!]
+  partWarrantyClaimsCount(where: PartWarrantyClaimWhereInput! = {}): Int
+  payPeriod(where: PayPeriodWhereUniqueInput!): PayPeriod
+  payPeriods(where: PayPeriodWhereInput! = {}, orderBy: [PayPeriodOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PayPeriodWhereUniqueInput): [PayPeriod!]
+  payPeriodsCount(where: PayPeriodWhereInput! = {}): Int
+  shiftClock(where: ShiftClockWhereUniqueInput!): ShiftClock
+  shiftClocks(where: ShiftClockWhereInput! = {}, orderBy: [ShiftClockOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShiftClockWhereUniqueInput): [ShiftClock!]
+  shiftClocksCount(where: ShiftClockWhereInput! = {}): Int
+  technicianCredential(where: TechnicianCredentialWhereUniqueInput!): TechnicianCredential
+  technicianCredentials(where: TechnicianCredentialWhereInput! = {}, orderBy: [TechnicianCredentialOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TechnicianCredentialWhereUniqueInput): [TechnicianCredential!]
+  technicianCredentialsCount(where: TechnicianCredentialWhereInput! = {}): Int
+  technicianProfile(where: TechnicianProfileWhereUniqueInput!): TechnicianProfile
+  technicianProfiles(where: TechnicianProfileWhereInput! = {}, orderBy: [TechnicianProfileOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TechnicianProfileWhereUniqueInput): [TechnicianProfile!]
+  technicianProfilesCount(where: TechnicianProfileWhereInput! = {}): Int
+  waitingInterval(where: WaitingIntervalWhereUniqueInput!): WaitingInterval
+  waitingIntervals(where: WaitingIntervalWhereInput! = {}, orderBy: [WaitingIntervalOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WaitingIntervalWhereUniqueInput): [WaitingInterval!]
+  waitingIntervalsCount(where: WaitingIntervalWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult

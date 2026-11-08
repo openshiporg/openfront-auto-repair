@@ -14,6 +14,7 @@ import { deriveToken, createAccessToken, revokeTokensFor } from './publicTokens'
 import { postingDate, settleDeposits } from './payments'
 import type { Tx } from './db'
 import type { UnitOfWork } from './unitOfWork'
+import { flagJob, shopPolicy } from './flagging'
 
 /*
  * Invoicing (STATE-MACHINES §12; DOMAIN D§3.8, I-R6). Finalizing an invoice is one transaction: the
@@ -188,6 +189,10 @@ export async function finalizeInvoices(uow: UnitOfWork, actor: Actor, input: Fin
         startsOn: dateOnly(today), endsOn: dateOnly(addMonths(today, term.months)), startMiles, endsAtMiles: startMiles === null ? null : startMiles + term.miles, status: 'active',
       },
     })
+  }
+
+  if ((await shopPolicy(tx, ro.shopId!)).flagHoursAt === 'invoice_finalized') {
+    for (const job of built.billable.filter(j => j.status === 'completed')) await flagJob(uow, actor, job.id, 'invoice.finalized')
   }
 
   await transition(uow, {

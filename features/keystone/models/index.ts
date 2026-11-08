@@ -11,6 +11,7 @@ import * as inspections from './inspections'
 import * as estimates from './estimates'
 import * as billing from './billing'
 import * as parts from './parts'
+import * as labor from './labor'
 
 export const models = {
   User,
@@ -26,6 +27,7 @@ export const models = {
   ...estimates,
   ...billing,
   ...parts,
+  ...labor,
 }
 
 export default models

@@ -36,7 +36,7 @@ module.exports = __toCommonJS(keystone_exports);
 
 // features/keystone/index.ts
 var import_auth = require("@keystone-6/auth");
-var import_core16 = require("@keystone-6/core");
+var import_core19 = require("@keystone-6/core");
 var import_config = require("dotenv/config");
 
 // features/keystone/models/User.ts
@@ -725,9 +725,9 @@ function dec(value) {
     if (!Number.isSafeInteger(value)) throw new Error(`Refusing float ${value}: pass the exact decimal as a string`);
     return new Decimal(value);
   }
-  const text15 = String(value).trim();
-  if (!DECIMAL_TEXT.test(text15)) throw new Error(`Not a decimal number: ${JSON.stringify(text15).slice(0, 40)}`);
-  return new Decimal(text15);
+  const text18 = String(value).trim();
+  if (!DECIMAL_TEXT.test(text18)) throw new Error(`Not a decimal number: ${JSON.stringify(text18).slice(0, 40)}`);
+  return new Decimal(text18);
 }
 function toScale(value, scale, rounding = Decimal.ROUND_HALF_EVEN) {
   const places = typeof scale === "number" ? scale : Scale[scale];
@@ -759,7 +759,7 @@ function canonicalize(value) {
   throw new Error(`Canonical JSON cannot hold a ${typeof value}`);
 }
 var canonicalJson = (value) => JSON.stringify(canonicalize(value));
-var sha256 = (text15) => (0, import_node_crypto2.createHash)("sha256").update(text15).digest("hex");
+var sha256 = (text18) => (0, import_node_crypto2.createHash)("sha256").update(text18).digest("hex");
 var payloadHash = (value) => sha256(canonicalJson(value));
 var toJsonValue = (value) => canonicalize(value);
 
@@ -2538,6 +2538,813 @@ var PublicAccessToken = (0, import_core14.list)({
   }
 });
 
+// features/keystone/models/billing.ts
+var billing_exports = {};
+__export(billing_exports, {
+  BusinessDayClose: () => BusinessDayClose,
+  CreditMemo: () => CreditMemo,
+  CreditMemoLine: () => CreditMemoLine,
+  FinancingApplication: () => FinancingApplication,
+  Invoice: () => Invoice,
+  InvoiceLine: () => InvoiceLine,
+  Payment: () => Payment,
+  PaymentAllocation: () => PaymentAllocation,
+  Refund: () => Refund,
+  Statement: () => Statement,
+  WarrantyCoverage: () => WarrantyCoverage
+});
+var import_core15 = require("@keystone-6/core");
+var import_fields14 = require("@keystone-6/core/fields");
+var READ = ["canTakePayments", "canFinalizeInvoices", "canReadFinancials", "canCloseDay"];
+var money = () => shopScoped(governed([...READ]), "shop");
+var via = (path) => shopScoped(governed([...READ]), path);
+var PAYER_KINDS = ["customer", "business_account", "service_contract", "insurer", "manufacturer"];
+var TENDERS = ["card_present", "card_link", "tap_to_pay", "ach", "cash", "check", "financing", "store_credit", "gift_card", "account_credit"];
+var Invoice = (0, import_core15.list)({
+  access: money(),
+  ui: { labelField: "invoiceNumber", listView: { initialColumns: ["invoiceNumber", "repairOrder", "payerKind", "totalMinor", "balanceMinor", "status"] } },
+  fields: {
+    shop: (0, import_fields14.relationship)({ ref: "Shop", ...readOnly }),
+    invoiceNumber: systemText({ indexed: "unique", required: true }),
+    repairOrder: (0, import_fields14.relationship)({ ref: "RepairOrder", ...readOnly }),
+    payerKind: systemChoice(PAYER_KINDS),
+    customer: (0, import_fields14.relationship)({ ref: "Customer", ...readOnly }),
+    businessAccount: (0, import_fields14.relationship)({ ref: "BusinessAccount", ...readOnly }),
+    poNumber: systemText(),
+    invoiceDate: (0, import_fields14.calendarDay)({ ...readOnly }),
+    dueDate: (0, import_fields14.calendarDay)({ ...readOnly }),
+    retentionUntil: (0, import_fields14.calendarDay)({ ...readOnly }),
+    odometerOut: (0, import_fields14.integer)({ ...readOnly }),
+    lines: (0, import_fields14.relationship)({ ref: "InvoiceLine.invoice", many: true, ...readOnly }),
+    laborSubtotalMinor: minor({ defaultValue: 0n }),
+    partsSubtotalMinor: minor({ defaultValue: 0n }),
+    feesSubtotalMinor: minor({ defaultValue: 0n }),
+    subletSubtotalMinor: minor({ defaultValue: 0n }),
+    discountMinor: minor({ defaultValue: 0n }),
+    taxMinor: minor({ defaultValue: 0n }),
+    totalMinor: minor({ defaultValue: 0n }),
+    paidMinor: minor({ defaultValue: 0n }),
+    creditedMinor: minor({ defaultValue: 0n }),
+    balanceMinor: minor({ defaultValue: 0n }),
+    disclosures: (0, import_fields14.json)({ ...readOnly, ui: { ...readOnly.ui, description: "Printed texts: registration numbers, authorization records, declined safety items, non-returnable parts, warranty terms." } }),
+    statement: (0, import_fields14.relationship)({ ref: "Statement", ...readOnly }),
+    allocations: (0, import_fields14.relationship)({ ref: "PaymentAllocation.invoice", many: true, ...readOnly }),
+    creditMemos: (0, import_fields14.relationship)({ ref: "CreditMemo.invoice", many: true, ...readOnly }),
+    sentAt: (0, import_fields14.timestamp)({ ...readOnly }),
+    sentChannel: systemText(),
+    finalizedBy: (0, import_fields14.relationship)({ ref: "User", ...readOnly }),
+    finalizedAt: (0, import_fields14.timestamp)({ ...readOnly }),
+    arStage: (0, import_fields14.virtual)({
+      field: import_core15.graphql.field({
+        type: import_core15.graphql.String,
+        resolve(item) {
+          if (item.status === "paid" || item.status === "credited" || BigInt(item.balanceMinor ?? 0) <= 0n) return "settled";
+          const due = item.dueDate ? new Date(item.dueDate).getTime() + 864e5 : null;
+          if (due === null) return "current";
+          const days = Math.floor((due - Date.now()) / 864e5);
+          return days < 0 ? "overdue" : days <= 3 ? "due_soon" : "current";
+        }
+      })
+    }),
+    status: lifecycle(["finalized", "sent", "partially_paid", "paid", "credited"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var InvoiceLine = (0, import_core15.list)({
+  access: via("invoice.shop"),
+  ui: { labelField: "description", listView: { initialColumns: ["invoice", "jobNumber", "kind", "description", "extendedMinor", "taxMinor"] } },
+  fields: {
+    invoice: (0, import_fields14.relationship)({ ref: "Invoice.lines", ...readOnly }),
+    sourceJobLine: (0, import_fields14.relationship)({ ref: "JobLine", ...readOnly }),
+    jobNumber: (0, import_fields14.integer)({ ...readOnly }),
+    jobTitle: systemText(),
+    kind: systemChoice(["labor", "part", "fee", "sublet", "tire", "core", "discount", "refrigerant"]),
+    description: systemText({ required: true }),
+    partNumber: systemText(),
+    brand: systemText(),
+    condition: systemText(),
+    subletVendorName: systemText(),
+    quantityMilli: (0, import_fields14.integer)({ defaultValue: 1e3, ...readOnly }),
+    centiHours: (0, import_fields14.integer)({ defaultValue: 0, ...readOnly }),
+    unitPriceMinor: minor({ defaultValue: 0n }),
+    extendedMinor: minor({ defaultValue: 0n }),
+    taxCategoryCode: systemText(),
+    taxMinor: minor({ defaultValue: 0n }),
+    sortOrder: (0, import_fields14.integer)({ defaultValue: 0, ...readOnly }),
+    ...trackingFields
+  }
+});
+var CreditMemo = (0, import_core15.list)({
+  access: via("invoice.shop"),
+  ui: { labelField: "reference", listView: { initialColumns: ["reference", "invoice", "totalMinor", "status", "reason"] } },
+  fields: {
+    shop: (0, import_fields14.relationship)({ ref: "Shop", ...readOnly }),
+    reference: systemText({ indexed: "unique", required: true }),
+    invoice: (0, import_fields14.relationship)({ ref: "Invoice.creditMemos", ...readOnly }),
+    reason: systemText({ required: true }),
+    subtotalMinor: minor({ defaultValue: 0n }),
+    taxMinor: minor({ defaultValue: 0n }),
+    totalMinor: minor({ defaultValue: 0n }),
+    lines: (0, import_fields14.relationship)({ ref: "CreditMemoLine.creditMemo", many: true, ...readOnly }),
+    approval: (0, import_fields14.relationship)({ ref: "ApprovalRequest", ...readOnly }),
+    createdBy: (0, import_fields14.relationship)({ ref: "User", ...readOnly }),
+    issuedBy: (0, import_fields14.relationship)({ ref: "User", ...readOnly }),
+    issuedAt: (0, import_fields14.timestamp)({ ...readOnly }),
+    status: lifecycle(["draft", "issued"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var CreditMemoLine = (0, import_core15.list)({
+  access: via("creditMemo.invoice.shop"),
+  ui: { labelField: "description" },
+  fields: {
+    creditMemo: (0, import_fields14.relationship)({ ref: "CreditMemo.lines", ...readOnly }),
+    invoiceLine: (0, import_fields14.relationship)({ ref: "InvoiceLine", ...readOnly }),
+    description: systemText(),
+    amountMinor: minor({ defaultValue: 0n }),
+    taxMinor: minor({ defaultValue: 0n }),
+    ...trackingFields
+  }
+});
+var Payment = (0, import_core15.list)({
+  access: money(),
+  ui: { labelField: "id", listView: { initialColumns: ["purpose", "tender", "amountMinor", "businessDate", "status", "createdAt"] } },
+  fields: {
+    shop: (0, import_fields14.relationship)({ ref: "Shop", ...readOnly }),
+    purpose: systemChoice(["invoice", "deposit"]),
+    repairOrder: (0, import_fields14.relationship)({ ref: "RepairOrder", ...readOnly }),
+    customer: (0, import_fields14.relationship)({ ref: "Customer", ...readOnly }),
+    targetInvoiceIds: (0, import_fields14.json)({ defaultValue: [], ...readOnly, ui: { ...readOnly.ui, description: "The invoices this payment was taken for; the amount is spread across them when it succeeds." } }),
+    tender: systemChoice(TENDERS),
+    amountMinor: minor({ defaultValue: 0n }),
+    surchargeMinor: minor({ defaultValue: 0n }),
+    allocatedMinor: minor({ defaultValue: 0n }),
+    refundedMinor: minor({ defaultValue: 0n }),
+    provider: systemChoice(["manual", "stripe"]),
+    providerSessionId: systemText({ indexed: true }),
+    providerPaymentId: systemText({ indexed: true }),
+    idempotencyKey: systemText({ indexed: "unique", required: true }),
+    payerName: systemText(),
+    checkNumber: systemText(),
+    cardBrand: systemText(),
+    cardLast4: systemText(),
+    failureMessage: systemText(),
+    businessDate: (0, import_fields14.calendarDay)({ ...readOnly }),
+    receivedBy: (0, import_fields14.relationship)({ ref: "User", ...readOnly }),
+    allocations: (0, import_fields14.relationship)({ ref: "PaymentAllocation.payment", many: true, ...readOnly }),
+    refunds: (0, import_fields14.relationship)({ ref: "Refund.payment", many: true, ...readOnly }),
+    settledAt: (0, import_fields14.timestamp)({ ...readOnly }),
+    status: lifecycle(["initiated", "pending", "succeeded", "failed", "unknown", "partially_refunded", "refunded"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var PaymentAllocation = (0, import_core15.list)({
+  access: via("payment.shop"),
+  ui: { labelField: "id", listView: { initialColumns: ["payment", "invoice", "amountMinor", "at"] } },
+  fields: {
+    payment: (0, import_fields14.relationship)({ ref: "Payment.allocations", ...readOnly }),
+    invoice: (0, import_fields14.relationship)({ ref: "Invoice.allocations", ...readOnly }),
+    refund: (0, import_fields14.relationship)({ ref: "Refund", ...readOnly }),
+    amountMinor: minor({ defaultValue: 0n, description: "Negative when a refund takes money back off the invoice." }),
+    at: (0, import_fields14.timestamp)({ ...readOnly }),
+    ...trackingFields
+  }
+});
+var Refund = (0, import_core15.list)({
+  access: via("payment.shop"),
+  ui: { labelField: "id", listView: { initialColumns: ["payment", "amountMinor", "status", "reason", "createdAt"] } },
+  fields: {
+    payment: (0, import_fields14.relationship)({ ref: "Payment.refunds", ...readOnly }),
+    amountMinor: minor({ defaultValue: 0n }),
+    reason: systemText({ required: true }),
+    approval: (0, import_fields14.relationship)({ ref: "ApprovalRequest", ...readOnly }),
+    provider: systemChoice(["manual", "stripe"]),
+    providerRefundId: systemText({ indexed: true }),
+    businessDate: (0, import_fields14.calendarDay)({ ...readOnly }),
+    requestedBy: (0, import_fields14.relationship)({ ref: "User", ...readOnly }),
+    failureMessage: systemText(),
+    settledAt: (0, import_fields14.timestamp)({ ...readOnly }),
+    status: lifecycle(["requested", "pending", "succeeded", "failed", "unknown"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var FinancingApplication = (0, import_core15.list)({
+  access: via("repairOrder.shop"),
+  ui: { labelField: "lenderReference", listView: { initialColumns: ["repairOrder", "requestedMinor", "approvedMinor", "lenderReference", "status"] } },
+  fields: {
+    repairOrder: (0, import_fields14.relationship)({ ref: "RepairOrder", ...readOnly }),
+    customer: (0, import_fields14.relationship)({ ref: "Customer", ...readOnly }),
+    provider: systemChoice(["operator_recorded"]),
+    requestedMinor: minor({ defaultValue: 0n }),
+    approvedMinor: minor({ defaultValue: 0n }),
+    terms: (0, import_fields14.json)({ ...readOnly }),
+    lenderReference: systemText(),
+    payment: (0, import_fields14.relationship)({ ref: "Payment", ...readOnly }),
+    status: lifecycle(["started", "submitted", "approved", "declined", "expired", "funded"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var Statement = (0, import_core15.list)({
+  access: governed([...READ]),
+  ui: { labelField: "id", listView: { initialColumns: ["businessAccount", "periodStart", "periodEnd", "closingMinor"] } },
+  fields: {
+    businessAccount: (0, import_fields14.relationship)({ ref: "BusinessAccount", ...readOnly }),
+    periodStart: (0, import_fields14.calendarDay)({ ...readOnly }),
+    periodEnd: (0, import_fields14.calendarDay)({ ...readOnly }),
+    openingMinor: minor({ defaultValue: 0n }),
+    chargesMinor: minor({ defaultValue: 0n }),
+    paymentsMinor: minor({ defaultValue: 0n }),
+    creditsMinor: minor({ defaultValue: 0n }),
+    closingMinor: minor({ defaultValue: 0n }),
+    sentAt: (0, import_fields14.timestamp)({ ...readOnly }),
+    ...trackingFields
+  }
+});
+var BusinessDayClose = (0, import_core15.list)({
+  access: money(),
+  ui: { labelField: "businessDate", listView: { initialColumns: ["shop", "businessDate", "drawerCountMinor", "varianceMinor", "status"] } },
+  fields: {
+    shop: (0, import_fields14.relationship)({ ref: "Shop", ...readOnly }),
+    businessDate: (0, import_fields14.calendarDay)({ ...readOnly }),
+    tenderTotals: (0, import_fields14.json)({ defaultValue: {}, ...readOnly, ui: { ...readOnly.ui, description: "{ tender: net minor units } for the day, frozen when it closes." } }),
+    expectedCashMinor: minor({ defaultValue: 0n }),
+    drawerCountMinor: minor({ defaultValue: 0n }),
+    varianceMinor: minor({ defaultValue: 0n }),
+    varianceReason: systemText(),
+    closedBy: (0, import_fields14.relationship)({ ref: "User", ...readOnly }),
+    closedAt: (0, import_fields14.timestamp)({ ...readOnly }),
+    reopenApproval: (0, import_fields14.relationship)({ ref: "ApprovalRequest", ...readOnly }),
+    status: lifecycle(["open", "counting", "closed", "reopened"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var WarrantyCoverage = (0, import_core15.list)({
+  access: via("repairOrder.shop"),
+  ui: { labelField: "termName", listView: { initialColumns: ["repairOrder", "termName", "startsOn", "endsOn", "endsAtMiles", "status"] } },
+  fields: {
+    repairOrder: (0, import_fields14.relationship)({ ref: "RepairOrder", ...readOnly }),
+    job: (0, import_fields14.relationship)({ ref: "Job", ...readOnly }),
+    invoice: (0, import_fields14.relationship)({ ref: "Invoice", ...readOnly }),
+    vehicle: (0, import_fields14.relationship)({ ref: "Vehicle", ...readOnly }),
+    termCode: systemText(),
+    termName: systemText(),
+    invoiceText: systemText(),
+    startsOn: (0, import_fields14.calendarDay)({ ...readOnly }),
+    endsOn: (0, import_fields14.calendarDay)({ ...readOnly }),
+    startMiles: (0, import_fields14.integer)({ ...readOnly }),
+    endsAtMiles: (0, import_fields14.integer)({ ...readOnly }),
+    status: lifecycle(["active", "expired", "void"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+
+// features/keystone/models/parts.ts
+var parts_exports = {};
+__export(parts_exports, {
+  CoreObligation: () => CoreObligation,
+  CycleCount: () => CycleCount,
+  Discrepancy: () => Discrepancy,
+  JobTire: () => JobTire,
+  PartQuote: () => PartQuote,
+  Receipt: () => Receipt,
+  ReceiptLine: () => ReceiptLine,
+  ShopItem: () => ShopItem,
+  StockLevel: () => StockLevel,
+  StockMovement: () => StockMovement,
+  Supplier: () => Supplier,
+  SupplierInvoice: () => SupplierInvoice,
+  SupplierInvoiceLine: () => SupplierInvoiceLine,
+  SupplierOrder: () => SupplierOrder,
+  SupplierOrderLine: () => SupplierOrderLine,
+  SupplierReturn: () => SupplierReturn,
+  TireRegistrationObligation: () => TireRegistrationObligation
+});
+var import_core16 = require("@keystone-6/core");
+var import_fields15 = require("@keystone-6/core/fields");
+var READ2 = ["canManageParts", "canOrderParts", "canReceiveParts", "canApproveSupplierInvoice", "canApproveStockAdjustment", "canManageTireRegistrations", "canReadRepairOrders"];
+var sys8 = () => false;
+var cost2 = { read: anyOf("canSeeCost"), create: sys8, update: sys8 };
+var scoped = (path = "shop") => shopScoped(governed([...READ2]), path);
+var SUPPLIER_KINDS = ["parts_store", "warehouse_distributor", "dealer_oem", "specialty", "tire_distributor", "sublet_vendor", "online"];
+var UNITS = ["each", "quart", "liter", "gallon", "ounce", "pound", "foot", "set"];
+var MOVEMENTS = ["receipt", "issue", "return_to_stock", "return_to_supplier", "adjustment", "count", "commit", "release", "po_order", "po_cancel"];
+var ORDER_STATUSES = ["draft", "placing", "unknown", "placed", "confirmed", "partially_received", "received", "closed", "cancel_requested", "cancelled", "failed"];
+var SOURCES = ["api", "phone", "web", "counter"];
+var Supplier = (0, import_core16.list)({
+  access: governed([...READ2]),
+  ui: { labelField: "name", listView: { initialColumns: ["name", "kind", "adapter", "preferred", "active"] } },
+  fields: {
+    name: systemText({ required: true, indexed: "unique" }),
+    kind: systemChoice(SUPPLIER_KINDS, "parts_store"),
+    adapter: systemChoice(["manual", "fixture"], "manual"),
+    phone: systemText(),
+    email: systemText(),
+    website: systemText(),
+    accountNumbersByShop: (0, import_fields15.json)({ defaultValue: {}, ...readOnly }),
+    deliverySchedule: (0, import_fields15.json)({ defaultValue: {}, ...readOnly }),
+    coreReturnWindowDays: (0, import_fields15.integer)({ defaultValue: 30, validation: { isRequired: true }, ...readOnly }),
+    priceToleranceMinor: minor({ defaultValue: 0n, description: "A supplier invoice line this much above the order price (per unit) still matches." }),
+    preferred: (0, import_fields15.checkbox)({ defaultValue: false, ...readOnly }),
+    active: (0, import_fields15.checkbox)({ defaultValue: true, ...readOnly }),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var ShopItem = (0, import_core16.list)({
+  access: scoped(),
+  ui: { labelField: "sku", listView: { initialColumns: ["sku", "description", "brand", "isStocked", "binLocation"] } },
+  fields: {
+    shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
+    sku: systemText({ required: true }),
+    partNumber: systemText(),
+    brand: systemText(),
+    lineCode: systemText(),
+    description: systemText({ required: true }),
+    category: systemText(),
+    unitOfMeasure: systemChoice(UNITS, "each"),
+    isStocked: (0, import_fields15.checkbox)({ defaultValue: false, ...readOnly }),
+    binLocation: systemText(),
+    minQuantityMilli: milli({ defaultValue: 0 }),
+    maxQuantityMilli: milli({ defaultValue: 0 }),
+    coreChargeMinor: minor({ defaultValue: 0n, access: cost2, description: "Charged by the supplier and refunded when the old part comes back." }),
+    preferredSupplier: (0, import_fields15.relationship)({ ref: "Supplier", ...readOnly }),
+    fitmentNotes: systemText(),
+    active: (0, import_fields15.checkbox)({ defaultValue: true, ...readOnly }),
+    stock: (0, import_fields15.relationship)({ ref: "StockLevel.shopItem", ...readOnly }),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var StockLevel = (0, import_core16.list)({
+  access: scoped("shopItem.shop"),
+  ui: { labelField: "id", listView: { initialColumns: ["shopItem", "onHandMilli", "committedMilli", "onOrderMilli"] } },
+  fields: {
+    shopItem: (0, import_fields15.relationship)({ ref: "ShopItem.stock", ...readOnly }),
+    onHandMilli: milli({ defaultValue: 0 }),
+    committedMilli: milli({ defaultValue: 0 }),
+    onOrderMilli: milli({ defaultValue: 0 }),
+    averageCostMinor: minor({ defaultValue: 0n, access: cost2 }),
+    lastCountedAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var StockMovement = (0, import_core16.list)({
+  access: scoped("shopItem.shop"),
+  ui: { labelField: "type", listView: { initialColumns: ["shopItem", "type", "quantityMilli", "unitCostMinor", "at"] } },
+  fields: {
+    shopItem: (0, import_fields15.relationship)({ ref: "ShopItem", ...readOnly }),
+    type: systemChoice(MOVEMENTS, "receipt"),
+    quantityMilli: milli({ defaultValue: 0 }),
+    unitCostMinor: minor({ defaultValue: 0n, access: cost2 }),
+    job: (0, import_fields15.relationship)({ ref: "Job", ...readOnly }),
+    supplierOrderLine: (0, import_fields15.relationship)({ ref: "SupplierOrderLine", ...readOnly }),
+    onHandDeltaMilli: milli({ defaultValue: 0 }),
+    committedDeltaMilli: milli({ defaultValue: 0 }),
+    onOrderDeltaMilli: milli({ defaultValue: 0 }),
+    cycleCount: (0, import_fields15.relationship)({ ref: "CycleCount", ...readOnly }),
+    reason: systemText(),
+    idempotencyKey: systemText({ indexed: "unique", required: true }),
+    actorUser: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    actorName: systemText(),
+    at: (0, import_fields15.timestamp)({ ...readOnly }),
+    after: (0, import_fields15.json)({ ...readOnly }),
+    ...trackingFields
+  }
+});
+var CycleCount = (0, import_core16.list)({
+  access: scoped(),
+  ui: { labelField: "reference", listView: { initialColumns: ["reference", "shop", "status", "createdAt"] } },
+  fields: {
+    shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
+    reference: systemText({ indexed: "unique", required: true }),
+    items: (0, import_fields15.json)({ defaultValue: [], ...readOnly }),
+    varianceValueMinor: minor({ defaultValue: 0n, access: cost2 }),
+    postedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    postedAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    status: lifecycle(["open", "counted", "posted"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var PartQuote = (0, import_core16.list)({
+  access: scoped(),
+  ui: { labelField: "partNumber", listView: { initialColumns: ["partNumber", "supplier", "unitCostMinor", "availability", "status"] } },
+  fields: {
+    shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
+    job: (0, import_fields15.relationship)({ ref: "Job", ...readOnly }),
+    jobLine: (0, import_fields15.relationship)({ ref: "JobLine", ...readOnly }),
+    supplier: (0, import_fields15.relationship)({ ref: "Supplier", ...readOnly }),
+    source: systemChoice(SOURCES, "phone"),
+    partNumber: systemText({ required: true }),
+    brand: systemText(),
+    lineCode: systemText(),
+    description: systemText(),
+    unitCostMinor: minor({ defaultValue: 0n, access: cost2 }),
+    listPriceMinor: minor({ defaultValue: 0n }),
+    coreChargeMinor: minor({ defaultValue: 0n, access: cost2 }),
+    availableQuantityMilli: milli({ defaultValue: 0 }),
+    availability: systemChoice(["in_stock_local", "in_stock_dc", "special_order", "unavailable"], "in_stock_local"),
+    etaAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    supplierLocation: systemText(),
+    validUntil: (0, import_fields15.timestamp)({ ...readOnly }),
+    phoneEvidence: (0, import_fields15.json)({ ...readOnly }),
+    createdBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    status: lifecycle(["requested", "received", "selected", "rejected", "expired"], "received"),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var SupplierOrder = (0, import_core16.list)({
+  access: scoped(),
+  ui: { labelField: "reference", listView: { initialColumns: ["reference", "supplier", "kind", "totalMinor", "status"] } },
+  fields: {
+    shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
+    reference: systemText({ indexed: "unique", required: true }),
+    supplier: (0, import_fields15.relationship)({ ref: "Supplier", ...readOnly }),
+    kind: systemChoice(["job", "stock", "sublet"], "job"),
+    placedVia: optionalChoice(SOURCES),
+    supplierConfirmation: systemText(),
+    etaAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    totalMinor: minor({ defaultValue: 0n, access: cost2 }),
+    deliveryNote: systemText(),
+    lines: (0, import_fields15.relationship)({ ref: "SupplierOrderLine.order", many: true, ...readOnly }),
+    receipts: (0, import_fields15.relationship)({ ref: "Receipt.order", many: true, ...readOnly }),
+    placedAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    createdBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    status: lifecycle(ORDER_STATUSES),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var SupplierOrderLine = (0, import_core16.list)({
+  access: scoped("order.shop"),
+  ui: { labelField: "partNumber", listView: { initialColumns: ["order", "partNumber", "quantityMilli", "receivedQuantityMilli", "unitCostMinor"] } },
+  fields: {
+    order: (0, import_fields15.relationship)({ ref: "SupplierOrder.lines", ...readOnly }),
+    job: (0, import_fields15.relationship)({ ref: "Job", ...readOnly }),
+    jobLine: (0, import_fields15.relationship)({ ref: "JobLine", ...readOnly }),
+    shopItem: (0, import_fields15.relationship)({ ref: "ShopItem", ...readOnly }),
+    partQuote: (0, import_fields15.relationship)({ ref: "PartQuote", ...readOnly }),
+    partNumber: systemText({ required: true }),
+    brand: systemText(),
+    description: systemText(),
+    quantityMilli: milli({ defaultValue: 1e3 }),
+    unitCostMinor: minor({ defaultValue: 0n, access: cost2 }),
+    coreChargeMinor: minor({ defaultValue: 0n, access: cost2 }),
+    receivedQuantityMilli: milli({ defaultValue: 0 }),
+    invoicedQuantityMilli: milli({ defaultValue: 0 }),
+    status: systemChoice(["open", "partially_received", "received", "cancelled"], "open"),
+    ...trackingFields
+  }
+});
+var Receipt = (0, import_core16.list)({
+  access: scoped("order.shop"),
+  ui: { labelField: "receiptKey", listView: { initialColumns: ["order", "receiptKey", "at"] } },
+  fields: {
+    order: (0, import_fields15.relationship)({ ref: "SupplierOrder.receipts", ...readOnly }),
+    receiptKey: systemText({ indexed: "unique", required: true }),
+    receivedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    at: (0, import_fields15.timestamp)({ ...readOnly }),
+    packingSlip: (0, import_fields15.relationship)({ ref: "Document", ...readOnly }),
+    lines: (0, import_fields15.relationship)({ ref: "ReceiptLine.receipt", many: true, ...readOnly }),
+    ...trackingFields
+  }
+});
+var ReceiptLine = (0, import_core16.list)({
+  access: scoped("receipt.order.shop"),
+  ui: { labelField: "id" },
+  fields: {
+    receipt: (0, import_fields15.relationship)({ ref: "Receipt.lines", ...readOnly }),
+    orderLine: (0, import_fields15.relationship)({ ref: "SupplierOrderLine", ...readOnly }),
+    quantityMilli: milli({ defaultValue: 0 }),
+    condition: systemChoice(["ok", "damaged", "wrong_part"], "ok"),
+    ...trackingFields
+  }
+});
+var CoreObligation = (0, import_core16.list)({
+  access: scoped(),
+  ui: { labelField: "id", listView: { initialColumns: ["supplier", "coreChargeMinor", "dueAt", "status"] } },
+  fields: {
+    shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
+    job: (0, import_fields15.relationship)({ ref: "Job", ...readOnly }),
+    jobLine: (0, import_fields15.relationship)({ ref: "JobLine", ...readOnly }),
+    shopItem: (0, import_fields15.relationship)({ ref: "ShopItem", ...readOnly }),
+    partNumber: systemText(),
+    supplier: (0, import_fields15.relationship)({ ref: "Supplier", ...readOnly }),
+    supplierOrderLine: (0, import_fields15.relationship)({ ref: "SupplierOrderLine", ...readOnly }),
+    coreChargeMinor: minor({ defaultValue: 0n, access: cost2 }),
+    owedTo: systemChoice(["supplier", "shop_from_customer"], "supplier"),
+    returnedAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    returnDocument: (0, import_fields15.relationship)({ ref: "Document", ...readOnly }),
+    returnNote: systemText(),
+    creditedAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    supplierInvoiceLine: (0, import_fields15.relationship)({ ref: "SupplierInvoiceLine", ...readOnly }),
+    writeOffReason: systemText(),
+    approval: (0, import_fields15.relationship)({ ref: "ApprovalRequest", ...readOnly }),
+    dueAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    status: lifecycle(["owed", "returned", "credited", "customer_charged", "written_off"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var SupplierReturn = (0, import_core16.list)({
+  access: scoped(),
+  ui: { labelField: "rmaNumber", listView: { initialColumns: ["rmaNumber", "supplier", "reason", "status"] } },
+  fields: {
+    shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
+    supplier: (0, import_fields15.relationship)({ ref: "Supplier", ...readOnly }),
+    rmaNumber: systemText(),
+    lines: (0, import_fields15.json)({ defaultValue: [], ...readOnly }),
+    reason: systemChoice(["wrong_part", "unused", "defective", "warranty", "core"], "unused"),
+    creditMinor: minor({ defaultValue: 0n, access: cost2 }),
+    status: lifecycle(["requested", "shipped", "credited", "rejected"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var SupplierInvoice = (0, import_core16.list)({
+  access: scoped(),
+  ui: { labelField: "invoiceNumber", listView: { initialColumns: ["invoiceNumber", "supplier", "invoiceDate", "totalMinor", "status"] } },
+  fields: {
+    shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
+    supplier: (0, import_fields15.relationship)({ ref: "Supplier", ...readOnly }),
+    invoiceNumber: systemText({ required: true }),
+    invoiceDate: (0, import_fields15.calendarDay)({ ...readOnly }),
+    totalMinor: minor({ defaultValue: 0n, access: cost2 }),
+    document: (0, import_fields15.relationship)({ ref: "Document", ...readOnly }),
+    lines: (0, import_fields15.relationship)({ ref: "SupplierInvoiceLine.invoice", many: true, ...readOnly }),
+    discrepancies: (0, import_fields15.relationship)({ ref: "Discrepancy.invoice", many: true, ...readOnly }),
+    approvedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    approvedAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    exportReference: systemText(),
+    status: lifecycle(["received", "matching", "matched", "discrepancy", "approved", "exported"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var SupplierInvoiceLine = (0, import_core16.list)({
+  access: scoped("invoice.shop"),
+  ui: { labelField: "partNumber", listView: { initialColumns: ["invoice", "partNumber", "quantityMilli", "unitCostMinor", "matchStatus"] } },
+  fields: {
+    invoice: (0, import_fields15.relationship)({ ref: "SupplierInvoice.lines", ...readOnly }),
+    partNumber: systemText({ required: true }),
+    quantityMilli: milli({ defaultValue: 1e3 }),
+    unitCostMinor: minor({ defaultValue: 0n, access: cost2 }),
+    coreCreditMinor: minor({ defaultValue: 0n, access: cost2 }),
+    matchedOrderLine: (0, import_fields15.relationship)({ ref: "SupplierOrderLine", ...readOnly }),
+    matchStatus: systemChoice(["unmatched", "matched", "variance"], "unmatched"),
+    ...trackingFields
+  }
+});
+var Discrepancy = (0, import_core16.list)({
+  access: scoped("invoice.shop"),
+  ui: { labelField: "kind", listView: { initialColumns: ["invoice", "kind", "amountMinor", "status"] } },
+  fields: {
+    invoice: (0, import_fields15.relationship)({ ref: "SupplierInvoice.discrepancies", ...readOnly }),
+    line: (0, import_fields15.relationship)({ ref: "SupplierInvoiceLine", ...readOnly }),
+    kind: systemChoice(["overcharge", "duplicate", "missing_credit", "core_not_credited", "unordered_item", "quantity_mismatch"], "overcharge"),
+    amountMinor: minor({ defaultValue: 0n, access: cost2 }),
+    detail: systemText(),
+    openedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    openedByAgent: (0, import_fields15.relationship)({ ref: "AgentIdentity", ...readOnly }),
+    resolution: systemText(),
+    status: lifecycle(["open", "disputed", "resolved", "accepted"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var TireRegistrationObligation = (0, import_core16.list)({
+  access: shopScoped(governed(["canManageTireRegistrations", "canReadRepairOrders"])),
+  ui: { labelField: "id", listView: { initialColumns: ["shop", "invoice", "purchaserName", "dueAt", "status"] } },
+  fields: {
+    shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
+    invoice: (0, import_fields15.relationship)({ ref: "Invoice", ...readOnly }),
+    invoiceLine: (0, import_fields15.relationship)({ ref: "InvoiceLine", ...readOnly }),
+    jobLine: (0, import_fields15.relationship)({ ref: "JobLine", ...readOnly }),
+    tireDescription: systemText(),
+    tins: (0, import_fields15.json)({ defaultValue: [], ...readOnly }),
+    purchaserName: systemText(),
+    purchaserAddress: (0, import_fields15.json)({ ...readOnly, access: { read: anyOf("canReadCustomerPII"), create: sys8, update: sys8 } }),
+    dealerIdentity: (0, import_fields15.json)({ ...readOnly }),
+    method: optionalChoice(["form_handed_over", "submitted_electronic", "submitted_paper"]),
+    dueAt: (0, import_fields15.calendarDay)({ ...readOnly }),
+    evidence: (0, import_fields15.json)({ ...readOnly }),
+    completedAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    status: lifecycle(["open", "handed_over", "submitted", "confirmed", "overdue"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var JobTire = (0, import_core16.list)({
+  access: shopScoped(governed(["canManageParts", "canManageTireRegistrations", "canReadRepairOrders"]), "job.repairOrder.shop"),
+  ui: { labelField: "tin", listView: { initialColumns: ["job", "tireSize", "position", "tin"] } },
+  fields: {
+    job: (0, import_fields15.relationship)({ ref: "Job", ...readOnly }),
+    tireSize: systemText(),
+    position: systemChoice(["lf", "rf", "lr", "rr", "spare", "other"], "other"),
+    tin: systemText({ required: true, indexed: "unique" }),
+    recordedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    ...trackingFields
+  }
+});
+
+// features/keystone/models/labor.ts
+var labor_exports = {};
+__export(labor_exports, {
+  ClockCorrection: () => ClockCorrection,
+  ComebackCase: () => ComebackCase,
+  FlaggedHoursEntry: () => FlaggedHoursEntry,
+  JobClock: () => JobClock,
+  PartWarrantyClaim: () => PartWarrantyClaim,
+  PayPeriod: () => PayPeriod,
+  ShiftClock: () => ShiftClock,
+  TechnicianCredential: () => TechnicianCredential,
+  TechnicianProfile: () => TechnicianProfile,
+  WaitingInterval: () => WaitingInterval
+});
+var import_core17 = require("@keystone-6/core");
+var import_fields16 = require("@keystone-6/core/fields");
+var READ3 = ["canClockSelf", "canManageTime", "canApproveTime", "canClosePayPeriod", "canReadTechPay", "canManageComebacks", "canApproveGoodwill", "canReadRepairOrders"];
+var sys9 = () => false;
+var pay = { read: anyOf("canReadTechPay"), create: sys9, update: sys9 };
+var scoped2 = (path = "shop") => shopScoped(governed([...READ3]), path);
+var PAY_PLANS = ["flat_rate", "hourly", "salary_plus_bonus"];
+var CREDENTIAL_KINDS = ["epa_609", "ase", "state_license", "manufacturer", "other"];
+var WAIT_REASONS = ["parts", "authorization", "bay", "tool", "info", "other"];
+var TechnicianProfile = (0, import_core17.list)({
+  access: scoped2(),
+  ui: { labelField: "displayName", listView: { initialColumns: ["displayName", "shop", "payPlan", "active"] } },
+  fields: {
+    user: (0, import_fields16.relationship)({ ref: "User", ...readOnly }),
+    shop: (0, import_fields16.relationship)({ ref: "Shop", ...readOnly }),
+    displayName: systemText({ required: true }),
+    payPlan: systemChoice(PAY_PLANS, "flat_rate"),
+    flatRateMinor: minor({ defaultValue: 0n, description: "Paid for each flagged hour.", access: pay }),
+    hourlyRateMinor: minor({ defaultValue: 0n, description: "Paid for each hour on the clock.", access: pay }),
+    skills: (0, import_fields16.json)({ defaultValue: [], ...readOnly }),
+    rateClasses: (0, import_fields16.json)({ defaultValue: [], ...readOnly }),
+    active: (0, import_fields16.checkbox)({ defaultValue: true, ...readOnly }),
+    credentials: (0, import_fields16.relationship)({ ref: "TechnicianCredential.technician", many: true }),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var TechnicianCredential = (0, import_core17.list)({
+  access: scoped2("technician.shop"),
+  ui: { labelField: "kind", listView: { initialColumns: ["technician", "kind", "identifier", "expiresAt", "status"] } },
+  fields: {
+    technician: (0, import_fields16.relationship)({ ref: "TechnicianProfile.credentials", ...readOnly }),
+    kind: systemChoice(CREDENTIAL_KINDS, "other"),
+    identifier: systemText(),
+    issuedAt: (0, import_fields16.calendarDay)({ ...readOnly }),
+    expiresAt: (0, import_fields16.calendarDay)({ ...readOnly }),
+    verifiedBy: (0, import_fields16.relationship)({ ref: "User", ...readOnly }),
+    status: lifecycle(["active", "expired", "revoked"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var ShiftClock = (0, import_core17.list)({
+  access: scoped2(),
+  ui: { labelField: "status", listView: { initialColumns: ["technician", "clockInAt", "clockOutAt", "status"] } },
+  fields: {
+    shop: (0, import_fields16.relationship)({ ref: "Shop", ...readOnly }),
+    technician: (0, import_fields16.relationship)({ ref: "TechnicianProfile", ...readOnly }),
+    clockInAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    clockOutAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    breaks: (0, import_fields16.json)({ defaultValue: [], ...readOnly }),
+    status: lifecycle(["clocked_in", "on_break", "clocked_out"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var JobClock = (0, import_core17.list)({
+  access: scoped2(),
+  ui: { labelField: "status", listView: { initialColumns: ["technician", "job", "startedAt", "stoppedAt", "workedCentiHours", "status"] } },
+  fields: {
+    shop: (0, import_fields16.relationship)({ ref: "Shop", ...readOnly }),
+    technician: (0, import_fields16.relationship)({ ref: "TechnicianProfile", ...readOnly }),
+    job: (0, import_fields16.relationship)({ ref: "Job", ...readOnly }),
+    shiftClock: (0, import_fields16.relationship)({ ref: "ShiftClock", ...readOnly }),
+    startedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    stoppedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    workedCentiHours: (0, import_fields16.integer)({ defaultValue: 0, validation: { isRequired: true }, ...readOnly }),
+    status: lifecycle(["running", "stopped"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var WaitingInterval = (0, import_core17.list)({
+  access: scoped2("jobClock.shop"),
+  ui: { labelField: "reason", listView: { initialColumns: ["jobClock", "reason", "startedAt", "endedAt"] } },
+  fields: {
+    jobClock: (0, import_fields16.relationship)({ ref: "JobClock", ...readOnly }),
+    reason: systemChoice(WAIT_REASONS, "other"),
+    startedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    endedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    note: systemText(),
+    ...trackingFields
+  }
+});
+var ClockCorrection = (0, import_core17.list)({
+  access: scoped2(),
+  ui: { labelField: "targetKind", listView: { initialColumns: ["technician", "targetKind", "reason", "status", "createdAt"] } },
+  fields: {
+    shop: (0, import_fields16.relationship)({ ref: "Shop", ...readOnly }),
+    technician: (0, import_fields16.relationship)({ ref: "TechnicianProfile", ...readOnly }),
+    targetKind: systemChoice(["shift", "job_clock"], "shift"),
+    targetId: systemText({ required: true }),
+    before: (0, import_fields16.json)({ ...readOnly }),
+    after: (0, import_fields16.json)({ ...readOnly }),
+    reason: systemText({ required: true }),
+    requestedBy: (0, import_fields16.relationship)({ ref: "User", ...readOnly }),
+    approval: (0, import_fields16.relationship)({ ref: "ApprovalRequest", ...readOnly }),
+    appliedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    status: lifecycle(["pending", "applied", "rejected"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var PayPeriod = (0, import_core17.list)({
+  access: scoped2(),
+  ui: { labelField: "startsOn", listView: { initialColumns: ["shop", "startsOn", "endsOn", "status"] } },
+  fields: {
+    shop: (0, import_fields16.relationship)({ ref: "Shop", ...readOnly }),
+    startsOn: (0, import_fields16.calendarDay)({ ...readOnly }),
+    endsOn: (0, import_fields16.calendarDay)({ ...readOnly }),
+    closedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    closedBy: (0, import_fields16.relationship)({ ref: "User", ...readOnly }),
+    approvedBy: (0, import_fields16.relationship)({ ref: "User", ...readOnly }),
+    exportedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    exportCsv: systemText(),
+    status: lifecycle(["open", "closed", "exported"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var FlaggedHoursEntry = (0, import_core17.list)({
+  access: scoped2(),
+  ui: { labelField: "kind", listView: { initialColumns: ["technician", "job", "centiHours", "kind", "flaggedAt"] } },
+  fields: {
+    shop: (0, import_fields16.relationship)({ ref: "Shop", ...readOnly }),
+    technician: (0, import_fields16.relationship)({ ref: "TechnicianProfile", ...readOnly }),
+    job: (0, import_fields16.relationship)({ ref: "Job", ...readOnly }),
+    centiHours: (0, import_fields16.integer)({ defaultValue: 0, validation: { isRequired: true }, ...readOnly }),
+    kind: systemChoice(["flag", "reversal", "adjustment"], "flag"),
+    reason: systemText(),
+    sourceEvent: systemText({ required: true }),
+    payPeriod: (0, import_fields16.relationship)({ ref: "PayPeriod", ...readOnly }),
+    flaggedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    ...trackingFields
+  }
+});
+var ComebackCase = (0, import_core17.list)({
+  access: scoped2(),
+  ui: { labelField: "reference", listView: { initialColumns: ["reference", "originalJob", "cause", "noCharge", "status"] } },
+  fields: {
+    shop: (0, import_fields16.relationship)({ ref: "Shop", ...readOnly }),
+    reference: systemText({ indexed: "unique", required: true }),
+    originalJob: (0, import_fields16.relationship)({ ref: "Job", ...readOnly }),
+    comebackJob: (0, import_fields16.relationship)({ ref: "Job", ...readOnly }),
+    concern: systemText(),
+    coverage: (0, import_fields16.relationship)({ ref: "WarrantyCoverage", ...readOnly }),
+    coverageValid: (0, import_fields16.checkbox)({ defaultValue: false, ...readOnly }),
+    cause: systemChoice(["undetermined", "workmanship", "part_failure", "new_issue", "customer_caused"], "undetermined"),
+    diagnosis: systemText(),
+    noCharge: (0, import_fields16.checkbox)({ defaultValue: false, ...readOnly }),
+    goodwillApproval: (0, import_fields16.relationship)({ ref: "ApprovalRequest", ...readOnly }),
+    resolution: systemText(),
+    openedBy: (0, import_fields16.relationship)({ ref: "User", ...readOnly }),
+    resolvedAt: (0, import_fields16.timestamp)({ ...readOnly }),
+    status: lifecycle(["open", "diagnosed", "resolved"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var PartWarrantyClaim = (0, import_core17.list)({
+  access: scoped2(),
+  ui: { labelField: "claimNumber", listView: { initialColumns: ["claimNumber", "supplier", "laborReimbursementMinor", "status"] } },
+  fields: {
+    shop: (0, import_fields16.relationship)({ ref: "Shop", ...readOnly }),
+    comeback: (0, import_fields16.relationship)({ ref: "ComebackCase", ...readOnly }),
+    supplier: (0, import_fields16.relationship)({ ref: "Supplier", ...readOnly }),
+    jobLine: (0, import_fields16.relationship)({ ref: "JobLine", ...readOnly }),
+    claimNumber: systemText({ required: true }),
+    laborReimbursementMinor: minor({ defaultValue: 0n, access: { read: anyOf("canSeeCost"), create: sys9, update: sys9 } }),
+    status: lifecycle(["draft", "submitted", "credited", "denied"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+
 // features/keystone/models/index.ts
 var models = {
   User,
@@ -2550,7 +3357,10 @@ var models = {
   ...scheduling_exports,
   ...repairOrders_exports,
   ...inspections_exports,
-  ...estimates_exports
+  ...estimates_exports,
+  ...billing_exports,
+  ...parts_exports,
+  ...labor_exports
 };
 
 // features/keystone/index.ts
@@ -2711,6 +3521,7 @@ var dbActorKind = (actor) => isMachine(actor) ? "agent" : actor.kind;
 function requireHuman(actor, action) {
   if (isMachine(actor)) throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, `Only a person can ${action}. An assistant can draft it or create a callback task for staff.`);
 }
+var systemActor = (name) => ({ kind: "system", name });
 function can(actor, permission) {
   return actor.kind === "user" && actor.permissions.has(permission);
 }
@@ -2912,18 +3723,18 @@ var recallSchema = import_zod.z.object({
     Notes: nullableText
   }).passthrough())
 });
-var clip = (text15) => text15.length > MAX_TEXT ? `${text15.slice(0, MAX_TEXT)}\u2026` : text15;
+var clip = (text18) => text18.length > MAX_TEXT ? `${text18.slice(0, MAX_TEXT)}\u2026` : text18;
 var present = (value) => {
-  const text15 = value === null || value === void 0 ? "" : String(value).trim();
-  return text15 && text15 !== "Not Applicable" ? text15 : void 0;
+  const text18 = value === null || value === void 0 ? "" : String(value).trim();
+  return text18 && text18 !== "Not Applicable" ? text18 : void 0;
 };
 var int = (value) => {
-  const text15 = present(value);
-  return text15 && /^\d+$/.test(text15) ? Number(text15) : void 0;
+  const text18 = present(value);
+  return text18 && /^\d+$/.test(text18) ? Number(text18) : void 0;
 };
-function nhtsaDate(text15) {
-  const m = text15.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : text15;
+function nhtsaDate(text18) {
+  const m = text18.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : text18;
 }
 function parseDecode(vin2, body) {
   const parsed = decodeSchema.parse(body);
@@ -3212,18 +4023,18 @@ async function nextShopReference(tx, prefix, shopCode, now = /* @__PURE__ */ new
 // features/keystone/lib/customers.ts
 var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function normalizeContact(kind, value) {
-  const text15 = String(value ?? "").trim();
+  const text18 = String(value ?? "").trim();
   if (kind === "email") {
-    const email3 = text15.toLowerCase();
-    if (!EMAIL.test(email3) || email3.length > 254) throw new DomainError(Codes.INVALID_INPUT, `${text15.slice(0, 60)} is not an email address.`, { field: "value" });
+    const email3 = text18.toLowerCase();
+    if (!EMAIL.test(email3) || email3.length > 254) throw new DomainError(Codes.INVALID_INPUT, `${text18.slice(0, 60)} is not an email address.`, { field: "value" });
     return email3;
   }
-  const digits = text15.replace(/[^\d+]/g, "");
+  const digits = text18.replace(/[^\d+]/g, "");
   let e164 = "";
   if (/^\+\d{8,15}$/.test(digits)) e164 = digits;
   else if (/^\d{10}$/.test(digits)) e164 = `+1${digits}`;
   else if (/^1\d{10}$/.test(digits)) e164 = `+${digits}`;
-  if (!e164) throw new DomainError(Codes.INVALID_INPUT, `${text15.slice(0, 30)} is not a phone number. Use 10 digits or +country code.`, { field: "value" });
+  if (!e164) throw new DomainError(Codes.INVALID_INPUT, `${text18.slice(0, 30)} is not a phone number. Use 10 digits or +country code.`, { field: "value" });
   return e164;
 }
 var contactHash = (kind, normalized) => sha256(`${kind === "email" ? "email" : "phone"}:${normalized}`);
@@ -3243,9 +4054,9 @@ async function findByContacts(tx, contacts, excludeCustomerId) {
   });
 }
 var clean = (value, max = 120) => {
-  const text15 = String(value ?? "").trim();
-  if (text15.length > max) throw new DomainError(Codes.INVALID_INPUT, `Keep this under ${max} characters.`);
-  return text15;
+  const text18 = String(value ?? "").trim();
+  if (text18.length > max) throw new DomainError(Codes.INVALID_INPUT, `Keep this under ${max} characters.`);
+  return text18;
 };
 async function upsertCustomer(uow, actor, input) {
   const { tx } = uow;
@@ -4298,6 +5109,409 @@ async function seedOrgPlatform(uow, actor) {
   return created;
 }
 
+// features/keystone/lib/stockMath.ts
+var refuse = (message, field = "quantityMilli") => {
+  throw new DomainError(Codes.GUARD_FAILED, message, { field });
+};
+var whole = (value, field) => {
+  if (!Number.isSafeInteger(value)) throw new DomainError(Codes.INVALID_INPUT, "Quantity must be a whole number of thousandths.", { field });
+  return value;
+};
+function extendMinor(quantityMilli, unitCostMinor) {
+  const raw = BigInt(quantityMilli) * unitCostMinor;
+  const negative = raw < 0n;
+  const abs = negative ? -raw : raw;
+  const rounded = (abs + 500n) / 1000n;
+  return negative ? -rounded : rounded;
+}
+function weightedAverage(onHandMilli, averageCostMinor, quantityMilli, unitCostMinor) {
+  if (onHandMilli <= 0) return unitCostMinor;
+  const total = BigInt(onHandMilli) * averageCostMinor + BigInt(quantityMilli) * unitCostMinor;
+  const divisor = BigInt(onHandMilli + quantityMilli);
+  return (total * 2n + divisor) / (divisor * 2n);
+}
+function computeMovement(current, request) {
+  const q = whole(request.quantityMilli, "quantityMilli");
+  const cost3 = request.unitCostMinor;
+  if (cost3 !== void 0 && cost3 < 0n) throw new DomainError(Codes.INVALID_INPUT, "Cost cannot be negative.", { field: "unitCostMinor" });
+  const available = current.onHandMilli - current.committedMilli;
+  let d2 = { onHandMilli: 0, committedMilli: 0, onOrderMilli: 0 };
+  let unitCostMinor = current.averageCostMinor;
+  let averageCostMinor = current.averageCostMinor;
+  const positive = () => {
+    if (q <= 0) refuse("Quantity must be above zero.");
+  };
+  switch (request.type) {
+    case "receipt": {
+      positive();
+      if (cost3 === void 0) throw new DomainError(Codes.INVALID_INPUT, "A receipt needs the cost paid.", { field: "unitCostMinor" });
+      averageCostMinor = weightedAverage(current.onHandMilli, current.averageCostMinor, q, cost3);
+      unitCostMinor = cost3;
+      d2 = { onHandMilli: q, committedMilli: 0, onOrderMilli: -Math.min(q, current.onOrderMilli) };
+      break;
+    }
+    case "issue": {
+      positive();
+      const reserved = Math.min(whole(request.fromCommittedMilli ?? 0, "fromCommittedMilli"), q, current.committedMilli);
+      const unreserved = q - reserved;
+      if (unreserved > available) refuse(`Only ${formatMilli(Math.max(available, 0))} is free to issue; the rest is reserved for other jobs or not on the shelf.`);
+      if (q > current.onHandMilli) refuse(`Only ${formatMilli(current.onHandMilli)} is on hand.`);
+      d2 = { onHandMilli: -q, committedMilli: -reserved, onOrderMilli: 0 };
+      break;
+    }
+    case "return_to_stock": {
+      positive();
+      d2 = { onHandMilli: q, committedMilli: 0, onOrderMilli: 0 };
+      break;
+    }
+    case "return_to_supplier": {
+      positive();
+      if (q > available) refuse(`Only ${formatMilli(Math.max(available, 0))} is free to send back.`);
+      d2 = { onHandMilli: -q, committedMilli: 0, onOrderMilli: 0 };
+      break;
+    }
+    case "adjustment":
+    case "count": {
+      if (q === 0) refuse("There is nothing to adjust.");
+      if (q < 0 && -q > current.onHandMilli) refuse(`Only ${formatMilli(current.onHandMilli)} is on hand.`);
+      if (current.onHandMilli + q < current.committedMilli) refuse("That would leave less on hand than is reserved for jobs.");
+      d2 = { onHandMilli: q, committedMilli: 0, onOrderMilli: 0 };
+      if (q > 0 && cost3 !== void 0 && cost3 > 0n) averageCostMinor = weightedAverage(current.onHandMilli, current.averageCostMinor, q, cost3);
+      break;
+    }
+    case "commit": {
+      positive();
+      if (q > available) refuse(`Only ${formatMilli(Math.max(available, 0))} is free to reserve.`);
+      d2 = { onHandMilli: 0, committedMilli: q, onOrderMilli: 0 };
+      break;
+    }
+    case "release": {
+      positive();
+      if (q > current.committedMilli) refuse("That is more than is reserved.");
+      d2 = { onHandMilli: 0, committedMilli: -q, onOrderMilli: 0 };
+      break;
+    }
+    case "po_order": {
+      positive();
+      d2 = { onHandMilli: 0, committedMilli: 0, onOrderMilli: q };
+      break;
+    }
+    case "po_cancel": {
+      positive();
+      if (q > current.onOrderMilli) refuse("That is more than is on order.");
+      d2 = { onHandMilli: 0, committedMilli: 0, onOrderMilli: -q };
+      break;
+    }
+    default:
+      throw new DomainError(Codes.INVALID_INPUT, "Unknown stock movement.", { field: "type" });
+  }
+  const levels = {
+    onHandMilli: current.onHandMilli + d2.onHandMilli,
+    committedMilli: current.committedMilli + d2.committedMilli,
+    onOrderMilli: current.onOrderMilli + d2.onOrderMilli,
+    averageCostMinor
+  };
+  if (levels.onHandMilli < 0 || levels.committedMilli < 0 || levels.committedMilli > levels.onHandMilli || levels.onOrderMilli < 0) {
+    refuse("That would make the stock levels impossible.");
+  }
+  return { levels, deltas: d2, unitCostMinor };
+}
+function formatMilli(value) {
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  const frac = String(abs % 1e3).padStart(3, "0").replace(/0+$/, "");
+  return `${sign}${Math.trunc(abs / 1e3)}${frac ? `.${frac}` : ""}`;
+}
+
+// features/keystone/lib/partsInput.ts
+function milliOf(value, field, options = {}) {
+  const n = typeof value === "string" && /^-?\d+$/.test(value.trim()) ? Math.trunc(+value.trim()) : value;
+  const min = options.min ?? 1;
+  if (typeof n !== "number" || !Number.isSafeInteger(n) || n < min || n > (options.max ?? 1e8)) {
+    throw new DomainError(Codes.INVALID_INPUT, `${field} must be a whole number of thousandths${min >= 1 ? " above zero" : ""}.`, { field });
+  }
+  return n;
+}
+function centsOf(value, field, required = true) {
+  if (value === null || value === void 0 || value === "") {
+    if (required) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed, in whole cents.`, { field });
+    return 0n;
+  }
+  const text18 = String(value).trim();
+  if (!/^\d{1,12}$/.test(text18)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
+  return BigInt(text18);
+}
+function textOf(value, field, max, required = false) {
+  const text18 = String(value ?? "").trim().slice(0, max);
+  if (required && !text18) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed.`, { field });
+  return text18;
+}
+function idOf(value, field) {
+  if (typeof value !== "string" || !value || value.length > 64) throw new DomainError(Codes.INVALID_INPUT, `Choose ${field}.`, { field });
+  return value;
+}
+function choiceOf(value, allowed, field, fallback) {
+  if ((value === void 0 || value === null || value === "") && fallback !== void 0) return fallback;
+  if (!allowed.includes(value)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be one of: ${allowed.join(", ")}.`, { field });
+  return value;
+}
+function objectOf(value, field) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed.`, { field });
+  return value;
+}
+function listOf(value, field, max = 200) {
+  if (!Array.isArray(value) || value.length === 0) throw new DomainError(Codes.INVALID_INPUT, `Add at least one line to ${field}.`, { field });
+  if (value.length > max) throw new DomainError(Codes.INVALID_INPUT, `${field} can hold ${max} lines at most.`, { field });
+  return value;
+}
+var cents = (minor2) => {
+  const t = (minor2 < 0n ? -minor2 : minor2).toString().padStart(3, "0");
+  return `${minor2 < 0n ? "-" : ""}$${t.slice(0, -2)}.${t.slice(-2)}`;
+};
+
+// features/keystone/lib/stock.ts
+var asLevels = (row) => ({
+  onHandMilli: row.onHandMilli,
+  committedMilli: row.committedMilli,
+  onOrderMilli: row.onOrderMilli,
+  averageCostMinor: BigInt(row.averageCostMinor)
+});
+async function postMovement(uow, actor, input) {
+  const { tx, now } = uow;
+  const existing = await tx.stockMovement.findUnique({ where: { idempotencyKey: input.key } });
+  if (existing) {
+    const after = existing.after;
+    return { movementId: existing.id, replay: true, levels: { onHandMilli: after.onHand, committedMilli: after.committed, onOrderMilli: after.onOrder, averageCostMinor: BigInt(after.avgCost) }, unitCostMinor: existing.unitCostMinor, quantityMilli: existing.quantityMilli };
+  }
+  const item = await tx.shopItem.findUnique({ where: { id: input.shopItemId }, select: { id: true, stockId: true, sku: true } });
+  if (!item?.stockId) throw new DomainError(Codes.NOT_FOUND, "That part is not in the shop's item list.", { field: "shopItemId" });
+  await advisoryLock(tx, `stock:${item.id}`);
+  const level = await lockRow(tx, "StockLevel", item.stockId);
+  const result = computeMovement(asLevels(level), {
+    type: input.type,
+    quantityMilli: input.quantityMilli,
+    unitCostMinor: input.unitCostMinor,
+    fromCommittedMilli: input.fromCommittedMilli
+  });
+  const next = result.levels;
+  await tx.$executeRaw`SELECT set_config('app.stock_movement', 'on', true)`;
+  await tx.stockLevel.update({
+    where: { id: item.stockId },
+    data: {
+      onHandMilli: next.onHandMilli,
+      committedMilli: next.committedMilli,
+      onOrderMilli: next.onOrderMilli,
+      averageCostMinor: next.averageCostMinor,
+      ...input.type === "count" ? { lastCountedAt: now } : {},
+      version: { increment: 1 }
+    }
+  });
+  await tx.$executeRaw`SELECT set_config('app.stock_movement', 'off', true)`;
+  const d2 = result.deltas;
+  const signed = d2.onHandMilli || d2.committedMilli || d2.onOrderMilli;
+  const row = await tx.stockMovement.create({
+    data: {
+      shopItemId: item.id,
+      type: input.type,
+      quantityMilli: signed,
+      unitCostMinor: result.unitCostMinor,
+      onHandDeltaMilli: d2.onHandMilli,
+      committedDeltaMilli: d2.committedMilli,
+      onOrderDeltaMilli: d2.onOrderMilli,
+      jobId: input.jobId ?? null,
+      supplierOrderLineId: input.supplierOrderLineId ?? null,
+      cycleCountId: input.cycleCountId ?? null,
+      reason: input.reason ?? "",
+      idempotencyKey: input.key,
+      actorUserId: actorUserId(actor),
+      actorName: actor.kind === "system" ? actor.name : actor.name ?? "",
+      at: now,
+      after: { onHand: next.onHandMilli, committed: next.committedMilli, onOrder: next.onOrderMilli, avgCost: next.averageCostMinor.toString() }
+    }
+  });
+  auditCreate(uow, actor, "StockMovement", row.id, `stock.${input.type}`, {
+    sku: item.sku,
+    quantityMilli: signed,
+    unitCostMinor: result.unitCostMinor,
+    onHand: next.onHandMilli,
+    committed: next.committedMilli,
+    onOrder: next.onOrderMilli
+  }, { reason: input.reason || null });
+  return { movementId: row.id, replay: false, levels: next, unitCostMinor: result.unitCostMinor, quantityMilli: signed };
+}
+async function reservedForJob(uow, jobId, shopItemId) {
+  const sum = await uow.tx.stockMovement.aggregate({ where: { jobId, shopItemId }, _sum: { committedDeltaMilli: true } });
+  return Math.max(0, sum._sum.committedDeltaMilli ?? 0);
+}
+var UNITS2 = ["each", "quart", "liter", "gallon", "ounce", "pound", "foot", "set"];
+async function saveShopItem(uow, actor, input) {
+  const { tx } = uow;
+  const sku = textOf(input.sku, "SKU", 60, true);
+  const description = textOf(input.description, "Description", 200, true);
+  const min = Number.isSafeInteger(input.minQuantityMilli) ? input.minQuantityMilli : 0;
+  const max = Number.isSafeInteger(input.maxQuantityMilli) ? input.maxQuantityMilli : 0;
+  if (min < 0 || max < 0 || max > 0 && max < min) throw new DomainError(Codes.INVALID_INPUT, "The most to keep must be at least the least.", { field: "maxQuantityMilli" });
+  const data = {
+    sku,
+    partNumber: textOf(input.partNumber, "Part number", 60),
+    brand: textOf(input.brand, "Brand", 60),
+    lineCode: textOf(input.lineCode, "Line code", 20),
+    description,
+    category: textOf(input.category, "Category", 40),
+    unitOfMeasure: choiceOf(input.unitOfMeasure, UNITS2, "Unit", "each"),
+    isStocked: Boolean(input.isStocked),
+    binLocation: textOf(input.binLocation, "Bin", 40),
+    minQuantityMilli: min,
+    maxQuantityMilli: max,
+    coreChargeMinor: centsOf(input.coreChargeMinor, "Core charge", false),
+    preferredSupplierId: input.preferredSupplierId || null,
+    fitmentNotes: textOf(input.fitmentNotes, "Fitment notes", 500)
+  };
+  const clash = await tx.shopItem.findFirst({ where: { shopId: input.shopId, sku: { equals: sku, mode: "insensitive" }, ...input.id ? { id: { not: input.id } } : {} }, select: { id: true } });
+  if (clash) throw new DomainError(Codes.DUPLICATE, `This shop already has an item numbered ${sku}.`, { field: "sku", existingId: clash.id });
+  if (input.id) {
+    const row2 = await lockRow(tx, "ShopItem", input.id);
+    if (row2.shopId !== input.shopId) throw new DomainError(Codes.NOT_FOUND, "Item not found.");
+    await tx.shopItem.update({ where: { id: input.id }, data: { ...data, version: { increment: 1 } } });
+    auditCreate(uow, actor, "ShopItem", input.id, "shop_item.updated", { sku });
+    return { id: input.id, sku, created: false };
+  }
+  const level = await tx.stockLevel.create({ data: {} });
+  const row = await tx.shopItem.create({ data: { ...data, shopId: input.shopId, stockId: level.id } });
+  auditCreate(uow, actor, "ShopItem", row.id, "shop_item.created", { sku, stocked: data.isStocked });
+  return { id: row.id, sku, created: true };
+}
+async function itemForPart(uow, actor, shopId, part) {
+  const { tx } = uow;
+  const found = await tx.shopItem.findFirst({ where: { shopId, partNumber: { equals: part.partNumber, mode: "insensitive" }, ...part.brand ? { brand: { equals: part.brand, mode: "insensitive" } } : {} }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  if (found) return found.id;
+  const sku = `${(part.brand || "PART").replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase()}-${part.partNumber}`.slice(0, 60);
+  const dupe = await tx.shopItem.findFirst({ where: { shopId, sku: { equals: sku, mode: "insensitive" } }, select: { id: true } });
+  if (dupe) return dupe.id;
+  const made = await saveShopItem(uow, actor, { shopId, sku, partNumber: part.partNumber, brand: part.brand, description: part.description, isStocked: false, coreChargeMinor: part.coreChargeMinor?.toString() ?? null });
+  return made.id;
+}
+
+// features/integrations/parts-supplier/index.ts
+var AmbiguousSendError = class extends Error {
+  constructor(message = "The supplier did not answer.") {
+    super(message);
+    this.name = "AmbiguousSendError";
+  }
+};
+var CATALOG = {
+  P06075: { partNumber: "P06075", brand: "Brembo", description: "Front brake pad set, ceramic", unitCostMinor: 4800n, listPriceMinor: 8900n, coreChargeMinor: 0n },
+  "09.C394.13": { partNumber: "09.C394.13", brand: "Brembo", description: "Front brake rotor, vented", unitCostMinor: 6500n, listPriceMinor: 11900n, coreChargeMinor: 0n },
+  "5W30-5QT": { partNumber: "5W30-5QT", brand: "Mobil 1", description: "Full synthetic 5W-30, 5 quart jug", unitCostMinor: 2650n, listPriceMinor: 3999n, coreChargeMinor: 0n },
+  "CF10285": { partNumber: "CF10285", brand: "Fram", description: "Cabin air filter", unitCostMinor: 1150n, listPriceMinor: 2299n, coreChargeMinor: 0n },
+  "ALT-11481": { partNumber: "ALT-11481", brand: "Bosch", description: "Alternator, remanufactured", unitCostMinor: 18900n, listPriceMinor: 31900n, coreChargeMinor: 4500n },
+  "BAT-H6-AGM": { partNumber: "BAT-H6-AGM", brand: "Interstate", description: "AGM battery, group H6", unitCostMinor: 16400n, listPriceMinor: 24900n, coreChargeMinor: 2200n },
+  "XPS-22545R17": { partNumber: "XPS-22545R17", brand: "Michelin", description: "Tire 225/45R17 94W Pilot Sport", unitCostMinor: 17900n, listPriceMinor: 24900n, coreChargeMinor: 0n },
+  "KYB-339370": { partNumber: "KYB-339370", brand: "KYB", description: "Front strut assembly, complete", unitCostMinor: 8800n, listPriceMinor: 13900n, coreChargeMinor: 0n }
+};
+var PROFILES = {
+  "Capitol Auto Parts": { markupBasisPoints: 0, availability: "in_stock_local", etaHours: 2, location: "Capitol Auto Parts, Sacramento counter", carries: (p) => p !== "XPS-22545R17" },
+  "Valley Warehouse Distributing": { markupBasisPoints: -400, availability: "in_stock_dc", etaHours: 20, location: "Valley Warehouse, West Sacramento DC", carries: (p) => p !== "BAT-H6-AGM" },
+  "Sierra Tire Supply": { markupBasisPoints: 250, availability: "special_order", etaHours: 30, location: "Sierra Tire Supply, Rancho Cordova", carries: (p) => p === "XPS-22545R17" }
+};
+var received = /* @__PURE__ */ new Map();
+function fixtureAdapter2(supplierName) {
+  const profile = PROFILES[supplierName];
+  return {
+    name: "fixture",
+    async quote(request) {
+      const entry = CATALOG[request.partNumber];
+      if (!entry || !profile?.carries(request.partNumber)) return null;
+      const adjusted = (entry.unitCostMinor * BigInt(1e4 + profile.markupBasisPoints) + 5000n) / 10000n;
+      return { ...entry, unitCostMinor: adjusted, availableQuantityMilli: 24e3, availability: profile.availability, etaHours: profile.etaHours, location: profile.location };
+    },
+    async placeOrder(request) {
+      const seen = received.get(request.reference);
+      const supplierOrderId = seen?.supplierOrderId ?? `${supplierName.split(" ").map((w) => w[0]).join("")}-${1e5 + received.size + 1}`;
+      received.set(request.reference, { supplierOrderId, times: (seen?.times ?? 0) + 1 });
+      if (request.lines.some((l) => l.partNumber === "KYB-339370")) throw new AmbiguousSendError("The supplier did not answer in time.");
+      return { supplierOrderId };
+    },
+    async orderStatus(reference) {
+      const seen = received.get(reference);
+      return seen ? { state: "placed", supplierOrderId: seen.supplierOrderId } : { state: "not_found" };
+    }
+  };
+}
+var refused = (what) => async () => {
+  throw new Error(`${what} is done by phone or at the counter for this supplier. Record what they told you.`);
+};
+function manualAdapter() {
+  return { name: "manual", quote: async () => null, placeOrder: refused("Placing an order"), orderStatus: refused("Checking an order") };
+}
+function supplierAdapter(adapter, supplierName) {
+  return adapter === "fixture" ? fixtureAdapter2(supplierName) : manualAdapter();
+}
+var FIXTURE_SUPPLIERS = [
+  { name: "Capitol Auto Parts", kind: "parts_store", phone: "(916) 555-0141", email: "counter@capitolautoparts.example", website: "https://capitolautoparts.example", coreReturnWindowDays: 30, priceToleranceMinor: 25n, preferred: true },
+  { name: "Valley Warehouse Distributing", kind: "warehouse_distributor", phone: "(916) 555-0178", email: "orders@valleywarehouse.example", website: "https://valleywarehouse.example", coreReturnWindowDays: 45, priceToleranceMinor: 50n, preferred: false },
+  { name: "Sierra Tire Supply", kind: "tire_distributor", phone: "(916) 555-0193", email: "dispatch@sierratiresupply.example", website: "https://sierratiresupply.example", coreReturnWindowDays: 30, priceToleranceMinor: 100n, preferred: false }
+];
+
+// features/keystone/seed/parts.ts
+var STOCKED = [
+  { shop: "seed_shop_nga", sku: "OIL-5W30-QT", partNumber: "5W30-QT", brand: "Mobil 1", description: "Full synthetic 5W-30, per quart", category: "oil", unitOfMeasure: "quart", bin: "A-01", min: 24e3, max: 96e3, onHand: 6e4, costMinor: 585n },
+  { shop: "seed_shop_nga", sku: "FIL-OIL-PH3614", partNumber: "PH3614", brand: "Fram", description: "Oil filter, spin-on", category: "filters", unitOfMeasure: "each", bin: "A-04", min: 6e3, max: 24e3, onHand: 14e3, costMinor: 375n },
+  { shop: "seed_shop_nga", sku: "FIL-CAB-CF10285", partNumber: "CF10285", brand: "Fram", description: "Cabin air filter", category: "filters", unitOfMeasure: "each", bin: "A-06", min: 4e3, max: 12e3, onHand: 3e3, costMinor: 1150n },
+  { shop: "seed_shop_nga", sku: "BRK-PAD-P06075", partNumber: "P06075", brand: "Brembo", description: "Front brake pad set, ceramic", category: "brakes", unitOfMeasure: "set", bin: "B-02", min: 2e3, max: 8e3, onHand: 4e3, costMinor: 4800n },
+  { shop: "seed_shop_nga", sku: "BRK-ROT-09C39413", partNumber: "09.C394.13", brand: "Brembo", description: "Front brake rotor, vented", category: "brakes", unitOfMeasure: "each", bin: "B-03", min: 2e3, max: 8e3, onHand: 2e3, costMinor: 6500n },
+  { shop: "seed_shop_nga", sku: "BAT-H6-AGM", partNumber: "BAT-H6-AGM", brand: "Interstate", description: "AGM battery, group H6", category: "batteries", unitOfMeasure: "each", bin: "C-01", min: 1e3, max: 4e3, onHand: 2e3, costMinor: 16400n, core: "2200" },
+  { shop: "seed_shop_nga", sku: "WIP-24", partNumber: "WB-24", brand: "Bosch", description: "Wiper blade, 24 in", category: "wipers", unitOfMeasure: "each", bin: "D-02", min: 4e3, max: 1e4, onHand: 6e3, costMinor: 790n },
+  { shop: "seed_shop_ngt", sku: "TIR-MICH-22545R17", partNumber: "XPS-22545R17", brand: "Michelin", description: "Tire 225/45R17 94W Pilot Sport", category: "tires", unitOfMeasure: "each", bin: "T-11", min: 4e3, max: 16e3, onHand: 8e3, costMinor: 17900n },
+  { shop: "seed_shop_ngt", sku: "VLV-STEM-TR413", partNumber: "TR413", brand: "Schrader", description: "Valve stem, snap-in", category: "tires", unitOfMeasure: "each", bin: "T-02", min: 8e3, max: 4e4, onHand: 32e3, costMinor: 85n }
+];
+async function seedParts(uow, actor) {
+  const { tx } = uow;
+  const counts = { suppliers: 0, shopItems: 0, openingStock: 0 };
+  const have = new Set((await tx.supplier.findMany({ select: { name: true } })).map((s) => s.name));
+  const byName = /* @__PURE__ */ new Map();
+  for (const s of FIXTURE_SUPPLIERS) {
+    if (have.has(s.name)) {
+      byName.set(s.name, (await tx.supplier.findFirstOrThrow({ where: { name: s.name }, select: { id: true } })).id);
+      continue;
+    }
+    const row = await tx.supplier.create({
+      data: { name: s.name, kind: s.kind, adapter: "fixture", phone: s.phone, email: s.email, website: s.website, coreReturnWindowDays: s.coreReturnWindowDays, priceToleranceMinor: s.priceToleranceMinor, preferred: s.preferred, active: true }
+    });
+    auditCreate(uow, actor, "Supplier", row.id, "supplier.created", { name: s.name, kind: s.kind }, { metadata: { seed: true } });
+    byName.set(s.name, row.id);
+    counts.suppliers += 1;
+  }
+  if (!have.has("Delta Brake & Clutch Supply")) {
+    const row = await tx.supplier.create({ data: { name: "Delta Brake & Clutch Supply", kind: "specialty", adapter: "manual", phone: "(916) 555-0127", coreReturnWindowDays: 30, priceToleranceMinor: 25n, active: true } });
+    auditCreate(uow, actor, "Supplier", row.id, "supplier.created", { name: row.name, kind: "specialty" }, { metadata: { seed: true } });
+    counts.suppliers += 1;
+  }
+  const preferred = byName.get("Capitol Auto Parts") ?? null;
+  for (const p of STOCKED) {
+    if (await tx.shopItem.findFirst({ where: { shopId: p.shop, sku: p.sku }, select: { id: true } })) continue;
+    const made = await saveShopItem(uow, actor, {
+      shopId: p.shop,
+      sku: p.sku,
+      partNumber: p.partNumber,
+      brand: p.brand,
+      description: p.description,
+      category: p.category,
+      unitOfMeasure: p.unitOfMeasure,
+      isStocked: true,
+      binLocation: p.bin,
+      minQuantityMilli: p.min,
+      maxQuantityMilli: p.max,
+      preferredSupplierId: p.category === "tires" ? byName.get("Sierra Tire Supply") ?? preferred : preferred,
+      coreChargeMinor: "core" in p ? p.core : null
+    });
+    counts.shopItems += 1;
+    await postMovement(uow, actor, { shopItemId: made.id, type: "receipt", quantityMilli: p.onHand, unitCostMinor: p.costMinor, key: `seed-opening:${p.shop}:${p.sku}`, reason: "Opening stock" });
+    counts.openingStock += 1;
+  }
+  return counts;
+}
+
 // features/keystone/seed/repairOrders.ts
 var import_node_crypto7 = require("node:crypto");
 
@@ -4808,7 +6022,7 @@ async function checkInVehicle(uow, actor, input) {
   if (open) throw new DomainError(Codes.DUPLICATE, `This vehicle was checked in ${open.reference} in the last 12 hours.`);
   const reference = await nextShopReference(tx, "CI", shop.code, now);
   const notices = Array.isArray(law.requiredNotices) ? law.requiredNotices : [];
-  const text15 = workOrderText({
+  const text18 = workOrderText({
     shopName: full.name,
     legalName: full.legalName,
     registrations: full.registrations ?? {},
@@ -4838,8 +6052,8 @@ async function checkInVehicle(uow, actor, input) {
       signerName: signature?.signerName ?? "",
       signature: signature ?? void 0,
       signatureHash: signature ? sha256(canonicalJson(signature)) : "",
-      workOrderText: text15,
-      workOrderHash: sha256(text15),
+      workOrderText: text18,
+      workOrderHash: sha256(text18),
       signedAt: signature ? now : null,
       valuablesNote: input.valuablesNote?.trim().slice(0, 500) ?? "",
       recallWarning: recallWarning ?? void 0,
@@ -4868,7 +6082,7 @@ async function checkInVehicle(uow, actor, input) {
       data: { customerId: input.customerId, vehicleId: input.vehicleId }
     });
   }
-  auditCreate(uow, actor, "CheckIn", row.id, "vehicle.checked_in", { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text15), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id });
+  auditCreate(uow, actor, "CheckIn", row.id, "vehicle.checked_in", { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text18), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id });
   uow.emit({ topic: "vehicle.checked_in", aggregateType: "CheckIn", aggregateId: row.id, payload: { reference, shopId: input.shopId }, dedupeKey: `checkin:${row.id}` });
   return { id: row.id, reference, recallWarning, odometerAnomaly: odometer?.anomaly ?? null };
 }
@@ -4885,12 +6099,28 @@ function formatMinor(minor2, currencyCode = "USD") {
   const negative = minor2 < 0n;
   const abs = negative ? -minor2 : minor2;
   const base = 10n ** BigInt(digits);
-  const whole = (abs / base).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const whole3 = (abs / base).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const fraction = digits ? "." + (abs % base).toString().padStart(digits, "0") : "";
   const symbol = currencyCode === "USD" ? "$" : `${currencyCode} `;
-  return `${negative ? "\u2212" : ""}${symbol}${whole}${fraction}`;
+  return `${negative ? "\u2212" : ""}${symbol}${whole3}${fraction}`;
 }
 var sumMinor = (values) => values.reduce((a, b) => a + b, 0n);
+function allocateMinor(total, weights) {
+  if (weights.length === 0) throw new Error("allocateMinor needs at least one weight");
+  const w = weights.map(dec);
+  if (w.some((x) => x.isNegative())) throw new Error("allocateMinor weights must be non-negative");
+  const weightSum = w.reduce((a, b) => a.plus(b), new Decimal(0));
+  if (weightSum.isZero()) throw new Error("allocateMinor weights must not all be zero");
+  const negative = total < 0n;
+  const abs = negative ? -total : total;
+  const exact2 = w.map((x) => dec(abs).times(x).div(weightSum));
+  const floors = exact2.map((x) => BigInt(x.floor().toFixed(0)));
+  let leftover = abs - floors.reduce((a, b) => a + b, 0n);
+  const order = exact2.map((x, index) => ({ index, remainder: x.minus(x.floor()) })).sort((a, b) => b.remainder.comparedTo(a.remainder) || a.index - b.index);
+  const shares = [...floors];
+  for (let i = 0; leftover > 0n; i = (i + 1) % order.length, leftover -= 1n) shares[order[i].index] += 1n;
+  return negative ? shares.map((x) => -x) : shares;
+}
 
 // features/keystone/lib/pricing.ts
 var PART_CONDITIONS2 = ["new", "used", "rebuilt", "reconditioned", "oem_crash", "non_oem_aftermarket_crash"];
@@ -4898,8 +6128,8 @@ var PART_KINDS = ["part", "tire", "core", "refrigerant"];
 var roundMinor = (value) => BigInt(toScale(value, 0));
 var qty = (milli2) => dec(milli2).div(1e3);
 function partsMultiplier(matrix, unitCostMinor, category) {
-  const override = category ? matrix.categoryOverrides?.[category] : void 0;
-  if (override) return { multiplier: override, source: "category" };
+  const override2 = category ? matrix.categoryOverrides?.[category] : void 0;
+  if (override2) return { multiplier: override2, source: "category" };
   const tier = matrix.tiers.find((t) => unitCostMinor >= BigInt(t.minCostMinor) && (t.maxCostMinor === null || t.maxCostMinor === void 0 || unitCostMinor < BigInt(t.maxCostMinor)));
   if (!tier) throw new DomainError(Codes.POLICY_INVALID, `The parts matrix has no tier for a cost of ${unitCostMinor} cents.`);
   return { multiplier: tier.multiplier, source: "tier" };
@@ -5135,7 +6365,7 @@ function jobContentHash(price) {
 var identityHash = (lines) => sha256(canonicalJson(lines.map((l) => [l.kind, l.description, l.partNumber, l.condition, l.rateClassCode, l.subletVendorName]).sort((a, b) => canonicalJson(a).localeCompare(canonicalJson(b)))));
 
 // features/integrations/labor-guide/match.ts
-var has = (list12, value) => !Array.isArray(list12) || !list12.length || (value ? list12.some((v) => String(v).toLowerCase() === value.toLowerCase()) : false);
+var has = (list15, value) => !Array.isArray(list15) || !list15.length || (value ? list15.some((v) => String(v).toLowerCase() === value.toLowerCase()) : false);
 function fitsVehicle(filter, vehicle) {
   const f = filter && typeof filter === "object" ? filter : {};
   if (!has(f.makes, vehicle.make) || !has(f.models, vehicle.model) || !has(f.engines, vehicle.engine)) return false;
@@ -5164,8 +6394,8 @@ function fixtureLaborGuide() {
     key: "fixture",
     capabilities: () => ({ search: true, maintenance: false, fluids: false }),
     async searchOperations(vehicle, query) {
-      const text15 = query.text?.toLowerCase();
-      const rows = fits(vehicle).filter((r) => (!query.code || r.operationId === query.code) && (!text15 || r.description.toLowerCase().includes(text15)));
+      const text18 = query.text?.toLowerCase();
+      const rows = fits(vehicle).filter((r) => (!query.code || r.operationId === query.code) && (!text18 || r.description.toLowerCase().includes(text18)));
       return { kind: "ok", value: rows.slice(0, query.limit ?? 20).map(strip) };
     },
     async getOperation(vehicle, operationId) {
@@ -5199,8 +6429,8 @@ function shopLibraryGuide(load, shopName = "Shop") {
     key: "shop-library",
     capabilities: () => ({ search: true, maintenance: false, fluids: false }),
     async searchOperations(vehicle, query) {
-      const text15 = query.text?.toLowerCase();
-      const rows = (await load()).filter((r) => r.active && fitsVehicle(r.vehicleFilter, vehicle) && (!query.code || r.code === query.code) && (!text15 || r.description.toLowerCase().includes(text15) || r.code.toLowerCase().includes(text15)));
+      const text18 = query.text?.toLowerCase();
+      const rows = (await load()).filter((r) => r.active && fitsVehicle(r.vehicleFilter, vehicle) && (!query.code || r.code === query.code) && (!text18 || r.description.toLowerCase().includes(text18) || r.code.toLowerCase().includes(text18)));
       const chosen = query.code ? best(rows) : rows;
       return { kind: "ok", value: chosen.slice(0, query.limit ?? 20).map(toOp) };
     },
@@ -5267,11 +6497,11 @@ async function openRepairOrder(uow, actor, input) {
     const rules2 = law.designeeRules ?? {};
     if (rules2.allowed === false) throw new DomainError(Codes.GUARD_FAILED, "This state's rules don't allow a designee.");
     const name = String(input.designee.name ?? "").trim().slice(0, 120);
-    const relationship11 = String(input.designee.relationship ?? "").trim().slice(0, 80);
+    const relationship14 = String(input.designee.relationship ?? "").trim().slice(0, 80);
     const contact = String(input.designee.contact ?? "").trim().slice(0, 120);
-    if (!name || !relationship11 || !contact) throw new DomainError(Codes.INVALID_INPUT, "A designee needs a name, a relationship and a contact.", { field: "designee" });
-    if (/insur|adjust|shop|northgate/i.test(relationship11)) throw new DomainError(Codes.INVALID_INPUT, "A designee cannot be the shop or an insurer (16 CCR \xA73354(c)).", { field: "designee" });
-    designee = { name, relationship: relationship11, contact, namedAt: now.toISOString() };
+    if (!name || !relationship14 || !contact) throw new DomainError(Codes.INVALID_INPUT, "A designee needs a name, a relationship and a contact.", { field: "designee" });
+    if (/insur|adjust|shop|northgate/i.test(relationship14)) throw new DomainError(Codes.INVALID_INPUT, "A designee cannot be the shop or an insurer (16 CCR \xA73354(c)).", { field: "designee" });
+    designee = { name, relationship: relationship14, contact, namedAt: now.toISOString() };
   }
   const roNumber = await nextShopReference(tx, "RO", shop.code, now);
   const pins = Object.fromEntries(Object.entries(POINTERS).map(([field, pointer]) => [field, shop[pointer]]));
@@ -5350,11 +6580,11 @@ var int2 = (v, field, min = 0) => {
   if (!Number.isSafeInteger(n) || n < min) throw new DomainError(Codes.INVALID_INPUT, `${field} must be a whole number of at least ${min}.`, { field });
   return n;
 };
-var cents = (v, field) => {
+var cents2 = (v, field) => {
   if (v === null || v === void 0 || v === "") return null;
-  const text15 = String(v).trim();
-  if (!/^\d{1,12}$/.test(text15)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
-  return BigInt(text15);
+  const text18 = String(v).trim();
+  if (!/^\d{1,12}$/.test(text18)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
+  return BigInt(text18);
 };
 var str = (v, max) => v === null || v === void 0 ? null : String(v).trim().slice(0, max);
 function parseLines(raw) {
@@ -5378,13 +6608,13 @@ function parseLines(raw) {
       partCategory: str(r.partCategory, 40),
       condition: str(r.condition, 40) || null,
       quantityMilli: int2(r.quantityMilli, "quantityMilli", 1),
-      unitCostMinor: cents(r.unitCostMinor, "unitCostMinor"),
-      unitPriceOverrideMinor: cents(r.unitPriceOverrideMinor, "unitPriceOverrideMinor"),
+      unitCostMinor: cents2(r.unitCostMinor, "unitCostMinor"),
+      unitPriceOverrideMinor: cents2(r.unitPriceOverrideMinor, "unitPriceOverrideMinor"),
       isNewTire: Boolean(r.isNewTire),
       subletVendorName: str(r.subletVendorName, 120),
-      subletCostMinor: cents(r.subletCostMinor, "subletCostMinor"),
-      subletPriceMinor: cents(r.subletPriceMinor, "subletPriceMinor"),
-      discountMinor: cents(r.discountMinor, "discountMinor"),
+      subletCostMinor: cents2(r.subletCostMinor, "subletCostMinor"),
+      subletPriceMinor: cents2(r.subletPriceMinor, "subletPriceMinor"),
+      discountMinor: cents2(r.discountMinor, "discountMinor"),
       discountTargetRef: str(r.discountTargetRef, 10),
       ...r.variant ? { variant: str(r.variant, 120) } : {}
     };
@@ -5495,8 +6725,8 @@ async function saveTeardown(uow, jobId, lawId, input) {
   if (!input) throw new DomainError(Codes.DISCLOSURE_MISSING, "A teardown job needs its disclosure: teardown cost, reassembly cost and the area to be torn down (16 CCR \xA73353(c)).", { field: "teardown", missing: ["teardown"] });
   const row = await uow.tx.teardownDisclosure.create({
     data: {
-      teardownCostMinor: cents(input.teardownCostMinor, "teardownCostMinor") ?? 0n,
-      reassemblyCostMinor: cents(input.reassemblyCostMinor, "reassemblyCostMinor") ?? 0n,
+      teardownCostMinor: cents2(input.teardownCostMinor, "teardownCostMinor") ?? 0n,
+      reassemblyCostMinor: cents2(input.reassemblyCostMinor, "reassemblyCostMinor") ?? 0n,
       areaDescription: String(input.areaDescription ?? "").slice(0, 300),
       maxReassemblyDays: int2(input.maxReassemblyDays, "maxReassemblyDays", 1) ?? rules2.maxReassemblyDaysDefault ?? 3,
       restorationWarning: Boolean(input.restorationWarning),
@@ -5715,6 +6945,9 @@ async function createAccessToken(uow, input) {
   const tokenHash = hashToken(input.purpose, token);
   await uow.tx.publicAccessToken.create({ data: { id, purpose: input.purpose, subjectType: input.subjectType, subjectId: input.subjectId, shopId: input.shopId, tokenHash, expiresAt, maxUses: input.maxUses ?? 50 } });
   return { id, token, tokenHash, expiresAt };
+}
+async function revokeTokensFor(tx, subjectType, subjectId, now) {
+  await tx.publicAccessToken.updateMany({ where: { subjectType, subjectId, revokedAt: null }, data: { revokedAt: now } });
 }
 
 // features/keystone/lib/inspections.ts
@@ -6719,6 +7952,7 @@ function northgateSteps(actor, scope = "all") {
   steps.push({ name: "vehicle_data", run: async (uow) => ({ vehicleData: await seedRecordedVehicleData(uow, actor) }) });
   steps.push({ name: "appointments", run: async (uow) => ({ appointments: await seedAppointments(uow, actor) }) });
   steps.push({ name: "golden_repair_order", run: (uow) => seedGoldenRepairOrder(uow, actor) });
+  steps.push({ name: "parts_and_stock", run: (uow) => seedParts(uow, actor) });
   return steps;
 }
 var add = (total, part) => {
@@ -7020,14 +8254,14 @@ async function checkAuthorizedCeiling(_root, args, context) {
   const actor = actorFromSession(context.session);
   requirePermission(actor, "canReadRepairOrders");
   const shopId = requireShop(context, args.shopId);
-  const whole = (v, field) => {
+  const whole3 = (v, field) => {
     if (typeof v !== "string" || !/^\d{1,15}$/.test(v)) throw new DomainError(Codes.INVALID_INPUT, "Amounts are whole cents.", { field });
     return BigInt(v);
   };
   const shop = await context.prisma.shop.findUnique({ where: { id: shopId }, select: { jurisdictionPolicyId: true } });
   if (!shop?.jurisdictionPolicyId) throw new DomainError(Codes.POLICY_MISSING, "This shop has no published jurisdiction rules.");
   const law = await context.prisma.jurisdictionPolicyVersion.findUnique({ where: { id: shop.jurisdictionPolicyId }, select: { toleranceRule: true, id: true } });
-  const result = assertWithinCeiling({ rule: law.toleranceRule, authorizedMinor: whole(args.authorizedMinor, "authorizedMinor"), priceMinor: whole(args.priceMinor, "priceMinor"), taxMinor: args.taxMinor ? whole(args.taxMinor, "taxMinor") : 0n });
+  const result = assertWithinCeiling({ rule: law.toleranceRule, authorizedMinor: whole3(args.authorizedMinor, "authorizedMinor"), priceMinor: whole3(args.priceMinor, "priceMinor"), taxMinor: args.taxMinor ? whole3(args.taxMinor, "taxMinor") : 0n });
   return { ok: true, ceilingMinor: result.ceilingMinor.toString(), comparedMinor: result.comparedMinor.toString(), policyVersionId: law.id };
 }
 
@@ -7281,17 +8515,1936 @@ async function setCannedJobStatus(_root, args, context) {
   return run2(context, actor, args.active ? "canned_job.activate" : "canned_job.deactivate", args.idempotencyKey, args, (uow) => setCannedJobActive(uow, actor, args));
 }
 
+// features/keystone/lib/tires.ts
+var TIRE_REGISTRATION_DAYS = 30;
+function normaliseTin(raw) {
+  const compact = String(raw ?? "").toUpperCase().replace(/[\s-]/g, "").replace(/^DOT/, "");
+  if (!/^[A-Z0-9]{8,13}$/.test(compact)) throw new DomainError(Codes.INVALID_INPUT, 'A tire number (DOT TIN) is 8 to 13 letters and digits, stamped on the sidewall after "DOT".', { field: "tin" });
+  if (/[IOQ]/.test(compact.slice(0, 8))) throw new DomainError(Codes.INVALID_INPUT, "A tire number never uses the letters I, O or Q in its plant and size code. Check the sidewall.", { field: "tin" });
+  return compact;
+}
+var addDaysUtc = (from, days) => new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() + days));
+async function recordJobTire(uow, actor, input) {
+  const tin = normaliseTin(input.tin);
+  const job = await uow.tx.job.findUnique({ where: { id: idOf(input.jobId, "a job") }, select: { id: true, status: true } });
+  if (!job) throw new DomainError(Codes.NOT_FOUND, "Job not found.", { field: "jobId" });
+  const position = choiceOf(input.position, ["LF", "RF", "LR", "RR", "spare", "other"], "Position");
+  const dupe = await uow.tx.jobTire.findUnique({ where: { tin }, select: { jobId: true } });
+  if (dupe) throw new DomainError(Codes.DUPLICATE, "That tire number is already recorded" + (dupe.jobId === job.id ? " on this job." : " on another job. Check the sidewall."), { field: "tin" });
+  const row = await uow.tx.jobTire.create({ data: { jobId: job.id, tireSize: textOf(input.tireSize, "Tire size", 30), position, tin, recordedById: actorUserId(actor) } });
+  auditCreate(uow, actor, "JobTire", row.id, "job_tire.recorded", { position, tin, tireSize: row.tireSize });
+  return { id: row.id, tin };
+}
+async function createTireObligations(uow, actor, invoiceId) {
+  const { tx } = uow;
+  const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { id: true, shopId: true, invoiceDate: true, customerId: true, invoiceNumber: true } });
+  const lines = await tx.invoiceLine.findMany({ where: { invoiceId, kind: "tire", sourceJobLineId: { not: null } }, include: { sourceJobLine: { select: { id: true, isNewTire: true, tireSize: true, jobId: true, quantityMilli: true } } } });
+  const fresh = lines.filter((l) => l.sourceJobLine?.isNewTire);
+  if (!fresh.length) return 0;
+  const customer = invoice.customerId ? await tx.customer.findUnique({ where: { id: invoice.customerId }, select: { displayName: true, addresses: true } }) : null;
+  const shop = await tx.shop.findUnique({ where: { id: invoice.shopId }, select: { name: true, registrations: true } });
+  const sale = invoice.invoiceDate ?? uow.now;
+  let made = 0;
+  for (const line of fresh) {
+    const exists = await tx.tireRegistrationObligation.findFirst({ where: { invoiceLineId: line.id }, select: { id: true } });
+    if (exists) continue;
+    const jobId = line.sourceJobLine.jobId;
+    const tins = jobId ? (await tx.jobTire.findMany({ where: { jobId }, select: { tin: true } })).map((t) => t.tin) : [];
+    const row = await tx.tireRegistrationObligation.create({
+      data: {
+        shopId: invoice.shopId,
+        invoiceId,
+        invoiceLineId: line.id,
+        jobLineId: line.sourceJobLine.id,
+        tireDescription: `${Math.round((line.quantityMilli ?? 1e3) / 1e3)} \xD7 ${line.description}`.slice(0, 200),
+        tins,
+        purchaserName: customer?.displayName ?? "",
+        purchaserAddress: customer?.addresses ?? void 0,
+        dealerIdentity: { name: shop?.name ?? "", registrations: shop?.registrations ?? {} },
+        dueAt: addDaysUtc(sale, TIRE_REGISTRATION_DAYS),
+        status: "open"
+      }
+    });
+    auditCreate(uow, actor, "TireRegistrationObligation", row.id, "tire_registration.opened", { invoice: invoice.invoiceNumber, dueAt: row.dueAt, tins: tins.length });
+    made += 1;
+  }
+  return made;
+}
+async function completeTireRegistration(uow, actor, input) {
+  const method = choiceOf(input.method, ["form_handed_over", "submitted_electronic", "submitted_paper"], "Method");
+  const row = await uow.tx.tireRegistrationObligation.findUnique({ where: { id: idOf(input.obligationId, "a registration") }, include: { jobLine: { select: { quantityMilli: true } } } });
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Registration not found.");
+  const given = (input.tins ?? []).map(normaliseTin);
+  const tins = [.../* @__PURE__ */ new Set([...Array.isArray(row.tins) ? row.tins : [], ...given])];
+  const need = Math.max(1, Math.round((row.jobLine?.quantityMilli ?? 1e3) / 1e3));
+  if (tins.length < need) throw new DomainError(Codes.TIN_REQUIRED, `This sale needs ${need} tire number${need === 1 ? "" : "s"}; ${tins.length} recorded.`, { field: "tins" });
+  await transition(uow, {
+    model: "TireRegistrationObligation",
+    id: row.id,
+    from: ["open", "overdue"],
+    to: method === "form_handed_over" ? "handed_over" : "submitted",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "tire_registration.completed",
+    data: { method, tins, completedAt: uow.now, evidence: { note: textOf(input.note, "Note", 300), by: actorUserId(actor), at: uow.now.toISOString() } }
+  });
+  return { id: row.id, tins: tins.length };
+}
+async function confirmTireRegistration(uow, actor, input) {
+  await transition(uow, { model: "TireRegistrationObligation", id: idOf(input.obligationId, "a registration"), from: ["handed_over", "submitted"], to: "confirmed", expectedVersion: input.expectedVersion, actor, eventType: "tire_registration.confirmed" });
+  return { id: input.obligationId };
+}
+async function sweepTireRegistrations(uow, actor) {
+  const today = new Date(Date.UTC(uow.now.getUTCFullYear(), uow.now.getUTCMonth(), uow.now.getUTCDate()));
+  const due = await uow.tx.tireRegistrationObligation.findMany({ where: { status: "open", dueAt: { lt: today } }, select: { id: true } });
+  for (const d2 of due) await transition(uow, { model: "TireRegistrationObligation", id: d2.id, from: ["open"], to: "overdue", actor, eventType: "tire_registration.overdue" });
+  return due.length;
+}
+
+// features/keystone/lib/invoiceMath.ts
+var PART_KINDS2 = ["part", "tire", "core", "refrigerant"];
+function totalsOf2(lines) {
+  const of = (kinds) => sumMinor(lines.filter((l) => kinds.includes(l.kind)).map((l) => l.extendedMinor));
+  const laborSubtotalMinor = of(["labor"]);
+  const partsSubtotalMinor = of(PART_KINDS2);
+  const feesSubtotalMinor = of(["fee"]);
+  const subletSubtotalMinor = of(["sublet"]);
+  const discountMinor = of(["discount"]);
+  const taxMinor = sumMinor(lines.map((l) => l.taxMinor));
+  return { laborSubtotalMinor, partsSubtotalMinor, feesSubtotalMinor, subletSubtotalMinor, discountMinor, taxMinor, totalMinor: laborSubtotalMinor + partsSubtotalMinor + feesSubtotalMinor + subletSubtotalMinor + discountMinor + taxMinor };
+}
+function payerWeights(jobTotalMinor, shares) {
+  if (!shares.length) throw new Error("payerWeights needs at least one payer");
+  const percentSum = shares.reduce((a, s) => a.plus(s.percent), new Decimal(0));
+  if (percentSum.isZero()) throw new Error("payer percentages must not all be zero");
+  const deductible = shares.reduce((a, s) => a + (s.deductibleMinor ?? 0n), 0n);
+  if (jobTotalMinor <= 0n || deductible <= 0n) return shares.map((s) => s.percent);
+  const capped = deductible > jobTotalMinor ? jobTotalMinor : deductible;
+  const rest = dec(jobTotalMinor - capped);
+  return shares.map((s) => {
+    const own = s.deductibleMinor && deductible > 0n ? dec(capped).times(dec(s.deductibleMinor)).div(dec(deductible)) : new Decimal(0);
+    return own.plus(rest.times(s.percent).div(percentSum));
+  });
+}
+function splitLine(line, weights) {
+  const ext = allocateMinor(line.extendedMinor, weights);
+  const tax = allocateMinor(line.taxMinor, weights);
+  return weights.map((_, i) => ({ kind: line.kind, extendedMinor: ext[i], taxMinor: tax[i] }));
+}
+function spreadPayment(amountMinor, balances) {
+  const owed = sumMinor(balances);
+  if (amountMinor < 0n) throw new Error("A payment cannot be negative");
+  if (amountMinor > owed) throw new Error("A payment cannot exceed what is owed");
+  if (amountMinor === 0n || owed === 0n) return balances.map(() => 0n);
+  if (balances.length === 1) return [amountMinor];
+  const shares = allocateMinor(amountMinor, balances.map((b) => b.toString()));
+  return shares.map((s, i) => s > balances[i] ? balances[i] : s);
+}
+function addDays2(date2, days) {
+  const d2 = /* @__PURE__ */ new Date(`${date2}T00:00:00Z`);
+  d2.setUTCDate(d2.getUTCDate() + days);
+  return d2.toISOString().slice(0, 10);
+}
+function addMonths(date2, months) {
+  const [y, m, day2] = date2.split("-").map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day2, last));
+  return target.toISOString().slice(0, 10);
+}
+var addYears = (date2, years) => addMonths(date2, years * 12);
+function invoiceStatus(input) {
+  const balance = input.totalMinor - input.paidMinor - input.creditedMinor;
+  if (balance <= 0n) return input.paidMinor > 0n ? "paid" : input.creditedMinor > 0n ? "credited" : "paid";
+  if (input.paidMinor > 0n) return "partially_paid";
+  return input.sent ? "sent" : "finalized";
+}
+
+// features/keystone/lib/payments.ts
+var MANUAL_TENDERS = ["cash", "check", "ach", "card_present", "tap_to_pay", "financing", "store_credit", "gift_card", "account_credit"];
+var CARD_TENDERS = ["card_link"];
+var SETTLED_PAYMENT = ["succeeded", "partially_refunded", "refunded"];
+var text15 = (value, max) => String(value ?? "").trim().slice(0, max);
+var whole2 = (value, field, { positive = true } = {}) => {
+  const s = String(value ?? "").trim();
+  if (!/^\d{1,12}$/.test(s)) throw new DomainError(Codes.INVALID_INPUT, "Enter an amount in whole cents.", { field });
+  const n = BigInt(s);
+  if (positive && n <= 0n) throw new DomainError(Codes.INVALID_INPUT, "The amount must be above zero.", { field });
+  return n;
+};
+async function postingDate(tx, shopId, now) {
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { timeZone: true } });
+  let date2 = zonedDate(shop.timeZone, now);
+  for (let i = 0; i < 366; i += 1) {
+    const closed = await tx.businessDayClose.findFirst({ where: { shopId, businessDate: /* @__PURE__ */ new Date(`${date2}T00:00:00.000Z`), status: "closed" }, select: { id: true } });
+    if (!closed) return date2;
+    date2 = addDays2(date2, 1);
+  }
+  return date2;
+}
+var asDate = (iso) => /* @__PURE__ */ new Date(`${iso}T00:00:00.000Z`);
+async function createPayment(uow, actor, input, idempotencyKey) {
+  const { tx, now } = uow;
+  const amount = whole2(input.amountMinor, "amountMinor");
+  const purpose = input.purpose === "deposit" ? "deposit" : "invoice";
+  const isCard = CARD_TENDERS.includes(input.tender);
+  if (!isCard && !MANUAL_TENDERS.includes(input.tender)) throw new DomainError(Codes.INVALID_INPUT, "Choose how the customer is paying.", { field: "tender" });
+  if (input.tender === "check" && !text15(input.checkNumber, 40)) throw new DomainError(Codes.INVALID_INPUT, "Enter the check number.", { field: "checkNumber" });
+  let shopId, customerId2, repairOrderId;
+  let invoiceIds = [];
+  if (purpose === "invoice") {
+    invoiceIds = [...new Set((input.invoiceIds ?? []).filter((x) => typeof x === "string"))].sort();
+    if (!invoiceIds.length) throw new DomainError(Codes.INVALID_INPUT, "Choose the invoice this pays.", { field: "invoiceIds" });
+    const invoices = [];
+    for (const id of invoiceIds) invoices.push(await lockRow(tx, "Invoice", id));
+    if (new Set(invoices.map((i) => i.shopId)).size !== 1) throw new DomainError(Codes.INVALID_INPUT, "One payment cannot span shops.");
+    const owed = sumMinor(invoices.map((i) => BigInt(i.balanceMinor)));
+    if (owed <= 0n) throw new DomainError(Codes.GUARD_FAILED, "That invoice is already paid.");
+    if (amount > owed) throw new DomainError(Codes.GUARD_FAILED, `That is more than the ${owed.toString().padStart(3, "0").slice(0, -2)}.${owed.toString().padStart(3, "0").slice(-2)} owed. Take only what is due.`, { field: "amountMinor" });
+    shopId = invoices[0].shopId;
+    customerId2 = invoices[0].customerId ?? null;
+    repairOrderId = invoices[0].repairOrderId ?? null;
+  } else {
+    if (!input.repairOrderId) throw new DomainError(Codes.INVALID_INPUT, "Choose the repair order the deposit is for.", { field: "repairOrderId" });
+    const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
+    if (["void", "invoiced", "closed"].includes(ro.status)) throw new DomainError(Codes.GUARD_FAILED, `${ro.roNumber} is ${String(ro.status).replaceAll("_", " ")}; take the payment on its invoice.`);
+    await assertDepositPolicy(tx, ro, amount);
+    shopId = ro.shopId;
+    customerId2 = ro.customerId ?? null;
+    repairOrderId = ro.id;
+  }
+  const settleNow = !isCard;
+  const row = await tx.payment.create({
+    data: {
+      shopId,
+      purpose,
+      repairOrderId,
+      customerId: customerId2,
+      targetInvoiceIds: invoiceIds,
+      tender: input.tender,
+      amountMinor: amount,
+      provider: isCard ? "stripe" : "manual",
+      idempotencyKey,
+      payerName: text15(input.payerName, 120),
+      checkNumber: text15(input.checkNumber, 40),
+      cardBrand: text15(input.cardBrand, 20),
+      cardLast4: /^\d{4}$/.test(String(input.cardLast4 ?? "")) ? String(input.cardLast4) : "",
+      receivedById: actorUserId(actor),
+      status: settleNow ? "succeeded" : "initiated",
+      settledAt: settleNow ? now : null,
+      businessDate: settleNow ? asDate(await postingDate(tx, shopId, now)) : null
+    }
+  });
+  auditCreate(uow, actor, "Payment", row.id, settleNow ? "payment.received" : "payment.started", { purpose, tender: input.tender, amountMinor: amount, invoiceIds, repairOrderId });
+  let allocated = 0n;
+  if (settleNow && purpose === "invoice") allocated = await allocatePayment(uow, actor, row.id);
+  return { id: row.id, status: row.status, allocatedMinor: allocated.toString(), amountMinor: amount.toString() };
+}
+async function assertDepositPolicy(tx, ro, amount) {
+  const policy = ro.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: ro.shopPolicyVersionId }, select: { depositPolicy: true } }) : null;
+  const rule2 = policy?.depositPolicy ?? {};
+  if (rule2.enabled === false) throw new DomainError(Codes.GUARD_FAILED, "This shop does not take deposits.");
+  if (rule2.maxMinor && amount > BigInt(rule2.maxMinor)) throw new DomainError(Codes.GUARD_FAILED, "That deposit is above the shop limit.", { field: "amountMinor" });
+  if (rule2.maxPercentOfEstimate && BigInt(ro.currentTotalMinor) > 0n) {
+    const cap = BigInt(ro.currentTotalMinor) * BigInt(Math.round(rule2.maxPercentOfEstimate * 100)) / 10000n;
+    if (amount > cap) throw new DomainError(Codes.GUARD_FAILED, "That deposit is above the share of the estimate the shop allows.", { field: "amountMinor" });
+  }
+}
+async function allocatePayment(uow, actor, paymentId) {
+  const { tx, now } = uow;
+  const payment = await lockRow(tx, "Payment", paymentId);
+  if (!SETTLED_PAYMENT.includes(payment.status)) return 0n;
+  const available = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - BigInt(payment.allocatedMinor);
+  const targets = (payment.targetInvoiceIds ?? []).slice().sort();
+  if (available <= 0n || !targets.length) return 0n;
+  const invoices = [];
+  for (const id of targets) invoices.push(await lockRow(tx, "Invoice", id));
+  const balances = invoices.map((i) => BigInt(i.balanceMinor));
+  const owed = sumMinor(balances);
+  const apply = available > owed ? owed : available;
+  if (apply <= 0n) return 0n;
+  const shares = spreadPayment(apply, balances);
+  for (let i = 0; i < invoices.length; i += 1) {
+    if (shares[i] <= 0n) continue;
+    await tx.paymentAllocation.create({ data: { paymentId, invoiceId: invoices[i].id, amountMinor: shares[i], at: now } });
+    await settleInvoice(uow, actor, invoices[i], shares[i], 0n);
+  }
+  await tx.payment.update({ where: { id: paymentId }, data: { allocatedMinor: { increment: apply }, version: { increment: 1 } } });
+  auditCreate(uow, actor, "Payment", paymentId, "payment.allocated", { amountMinor: apply, invoices: invoices.map((inv, i) => ({ id: inv.id, amountMinor: shares[i] })) });
+  return apply;
+}
+async function settleInvoice(uow, actor, invoice, paidDelta, creditedDelta) {
+  const { tx } = uow;
+  const paid = BigInt(invoice.paidMinor) + paidDelta;
+  const credited = BigInt(invoice.creditedMinor) + creditedDelta;
+  const total = BigInt(invoice.totalMinor);
+  const status = invoiceStatus({ totalMinor: total, paidMinor: paid, creditedMinor: credited, sent: !!invoice.sentAt });
+  await tx.invoice.update({ where: { id: invoice.id }, data: { paidMinor: paid, creditedMinor: credited, balanceMinor: total - paid - credited, status, version: { increment: 1 } } });
+  if (invoice.businessAccountId) {
+    await tx.businessAccount.update({ where: { id: invoice.businessAccountId }, data: { openBalanceMinor: { decrement: paidDelta + creditedDelta }, version: { increment: 1 } } });
+  }
+  uow.audit({ eventType: "invoice.balance_changed", entityType: "Invoice", entityId: invoice.id, actorUserId: actorUserId(actor), before: { paidMinor: BigInt(invoice.paidMinor), creditedMinor: BigInt(invoice.creditedMinor), status: invoice.status }, after: { paidMinor: paid, creditedMinor: credited, balanceMinor: total - paid - credited, status } });
+}
+async function settleDeposits(uow, actor, repairOrderId, invoiceIds) {
+  const { tx } = uow;
+  const deposits = await tx.payment.findMany({ where: { repairOrderId, purpose: "deposit", status: { in: ["succeeded", "partially_refunded"] } }, orderBy: { createdAt: "asc" } });
+  if (!deposits.length) return 0n;
+  const invoices = await tx.invoice.findMany({ where: { id: { in: invoiceIds }, payerKind: "customer" }, select: { id: true } });
+  if (!invoices.length) return 0n;
+  let total = 0n;
+  for (const d2 of deposits) {
+    await advisoryLock(tx, `payment:${d2.id}`);
+    await tx.payment.update({ where: { id: d2.id }, data: { targetInvoiceIds: invoices.map((i) => i.id) } });
+    total += await allocatePayment(uow, actor, d2.id);
+  }
+  return total;
+}
+async function applyCardResult(uow, actor, input) {
+  const { tx, now } = uow;
+  const payment = await lockRow(tx, "Payment", input.paymentId);
+  if (SETTLED_PAYMENT.includes(payment.status) || payment.status === "failed") return { status: payment.status, allocatedMinor: "0", already: true };
+  if (input.outcome === "paid") {
+    const businessDate = asDate(await postingDate(tx, payment.shopId, now));
+    await transition(uow, {
+      model: "Payment",
+      id: payment.id,
+      from: ["initiated", "pending", "unknown"],
+      to: "succeeded",
+      actor,
+      eventType: "payment.succeeded",
+      data: { providerPaymentId: input.paymentIntentId ?? "", cardBrand: input.cardBrand ?? "", cardLast4: input.cardLast4 ?? "", settledAt: now, businessDate, failureMessage: "" }
+    });
+    const allocated = payment.purpose === "invoice" ? await allocatePayment(uow, actor, payment.id) : 0n;
+    return { status: "succeeded", allocatedMinor: allocated.toString(), already: false };
+  }
+  await transition(uow, { model: "Payment", id: payment.id, from: ["initiated", "pending", "unknown"], to: "failed", actor, eventType: "payment.failed", data: { failureMessage: text15(input.message || (input.outcome === "expired" ? "The payment page expired before it was paid." : "The card was not charged."), 300) } });
+  return { status: "failed", allocatedMinor: "0", already: false };
+}
+
+// features/keystone/lib/invoicing.ts
+var dateOnly2 = (iso) => /* @__PURE__ */ new Date(`${iso}T00:00:00.000Z`);
+var BILLABLE_SKIPPED = ["declined", "deferred", "voided"];
+var INVOICEABLE_RO = ["in_service", "ready_to_invoice"];
+var payerKeyOf = (kind, businessAccountId, name) => kind === "customer" ? "customer" : `${kind}:${businessAccountId ?? name}`;
+async function buildInvoicePlan(tx, repairOrderId, now) {
+  const ro = await tx.repairOrder.findUnique({
+    where: { id: repairOrderId },
+    include: {
+      customer: true,
+      vehicle: true,
+      shop: true,
+      businessAccount: true,
+      jobs: { orderBy: { number: "asc" }, include: { lines: { orderBy: { sortOrder: "asc" } }, payerSplits: true, authorizations: { orderBy: { authorizedAt: "desc" } }, warrantyTerm: true } }
+    }
+  });
+  if (!ro) throw new DomainError(Codes.NOT_FOUND, "Repair order not found.");
+  const problems = [];
+  const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId } });
+  const billable = ro.jobs.filter((j) => !BILLABLE_SKIPPED.includes(j.status));
+  const open = billable.filter((j) => j.status !== "completed");
+  if (!INVOICEABLE_RO.includes(ro.status)) problems.push(`${ro.roNumber} is ${ro.status.replaceAll("_", " ")}; only work in service can be invoiced.`);
+  for (const j of open) problems.push(`Job ${j.number}, ${j.title}, is ${j.status.replaceAll("_", " ")}. Complete it, or decline or void it, before invoicing.`);
+  if (!billable.length) problems.push("There is no completed work to invoice.");
+  for (const j of billable.filter((x) => x.status === "completed")) {
+    if (BigInt(j.totalMinor) === 0n && j.noChargeReason) continue;
+    try {
+      const includesTax = law.toleranceRule?.includesTax === true;
+      assertWithinCeiling({ rule: law.toleranceRule, authorizedMinor: includesTax ? j.authorizedAmountMinor : j.authorizedSubtotalMinor, priceMinor: j.subtotalMinor, taxMinor: j.taxMinor, jobId: j.id });
+    } catch (error) {
+      if (error instanceof DomainError && error.code === Codes.REAUTHORIZATION_REQUIRED) problems.push(`Job ${j.number}, ${j.title}, is above what the customer authorized. Send a revised estimate and record a new authorization.`);
+      else throw error;
+    }
+  }
+  const law2 = law;
+  const payers = /* @__PURE__ */ new Map();
+  const lineBuckets = /* @__PURE__ */ new Map();
+  const customerPayer = { key: "customer", kind: "customer", businessAccountId: null, customerId: ro.customerId, payorName: ro.customer?.displayName ?? "", authorizationNumber: "", claimNumber: "" };
+  const defaultPayer = ro.businessAccountId && ro.businessAccount ? { key: payerKeyOf("business_account", ro.businessAccountId, ""), kind: "business_account", businessAccountId: ro.businessAccountId, customerId: ro.customerId, payorName: ro.businessAccount.name, authorizationNumber: "", claimNumber: "" } : customerPayer;
+  for (const j of billable.filter((x) => x.status === "completed")) {
+    const splits = j.payerSplits.filter((s) => s.payerKind !== "customer" || s.percent);
+    const shares = [];
+    for (const s of splits) {
+      const kind = s.payerKind;
+      const payer = kind === "customer" ? customerPayer : { key: payerKeyOf(kind, s.businessAccountId, s.payorName), kind, businessAccountId: s.businessAccountId, customerId: null, payorName: s.payorName, authorizationNumber: s.authorizationNumber, claimNumber: s.claimNumber };
+      shares.push({ payer, share: { key: payer.key, percent: dec(s.percent.toString()), deductibleMinor: s.deductibleMinor ?? void 0 } });
+    }
+    const total = shares.reduce((a, s) => a.plus(s.share.percent), new Decimal(0));
+    if (total.greaterThan(100)) problems.push(`Job ${j.number}: the payer shares add up to more than 100%.`);
+    if (!shares.length) shares.push({ payer: defaultPayer, share: { key: defaultPayer.key, percent: new Decimal(100) } });
+    else if (total.lessThan(100) && !shares.some((s) => s.payer.kind === "customer")) shares.push({ payer: defaultPayer, share: { key: defaultPayer.key, percent: new Decimal(100).minus(total) } });
+    const merged = /* @__PURE__ */ new Map();
+    for (const s of shares) {
+      const prior = merged.get(s.payer.key);
+      merged.set(s.payer.key, prior ? { payer: s.payer, share: { key: s.payer.key, percent: prior.share.percent.plus(s.share.percent), deductibleMinor: (prior.share.deductibleMinor ?? 0n) + (s.share.deductibleMinor ?? 0n) } } : s);
+    }
+    const list15 = [...merged.values()];
+    const weights = payerWeights(BigInt(j.totalMinor), list15.map((s) => s.share));
+    for (const line of j.lines) {
+      const parts = splitLine({ kind: line.kind, extendedMinor: line.extendedMinor, taxMinor: line.taxMinor }, weights);
+      parts.forEach((part, i) => {
+        if (part.extendedMinor === 0n && part.taxMinor === 0n && list15.length > 1) return;
+        const payer = list15[i].payer;
+        payers.set(payer.key, payer);
+        const bucket = lineBuckets.get(payer.key) ?? [];
+        bucket.push({
+          ...part,
+          sourceJobLineId: line.id,
+          jobNumber: j.number,
+          jobTitle: j.title,
+          description: line.description,
+          partNumber: line.partNumber,
+          brand: line.brand,
+          condition: line.condition ?? "",
+          subletVendorName: line.subletVendorName,
+          quantityMilli: line.quantityMilli,
+          centiHours: line.soldCentiHours,
+          unitPriceMinor: line.kind === "labor" ? line.rateMinor : line.unitPriceMinor,
+          taxCategoryCode: line.taxCategoryCode,
+          sortOrder: j.number * 1e3 + (line.sortOrder ?? 0)
+        });
+        lineBuckets.set(payer.key, bucket);
+      });
+    }
+  }
+  const plans = [...payers.values()].map((payer) => ({ payer, lines: lineBuckets.get(payer.key) ?? [], totals: totalsOf2(lineBuckets.get(payer.key) ?? []) })).sort((a, b) => (a.payer.kind === "customer" ? 1 : 0) - (b.payer.kind === "customer" ? 1 : 0) || a.payer.key.localeCompare(b.payer.key));
+  for (const plan of plans) {
+    const account = plan.payer.businessAccountId ? await tx.businessAccount.findUnique({ where: { id: plan.payer.businessAccountId } }) : null;
+    if (account?.status === "on_hold" || account?.status === "credit_hold") problems.push(`${account.name} is on credit hold. A manager must clear it before this is invoiced.`);
+  }
+  return { ro, law: { ...law, ...law2 }, plans, problems, billable };
+}
+var text16 = (value, max) => String(value ?? "").trim().slice(0, max);
+async function finalizeInvoices(uow, actor, input) {
+  const { tx, now } = uow;
+  await lockRow(tx, "RepairOrder", input.repairOrderId);
+  const built = await buildInvoicePlan(tx, input.repairOrderId, now);
+  const { ro, law, plans } = built;
+  const problems = [...built.problems];
+  const poNumber = text16(input.poNumber, 80);
+  const shop = ro.shop;
+  const odometer = input.odometerOut ?? null;
+  if (law.requireOdometerOut && !ro.odometerOutId && odometer === null) problems.push("Record the odometer reading as the vehicle leaves; this state requires it on the invoice.");
+  for (const plan of plans) {
+    const account = plan.payer.businessAccountId ? await tx.businessAccount.findUnique({ where: { id: plan.payer.businessAccountId } }) : null;
+    if (account?.poRequired && !poNumber) problems.push(`${account.name} requires a purchase order number on every invoice.`);
+  }
+  if (problems.length) {
+    const code = problems.some((p) => p.includes("purchase order")) ? Codes.PO_REQUIRED : problems.some((p) => p.includes("credit hold")) ? Codes.CREDIT_HOLD : problems.some((p) => p.includes("above what the customer authorized")) ? Codes.REAUTHORIZATION_REQUIRED : problems.some((p) => p.includes("odometer")) ? Codes.ODOMETER_REQUIRED : Codes.GUARD_FAILED;
+    throw new DomainError(code, problems[0], { problems });
+  }
+  let odometerOutId = ro.odometerOutId;
+  if (odometer !== null && ro.vehicleId) odometerOutId = (await recordOdometer(uow, actor, { vehicleId: ro.vehicleId, value: odometer, source: "ro_out" })).id;
+  const today = zonedDate(shop.timeZone, now);
+  const retentionYears = Math.max(1, law.recordRetentionYears ?? 4);
+  const disclosures = await disclosuresFor(tx, ro, law, odometer, plans.some((p) => p.payer.kind !== "customer"));
+  const invoices = [];
+  for (const plan of plans) {
+    const account = plan.payer.businessAccountId ? await tx.businessAccount.findUnique({ where: { id: plan.payer.businessAccountId } }) : null;
+    const dueDate = account && account.termsDays > 0 ? addDays2(today, account.termsDays) : today;
+    const invoiceNumber = await nextShopReference(tx, "INV", shop.code, now);
+    const status = invoiceStatus({ totalMinor: plan.totals.totalMinor, paidMinor: 0n, creditedMinor: 0n, sent: false });
+    const row = await tx.invoice.create({
+      data: {
+        shopId: shop.id,
+        invoiceNumber,
+        repairOrderId: ro.id,
+        payerKind: plan.payer.kind,
+        customerId: ro.customerId,
+        businessAccountId: plan.payer.businessAccountId,
+        poNumber,
+        invoiceDate: dateOnly2(today),
+        dueDate: dateOnly2(dueDate),
+        retentionUntil: dateOnly2(addYears(today, retentionYears)),
+        odometerOut: odometer,
+        ...plan.totals,
+        paidMinor: 0n,
+        creditedMinor: 0n,
+        balanceMinor: plan.totals.totalMinor,
+        disclosures: toJsonValue({ ...disclosures, payer: { kind: plan.payer.kind, name: plan.payer.payorName, authorizationNumber: plan.payer.authorizationNumber, claimNumber: plan.payer.claimNumber } }),
+        finalizedById: actorUserId(actor),
+        finalizedAt: now,
+        status: "finalized",
+        version: 0
+      }
+    });
+    await tx.invoiceLine.createMany({
+      data: plan.lines.map((l, i) => ({
+        invoiceId: row.id,
+        sourceJobLineId: l.sourceJobLineId,
+        jobNumber: l.jobNumber,
+        jobTitle: l.jobTitle,
+        kind: l.kind,
+        description: l.description,
+        partNumber: l.partNumber,
+        brand: l.brand,
+        condition: l.condition,
+        subletVendorName: l.subletVendorName,
+        quantityMilli: l.quantityMilli,
+        centiHours: l.centiHours,
+        unitPriceMinor: l.unitPriceMinor,
+        extendedMinor: l.extendedMinor,
+        taxCategoryCode: l.taxCategoryCode,
+        taxMinor: l.taxMinor,
+        sortOrder: l.sortOrder * 100 + i
+      }))
+    });
+    if (status !== "finalized") await tx.invoice.update({ where: { id: row.id }, data: { status } });
+    if (account) await tx.businessAccount.update({ where: { id: account.id }, data: { openBalanceMinor: { increment: plan.totals.totalMinor }, version: { increment: 1 } } });
+    auditCreate(uow, actor, "Invoice", row.id, "invoice.finalized", { invoiceNumber, repairOrder: ro.roNumber, payer: plan.payer.kind, totalMinor: plan.totals.totalMinor, taxMinor: plan.totals.taxMinor, lines: plan.lines.length, retentionUntil: addYears(today, retentionYears) });
+    await createTireObligations(uow, actor, row.id);
+    invoices.push({ id: row.id, invoiceNumber, payerKind: plan.payer.kind, totalMinor: plan.totals.totalMinor.toString() });
+  }
+  const firstInvoiceId = invoices.find((i) => i.payerKind === "customer")?.id ?? invoices[0]?.id ?? null;
+  for (const job of built.billable.filter((j) => j.status === "completed" && j.warrantyTerm)) {
+    const term = job.warrantyTerm;
+    const startMiles = odometer ?? null;
+    await tx.warrantyCoverage.create({
+      data: {
+        repairOrderId: ro.id,
+        jobId: job.id,
+        invoiceId: firstInvoiceId,
+        vehicleId: ro.vehicleId,
+        termCode: term.code,
+        termName: term.name,
+        invoiceText: term.invoiceText,
+        startsOn: dateOnly2(today),
+        endsOn: dateOnly2(addMonths(today, term.months)),
+        startMiles,
+        endsAtMiles: startMiles === null ? null : startMiles + term.miles,
+        status: "active"
+      }
+    });
+  }
+  await transition(uow, {
+    model: "RepairOrder",
+    id: ro.id,
+    from: INVOICEABLE_RO,
+    to: "invoiced",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "repair_order.invoiced",
+    data: { lockedAt: now, odometerOutId },
+    metadata: { invoices: invoices.map((i) => i.invoiceNumber) }
+  });
+  await settleDeposits(uow, actor, ro.id, invoices.map((i) => i.id));
+  const fresh = await tx.invoice.findMany({ where: { id: { in: invoices.map((i) => i.id) } }, orderBy: { invoiceNumber: "asc" } });
+  return { repairOrderId: ro.id, invoices: fresh.map((i) => ({ id: i.id, invoiceNumber: i.invoiceNumber, payerKind: i.payerKind, totalMinor: i.totalMinor.toString(), balanceMinor: i.balanceMinor.toString(), status: i.status })) };
+}
+async function disclosuresFor(tx, ro, law, odometerOut, thirdParty) {
+  const odo = ro.odometerInId ? await tx.odometerReading.findUnique({ where: { id: ro.odometerInId } }) : null;
+  const declined = await tx.job.findMany({ where: { repairOrderId: ro.id, status: "declined", urgency: { in: ["safety", "soon"] } }, select: { number: true, title: true, urgency: true, totalMinor: true } });
+  const authorizations = await tx.authorization.findMany({ where: { job: { repairOrderId: ro.id } }, orderBy: { authorizedAt: "asc" }, select: { method: true, authorizedAt: true, amountMinor: true, actorName: true, job: { select: { number: true } } } });
+  const election = ro.replacedPartsElection;
+  return {
+    registrations: ro.shop.registrations ?? {},
+    notices: (law.requiredNotices ?? []).filter((n) => n && typeof n.text === "string"),
+    replacedParts: election === "returned" ? "The customer asked to have the replaced parts returned." : election === "declined" ? "The customer declined to have the replaced parts returned." : law.replacedPartsOfferRequired ? law.replacedPartsOfferText : null,
+    nonReturnableNote: law.nonReturnableNoteText || null,
+    thirdPartyNotice: thirdParty ? law.thirdPartyPayorNoticeText || null : null,
+    odometer: { in: odo?.value ?? null, out: odometerOut },
+    authorizations: authorizations.map((a) => ({ job: a.job?.number, method: a.method, at: a.authorizedAt.toISOString(), amountMinor: a.amountMinor.toString(), by: a.actorName })),
+    declinedSafetyItems: declined.map((d2) => ({ job: d2.number, title: d2.title, urgency: d2.urgency, totalMinor: d2.totalMinor.toString() })),
+    warranty: (await tx.job.findMany({ where: { repairOrderId: ro.id, status: "completed", warrantyTermId: { not: null } }, select: { number: true, warrantyTerm: { select: { name: true, invoiceText: true } } } })).map((j) => ({ job: j.number, name: j.warrantyTerm?.name, text: j.warrantyTerm?.invoiceText }))
+  };
+}
+async function invoicePayLink(uow, actor, input) {
+  const { tx } = uow;
+  const invoice = await lockRow(tx, "Invoice", input.invoiceId);
+  if (BigInt(invoice.balanceMinor) <= 0n) throw new DomainError(Codes.GUARD_FAILED, "This invoice is already paid.");
+  await revokeTokensFor(tx, "Invoice", invoice.id, uow.now);
+  const made = await createAccessToken(uow, { purpose: "invoice_pay", subjectType: "Invoice", subjectId: invoice.id, shopId: invoice.shopId, ttlHours: 168, maxUses: 200 });
+  await tx.invoice.update({ where: { id: invoice.id }, data: { sentAt: invoice.sentAt ?? uow.now, sentChannel: invoice.sentChannel || "link", status: invoice.status === "finalized" ? "sent" : invoice.status, version: { increment: 1 } } });
+  auditCreate(uow, actor, "Invoice", invoice.id, "invoice.pay_link_created", { expiresAt: made.expiresAt.toISOString() });
+  return { path: `/pay/${made.token}`, apiPath: `/api/public/invoices/${made.token}`, expiresAt: made.expiresAt.toISOString() };
+}
+
+// features/keystone/lib/settlement.ts
+var text17 = (value, max) => String(value ?? "").trim().slice(0, max);
+var reasonOf = (value, what) => {
+  const r = text17(value, 300);
+  if (r.length < 3) throw new DomainError(Codes.INVALID_INPUT, `Say why ${what}.`, { field: "reason" });
+  return r;
+};
+async function needApproval(uow, actor, a) {
+  if (a.approvalRequestId) {
+    await consumeApproval(uow, { requestId: a.approvalRequestId, action: a.action, targetList: a.targetList, targetId: a.targetId, payload: a.payload });
+    return { approved: true, approvalRequestId: a.approvalRequestId };
+  }
+  const request = await requestApproval(uow, actor, { action: a.action, targetList: a.targetList, targetId: a.targetId, payload: a.payload, requiredPermission: a.permission, summary: a.summary });
+  return { approved: false, approvalRequestId: request.id };
+}
+var cents3 = (minor2) => {
+  const t = (minor2 < 0n ? -minor2 : minor2).toString().padStart(3, "0");
+  return `${t.slice(0, -2)}.${t.slice(-2)}`;
+};
+var waiting = (id) => ({ approvalRequired: true, approvalRequestId: id });
+async function policyOf(tx, shopId) {
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { shopPolicyId: true } });
+  return shop.shopPolicyId ? tx.shopPolicyVersion.findUnique({ where: { id: shop.shopPolicyId }, select: { refundApprovalMinor: true, creditMemoApprovalMinor: true } }) : null;
+}
+async function openRefund(uow, actor, input) {
+  const { tx } = uow;
+  const amount = whole2(input.amountMinor, "amountMinor");
+  const reason = reasonOf(input.reason, "the money is going back");
+  const payment = await lockRow(tx, "Payment", input.paymentId);
+  if (!["succeeded", "partially_refunded"].includes(payment.status)) throw new DomainError(Codes.GUARD_FAILED, "Only a payment that went through can be refunded.");
+  const inFlight = await tx.refund.aggregate({ where: { paymentId: payment.id, status: { in: ["requested", "pending", "unknown"] } }, _sum: { amountMinor: true } });
+  const left = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - (inFlight._sum.amountMinor ?? 0n);
+  if (amount > left) throw new DomainError(Codes.GUARD_FAILED, `Only ${cents3(left)} of this payment is left to refund.`, { field: "amountMinor" });
+  const policy = await policyOf(tx, payment.shopId);
+  const threshold = policy?.refundApprovalMinor ?? 0n;
+  let approvalId = null;
+  if (threshold > 0n && amount >= threshold) {
+    const gate2 = await needApproval(uow, actor, {
+      action: "refund.issue",
+      targetList: "Payment",
+      targetId: payment.id,
+      permission: "canApproveRefund",
+      approvalRequestId: input.approvalRequestId,
+      payload: { paymentId: payment.id, amountMinor: amount.toString(), reason },
+      summary: `Refund ${cents3(amount)}: ${reason}`
+    });
+    if (!gate2.approved) return waiting(gate2.approvalRequestId);
+    approvalId = gate2.approvalRequestId;
+  }
+  const row = await tx.refund.create({
+    data: { paymentId: payment.id, amountMinor: amount, reason, provider: payment.provider, approvalId, requestedById: actorUserId(actor), status: "requested" }
+  });
+  auditCreate(uow, actor, "Refund", row.id, "refund.requested", { paymentId: payment.id, amountMinor: amount, provider: payment.provider, approvalId }, { reason });
+  return { refundId: row.id, provider: payment.provider, tender: payment.tender, providerPaymentId: payment.providerPaymentId || "", amountMinor: amount.toString() };
+}
+async function applyRefundResult(uow, actor, input) {
+  const { tx, now } = uow;
+  const refund = await lockRow(tx, "Refund", input.refundId);
+  if (["succeeded", "failed"].includes(refund.status)) return { status: refund.status, already: true };
+  if (input.outcome === "pending" || input.outcome === "unknown") {
+    if (refund.status !== input.outcome) await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: input.outcome, actor, eventType: `refund.${input.outcome}`, data: { providerRefundId: input.providerRefundId ?? refund.providerRefundId } });
+    return { status: input.outcome, already: false };
+  }
+  if (input.outcome === "failed") {
+    await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: "failed", actor, eventType: "refund.failed", data: { failureMessage: text17(input.message || "The refund did not go through.", 300) } });
+    return { status: "failed", already: false };
+  }
+  const payment = await lockRow(tx, "Payment", refund.paymentId);
+  const amount = BigInt(refund.amountMinor);
+  const unallocated = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - BigInt(payment.allocatedMinor);
+  const fromFree = unallocated > 0n ? amount < unallocated ? amount : unallocated : 0n;
+  let fromInvoices = amount - fromFree;
+  if (fromInvoices > 0n) {
+    const rows = await tx.paymentAllocation.groupBy({ by: ["invoiceId"], where: { paymentId: payment.id }, _sum: { amountMinor: true } });
+    const net = rows.map((r) => ({ invoiceId: r.invoiceId, net: r._sum.amountMinor ?? 0n })).filter((r) => r.net > 0n).sort((a, b) => a.invoiceId.localeCompare(b.invoiceId));
+    const available = sumMinor(net.map((n) => n.net));
+    if (fromInvoices > available) fromInvoices = available;
+    const shares = net.length ? allocateMinor(fromInvoices, net.map((n) => n.net.toString())) : [];
+    for (let i = 0; i < net.length; i += 1) {
+      const take = shares[i] > net[i].net ? net[i].net : shares[i];
+      if (take <= 0n) continue;
+      const invoice = await lockRow(tx, "Invoice", net[i].invoiceId);
+      await tx.paymentAllocation.create({ data: { paymentId: payment.id, invoiceId: invoice.id, refundId: refund.id, amountMinor: -take, at: now } });
+      await settleInvoice(uow, actor, invoice, -take, 0n);
+    }
+  }
+  const refunded = BigInt(payment.refundedMinor) + amount;
+  await tx.payment.update({ where: { id: payment.id }, data: { refundedMinor: refunded, allocatedMinor: { decrement: fromInvoices }, status: refunded >= BigInt(payment.amountMinor) ? "refunded" : "partially_refunded", version: { increment: 1 } } });
+  const businessDate = asDate(await postingDate(tx, payment.shopId, now));
+  await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: "succeeded", actor, eventType: "refund.succeeded", data: { providerRefundId: input.providerRefundId ?? refund.providerRefundId, settledAt: now, businessDate, failureMessage: "" } });
+  return { status: "succeeded", already: false, amountMinor: amount.toString() };
+}
+async function issueCreditMemo(uow, actor, input) {
+  const { tx, now } = uow;
+  const reason = reasonOf(input.reason, "the invoice is being credited");
+  const invoice = await lockRow(tx, "Invoice", input.invoiceId);
+  if (!Array.isArray(input.lines) || !input.lines.length) throw new DomainError(Codes.INVALID_INPUT, "Choose what to credit.", { field: "lines" });
+  const prior = await tx.creditMemoLine.findMany({ where: { creditMemo: { invoiceId: invoice.id, status: "issued" } }, select: { invoiceLineId: true, amountMinor: true } });
+  const lines = [];
+  for (const l of input.lines) {
+    const source = await tx.invoiceLine.findUnique({ where: { id: String(l.invoiceLineId) } });
+    if (!source || source.invoiceId !== invoice.id) throw new DomainError(Codes.INVALID_INPUT, "That line is not on this invoice.", { field: "lines" });
+    const amount = whole2(l.amountMinor, "amountMinor");
+    const credited = sumMinor(prior.filter((p) => p.invoiceLineId === source.id).map((p) => p.amountMinor));
+    if (amount > source.extendedMinor - credited) throw new DomainError(Codes.GUARD_FAILED, `${source.description}: only ${cents3(source.extendedMinor - credited)} is left to credit.`, { field: "amountMinor" });
+    const taxMinor = source.extendedMinor > 0n ? BigInt(dec(source.taxMinor).times(dec(amount)).div(dec(source.extendedMinor)).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN).toString()) : 0n;
+    lines.push({ invoiceLineId: source.id, description: source.description, amountMinor: amount, taxMinor });
+  }
+  const subtotal = sumMinor(lines.map((l) => l.amountMinor));
+  const tax = sumMinor(lines.map((l) => l.taxMinor));
+  const total = subtotal + tax;
+  if (total > BigInt(invoice.balanceMinor)) throw new DomainError(Codes.GUARD_FAILED, "A credit cannot be more than what is still owed. Refund the payment for money already received.", { field: "lines" });
+  const policy = await policyOf(tx, invoice.shopId);
+  const threshold = policy?.creditMemoApprovalMinor ?? 0n;
+  let approvalId = null;
+  if (threshold > 0n && total >= threshold) {
+    const gate2 = await needApproval(uow, actor, {
+      action: "credit_memo.issue",
+      targetList: "Invoice",
+      targetId: invoice.id,
+      permission: "canApproveCreditMemo",
+      approvalRequestId: input.approvalRequestId,
+      payload: { invoiceId: invoice.id, reason, lines: lines.map((l) => ({ invoiceLineId: l.invoiceLineId, amountMinor: l.amountMinor.toString() })) },
+      summary: `Credit ${cents3(total)} on ${invoice.invoiceNumber}: ${reason}`
+    });
+    if (!gate2.approved) return waiting(gate2.approvalRequestId);
+    approvalId = gate2.approvalRequestId;
+  }
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: invoice.shopId }, select: { code: true } });
+  const reference = await nextShopReference(tx, "CRM", shop.code, now);
+  const memo = await tx.creditMemo.create({ data: { shopId: invoice.shopId, reference, invoiceId: invoice.id, reason, subtotalMinor: subtotal, taxMinor: tax, totalMinor: total, approvalId, createdById: actorUserId(actor), issuedById: actorUserId(actor), issuedAt: now, status: "issued" } });
+  await tx.creditMemoLine.createMany({ data: lines.map((l) => ({ creditMemoId: memo.id, invoiceLineId: l.invoiceLineId, description: l.description, amountMinor: l.amountMinor, taxMinor: l.taxMinor })) });
+  await settleInvoice(uow, actor, invoice, 0n, total);
+  auditCreate(uow, actor, "CreditMemo", memo.id, "credit_memo.issued", { reference, invoice: invoice.invoiceNumber, totalMinor: total, approvalId }, { reason });
+  return { id: memo.id, reference, totalMinor: total.toString() };
+}
+async function dayTotals(tx, shopId, date2) {
+  const businessDate = asDate(date2);
+  const payments = await tx.payment.findMany({ where: { shopId, businessDate, status: { in: ["succeeded", "partially_refunded", "refunded"] } }, select: { tender: true, amountMinor: true } });
+  const refunds = await tx.refund.findMany({ where: { businessDate, status: "succeeded", payment: { shopId } }, select: { amountMinor: true, payment: { select: { tender: true } } } });
+  const totals = {};
+  for (const p of payments) totals[p.tender] = (totals[p.tender] ?? 0n) + p.amountMinor;
+  for (const r of refunds) totals[r.payment.tender] = (totals[r.payment.tender] ?? 0n) - r.amountMinor;
+  const open = await tx.payment.count({ where: { shopId, status: { in: ["initiated", "pending", "unknown"] }, createdAt: { gte: new Date(businessDate.getTime() - 864e5), lt: new Date(businessDate.getTime() + 2 * 864e5) } } });
+  return { totals, expectedCashMinor: totals.cash ?? 0n, unresolvedPayments: open };
+}
+async function closeDay(uow, actor, input) {
+  const { tx, now } = uow;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.businessDate)) throw new DomainError(Codes.INVALID_INPUT, "Choose the day to close.", { field: "businessDate" });
+  const count = whole2(input.drawerCountMinor, "drawerCountMinor", { positive: false });
+  const { totals, expectedCashMinor, unresolvedPayments } = await dayTotals(tx, input.shopId, input.businessDate);
+  if (unresolvedPayments > 0) throw new DomainError(Codes.GUARD_FAILED, `${unresolvedPayments} card payment${unresolvedPayments === 1 ? " is" : "s are"} still waiting on the card processor. Check ${unresolvedPayments === 1 ? "it" : "them"} before closing the day.`);
+  const variance = count - expectedCashMinor;
+  const reason = text17(input.varianceReason, 300);
+  if (variance !== 0n && reason.length < 3) throw new DomainError(Codes.INVALID_INPUT, `The drawer is ${variance > 0n ? "over" : "short"} by ${cents3(variance < 0n ? -variance : variance)}. Say why.`, { field: "varianceReason" });
+  const businessDate = asDate(input.businessDate);
+  const existing = await tx.businessDayClose.findUnique({ where: { shopId_businessDate: { shopId: input.shopId, businessDate } } });
+  const data = { tenderTotals: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, v.toString()])), expectedCashMinor, drawerCountMinor: count, varianceMinor: variance, varianceReason: reason, closedById: actorUserId(actor), closedAt: now, status: "closed" };
+  if (existing?.status === "closed") throw new DomainError(Codes.GUARD_FAILED, "This day is already closed.");
+  let id;
+  if (existing) {
+    await tx.businessDayClose.update({ where: { id: existing.id }, data: { ...data, version: { increment: 1 } } });
+    id = existing.id;
+  } else {
+    id = (await tx.businessDayClose.create({ data: { shopId: input.shopId, businessDate, ...data } })).id;
+  }
+  auditCreate(uow, actor, "BusinessDayClose", id, "day.closed", { shopId: input.shopId, date: input.businessDate, expectedCashMinor, drawerCountMinor: count, varianceMinor: variance, tenders: data.tenderTotals }, { reason });
+  return { id, businessDate: input.businessDate, expectedCashMinor: expectedCashMinor.toString(), varianceMinor: variance.toString() };
+}
+async function reopenDay(uow, actor, input) {
+  const reason = reasonOf(input.reason, "the day is being reopened");
+  const day2 = await lockRow(uow.tx, "BusinessDayClose", input.dayCloseId);
+  if (day2.status !== "closed") throw new DomainError(Codes.GUARD_FAILED, "Only a closed day can be reopened.");
+  const gate2 = await needApproval(uow, actor, { action: "day.reopen", targetList: "BusinessDayClose", targetId: day2.id, permission: "canApproveReopen", approvalRequestId: input.approvalRequestId, payload: { dayCloseId: day2.id, reason }, summary: `Reopen the day ${new Date(day2.businessDate).toISOString().slice(0, 10)}: ${reason}` });
+  if (!gate2.approved) return waiting(gate2.approvalRequestId);
+  await uow.tx.businessDayClose.update({ where: { id: day2.id }, data: { status: "reopened", reopenApprovalId: gate2.approvalRequestId, version: { increment: 1 } } });
+  uow.audit({ eventType: "day.reopened", entityType: "BusinessDayClose", entityId: day2.id, actorUserId: actorUserId(actor), approverId: null, reason, after: { status: "reopened" } });
+  return { id: day2.id, status: "reopened" };
+}
+async function releaseVehicle(uow, actor, input) {
+  const { tx, now } = uow;
+  const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
+  if (ro.status !== "invoiced") throw new DomainError(Codes.GUARD_FAILED, `${ro.roNumber} has to be invoiced before the vehicle is released.`);
+  if (ro.releasedAt) throw new DomainError(Codes.GUARD_FAILED, "This vehicle was already released.");
+  const invoices = await tx.invoice.findMany({ where: { repairOrderId: ro.id }, select: { balanceMinor: true } });
+  const owed = sumMinor(invoices.map((i) => i.balanceMinor));
+  let approvalId = null;
+  if (owed > 0n) {
+    const reason = reasonOf(input.reason, "the vehicle is leaving with a balance");
+    const gate2 = await needApproval(uow, actor, { action: "vehicle.release_with_balance", targetList: "RepairOrder", targetId: ro.id, permission: "canApproveRelease", approvalRequestId: input.approvalRequestId, payload: { repairOrderId: ro.id, owedMinor: owed.toString(), reason }, summary: `Release ${ro.roNumber} owing ${cents3(owed)}: ${reason}` });
+    if (!gate2.approved) return waiting(gate2.approvalRequestId);
+    approvalId = gate2.approvalRequestId;
+  }
+  await tx.repairOrder.update({ where: { id: ro.id }, data: { releasedAt: now, releasedById: actorUserId(actor), version: { increment: 1 } } });
+  auditCreate(uow, actor, "RepairOrder", ro.id, "vehicle.released", { owedMinor: owed, approvalId });
+  const closed = owed === 0n;
+  if (closed) await transition(uow, { model: "RepairOrder", id: ro.id, from: ["invoiced"], to: "closed", actor, eventType: "repair_order.closed" });
+  return { repairOrderId: ro.id, released: true, closed, owedMinor: owed.toString() };
+}
+async function closeIfSettled(uow, actor, repairOrderId) {
+  if (!repairOrderId) return;
+  const ro = await uow.tx.repairOrder.findUnique({ where: { id: repairOrderId }, select: { status: true, releasedAt: true } });
+  if (!ro || ro.status !== "invoiced" || !ro.releasedAt) return;
+  const owing = await uow.tx.invoice.count({ where: { repairOrderId, balanceMinor: { gt: 0n } } });
+  if (!owing) await transition(uow, { model: "RepairOrder", id: repairOrderId, from: ["invoiced"], to: "closed", actor, eventType: "repair_order.closed" });
+}
+
+// features/keystone/lib/stripeGateway.ts
+var StripeRejected = class extends Error {
+  constructor(message, code, httpStatus) {
+    super(message);
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+};
+var API = "https://api.stripe.com/v1";
+function form(data, prefix = "", out = new URLSearchParams()) {
+  for (const [key2, value] of Object.entries(data)) {
+    if (value === void 0 || value === null) continue;
+    const name = prefix ? `${prefix}[${key2}]` : key2;
+    if (Array.isArray(value)) value.forEach((v, i) => typeof v === "object" ? form(v, `${name}[${i}]`, out) : out.append(`${name}[${i}]`, String(v)));
+    else if (typeof value === "object") form(value, name, out);
+    else out.append(name, String(value));
+  }
+  return out;
+}
+function realGateway(secret2) {
+  async function call(method, path, data = {}, idempotencyKey) {
+    const headers = { Authorization: `Bearer ${secret2}`, "Stripe-Version": "2024-06-20" };
+    let url = `${API}${path}`;
+    let body;
+    if (method === "POST") {
+      headers["Content-Type"] = "application/x-www-form-urlencoded";
+      body = form(data).toString();
+    } else if (Object.keys(data).length) url += `?${form(data).toString()}`;
+    if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+    const response = await fetch(url, { method, headers, body, signal: AbortSignal.timeout(2e4) });
+    const json13 = await response.json().catch(() => null);
+    if (!response.ok) {
+      const message = String(json13?.error?.message ?? `Stripe returned ${response.status}`);
+      if (response.status >= 400 && response.status < 500 && response.status !== 429 && response.status !== 409) throw new StripeRejected(message, json13?.error?.code ?? null, response.status);
+      throw new Error(`Stripe unavailable: ${response.status}`);
+    }
+    return json13;
+  }
+  const toSession = (s) => {
+    const charge = s.payment_intent && typeof s.payment_intent === "object" ? s.payment_intent.latest_charge : null;
+    const card = charge && typeof charge === "object" ? charge.payment_method_details?.card : null;
+    return {
+      id: s.id,
+      url: s.url ?? null,
+      paymentStatus: s.payment_status,
+      status: s.status,
+      paymentIntentId: typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id ?? null,
+      cardBrand: String(card?.brand ?? ""),
+      cardLast4: String(card?.last4 ?? "")
+    };
+  };
+  const toRefund = (r) => ({ id: r.id, status: r.status, failureReason: String(r.failure_reason ?? "") });
+  return {
+    name: "stripe",
+    async createCheckoutSession(input) {
+      const s = await call("POST", "/checkout/sessions", {
+        mode: "payment",
+        payment_method_types: ["card"],
+        customer_email: input.customerEmail || void 0,
+        success_url: input.successUrl,
+        cancel_url: input.cancelUrl,
+        expires_at: Math.floor(Date.now() / 1e3) + 3600,
+        line_items: [{ quantity: 1, price_data: { currency: input.currency.toLowerCase(), unit_amount: input.amountMinor.toString(), product_data: { name: input.description } } }],
+        metadata: input.metadata,
+        payment_intent_data: { metadata: input.metadata, description: input.description }
+      }, input.idempotencyKey);
+      return toSession(s);
+    },
+    async retrieveCheckoutSession(id) {
+      return toSession(await call("GET", `/checkout/sessions/${encodeURIComponent(id)}`, { expand: ["payment_intent.latest_charge"] }));
+    },
+    async createRefund(input) {
+      const r = await call("POST", "/refunds", { payment_intent: input.paymentIntentId, amount: input.amountMinor.toString(), reason: "requested_by_customer", metadata: { ...input.metadata, note: input.reason.slice(0, 200) } }, input.idempotencyKey);
+      return toRefund(r);
+    },
+    async retrieveRefund(id) {
+      return toRefund(await call("GET", `/refunds/${encodeURIComponent(id)}`));
+    }
+  };
+}
+var override = null;
+function stripeGateway() {
+  if (override) return override;
+  const key2 = process.env.STRIPE_SECRET_KEY ?? "";
+  if (!key2) throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "Card payments are not set up on this server yet.");
+  if (!key2.startsWith("sk_test_") && !key2.startsWith("rk_test_")) throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "Card payments run on Stripe test mode in this build.");
+  return realGateway(key2);
+}
+var cardPaymentsConfigured = () => !!override || /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY ?? "");
+
+// features/keystone/lib/cardFlow.ts
+var SYSTEM = systemActor("payment-resolver");
+var baseUrl = () => (process.env.PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "http://localhost:3000")).replace(/\/$/, "");
+async function openCardPage(db, paymentId, input) {
+  const gateway = stripeGateway();
+  const payment = await db.payment.findUniqueOrThrow({ where: { id: paymentId } });
+  if (payment.status !== "initiated" && payment.status !== "pending") throw new DomainError(Codes.GUARD_FAILED, "This payment is not waiting for a card.");
+  if (payment.providerSessionId) {
+    const existing = await gateway.retrieveCheckoutSession(payment.providerSessionId);
+    if (existing.status === "open" && existing.url) return { url: existing.url, sessionId: existing.id };
+  }
+  try {
+    const session = await gateway.createCheckoutSession({
+      amountMinor: payment.amountMinor,
+      currency: "usd",
+      description: input.description,
+      customerEmail: input.customerEmail,
+      successUrl: `${baseUrl()}${input.returnPath}${input.returnPath.includes("?") ? "&" : "?"}paid=1`,
+      cancelUrl: `${baseUrl()}${input.returnPath}${input.returnPath.includes("?") ? "&" : "?"}cancelled=1`,
+      metadata: { paymentId: payment.id, purpose: payment.purpose },
+      idempotencyKey: `ar-session-${payment.idempotencyKey}`
+    });
+    await runInTransaction(db, async (uow) => {
+      await uow.tx.payment.update({ where: { id: payment.id }, data: { providerSessionId: session.id, status: "pending", version: { increment: 1 } } });
+    });
+    return { url: session.url, sessionId: session.id };
+  } catch (error) {
+    if (error instanceof StripeRejected) {
+      await runInTransaction(db, async (uow) => {
+        await applyCardResult(uow, SYSTEM, { paymentId: payment.id, outcome: "failed", message: error.message });
+      });
+      throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "The card processor refused the request. Try again, or take another form of payment.");
+    }
+    await runInTransaction(db, async (uow) => {
+      await lockRow(uow.tx, "Payment", payment.id);
+      await uow.tx.payment.updateMany({ where: { id: payment.id, status: { in: ["initiated", "pending"] } }, data: { status: "unknown", version: { increment: 1 } } });
+    });
+    throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "The card processor did not answer. Nothing was charged yet; this payment will be checked again.");
+  }
+}
+async function resolvePayment(db, paymentId, actor = SYSTEM) {
+  const payment = await db.payment.findUnique({ where: { id: paymentId } });
+  if (!payment) throw new DomainError(Codes.NOT_FOUND, "Payment not found.");
+  if (payment.provider !== "stripe" || !["initiated", "pending", "unknown"].includes(payment.status)) return { id: payment.id, status: payment.status, changed: false };
+  if (!payment.providerSessionId) {
+    if (Date.now() - payment.createdAt.getTime() > 36e5) {
+      await runInTransaction(db, async (uow) => {
+        await applyCardResult(uow, actor, { paymentId, outcome: "expired" });
+      });
+      return { id: payment.id, status: "failed", changed: true };
+    }
+    return { id: payment.id, status: payment.status, changed: false };
+  }
+  let session;
+  try {
+    session = await stripeGateway().retrieveCheckoutSession(payment.providerSessionId);
+  } catch {
+    if (payment.status !== "unknown") await runInTransaction(db, async (uow) => {
+      await uow.tx.payment.updateMany({ where: { id: paymentId, status: { in: ["initiated", "pending"] } }, data: { status: "unknown", version: { increment: 1 } } });
+    });
+    return { id: payment.id, status: "unknown", changed: false };
+  }
+  if (session.paymentStatus === "paid") {
+    const result = await runInTransaction(db, async (uow) => {
+      const r = await applyCardResult(uow, actor, { paymentId, outcome: "paid", paymentIntentId: session.paymentIntentId, cardBrand: session.cardBrand, cardLast4: session.cardLast4 });
+      const settled = await uow.tx.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { repairOrderId: true } });
+      await closeIfSettled(uow, actor, settled.repairOrderId);
+      return r;
+    });
+    return { id: payment.id, status: result.status, changed: !result.already };
+  }
+  if (session.status === "expired") {
+    await runInTransaction(db, async (uow) => {
+      await applyCardResult(uow, actor, { paymentId, outcome: "expired" });
+    });
+    return { id: payment.id, status: "failed", changed: true };
+  }
+  return { id: payment.id, status: payment.status === "unknown" ? "pending" : payment.status, changed: false };
+}
+async function sendRefund(db, actor, refundId) {
+  const refund = await db.refund.findUniqueOrThrow({ where: { id: refundId }, include: { payment: true } });
+  if (refund.status === "succeeded" || refund.status === "failed") return { status: refund.status };
+  if (refund.provider !== "stripe") {
+    await runInTransaction(db, async (uow) => {
+      await applyRefundResult(uow, actor, { refundId, outcome: "succeeded" });
+    });
+    return { status: "succeeded" };
+  }
+  const intent = refund.payment.providerPaymentId;
+  if (!intent) throw new DomainError(Codes.GUARD_FAILED, "This card payment has no processor reference to refund against.");
+  try {
+    const result = await stripeGateway().createRefund({ paymentIntentId: intent, amountMinor: refund.amountMinor, idempotencyKey: `ar-refund-${refund.id}`, reason: refund.reason, metadata: { refundId: refund.id, paymentId: refund.paymentId } });
+    const outcome = result.status === "succeeded" ? "succeeded" : result.status === "pending" || result.status === "requires_action" ? "pending" : "failed";
+    await runInTransaction(db, async (uow) => {
+      await applyRefundResult(uow, actor, { refundId, outcome, providerRefundId: result.id, message: result.failureReason });
+    });
+    return { status: outcome };
+  } catch (error) {
+    if (error instanceof StripeRejected) {
+      await runInTransaction(db, async (uow) => {
+        await applyRefundResult(uow, actor, { refundId, outcome: "failed", message: error.message });
+      });
+      return { status: "failed" };
+    }
+    await runInTransaction(db, async (uow) => {
+      await applyRefundResult(uow, actor, { refundId, outcome: "unknown" });
+    });
+    return { status: "unknown" };
+  }
+}
+async function resolveRefund(db, refundId, actor = SYSTEM) {
+  const refund = await db.refund.findUniqueOrThrow({ where: { id: refundId } });
+  if (!["requested", "pending", "unknown"].includes(refund.status)) return { status: refund.status };
+  if (!refund.providerRefundId) return sendRefund(db, actor, refundId);
+  try {
+    const r = await stripeGateway().retrieveRefund(refund.providerRefundId);
+    const outcome = r.status === "succeeded" ? "succeeded" : r.status === "pending" || r.status === "requires_action" ? "pending" : "failed";
+    await runInTransaction(db, async (uow) => {
+      await applyRefundResult(uow, actor, { refundId, outcome, providerRefundId: r.id, message: r.failureReason });
+    });
+    return { status: outcome };
+  } catch {
+    return { status: refund.status };
+  }
+}
+async function resolveOpen(db, shopId) {
+  const payments = await db.payment.findMany({ where: { provider: "stripe", status: { in: ["initiated", "pending", "unknown"] }, ...shopId ? { shopId } : {} }, select: { id: true }, take: 25, orderBy: { createdAt: "asc" } });
+  const refunds = await db.refund.findMany({ where: { provider: "stripe", status: { in: ["requested", "pending", "unknown"] }, ...shopId ? { payment: { shopId } } : {} }, select: { id: true }, take: 25 });
+  let changed = 0;
+  for (const p of payments) if ((await resolvePayment(db, p.id)).changed) changed += 1;
+  for (const r of refunds) {
+    const before = r.id;
+    const after = await resolveRefund(db, before);
+    if (after.status === "succeeded" || after.status === "failed") changed += 1;
+  }
+  return { payments: payments.length, refunds: refunds.length, changed };
+}
+
+// features/keystone/mutations/phase3.ts
+var run3 = async (context, actor, name, idempotencyKey, params, work) => {
+  const result = await command(context.prisma, { name, actor, idempotencyKey, params }, work);
+  return { replay: result.replay, ...result.value };
+};
+async function shopOf2(context, model, id) {
+  if (typeof id !== "string" || !id) throw new DomainError(Codes.INVALID_INPUT, "Choose a record.");
+  const row = await context.prisma[model].findUnique({ where: { id }, select: model === "refund" ? { payment: { select: { shopId: true } } } : { shopId: true } });
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Not found.");
+  return requireShop(context, model === "refund" ? row.payment?.shopId : row.shopId);
+}
+async function previewShopInvoice(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canFinalizeInvoices", "canReadFinancials");
+  await shopOf2(context, "repairOrder", args.repairOrderId);
+  const built = await buildInvoicePlan(context.prisma, args.repairOrderId, /* @__PURE__ */ new Date());
+  return {
+    repairOrderId: args.repairOrderId,
+    roNumber: built.ro.roNumber,
+    problems: built.problems,
+    status: built.ro.status,
+    invoices: built.plans.map((p) => ({
+      payerKind: p.payer.kind,
+      payerName: p.payer.payorName,
+      lines: p.lines.length,
+      totals: Object.fromEntries(Object.entries(p.totals).map(([k, v]) => [k, v.toString()]))
+    }))
+  };
+}
+async function finalizeShopInvoice(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canFinalizeInvoices");
+  requireHuman(actor, "finalize an invoice");
+  await shopOf2(context, "repairOrder", args.input?.repairOrderId);
+  return run3(context, actor, "invoice.finalize", args.idempotencyKey, args.input, (uow) => finalizeInvoices(uow, actor, args.input));
+}
+async function createInvoicePayLink(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canTakePayments");
+  requireHuman(actor, "send a payment link");
+  await shopOf2(context, "invoice", args.invoiceId);
+  return run3(context, actor, "invoice.pay_link", args.idempotencyKey, args, (uow) => invoicePayLink(uow, actor, { invoiceId: args.invoiceId }));
+}
+async function takeShopPayment(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canTakePayments");
+  requireHuman(actor, "take a payment");
+  const input = args.input ?? {};
+  if (input.purpose === "deposit") await shopOf2(context, "repairOrder", input.repairOrderId);
+  else await shopOf2(context, "invoice", input.invoiceIds?.[0]);
+  if (input.tender === "card_link" && !cardPaymentsConfigured()) throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "Card payments are not set up on this server yet. Take cash, a check or a card on the terminal.");
+  const made = await run3(context, actor, "payment.take", args.idempotencyKey, input, async (uow) => {
+    const created = await createPayment(uow, actor, input, args.idempotencyKey);
+    if (input.tender !== "card_link" && input.purpose !== "deposit") {
+      const row = await uow.tx.payment.findUniqueOrThrow({ where: { id: created.id }, select: { repairOrderId: true } });
+      await closeIfSettled(uow, actor, row.repairOrderId);
+    }
+    return created;
+  });
+  if (input.tender !== "card_link") return made;
+  const ro = made.id ? await context.prisma.payment.findUnique({ where: { id: made.id }, select: { repairOrderId: true, customer: { select: { displayName: true } } } }) : null;
+  const page = await openCardPage(context.prisma, made.id, { description: `Repair order payment${ro?.customer?.displayName ? ` for ${ro.customer.displayName}` : ""}`, returnPath: `/dashboard/platform/repair-orders/${ro?.repairOrderId ?? ""}` });
+  return { ...made, status: "pending", checkoutUrl: page.url };
+}
+async function checkShopPayment(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canTakePayments", "canReadFinancials");
+  await shopOf2(context, "payment", args.paymentId);
+  const result = await resolvePayment(context.prisma, args.paymentId, actor);
+  return result;
+}
+async function resolveShopPayments(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canTakePayments", "canReadFinancials");
+  const shopId = requireShop(context, args.shopId);
+  return resolveOpen(context.prisma, shopId);
+}
+async function refundShopPayment(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canIssueRefunds");
+  requireHuman(actor, "issue a refund");
+  await shopOf2(context, "payment", args.input?.paymentId);
+  const opened = await run3(context, actor, "refund.open", args.idempotencyKey, args.input, (uow) => openRefund(uow, actor, args.input));
+  if (opened.approvalRequired || !opened.refundId) return opened;
+  const sent = await sendRefund(context.prisma, actor, opened.refundId);
+  return { replay: opened.replay, refundId: opened.refundId, status: sent.status, amountMinor: opened.amountMinor };
+}
+async function issueShopCreditMemo(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canFinalizeInvoices", "canApproveCreditMemo");
+  requireHuman(actor, "issue a credit memo");
+  await shopOf2(context, "invoice", args.input?.invoiceId);
+  return run3(context, actor, "credit_memo.issue", args.idempotencyKey, args.input, (uow) => issueCreditMemo(uow, actor, args.input));
+}
+async function closeShopDay(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canCloseDay");
+  requireHuman(actor, "close the day");
+  const shopId = requireShop(context, args.shopId);
+  return run3(context, actor, "day.close", args.idempotencyKey, args, (uow) => closeDay(uow, actor, { shopId, businessDate: args.businessDate, drawerCountMinor: args.drawerCountMinor, varianceReason: args.varianceReason }));
+}
+async function reopenShopDay(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canCloseDay");
+  requireHuman(actor, "reopen a closed day");
+  await shopOf2(context, "businessDayClose", args.dayCloseId);
+  return run3(context, actor, "day.reopen", args.idempotencyKey, args, (uow) => reopenDay(uow, actor, args));
+}
+async function releaseShopVehicle(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canFinalizeInvoices", "canTakePayments");
+  requireHuman(actor, "release a vehicle");
+  await shopOf2(context, "repairOrder", args.repairOrderId);
+  return run3(context, actor, "vehicle.release", args.idempotencyKey, args, (uow) => releaseVehicle(uow, actor, args));
+}
+async function shopDaySummary(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canCloseDay", "canReadFinancials");
+  const shopId = requireShop(context, args.shopId);
+  const d2 = await dayTotals(context.prisma, shopId, args.businessDate);
+  return { tenders: Object.fromEntries(Object.entries(d2.totals).map(([k, v]) => [k, v.toString()])), expectedCashMinor: d2.expectedCashMinor.toString(), unresolvedPayments: d2.unresolvedPayments };
+}
+
+// features/keystone/lib/cycleCounts.ts
+var STOCK_ADJUST_APPROVAL_MINOR = 10000n;
+async function startCycleCount(uow, actor, input) {
+  const shop = await uow.tx.shop.findUnique({ where: { id: input.shopId }, select: { id: true, code: true } });
+  if (!shop) throw new DomainError(Codes.NOT_FOUND, "Shop not found.", { field: "shopId" });
+  const ids = [...new Set(listOf(input.shopItemIds, "the count", 500).map((v) => idOf(v, "a part")))];
+  const items = await uow.tx.shopItem.findMany({ where: { id: { in: ids }, shopId: shop.id, isStocked: true }, include: { stock: true } });
+  if (items.length !== ids.length) throw new DomainError(Codes.INVALID_INPUT, "Every part to count must be a stocked part at this shop.", { field: "shopItemIds" });
+  const reference = await nextShopReference(uow.tx, "CC", shop.code, uow.now, 5);
+  const frozen = items.map((i) => ({ shopItemId: i.id, sku: i.sku, expectedMilli: i.stock?.onHandMilli ?? 0, countedMilli: null }));
+  const row = await uow.tx.cycleCount.create({ data: { shopId: shop.id, reference, items: frozen, status: "open" } });
+  auditCreate(uow, actor, "CycleCount", row.id, "cycle_count.started", { reference, items: frozen.length });
+  return { id: row.id, reference };
+}
+async function recordCounts(uow, actor, input) {
+  const row = await lockRow(uow.tx, "CycleCount", idOf(input.cycleCountId, "a count"));
+  if (row.status === "posted") throw new DomainError(Codes.INVALID_TRANSITION, "This count is already posted.", { currentStatus: row.status });
+  if (input.expectedVersion !== void 0 && input.expectedVersion !== null && input.expectedVersion !== row.version) throw new DomainError(Codes.STALE_STATE, "This count changed since you loaded it.");
+  const items = row.items;
+  for (const c of listOf(input.counts, "the count")) {
+    const entry = objectOf(c, "a counted part");
+    const item = items.find((i) => i.shopItemId === entry.shopItemId);
+    if (!item) throw new DomainError(Codes.INVALID_INPUT, "That part is not in this count.", { field: "shopItemId" });
+    if (!Number.isSafeInteger(entry.countedMilli) || entry.countedMilli < 0) throw new DomainError(Codes.INVALID_INPUT, "A counted quantity cannot be negative.", { field: "countedMilli" });
+    item.countedMilli = entry.countedMilli;
+  }
+  const complete = items.every((i) => i.countedMilli !== null);
+  await uow.tx.cycleCount.update({ where: { id: row.id }, data: { items, status: complete ? "counted" : "open", version: { increment: 1 } } });
+  auditCreate(uow, actor, "CycleCount", row.id, "cycle_count.recorded", { counted: items.filter((i) => i.countedMilli !== null).length, of: items.length });
+  return { id: row.id, status: complete ? "counted" : "open" };
+}
+async function postCycleCount(uow, actor, input, gate2) {
+  const row = await lockRow(uow.tx, "CycleCount", idOf(input.cycleCountId, "a count"));
+  if (row.status !== "counted") throw new DomainError(Codes.INVALID_TRANSITION, row.status === "posted" ? "This count is already posted." : "Count every part before posting.", { currentStatus: row.status });
+  if (input.expectedVersion !== void 0 && input.expectedVersion !== null && input.expectedVersion !== row.version) throw new DomainError(Codes.STALE_STATE, "This count changed since you loaded it.");
+  const items = row.items;
+  const plan = [];
+  let variance = 0n;
+  for (const i of items) {
+    const item = await uow.tx.shopItem.findUniqueOrThrow({ where: { id: i.shopItemId }, include: { stock: true } });
+    const delta = i.countedMilli - i.expectedMilli;
+    const value = extendMinor(delta, BigInt(item.stock?.averageCostMinor ?? 0));
+    plan.push({ shopItemId: i.shopItemId, sku: i.sku, delta, valueMinor: value });
+    variance += value < 0n ? -value : value;
+  }
+  let approvalId = null;
+  if (variance >= STOCK_ADJUST_APPROVAL_MINOR) {
+    const g = await gate2(uow, actor, { action: "stock.adjust", targetList: "CycleCount", targetId: row.id, payload: { cycleCountId: row.id, varianceValueMinor: variance.toString(), items: plan.map((p) => ({ shopItemId: p.shopItemId, delta: p.delta })) }, summary: `Post count ${row.reference}: ${variance} cents of variance`, approvalRequestId: input.approvalRequestId });
+    if (!g.approved) return { approvalRequired: true, approvalRequestId: g.approvalRequestId };
+    approvalId = g.approvalRequestId;
+  }
+  for (const p of plan) if (p.delta !== 0) await postMovement(uow, actor, { shopItemId: p.shopItemId, type: "count", quantityMilli: p.delta, cycleCountId: row.id, key: `count:${row.id}:${p.shopItemId}`, reason: `Cycle count ${row.reference}` });
+  await transition(uow, { model: "CycleCount", id: row.id, from: ["counted"], to: "posted", actor, eventType: "cycle_count.posted", data: { varianceValueMinor: variance, postedById: actorUserId(actor), postedAt: uow.now }, metadata: { approvalId } });
+  return { approvalRequired: false, id: row.id, varianceValueMinor: variance.toString() };
+}
+async function adjustStock(uow, actor, input, gate2) {
+  const reason = textOf(input.reason, "Reason", 300, true);
+  const item = await uow.tx.shopItem.findUnique({ where: { id: idOf(input.shopItemId, "a part") }, include: { stock: true } });
+  if (!item) throw new DomainError(Codes.NOT_FOUND, "Part not found.", { field: "shopItemId" });
+  if (!Number.isSafeInteger(input.deltaMilli) || input.deltaMilli === 0) throw new DomainError(Codes.INVALID_INPUT, "Enter how many to add or remove.", { field: "deltaMilli" });
+  const value = extendMinor(Math.abs(input.deltaMilli), BigInt(item.stock?.averageCostMinor ?? 0));
+  if (value >= STOCK_ADJUST_APPROVAL_MINOR && !await uow.tx.stockMovement.findUnique({ where: { idempotencyKey: input.key }, select: { id: true } })) {
+    const g = await gate2(uow, actor, { action: "stock.adjust", targetList: "ShopItem", targetId: item.id, payload: { shopItemId: item.id, deltaMilli: input.deltaMilli, reason }, summary: `Adjust ${item.sku} by ${input.deltaMilli / 1e3}: ${reason}`, approvalRequestId: input.approvalRequestId });
+    if (!g.approved) return { approvalRequired: true, approvalRequestId: g.approvalRequestId };
+  }
+  const moved = await postMovement(uow, actor, { shopItemId: item.id, type: "adjustment", quantityMilli: input.deltaMilli, key: input.key, reason });
+  return { approvalRequired: false, movementId: moved.movementId, onHandMilli: moved.levels.onHandMilli };
+}
+
+// features/keystone/lib/supplierOrders.ts
+var AUTHORIZED_JOB = ["authorized", "in_progress", "needs_reauthorization"];
+var OPEN_ORDER_LINE = ["open", "partially_received"];
+var RECEIVABLE_ORDER = ["placed", "confirmed", "partially_received"];
+async function jobFacts(tx, jobId) {
+  const job = await tx.job.findUnique({ where: { id: jobId }, select: { id: true, status: true, repairOrder: { select: { shopId: true, roNumber: true } } } });
+  if (!job?.repairOrder) throw new DomainError(Codes.NOT_FOUND, "Job not found.", { field: "jobId" });
+  return { id: job.id, status: job.status, shopId: job.repairOrder.shopId, roNumber: job.repairOrder.roNumber };
+}
+function requireAuthorizedJob(job, what) {
+  if (!AUTHORIZED_JOB.includes(job.status)) {
+    throw new DomainError(Codes.AUTHORIZATION_REQUIRED, `The customer has not authorized this job, so ${what} has to wait.`, { jobStatus: job.status });
+  }
+}
+async function recordPartQuote(uow, actor, input) {
+  const { tx, now } = uow;
+  const supplier = await tx.supplier.findUnique({ where: { id: idOf(input.supplierId, "a supplier") }, select: { id: true, active: true, name: true } });
+  if (!supplier || !supplier.active) throw new DomainError(Codes.NOT_FOUND, "Supplier not found or not active.", { field: "supplierId" });
+  const partNumber = textOf(input.partNumber, "Part number", 60, true);
+  const source = choiceOf(input.source, ["phone", "fixture", "manual"], "Source");
+  if (source === "phone" && !textOf(input.phoneEvidence?.spokeTo, "Who you spoke to", 80)) {
+    throw new DomainError(Codes.INVALID_INPUT, "For a quote taken by phone, write down who you spoke to.", { field: "phoneEvidence" });
+  }
+  if (input.jobId) {
+    const job = await jobFacts(tx, input.jobId);
+    if (job.shopId !== input.shopId) throw new DomainError(Codes.NOT_FOUND, "Job not found.", { field: "jobId" });
+  }
+  const unitCost = centsOf(input.unitCostMinor, "Cost");
+  const row = await tx.partQuote.create({
+    data: {
+      shopId: input.shopId,
+      jobId: input.jobId || null,
+      jobLineId: input.jobLineId || null,
+      supplierId: supplier.id,
+      source,
+      partNumber,
+      brand: textOf(input.brand, "Brand", 60),
+      description: textOf(input.description, "Description", 200),
+      unitCostMinor: unitCost,
+      listPriceMinor: centsOf(input.listPriceMinor, "List price", false),
+      coreChargeMinor: centsOf(input.coreChargeMinor, "Core charge", false),
+      availableQuantityMilli: Number.isSafeInteger(input.availableQuantityMilli) ? input.availableQuantityMilli : 0,
+      availability: choiceOf(input.availability, ["in_stock_local", "in_stock_dc", "special_order", "unavailable"], "Availability", "in_stock_local"),
+      etaAt: input.etaHours ? new Date(now.getTime() + Number(input.etaHours) * 36e5) : null,
+      supplierLocation: textOf(input.supplierLocation, "Location", 120),
+      validUntil: new Date(now.getTime() + 24 * 36e5),
+      phoneEvidence: input.phoneEvidence ? { ...input.phoneEvidence, at: now.toISOString() } : void 0,
+      createdById: actorUserId(actor),
+      status: "received"
+    }
+  });
+  auditCreate(uow, actor, "PartQuote", row.id, "part_quote.received", { supplier: supplier.name, partNumber, unitCostMinor: unitCost, source });
+  return { id: row.id };
+}
+async function selectPartQuote(uow, actor, input) {
+  const row = await transition(uow, {
+    model: "PartQuote",
+    id: input.quoteId,
+    from: ["received", "requested"],
+    to: "selected",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "part_quote.selected",
+    guard: (q) => {
+      if (q.validUntil && q.validUntil < uow.now) throw new DomainError(Codes.GUARD_FAILED, "That quote has expired. Ask the supplier again.");
+    }
+  });
+  await uow.tx.partQuote.updateMany({
+    where: { id: { not: row.id }, status: { in: ["received", "requested"] }, shopId: row.shopId, jobId: row.jobId, partNumber: row.partNumber, ...row.jobLineId ? { jobLineId: row.jobLineId } : {} },
+    data: { status: "rejected", version: { increment: 1 } }
+  });
+  return { id: row.id };
+}
+async function createSupplierOrder(uow, actor, input) {
+  const { tx, now } = uow;
+  const kind = choiceOf(input.kind, ["job", "stock"], "Kind", "job");
+  const supplier = await tx.supplier.findUnique({ where: { id: idOf(input.supplierId, "a supplier") }, select: { id: true, active: true, name: true } });
+  if (!supplier?.active) throw new DomainError(Codes.NOT_FOUND, "Supplier not found or not active.", { field: "supplierId" });
+  const shop = await tx.shop.findUnique({ where: { id: input.shopId }, select: { id: true, code: true } });
+  if (!shop) throw new DomainError(Codes.NOT_FOUND, "Shop not found.", { field: "shopId" });
+  const raw = listOf(input.lines, "the order");
+  const prepared = [];
+  const checkedJobs = /* @__PURE__ */ new Map();
+  for (const [i, entry] of raw.entries()) {
+    const line = objectOf(entry, `line ${i + 1}`);
+    const quote = line.partQuoteId ? await tx.partQuote.findUnique({ where: { id: line.partQuoteId } }) : null;
+    if (line.partQuoteId && (!quote || quote.supplierId !== supplier.id || quote.shopId !== shop.id)) throw new DomainError(Codes.INVALID_INPUT, `Line ${i + 1} uses a quote from another supplier or shop.`, { field: "lines" });
+    const partNumber = textOf(line.partNumber || quote?.partNumber, "Part number", 60, true);
+    const jobId = line.jobId || quote?.jobId || null;
+    if (kind === "job") {
+      if (!jobId) throw new DomainError(Codes.INVALID_INPUT, `Line ${i + 1} needs the job it is for.`, { field: "lines" });
+      const job = checkedJobs.get(jobId) ?? await jobFacts(tx, jobId);
+      checkedJobs.set(jobId, job);
+      if (job.shopId !== shop.id) throw new DomainError(Codes.NOT_FOUND, "Job not found.", { field: "lines" });
+      requireAuthorizedJob(job, "ordering its parts");
+    }
+    prepared.push({
+      jobId: kind === "job" ? jobId : null,
+      jobLineId: line.jobLineId || quote?.jobLineId || null,
+      partQuoteId: quote?.id ?? null,
+      partNumber,
+      brand: textOf(line.brand ?? quote?.brand, "Brand", 60),
+      description: textOf(line.description ?? quote?.description, "Description", 200) || partNumber,
+      quantityMilli: milliOf(line.quantityMilli, `Quantity on line ${i + 1}`),
+      unitCostMinor: line.unitCostMinor !== void 0 ? centsOf(line.unitCostMinor, "Cost") : quote?.unitCostMinor ?? centsOf(void 0, "Cost"),
+      coreChargeMinor: line.coreChargeMinor !== void 0 ? centsOf(line.coreChargeMinor, "Core charge", false) : quote?.coreChargeMinor ?? 0n
+    });
+  }
+  const reference = await nextShopReference(tx, "PO", shop.code, now, 5);
+  const total = sumMinor(prepared.map((l) => extendMinor(l.quantityMilli, l.unitCostMinor)));
+  const order = await tx.supplierOrder.create({ data: { shopId: shop.id, supplierId: supplier.id, reference, kind, totalMinor: total, deliveryNote: textOf(input.deliveryNote, "Delivery note", 300), createdById: actorUserId(actor), status: "draft" } });
+  for (const l of prepared) {
+    const shopItemId = await itemForPart(uow, actor, shop.id, { partNumber: l.partNumber, brand: l.brand, description: l.description, coreChargeMinor: l.coreChargeMinor });
+    await tx.supplierOrderLine.create({ data: { orderId: order.id, ...l, shopItemId, status: "open" } });
+    if (l.partQuoteId) await tx.partQuote.updateMany({ where: { id: l.partQuoteId, status: { in: ["received", "requested"] } }, data: { status: "selected", version: { increment: 1 } } });
+  }
+  auditCreate(uow, actor, "SupplierOrder", order.id, "supplier_order.drafted", { reference, supplier: supplier.name, kind, lines: prepared.length, totalMinor: total });
+  return { id: order.id, reference, totalMinor: total.toString() };
+}
+async function beginPlacing(uow, actor, input) {
+  const order = await transition(uow, {
+    model: "SupplierOrder",
+    id: input.orderId,
+    from: ["draft", "failed"],
+    to: "placing",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "supplier_order.placing",
+    guard: async () => {
+      const lines2 = await uow.tx.supplierOrderLine.findMany({ where: { orderId: input.orderId }, select: { jobId: true } });
+      if (!lines2.length) throw new DomainError(Codes.GUARD_FAILED, "This order has no lines.");
+      for (const jobId of new Set(lines2.map((l) => l.jobId).filter((v) => Boolean(v)))) requireAuthorizedJob(await jobFacts(uow.tx, jobId), "ordering its parts");
+    }
+  });
+  const supplier = await uow.tx.supplier.findUniqueOrThrow({ where: { id: order.supplierId }, select: { name: true, adapter: true } });
+  const lines = await uow.tx.supplierOrderLine.findMany({ where: { orderId: input.orderId }, orderBy: { createdAt: "asc" } });
+  return { reference: order.reference, supplierName: supplier.name, adapter: supplier.adapter, lines: lines.map((l) => ({ partNumber: l.partNumber, quantityMilli: l.quantityMilli, unitCostMinor: l.unitCostMinor })) };
+}
+async function putOnOrder(uow, actor, orderId) {
+  const lines = await uow.tx.supplierOrderLine.findMany({ where: { orderId, status: { in: [...OPEN_ORDER_LINE] } }, orderBy: { createdAt: "asc" } });
+  for (const l of lines) if (l.shopItemId) await postMovement(uow, actor, { shopItemId: l.shopItemId, type: "po_order", quantityMilli: l.quantityMilli - l.receivedQuantityMilli, supplierOrderLineId: l.id, jobId: l.jobId, key: `po-order:${l.id}`, reason: "Order placed" });
+}
+async function finishPlacing(uow, actor, input) {
+  const { now } = uow;
+  const to = input.outcome;
+  const row = await transition(uow, {
+    model: "SupplierOrder",
+    id: input.orderId,
+    from: ["placing"],
+    to,
+    actor,
+    eventType: `supplier_order.${to}`,
+    reason: input.detail ?? null,
+    data: to === "placed" ? { placedAt: now, placedVia: input.placedVia, supplierConfirmation: textOf(input.supplierConfirmation, "Confirmation", 80), etaAt: input.etaAt ?? null } : { placedVia: input.placedVia }
+  });
+  if (to === "placed") await putOnOrder(uow, actor, input.orderId);
+  return { id: input.orderId, reference: row.reference, status: to };
+}
+async function recordManualPlacement(uow, actor, input) {
+  if (!textOf(input.spokeTo, "Who you spoke to", 80)) throw new DomainError(Codes.INVALID_INPUT, "Write down who took the order.", { field: "spokeTo" });
+  await beginPlacing(uow, actor, { orderId: input.orderId, expectedVersion: input.expectedVersion });
+  return finishPlacing(uow, actor, {
+    orderId: input.orderId,
+    outcome: "placed",
+    placedVia: "phone",
+    supplierConfirmation: input.supplierConfirmation,
+    detail: `Taken by ${textOf(input.spokeTo, "Who you spoke to", 80)}`,
+    etaAt: input.etaHours ? new Date(uow.now.getTime() + input.etaHours * 36e5) : null
+  });
+}
+async function resolveUnknownOrder(uow, actor, input) {
+  const note = textOf(input.note, "Note", 300, true);
+  const to = input.found ? "placed" : "draft";
+  const row = await transition(uow, {
+    model: "SupplierOrder",
+    id: input.orderId,
+    from: ["unknown"],
+    to,
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "supplier_order.unknown_resolved",
+    reason: note,
+    data: input.found ? { placedAt: uow.now, supplierConfirmation: textOf(input.supplierConfirmation, "Confirmation", 80) } : {}
+  });
+  if (input.found) await putOnOrder(uow, actor, input.orderId);
+  return { id: input.orderId, reference: row.reference, status: to };
+}
+async function confirmSupplierOrder(uow, actor, input) {
+  await transition(uow, {
+    model: "SupplierOrder",
+    id: input.orderId,
+    from: ["placed"],
+    to: "confirmed",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "supplier_order.confirmed",
+    data: { supplierConfirmation: textOf(input.supplierConfirmation, "Confirmation", 80), ...input.etaAt ? { etaAt: input.etaAt } : {} }
+  });
+  return { id: input.orderId };
+}
+async function cancelSupplierOrder(uow, actor, input) {
+  const reason = textOf(input.reason, "Reason", 300, true);
+  const was = await lockRow(uow.tx, "SupplierOrder", input.orderId);
+  await transition(uow, { model: "SupplierOrder", id: input.orderId, from: ["draft", "failed", "placed", "confirmed", "partially_received"], to: "cancelled", expectedVersion: input.expectedVersion, actor, eventType: "supplier_order.cancelled", reason });
+  if (!["draft", "failed"].includes(was.status)) {
+    const lines = await uow.tx.supplierOrderLine.findMany({ where: { orderId: input.orderId, status: { in: [...OPEN_ORDER_LINE] } } });
+    for (const l of lines) {
+      const left = l.quantityMilli - l.receivedQuantityMilli;
+      if (left > 0 && l.shopItemId) await postMovement(uow, actor, { shopItemId: l.shopItemId, type: "po_cancel", quantityMilli: left, supplierOrderLineId: l.id, jobId: l.jobId, key: `po-cancel:${l.id}`, reason });
+    }
+  }
+  await uow.tx.supplierOrderLine.updateMany({ where: { orderId: input.orderId, status: { in: [...OPEN_ORDER_LINE] } }, data: { status: "cancelled" } });
+  return { id: input.orderId };
+}
+async function receiveSupplierOrder(uow, actor, input) {
+  const { tx, now } = uow;
+  const key2 = textOf(input.receiptKey, "Receipt key", 80, true);
+  const earlier = await tx.receipt.findUnique({ where: { receiptKey: key2 }, select: { id: true } });
+  if (earlier) return { receiptId: earlier.id, replay: true, received: 0 };
+  const order = await lockRow(tx, "SupplierOrder", idOf(input.orderId, "an order"));
+  if (!RECEIVABLE_ORDER.includes(order.status)) throw new DomainError(Codes.INVALID_TRANSITION, `An order that is ${order.status.replace(/_/g, " ")} cannot be received against.`, { currentStatus: order.status });
+  const supplier = await tx.supplier.findUniqueOrThrow({ where: { id: order.supplierId }, select: { coreReturnWindowDays: true } });
+  const receipt = await tx.receipt.create({ data: { orderId: order.id, receiptKey: key2, receivedById: actorUserId(actor), at: now, packingSlipId: input.packingSlipDocumentId || null } });
+  let received2 = 0;
+  for (const entry of listOf(input.lines, "the receipt")) {
+    const line = objectOf(entry, "a receipt line");
+    const orderLine = await lockRow(tx, "SupplierOrderLine", idOf(line.orderLineId, "an order line"));
+    if (orderLine.orderId !== order.id) throw new DomainError(Codes.INVALID_INPUT, "That line is not on this order.", { field: "orderLineId" });
+    const qty2 = milliOf(line.quantityMilli, "Quantity received");
+    const condition = choiceOf(line.condition, ["ok", "damaged", "wrong_part"], "Condition", "ok");
+    const left = orderLine.quantityMilli - orderLine.receivedQuantityMilli;
+    if (qty2 > left) throw new DomainError(Codes.GUARD_FAILED, `Only ${left / 1e3} of ${orderLine.partNumber} is still due.`, { field: "quantityMilli" });
+    await tx.receiptLine.create({ data: { receiptId: receipt.id, orderLineId: orderLine.id, quantityMilli: qty2, condition } });
+    if (condition !== "ok") {
+      auditCreate(uow, actor, "Receipt", receipt.id, "receipt.line_refused", { partNumber: orderLine.partNumber, quantityMilli: qty2, condition });
+      continue;
+    }
+    received2 += qty2;
+    const newReceived = orderLine.receivedQuantityMilli + qty2;
+    await tx.supplierOrderLine.update({ where: { id: orderLine.id }, data: { receivedQuantityMilli: newReceived, status: newReceived >= orderLine.quantityMilli ? "received" : "partially_received" } });
+    if (orderLine.shopItemId) {
+      await postMovement(uow, actor, { shopItemId: orderLine.shopItemId, type: "receipt", quantityMilli: qty2, unitCostMinor: BigInt(orderLine.unitCostMinor), supplierOrderLineId: orderLine.id, jobId: orderLine.jobId, key: `receipt:${receipt.id}:${orderLine.id}`, reason: `Received on ${order.reference}` });
+      if (orderLine.jobId) await postMovement(uow, actor, { shopItemId: orderLine.shopItemId, type: "commit", quantityMilli: qty2, jobId: orderLine.jobId, key: `commit:${receipt.id}:${orderLine.id}`, reason: "Held for the job" });
+    }
+    const core = BigInt(orderLine.coreChargeMinor);
+    if (core > 0n) await addCoreOwed(uow, actor, { shopId: order.shopId, supplierId: order.supplierId, orderLine, quantityMilli: qty2, windowDays: supplier.coreReturnWindowDays });
+  }
+  const lines = await tx.supplierOrderLine.findMany({ where: { orderId: order.id, status: { not: "cancelled" } }, select: { quantityMilli: true, receivedQuantityMilli: true } });
+  const complete = lines.every((l) => l.receivedQuantityMilli >= l.quantityMilli);
+  const to = complete ? "received" : "partially_received";
+  if (received2 > 0 && order.status !== to) await transition(uow, { model: "SupplierOrder", id: order.id, from: [...RECEIVABLE_ORDER], to, actor, eventType: `supplier_order.${to}` });
+  auditCreate(uow, actor, "Receipt", receipt.id, "receipt.recorded", { order: order.reference, goodQuantityMilli: received2, receiptKey: key2 });
+  return { receiptId: receipt.id, replay: false, received: received2, orderStatus: received2 > 0 ? to : order.status };
+}
+async function addCoreOwed(uow, actor, a) {
+  const { tx, now } = uow;
+  const amount = extendMinor(a.quantityMilli, BigInt(a.orderLine.coreChargeMinor));
+  const existing = await tx.coreObligation.findFirst({ where: { supplierOrderLineId: a.orderLine.id, status: "owed" } });
+  if (existing) {
+    await tx.coreObligation.update({ where: { id: existing.id }, data: { coreChargeMinor: { increment: amount } } });
+    return;
+  }
+  const dueAt = new Date(now.getTime() + a.windowDays * 864e5);
+  const row = await tx.coreObligation.create({
+    data: {
+      shopId: a.shopId,
+      supplierId: a.supplierId,
+      jobId: a.orderLine.jobId,
+      jobLineId: a.orderLine.jobLineId ?? null,
+      shopItemId: a.orderLine.shopItemId,
+      partNumber: a.orderLine.partNumber,
+      supplierOrderLineId: a.orderLine.id,
+      coreChargeMinor: amount,
+      owedTo: "supplier",
+      dueAt,
+      status: "owed"
+    }
+  });
+  auditCreate(uow, actor, "CoreObligation", row.id, "core.owed", { partNumber: a.orderLine.partNumber, coreChargeMinor: amount, dueAt: dueAt.toISOString() });
+}
+async function markCoreReturned(uow, actor, input) {
+  await transition(uow, {
+    model: "CoreObligation",
+    id: input.coreId,
+    from: ["owed"],
+    to: "returned",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "core.returned",
+    data: { returnedAt: uow.now, returnNote: textOf(input.note, "Note", 300), returnDocumentId: input.documentId || null }
+  });
+  return { id: input.coreId };
+}
+async function writeOffCore(uow, actor, input, gate2) {
+  const reason = textOf(input.reason, "Reason", 300, true);
+  if (reason.length < 3) throw new DomainError(Codes.INVALID_INPUT, "Say why it is written off.", { field: "reason" });
+  const core = await lockRow(uow.tx, "CoreObligation", idOf(input.coreId, "a core"));
+  if (!["owed", "returned"].includes(core.status)) throw new DomainError(Codes.INVALID_TRANSITION, `A core that is ${core.status.replace(/_/g, " ")} cannot be written off.`, { currentStatus: core.status });
+  const g = await gate2(uow, actor, { action: "core.write_off", targetList: "CoreObligation", targetId: core.id, payload: { coreId: core.id, coreChargeMinor: core.coreChargeMinor.toString(), reason }, summary: `Write off core on ${core.partNumber}: ${reason}`, approvalRequestId: input.approvalRequestId });
+  if (!g.approved) return { approvalRequired: true, approvalRequestId: g.approvalRequestId };
+  await transition(uow, { model: "CoreObligation", id: core.id, from: ["owed", "returned"], to: "written_off", expectedVersion: input.expectedVersion, actor, eventType: "core.written_off", reason, data: { writeOffReason: reason, approvalId: g.approvalRequestId } });
+  return { approvalRequired: false, id: core.id };
+}
+async function createSupplierReturn(uow, actor, input) {
+  const reason = textOf(input.reason, "Reason", 300, true);
+  const supplier = await uow.tx.supplier.findUnique({ where: { id: idOf(input.supplierId, "a supplier") }, select: { id: true, name: true } });
+  if (!supplier) throw new DomainError(Codes.NOT_FOUND, "Supplier not found.", { field: "supplierId" });
+  const row = await uow.tx.supplierReturn.create({ data: { shopId: input.shopId, supplierId: supplier.id, rmaNumber: textOf(input.rmaNumber, "RMA", 60), reason, status: "requested", lines: [] } });
+  const saved = [];
+  let credit = 0n;
+  for (const entry of listOf(input.lines, "the return")) {
+    const l = objectOf(entry, "a return line");
+    const qty2 = milliOf(l.quantityMilli, "Quantity");
+    const moved = await postMovement(uow, actor, { shopItemId: idOf(l.shopItemId, "a part"), type: "return_to_supplier", quantityMilli: qty2, key: `return:${row.id}:${l.shopItemId}`, reason: `Returned to ${supplier.name}: ${reason}` });
+    saved.push({ shopItemId: l.shopItemId, quantityMilli: qty2, unitCostMinor: moved.unitCostMinor.toString() });
+    credit += extendMinor(qty2, moved.unitCostMinor);
+  }
+  await uow.tx.supplierReturn.update({ where: { id: row.id }, data: { lines: saved, creditMinor: credit } });
+  auditCreate(uow, actor, "SupplierReturn", row.id, "supplier_return.requested", { supplier: supplier.name, lines: saved.length, expectedCreditMinor: credit }, { reason });
+  return { id: row.id, expectedCreditMinor: credit.toString() };
+}
+async function advanceSupplierReturn(uow, actor, input) {
+  const from = input.to === "shipped" ? ["requested"] : ["requested", "shipped"];
+  await transition(uow, { model: "SupplierReturn", id: input.returnId, from, to: input.to, expectedVersion: input.expectedVersion, actor, eventType: `supplier_return.${input.to}` });
+  return { id: input.returnId };
+}
+async function reservePartForJob(uow, actor, input) {
+  const job = await jobFacts(uow.tx, input.jobId);
+  requireAuthorizedJob(job, "reserving its parts");
+  const moved = await postMovement(uow, actor, { shopItemId: input.shopItemId, type: "commit", quantityMilli: milliOf(input.quantityMilli, "Quantity"), jobId: job.id, key: input.key, reason: `Held for ${job.roNumber}` });
+  return { movementId: moved.movementId, replay: moved.replay };
+}
+async function issuePartToJob(uow, actor, input) {
+  const job = await jobFacts(uow.tx, input.jobId);
+  requireAuthorizedJob(job, "issuing its parts");
+  const qty2 = milliOf(input.quantityMilli, "Quantity");
+  const reserved = await reservedForJob(uow, job.id, input.shopItemId);
+  const moved = await postMovement(uow, actor, { shopItemId: input.shopItemId, type: "issue", quantityMilli: qty2, fromCommittedMilli: Math.min(reserved, qty2), jobId: job.id, key: input.key, reason: `Issued to ${job.roNumber}` });
+  return { movementId: moved.movementId, replay: moved.replay, unitCostMinor: moved.unitCostMinor.toString(), extendedCostMinor: extendMinor(qty2, moved.unitCostMinor).toString() };
+}
+async function returnPartFromJob(uow, actor, input) {
+  const job = await jobFacts(uow.tx, input.jobId);
+  const issued = await uow.tx.stockMovement.aggregate({ where: { jobId: job.id, shopItemId: input.shopItemId, type: { in: ["issue", "return_to_stock"] } }, _sum: { onHandDeltaMilli: true } });
+  const outstanding = -(issued._sum.onHandDeltaMilli ?? 0);
+  const qty2 = milliOf(input.quantityMilli, "Quantity");
+  if (qty2 > outstanding) throw new DomainError(Codes.GUARD_FAILED, `Only ${Math.max(outstanding, 0) / 1e3} was issued to this job.`, { field: "quantityMilli" });
+  const moved = await postMovement(uow, actor, { shopItemId: input.shopItemId, type: "return_to_stock", quantityMilli: qty2, jobId: job.id, key: input.key, reason: `Returned from ${job.roNumber}` });
+  return { movementId: moved.movementId, replay: moved.replay };
+}
+
+// features/keystone/lib/supplierInvoices.ts
+async function recordSupplierInvoice(uow, actor, input) {
+  const { tx } = uow;
+  const number = textOf(input.invoiceNumber, "Invoice number", 60, true);
+  const supplier = await tx.supplier.findUnique({ where: { id: idOf(input.supplierId, "a supplier") }, select: { id: true, name: true } });
+  if (!supplier) throw new DomainError(Codes.NOT_FOUND, "Supplier not found.", { field: "supplierId" });
+  const date2 = /* @__PURE__ */ new Date(`${String(input.invoiceDate).slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(date2.getTime())) throw new DomainError(Codes.INVALID_INPUT, "Enter the invoice date.", { field: "invoiceDate" });
+  const dupe = await tx.supplierInvoice.findFirst({ where: { supplierId: supplier.id, invoiceNumber: { equals: number, mode: "insensitive" } }, select: { id: true } });
+  if (dupe) throw new DomainError(Codes.DUPLICATE, `${supplier.name} invoice ${number} is already recorded.`, { field: "invoiceNumber", existingId: dupe.id });
+  const lines = listOf(input.lines, "the invoice").map((entry, i) => {
+    const l = objectOf(entry, `line ${i + 1}`);
+    return { partNumber: textOf(l.partNumber, "Part number", 60, true), quantityMilli: milliOf(l.quantityMilli, `Quantity on line ${i + 1}`), unitCostMinor: centsOf(l.unitCostMinor, "Cost"), coreCreditMinor: centsOf(l.coreCreditMinor, "Core credit", false) };
+  });
+  const total = centsOf(input.totalMinor, "Invoice total");
+  const row = await tx.supplierInvoice.create({ data: { shopId: input.shopId, supplierId: supplier.id, invoiceNumber: number, invoiceDate: date2, totalMinor: total, documentId: input.documentId || null, status: "received" } });
+  await tx.supplierInvoiceLine.createMany({ data: lines.map((l) => ({ invoiceId: row.id, ...l, matchStatus: "unmatched" })) });
+  auditCreate(uow, actor, "SupplierInvoice", row.id, "supplier_invoice.received", { supplier: supplier.name, invoiceNumber: number, totalMinor: total, lines: lines.length });
+  return { id: row.id };
+}
+async function matchSupplierInvoice(uow, actor, input) {
+  const { tx } = uow;
+  const invoice = await lockRow(tx, "SupplierInvoice", idOf(input.invoiceId, "an invoice"));
+  if (!["received", "matching", "discrepancy"].includes(invoice.status)) throw new DomainError(Codes.INVALID_TRANSITION, `An invoice that is ${invoice.status} cannot be matched again.`, { currentStatus: invoice.status });
+  const supplier = await tx.supplier.findUniqueOrThrow({ where: { id: invoice.supplierId }, select: { priceToleranceMinor: true } });
+  const tolerance = BigInt(supplier.priceToleranceMinor);
+  const lines = await tx.supplierInvoiceLine.findMany({ where: { invoiceId: invoice.id }, orderBy: { createdAt: "asc" } });
+  const found = [];
+  for (const line of lines) {
+    if (line.matchStatus !== "unmatched") continue;
+    const candidates = await tx.supplierOrderLine.findMany({
+      where: { partNumber: { equals: line.partNumber, mode: "insensitive" }, order: { supplierId: invoice.supplierId, shopId: invoice.shopId, status: { notIn: ["draft", "cancelled", "failed"] } } },
+      orderBy: { createdAt: "asc" }
+    });
+    const open = candidates.filter((c) => c.receivedQuantityMilli > c.invoicedQuantityMilli);
+    if (!candidates.length) {
+      await tx.supplierInvoiceLine.update({ where: { id: line.id }, data: { matchStatus: "variance" } });
+      found.push({ kind: "unordered_item", amountMinor: extendMinor(line.quantityMilli, BigInt(line.unitCostMinor)), detail: `${line.partNumber} was billed but never ordered.`, lineId: line.id });
+      continue;
+    }
+    let remaining = line.quantityMilli;
+    let first = null;
+    for (const c of open) {
+      if (remaining <= 0) break;
+      const take = Math.min(remaining, c.receivedQuantityMilli - c.invoicedQuantityMilli);
+      await tx.supplierOrderLine.update({ where: { id: c.id }, data: { invoicedQuantityMilli: { increment: take } } });
+      first ??= c;
+      remaining -= take;
+      const diff = BigInt(line.unitCostMinor) - BigInt(c.unitCostMinor);
+      if (diff > tolerance) found.push({ kind: "overcharge", amountMinor: extendMinor(take, diff), detail: `${line.partNumber} was ordered at ${cents(BigInt(c.unitCostMinor))} and billed at ${cents(BigInt(line.unitCostMinor))}.`, lineId: line.id });
+    }
+    if (remaining > 0) {
+      found.push({ kind: "quantity_mismatch", amountMinor: extendMinor(remaining, BigInt(line.unitCostMinor)), detail: `${line.partNumber}: billed ${line.quantityMilli / 1e3}, but only ${(line.quantityMilli - remaining) / 1e3} was received and not yet invoiced.`, lineId: line.id });
+    }
+    const kinds = found.filter((f) => f.lineId === line.id);
+    await tx.supplierInvoiceLine.update({ where: { id: line.id }, data: { matchedOrderLineId: first?.id ?? null, matchStatus: kinds.length ? "variance" : "matched" } });
+  }
+  const returned = await tx.coreObligation.findMany({ where: { supplierId: invoice.supplierId, shopId: invoice.shopId, status: "returned", returnedAt: { lte: new Date(invoice.invoiceDate.getTime() + 864e5) } } });
+  const credits = lines.map((l) => ({ line: l, left: BigInt(l.coreCreditMinor) }));
+  for (const core of returned) {
+    const credit = credits.find((c) => c.left >= BigInt(core.coreChargeMinor) && c.line.partNumber.toLowerCase() === core.partNumber.toLowerCase()) ?? credits.find((c) => c.left >= BigInt(core.coreChargeMinor) && c.left > 0n && !returned.some((o) => o !== core && o.partNumber.toLowerCase() === c.line.partNumber.toLowerCase()));
+    if (credit) {
+      credit.left -= BigInt(core.coreChargeMinor);
+      await tx.coreObligation.update({ where: { id: core.id }, data: { status: "credited", creditedAt: uow.now, supplierInvoiceLineId: credit.line.id, version: { increment: 1 } } });
+      auditCreate(uow, actor, "CoreObligation", core.id, "core.credited", { invoice: invoice.invoiceNumber, coreChargeMinor: core.coreChargeMinor });
+    } else {
+      found.push({ kind: "core_not_credited", amountMinor: BigInt(core.coreChargeMinor), detail: `The ${core.partNumber} core was returned but invoice ${invoice.invoiceNumber} shows no credit. (core ${core.id})`, lineId: null });
+    }
+  }
+  const stillOpen = await tx.discrepancy.findMany({ where: { invoiceId: invoice.id }, select: { kind: true, detail: true } });
+  const seen = new Set(stillOpen.map((d2) => `${d2.kind}|${d2.detail}`));
+  let created = 0;
+  for (const f of found) {
+    if (seen.has(`${f.kind}|${f.detail}`)) continue;
+    const d2 = await tx.discrepancy.create({ data: { invoiceId: invoice.id, lineId: f.lineId, kind: f.kind, amountMinor: f.amountMinor, detail: f.detail, openedById: actor.kind === "user" ? actorUserId(actor) : null, openedByAgentId: actor.kind === "agent" ? actor.agentId : null, status: "open" } });
+    auditCreate(uow, actor, "Discrepancy", d2.id, "discrepancy.opened", { kind: f.kind, amountMinor: f.amountMinor, invoice: invoice.invoiceNumber });
+    created += 1;
+  }
+  const openCount = await tx.discrepancy.count({ where: { invoiceId: invoice.id, status: { in: ["open", "disputed"] } } });
+  const to = openCount ? "discrepancy" : "matched";
+  const lineSum = sumMinor(lines.map((l) => extendMinor(l.quantityMilli, BigInt(l.unitCostMinor)) - BigInt(l.coreCreditMinor)));
+  await transition(uow, { model: "SupplierInvoice", id: invoice.id, from: ["received", "matching", "discrepancy"], to, actor, eventType: `supplier_invoice.${to}`, data: {}, metadata: { newDiscrepancies: created, linesTotalMinor: lineSum.toString() } });
+  return { id: invoice.id, status: to, discrepancies: openCount, linesTotalMinor: lineSum.toString(), totalMinor: BigInt(invoice.totalMinor).toString() };
+}
+async function resolveDiscrepancy(uow, actor, input) {
+  const resolution = textOf(input.resolution, "Resolution", 400, true);
+  if (!["accepted", "disputed", "resolved"].includes(input.outcome)) throw new DomainError(Codes.INVALID_INPUT, "Choose accepted, disputed or resolved.", { field: "outcome" });
+  const row = await transition(uow, {
+    model: "Discrepancy",
+    id: idOf(input.discrepancyId, "a discrepancy"),
+    from: input.outcome === "disputed" ? ["open"] : ["open", "disputed"],
+    to: input.outcome,
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: `discrepancy.${input.outcome}`,
+    reason: resolution,
+    data: { resolution }
+  });
+  const openCount = await uow.tx.discrepancy.count({ where: { invoiceId: row.invoiceId, status: { in: ["open", "disputed"] } } });
+  const invoice = await uow.tx.supplierInvoice.findUniqueOrThrow({ where: { id: row.invoiceId }, select: { status: true } });
+  if (invoice.status === "discrepancy" && !openCount) {
+    await transition(uow, { model: "SupplierInvoice", id: row.invoiceId, from: ["discrepancy"], to: "matched", actor, eventType: "supplier_invoice.matched", reason: "Every discrepancy is settled" });
+  }
+  return { id: input.discrepancyId, invoiceStatus: openCount ? "discrepancy" : "matched" };
+}
+async function approveSupplierInvoice(uow, actor, input) {
+  const open = await uow.tx.discrepancy.count({ where: { invoiceId: idOf(input.invoiceId, "an invoice"), status: { in: ["open", "disputed"] } } });
+  if (open) throw new DomainError(Codes.GUARD_FAILED, `${open} discrepanc${open === 1 ? "y is" : "ies are"} still open on this invoice. Settle them first.`);
+  await transition(uow, { model: "SupplierInvoice", id: input.invoiceId, from: ["matched"], to: "approved", expectedVersion: input.expectedVersion, actor, eventType: "supplier_invoice.approved", data: { approvedById: actorUserId(actor), approvedAt: uow.now } });
+  return { id: input.invoiceId };
+}
+async function exportSupplierInvoice(uow, actor, input) {
+  const row = await transition(uow, {
+    model: "SupplierInvoice",
+    id: idOf(input.invoiceId, "an invoice"),
+    from: ["approved"],
+    to: "exported",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "supplier_invoice.exported",
+    data: (row2) => ({ exportReference: `AP-${String(row2.invoiceNumber)}`.slice(0, 80) })
+  });
+  const supplier = await uow.tx.supplier.findUniqueOrThrow({ where: { id: row.supplierId }, select: { name: true } });
+  const lines = await uow.tx.supplierInvoiceLine.findMany({ where: { invoiceId: input.invoiceId }, orderBy: { createdAt: "asc" } });
+  const q = (v) => `"${v.replace(/"/g, '""')}"`;
+  const csv = ["supplier,invoice,part,quantity,unit_cost,core_credit,extended", ...lines.map((l) => [q(supplier.name), q(row.invoiceNumber), q(l.partNumber), l.quantityMilli / 1e3, cents(BigInt(l.unitCostMinor)), cents(BigInt(l.coreCreditMinor)), cents(extendMinor(l.quantityMilli, BigInt(l.unitCostMinor)) - BigInt(l.coreCreditMinor))].join(","))].join("\n");
+  return { id: input.invoiceId, exportReference: `AP-${row.invoiceNumber}`, csv };
+}
+
+// features/keystone/mutations/phase4.ts
+var run4 = async (context, actor, name, idempotencyKey, params, work) => {
+  const result = await command(context.prisma, { name, actor, idempotencyKey, params }, work);
+  return { replay: result.replay, ...result.value };
+};
+var PARTS = ["canManageParts", "canOrderParts", "canReceiveParts"];
+var gate = (uow, actor, a) => needApproval(uow, actor, { ...a, permission: a.action === "core.write_off" ? "canApproveCoreWriteOff" : a.action === "supplier_invoice.approve" ? "canApproveSupplierInvoice" : "canApproveStockAdjustment" });
+async function shopOf3(context, model, id) {
+  if (typeof id !== "string" || !id) throw new DomainError(Codes.INVALID_INPUT, "Choose a record.");
+  let shopId;
+  if (model === "job") shopId = (await context.prisma.job.findUnique({ where: { id }, select: { repairOrder: { select: { shopId: true } } } }))?.repairOrder?.shopId;
+  else if (model === "discrepancy") shopId = (await context.prisma.discrepancy.findUnique({ where: { id }, select: { invoice: { select: { shopId: true } } } }))?.invoice?.shopId;
+  else shopId = (await context.prisma[model].findUnique({ where: { id }, select: { shopId: true } }))?.shopId;
+  if (!shopId) throw new DomainError(Codes.NOT_FOUND, "Not found.");
+  return requireShop(context, shopId);
+}
+async function saveShopPartItem(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageParts");
+  const input = args.input ?? {};
+  if (input.id) await shopOf3(context, "shopItem", input.id);
+  requireShop(context, input.shopId);
+  return run4(context, actor, "item.save", args.idempotencyKey, input, (uow) => saveShopItem(uow, actor, input));
+}
+async function requestSupplierQuote(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts", "canManageParts");
+  requireShop(context, args.shopId);
+  if (args.jobId) await shopOf3(context, "job", args.jobId);
+  const supplier = await context.prisma.supplier.findUnique({ where: { id: args.supplierId }, select: { name: true, adapter: true, active: true } });
+  if (!supplier?.active) throw new DomainError(Codes.NOT_FOUND, "Supplier not found.", { field: "supplierId" });
+  const request = { partNumber: textOf(args.partNumber, "Part number", 60, true), quantityMilli: args.quantityMilli };
+  const answer = await supplierAdapter(supplier.adapter, supplier.name).quote(request);
+  if (!answer) return { found: false, message: supplier.adapter === "manual" ? `${supplier.name} is quoted by phone. Record the price they gave you.` : `${supplier.name} does not carry ${request.partNumber}.` };
+  const made = await run4(context, actor, "quote.record", args.idempotencyKey, args, (uow) => recordPartQuote(uow, actor, {
+    shopId: args.shopId,
+    jobId: args.jobId,
+    jobLineId: args.jobLineId,
+    supplierId: args.supplierId,
+    source: "fixture",
+    partNumber: answer.partNumber,
+    brand: answer.brand,
+    description: answer.description,
+    unitCostMinor: answer.unitCostMinor.toString(),
+    listPriceMinor: answer.listPriceMinor.toString(),
+    coreChargeMinor: answer.coreChargeMinor.toString(),
+    availableQuantityMilli: answer.availableQuantityMilli,
+    availability: answer.availability,
+    etaHours: answer.etaHours,
+    supplierLocation: answer.location
+  }));
+  return { found: true, ...made };
+}
+async function recordSupplierQuote(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts", "canManageParts");
+  const input = args.input ?? {};
+  requireShop(context, input.shopId);
+  return run4(context, actor, "quote.record", args.idempotencyKey, input, (uow) => recordPartQuote(uow, actor, input));
+}
+async function selectSupplierQuote(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts", "canManageParts");
+  await shopOf3(context, "partQuote", args.quoteId);
+  return run4(context, actor, "quote.select", args.idempotencyKey, args, (uow) => selectPartQuote(uow, actor, { quoteId: args.quoteId, expectedVersion: args.expectedVersion }));
+}
+async function createShopSupplierOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts");
+  const input = args.input ?? {};
+  requireShop(context, input.shopId);
+  return run4(context, actor, "supplier_order.create", args.idempotencyKey, input, (uow) => createSupplierOrder(uow, actor, input));
+}
+async function placeSupplierOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts");
+  await shopOf3(context, "supplierOrder", args.orderId);
+  const begun = await run4(context, actor, "supplier_order.begin", `${args.idempotencyKey}:begin`, args, (uow) => beginPlacing(uow, actor, { orderId: args.orderId, expectedVersion: args.expectedVersion }));
+  const order = await context.prisma.supplierOrder.findUniqueOrThrow({ where: { id: args.orderId }, select: { status: true, reference: true } });
+  if (order.status !== "placing") return { id: args.orderId, reference: order.reference, status: order.status, replay: true };
+  if (begun.adapter === "manual") {
+    throw new DomainError(Codes.PROVIDER_UNAVAILABLE, `${begun.supplierName} takes orders by phone. Call them, then record who took the order.`);
+  }
+  let outcome = "placed";
+  let confirmation = "";
+  let detail = "";
+  try {
+    const sent = await supplierAdapter(begun.adapter, begun.supplierName).placeOrder({ reference: begun.reference, lines: begun.lines });
+    confirmation = sent.supplierOrderId;
+  } catch (error) {
+    outcome = error instanceof AmbiguousSendError ? "unknown" : "failed";
+    detail = error instanceof Error ? error.message.slice(0, 200) : "The supplier did not take the order.";
+  }
+  const done = await run4(context, actor, "supplier_order.finish", `${args.idempotencyKey}:finish`, { ...args, outcome }, (uow) => finishPlacing(uow, actor, { orderId: args.orderId, outcome, placedVia: begun.adapter, supplierConfirmation: confirmation, detail }));
+  return { ...done, message: outcome === "unknown" ? "The supplier did not answer. Check with them before sending again." : void 0 };
+}
+async function recordPhoneOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts");
+  await shopOf3(context, "supplierOrder", args.orderId);
+  return run4(context, actor, "supplier_order.phone", args.idempotencyKey, args, (uow) => recordManualPlacement(uow, actor, args));
+}
+async function resolveUnknownSupplierOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts");
+  requireHuman(actor, "resolve an order the supplier never confirmed");
+  await shopOf3(context, "supplierOrder", args.orderId);
+  let found = args.found;
+  let confirmation = args.supplierConfirmation;
+  if (found === void 0 || found === null) {
+    const order = await context.prisma.supplierOrder.findUniqueOrThrow({ where: { id: args.orderId }, select: { reference: true, supplier: { select: { name: true, adapter: true } } } });
+    const status = await supplierAdapter(order.supplier.adapter, order.supplier.name).orderStatus(order.reference).catch(() => {
+      throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "Call the supplier and tell us what they have.");
+    });
+    found = status.state === "placed";
+    confirmation = status.supplierOrderId ?? confirmation;
+  }
+  const answer = found;
+  return run4(context, actor, "supplier_order.resolve", args.idempotencyKey, { ...args, found: answer }, (uow) => resolveUnknownOrder(uow, actor, { orderId: args.orderId, found: answer, supplierConfirmation: confirmation, note: args.note, expectedVersion: args.expectedVersion }));
+}
+async function confirmShopSupplierOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts");
+  await shopOf3(context, "supplierOrder", args.orderId);
+  return run4(context, actor, "supplier_order.confirm", args.idempotencyKey, args, (uow) => confirmSupplierOrder(uow, actor, { orderId: args.orderId, supplierConfirmation: args.supplierConfirmation, etaAt: args.etaAt ? new Date(args.etaAt) : null, expectedVersion: args.expectedVersion }));
+}
+async function cancelShopSupplierOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canOrderParts");
+  await shopOf3(context, "supplierOrder", args.orderId);
+  return run4(context, actor, "supplier_order.cancel", args.idempotencyKey, args, (uow) => cancelSupplierOrder(uow, actor, args));
+}
+async function receiveShopSupplierOrder(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canReceiveParts");
+  const input = args.input ?? {};
+  await shopOf3(context, "supplierOrder", input.orderId);
+  return run4(context, actor, "supplier_order.receive", args.idempotencyKey, input, (uow) => receiveSupplierOrder(uow, actor, { ...input, receiptKey: input.receiptKey || args.idempotencyKey }));
+}
+async function reserveJobPart(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...PARTS);
+  await shopOf3(context, "job", args.jobId);
+  return run4(context, actor, "stock.reserve", args.idempotencyKey, args, (uow) => reservePartForJob(uow, actor, { ...args, key: `reserve:${args.idempotencyKey}` }));
+}
+async function issueJobPart(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...PARTS);
+  await shopOf3(context, "job", args.jobId);
+  return run4(context, actor, "stock.issue", args.idempotencyKey, args, (uow) => issuePartToJob(uow, actor, { ...args, key: `issue:${args.idempotencyKey}` }));
+}
+async function returnJobPart(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...PARTS);
+  await shopOf3(context, "job", args.jobId);
+  return run4(context, actor, "stock.return", args.idempotencyKey, args, (uow) => returnPartFromJob(uow, actor, { ...args, key: `return-job:${args.idempotencyKey}` }));
+}
+async function adjustShopStock(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageParts");
+  requireHuman(actor, "adjust stock");
+  await shopOf3(context, "shopItem", args.shopItemId);
+  return run4(context, actor, "stock.adjust", args.idempotencyKey, args, (uow) => adjustStock(uow, actor, { ...args, key: `adjust:${args.idempotencyKey}` }, gate));
+}
+async function startShopCycleCount(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageParts");
+  requireShop(context, args.shopId);
+  return run4(context, actor, "cycle_count.start", args.idempotencyKey, args, (uow) => startCycleCount(uow, actor, args));
+}
+async function recordShopCounts(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageParts");
+  await shopOf3(context, "cycleCount", args.cycleCountId);
+  return run4(context, actor, "cycle_count.record", args.idempotencyKey, args, (uow) => recordCounts(uow, actor, args));
+}
+async function postShopCycleCount(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageParts");
+  requireHuman(actor, "post a stock count");
+  await shopOf3(context, "cycleCount", args.cycleCountId);
+  return run4(context, actor, "cycle_count.post", args.idempotencyKey, args, (uow) => postCycleCount(uow, actor, args, gate));
+}
+async function markShopCoreReturned(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...PARTS);
+  await shopOf3(context, "coreObligation", args.coreId);
+  return run4(context, actor, "core.return", args.idempotencyKey, args, (uow) => markCoreReturned(uow, actor, args));
+}
+async function writeOffShopCore(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageParts");
+  requireHuman(actor, "write off a core");
+  await shopOf3(context, "coreObligation", args.coreId);
+  return run4(context, actor, "core.write_off", args.idempotencyKey, args, (uow) => writeOffCore(uow, actor, args, gate));
+}
+async function createShopSupplierReturn(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canReceiveParts", "canManageParts");
+  requireShop(context, args.input?.shopId);
+  return run4(context, actor, "supplier_return.create", args.idempotencyKey, args.input, (uow) => createSupplierReturn(uow, actor, args.input));
+}
+async function advanceShopSupplierReturn(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canReceiveParts", "canManageParts");
+  await shopOf3(context, "supplierReturn", args.returnId);
+  return run4(context, actor, "supplier_return.advance", args.idempotencyKey, args, (uow) => advanceSupplierReturn(uow, actor, args));
+}
+async function recordShopSupplierInvoice(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canReceiveParts", "canManageParts");
+  const input = args.input ?? {};
+  requireShop(context, input.shopId);
+  return run4(context, actor, "supplier_invoice.record", args.idempotencyKey, input, (uow) => recordSupplierInvoice(uow, actor, input));
+}
+async function matchShopSupplierInvoice(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canReceiveParts", "canManageParts");
+  await shopOf3(context, "supplierInvoice", args.invoiceId);
+  return run4(context, actor, "supplier_invoice.match", args.idempotencyKey, args, (uow) => matchSupplierInvoice(uow, actor, args));
+}
+async function resolveSupplierDiscrepancy(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageParts", "canApproveSupplierInvoice");
+  requireHuman(actor, "settle a supplier discrepancy");
+  await shopOf3(context, "discrepancy", args.discrepancyId);
+  return run4(context, actor, "discrepancy.resolve", args.idempotencyKey, args, (uow) => resolveDiscrepancy(uow, actor, args));
+}
+async function approveShopSupplierInvoice(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canApproveSupplierInvoice");
+  requireHuman(actor, "approve a supplier invoice");
+  await shopOf3(context, "supplierInvoice", args.invoiceId);
+  return run4(context, actor, "supplier_invoice.approve", args.idempotencyKey, args, (uow) => approveSupplierInvoice(uow, actor, args));
+}
+async function exportShopSupplierInvoice(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canApproveSupplierInvoice");
+  requireHuman(actor, "export a supplier invoice");
+  await shopOf3(context, "supplierInvoice", args.invoiceId);
+  return run4(context, actor, "supplier_invoice.export", args.idempotencyKey, args, (uow) => exportSupplierInvoice(uow, actor, args));
+}
+async function recordShopJobTire(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageTireRegistrations", "canReceiveParts", "canWriteRepairOrders");
+  await shopOf3(context, "job", args.jobId);
+  return run4(context, actor, "job_tire.record", args.idempotencyKey, args, (uow) => recordJobTire(uow, actor, args));
+}
+async function completeShopTireRegistration(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageTireRegistrations");
+  requireHuman(actor, "complete a tire registration");
+  await shopOf3(context, "tireRegistrationObligation", args.obligationId);
+  return run4(context, actor, "tire_registration.complete", args.idempotencyKey, args, (uow) => completeTireRegistration(uow, actor, args));
+}
+async function confirmShopTireRegistration(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageTireRegistrations");
+  requireHuman(actor, "confirm a tire registration");
+  await shopOf3(context, "tireRegistrationObligation", args.obligationId);
+  return run4(context, actor, "tire_registration.confirm", args.idempotencyKey, args, (uow) => confirmTireRegistration(uow, actor, args));
+}
+async function sweepShopTireRegistrations(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canManageTireRegistrations");
+  return run4(context, actor, "tire_registration.sweep", args.idempotencyKey, {}, async (uow) => ({ overdue: await sweepTireRegistrations(uow, actor) }));
+}
+
 // features/keystone/mutations/index.ts
-var graphql3 = String.raw;
+var graphql4 = String.raw;
 function extendGraphqlSchema(baseSchema) {
   return (0, import_schema.mergeSchemas)({
     schemas: [baseSchema],
-    typeDefs: graphql3`
+    typeDefs: graphql4`
       scalar JSON
       type Query {
         redirectToInit: Boolean
         verifyAuditChain: JSON
         checkAuthorizedCeiling(shopId: ID!, authorizedMinor: String!, priceMinor: String!, taxMinor: String): JSON
+        previewShopInvoice(repairOrderId: ID!): JSON
+        shopDaySummary(shopId: ID!, businessDate: String!): JSON
       }
       input UserUpdateProfileInput { name: String, email: String, password: String, onboardingStatus: String }
       type Mutation {
@@ -7334,14 +10487,57 @@ function extendGraphqlSchema(baseSchema) {
         requestCustomerAuthorization(estimateVersionId: ID!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
         recordCustomerAuthorization(input: JSON!, idempotencyKey: String!): JSON
         createCallbackTask(repairOrderId: ID!, kind: String, title: String!, detail: String, idempotencyKey: String!): JSON
+        finalizeShopInvoice(input: JSON!, idempotencyKey: String!): JSON
+        createInvoicePayLink(invoiceId: ID!, idempotencyKey: String!): JSON
+        takeShopPayment(input: JSON!, idempotencyKey: String!): JSON
+        checkShopPayment(paymentId: ID!): JSON
+        resolveShopPayments(shopId: ID!): JSON
+        refundShopPayment(input: JSON!, idempotencyKey: String!): JSON
+        issueShopCreditMemo(input: JSON!, idempotencyKey: String!): JSON
+        closeShopDay(shopId: ID!, businessDate: String!, drawerCountMinor: String!, varianceReason: String, idempotencyKey: String!): JSON
+        reopenShopDay(dayCloseId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        releaseShopVehicle(repairOrderId: ID!, reason: String, approvalRequestId: ID, idempotencyKey: String!): JSON
         closeCallbackTask(taskId: ID!, expectedVersion: Int!, outcome: String!, cancel: Boolean, idempotencyKey: String!): JSON
+        saveShopPartItem(input: JSON!, idempotencyKey: String!): JSON
+        requestSupplierQuote(shopId: ID!, supplierId: ID!, partNumber: String!, quantityMilli: Int!, jobId: ID, jobLineId: ID, idempotencyKey: String!): JSON
+        recordSupplierQuote(input: JSON!, idempotencyKey: String!): JSON
+        selectSupplierQuote(quoteId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+        createShopSupplierOrder(input: JSON!, idempotencyKey: String!): JSON
+        placeSupplierOrder(orderId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+        recordPhoneOrder(orderId: ID!, spokeTo: String!, supplierConfirmation: String, etaHours: Int, expectedVersion: Int, idempotencyKey: String!): JSON
+        resolveUnknownSupplierOrder(orderId: ID!, found: Boolean, supplierConfirmation: String, note: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        confirmShopSupplierOrder(orderId: ID!, supplierConfirmation: String, etaAt: String, expectedVersion: Int, idempotencyKey: String!): JSON
+        cancelShopSupplierOrder(orderId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        receiveShopSupplierOrder(input: JSON!, idempotencyKey: String!): JSON
+        reserveJobPart(jobId: ID!, shopItemId: ID!, quantityMilli: Int!, idempotencyKey: String!): JSON
+        issueJobPart(jobId: ID!, shopItemId: ID!, quantityMilli: Int!, idempotencyKey: String!): JSON
+        returnJobPart(jobId: ID!, shopItemId: ID!, quantityMilli: Int!, idempotencyKey: String!): JSON
+        adjustShopStock(shopItemId: ID!, deltaMilli: Int!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        startShopCycleCount(shopId: ID!, shopItemIds: [ID!]!, idempotencyKey: String!): JSON
+        recordShopCounts(cycleCountId: ID!, counts: JSON!, expectedVersion: Int, idempotencyKey: String!): JSON
+        postShopCycleCount(cycleCountId: ID!, approvalRequestId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+        markShopCoreReturned(coreId: ID!, note: String, documentId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+        writeOffShopCore(coreId: ID!, reason: String!, approvalRequestId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+        createShopSupplierReturn(input: JSON!, idempotencyKey: String!): JSON
+        advanceShopSupplierReturn(returnId: ID!, to: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        recordShopSupplierInvoice(input: JSON!, idempotencyKey: String!): JSON
+        matchShopSupplierInvoice(invoiceId: ID!, idempotencyKey: String!): JSON
+        resolveSupplierDiscrepancy(discrepancyId: ID!, outcome: String!, resolution: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        approveShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+        exportShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+        recordShopJobTire(jobId: ID!, tireSize: String, position: String!, tin: String!, idempotencyKey: String!): JSON
+        completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
+        confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+        sweepShopTireRegistrations(idempotencyKey: String!): JSON
       }
     `,
     resolvers: {
       Query: {
         redirectToInit: redirectToInit_default,
         verifyAuditChain: op(verifyAuditChain2),
-        checkAuthorizedCeiling: op(checkAuthorizedCeiling)
+        checkAuthorizedCeiling: op(checkAuthorizedCeiling),
+        previewShopInvoice: op(previewShopInvoice),
+        shopDaySummary: op(shopDaySummary)
       },
       Mutation: {
         updateActiveUser: updateActiveUser_default,
@@ -7383,7 +10579,48 @@ function extendGraphqlSchema(baseSchema) {
         requestCustomerAuthorization: op(requestCustomerAuthorization),
         recordCustomerAuthorization: op(recordCustomerAuthorization),
         createCallbackTask: op(createCallbackTask),
-        closeCallbackTask: op(closeCallbackTask)
+        closeCallbackTask: op(closeCallbackTask),
+        finalizeShopInvoice: op(finalizeShopInvoice),
+        createInvoicePayLink: op(createInvoicePayLink),
+        takeShopPayment: op(takeShopPayment),
+        checkShopPayment: op(checkShopPayment),
+        resolveShopPayments: op(resolveShopPayments),
+        refundShopPayment: op(refundShopPayment),
+        issueShopCreditMemo: op(issueShopCreditMemo),
+        closeShopDay: op(closeShopDay),
+        reopenShopDay: op(reopenShopDay),
+        releaseShopVehicle: op(releaseShopVehicle),
+        saveShopPartItem: op(saveShopPartItem),
+        requestSupplierQuote: op(requestSupplierQuote),
+        recordSupplierQuote: op(recordSupplierQuote),
+        selectSupplierQuote: op(selectSupplierQuote),
+        createShopSupplierOrder: op(createShopSupplierOrder),
+        placeSupplierOrder: op(placeSupplierOrder),
+        recordPhoneOrder: op(recordPhoneOrder),
+        resolveUnknownSupplierOrder: op(resolveUnknownSupplierOrder),
+        confirmShopSupplierOrder: op(confirmShopSupplierOrder),
+        cancelShopSupplierOrder: op(cancelShopSupplierOrder),
+        receiveShopSupplierOrder: op(receiveShopSupplierOrder),
+        reserveJobPart: op(reserveJobPart),
+        issueJobPart: op(issueJobPart),
+        returnJobPart: op(returnJobPart),
+        adjustShopStock: op(adjustShopStock),
+        startShopCycleCount: op(startShopCycleCount),
+        recordShopCounts: op(recordShopCounts),
+        postShopCycleCount: op(postShopCycleCount),
+        markShopCoreReturned: op(markShopCoreReturned),
+        writeOffShopCore: op(writeOffShopCore),
+        createShopSupplierReturn: op(createShopSupplierReturn),
+        advanceShopSupplierReturn: op(advanceShopSupplierReturn),
+        recordShopSupplierInvoice: op(recordShopSupplierInvoice),
+        matchShopSupplierInvoice: op(matchShopSupplierInvoice),
+        resolveSupplierDiscrepancy: op(resolveSupplierDiscrepancy),
+        approveShopSupplierInvoice: op(approveShopSupplierInvoice),
+        exportShopSupplierInvoice: op(exportShopSupplierInvoice),
+        recordShopJobTire: op(recordShopJobTire),
+        completeShopTireRegistration: op(completeShopTireRegistration),
+        confirmShopTireRegistration: op(confirmShopTireRegistration),
+        sweepShopTireRegistrations: op(sweepShopTireRegistrations)
       }
     }
   });
@@ -7440,8 +10677,8 @@ function passwordResetEmail({ url }) {
     </body>
   `;
 }
-async function sendPasswordResetEmail(resetToken, to, baseUrl) {
-  const frontendUrl = baseUrl || getBaseUrlForEmails();
+async function sendPasswordResetEmail(resetToken, to, baseUrl2) {
+  const frontendUrl = baseUrl2 || getBaseUrlForEmails();
   const info = await transport.sendMail({
     to,
     from: process.env.SMTP_FROM,
@@ -7492,6 +10729,10 @@ var COMPOUND_UNIQUES = {
   EstimateVersion: ['@@unique([repairOrderId, versionNumber], map: "EstimateVersion_ro_number_key")'],
   InspectionTemplateVersion: ['@@unique([templateId, versionNumber], map: "InspectionTemplateVersion_template_number_key")'],
   InspectionItemResult: ['@@unique([inspectionId, templateItemId], map: "InspectionItemResult_inspection_item_key")'],
+  // Invoicing, payments and day close (SCHEMA §11).
+  Invoice: ['@@index([repairOrderId, payerKind], map: "Invoice_ro_payer_idx")', '@@index([shopId, status], map: "Invoice_shop_status_idx")'],
+  Payment: ['@@index([shopId, businessDate], map: "Payment_shop_date_idx")', '@@index([status, createdAt], map: "Payment_status_created_idx")'],
+  BusinessDayClose: ['@@unique([shopId, businessDate], map: "BusinessDayClose_shop_date_key")'],
   CannedJobVersion: ['@@unique([cannedJobId, versionNumber], map: "CannedJobVersion_job_number_key")'],
   PublishedService: ['@@unique([shopId, slug], map: "PublishedService_shop_slug_key")'],
   LaborOperation: ['@@index([code], map: "LaborOperation_code_idx")'],
@@ -7509,6 +10750,66 @@ ${missing.map((directive) => `  ${directive}`).join("\n")}
 }`));
   }
   return schema;
+}
+
+// features/keystone/lib/keystonePrismaErrors.ts
+var RAW_METHOD = /^\$(queryRaw|executeRaw|queryRawUnsafe|executeRawUnsafe|queryRawTyped|runCommandRaw)$/;
+var clients = /* @__PURE__ */ new WeakMap();
+var delegates = /* @__PURE__ */ new WeakMap();
+function isKeystonePrismaError(value) {
+  return value instanceof Error && value.extensions?.code === "KS_PRISMA_ERROR";
+}
+function rethrowKeystonePrismaError(value) {
+  if (!isKeystonePrismaError(value)) return value;
+  const prisma = value.extensions.prisma ?? {};
+  throw Object.assign(value, { code: prisma.code, meta: prisma.meta, clientVersion: prisma.clientVersion });
+}
+function throwing(result) {
+  if (!result || typeof result.then !== "function") return rethrowKeystonePrismaError(result);
+  const settled = () => result.then(rethrowKeystonePrismaError);
+  return new Proxy(result, {
+    get(target, key2) {
+      if (key2 === "then") return (ok, fail) => settled().then(ok, fail);
+      if (key2 === "catch") return (fail) => settled().catch(fail);
+      if (key2 === "finally") return (done) => settled().finally(done);
+      const value = Reflect.get(target, key2, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
+}
+function throwingDelegate(delegate2) {
+  const cached = delegates.get(delegate2);
+  if (cached) return cached;
+  const wrapped = new Proxy(delegate2, {
+    get(target, key2) {
+      const value = Reflect.get(target, key2, target);
+      return typeof value === "function" ? (...args) => throwing(value.apply(target, args)) : value;
+    }
+  });
+  delegates.set(delegate2, wrapped);
+  return wrapped;
+}
+function throwKeystonePrismaErrors(client) {
+  const cached = clients.get(client);
+  if (cached) return cached;
+  const wrapped = new Proxy(client, {
+    get(target, key2) {
+      const value = Reflect.get(target, key2, target);
+      if (key2 === "$transaction" && typeof value === "function") {
+        return (work, ...options) => {
+          if (typeof work === "function") return value.call(target, (tx) => work(throwKeystonePrismaErrors(tx)), ...options);
+          return Promise.resolve(value.call(target, work, ...options)).then((results) => Array.isArray(results) ? results.map(rethrowKeystonePrismaError) : results);
+        };
+      }
+      if (key2 === "$extends" && typeof value === "function") return (...args) => throwKeystonePrismaErrors(value.apply(target, args));
+      if (typeof key2 === "string" && RAW_METHOD.test(key2) && typeof value === "function") return (...args) => throwing(value.apply(target, args));
+      if (typeof value === "function") return value.bind(target);
+      if (typeof key2 === "string" && !key2.startsWith("$") && value && typeof value === "object" && typeof value.findFirst === "function") return throwingDelegate(value);
+      return value;
+    }
+  });
+  clients.set(client, wrapped);
+  return wrapped;
 }
 
 // features/keystone/index.ts
@@ -7563,11 +10864,12 @@ var { withAuth } = (0, import_auth.createAuth)({
   `
 });
 var keystone_default = withAuth(
-  (0, import_core16.config)({
+  (0, import_core19.config)({
     db: {
       provider: "postgresql",
       url: databaseURL,
-      extendPrismaSchema: addDatabaseConstraints
+      extendPrismaSchema: addDatabaseConstraints,
+      extendPrismaClient: throwKeystonePrismaErrors
     },
     lists: models,
     storage: {

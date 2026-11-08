@@ -10,6 +10,7 @@ import * as p1 from './phase1'
 import * as p2 from './phase2'
 import * as p3 from './phase3'
 import * as p4 from './phase4'
+import * as p5 from './phase5'
 import '../lib/orgControls'
 import '../lib/policy'
 
@@ -112,6 +113,24 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
         confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
         sweepShopTireRegistrations(idempotencyKey: String!): JSON
+        clockInShift(shopId: ID!, idempotencyKey: String!): JSON
+        clockOutShift(shopId: ID!, idempotencyKey: String!): JSON
+        startShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
+        endShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
+        startTechJobClock(jobId: ID!, idempotencyKey: String!): JSON
+        stopTechJobClock(jobClockId: ID!, idempotencyKey: String!): JSON
+        logJobWaiting(jobClockId: ID!, reason: String, resume: Boolean, note: String, idempotencyKey: String!): JSON
+        requestTimeCorrection(input: JSON!, idempotencyKey: String!): JSON
+        saveTechCredential(input: JSON!, idempotencyKey: String!): JSON
+        assignShopJobTechnicians(jobId: ID!, shares: JSON!, idempotencyKey: String!): JSON
+        adjustTechFlaggedHours(technicianId: ID!, jobId: ID!, centiHours: Int!, reason: String!, idempotencyKey: String!): JSON
+        closeShopPayPeriod(payPeriodId: ID!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        exportShopPayPeriod(payPeriodId: ID!, idempotencyKey: String!): JSON
+        openShopComeback(originalJobId: ID!, concern: String!, odometer: Int, idempotencyKey: String!): JSON
+        diagnoseShopComeback(comebackId: ID!, cause: String!, diagnosis: String!, expectedVersion: Int, idempotencyKey: String!): JSON
+        requestComebackGoodwill(comebackId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        resolveShopComeback(comebackId: ID!, resolution: String!, comebackJobId: ID, expectedVersion: Int, idempotencyKey: String!): JSON
+        createShopPartWarrantyClaim(comebackId: ID!, supplierId: ID!, jobLineId: ID, laborReimbursementMinor: String, idempotencyKey: String!): JSON
       }
     `,
     resolvers: {
@@ -198,6 +217,24 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         recordShopSupplierInvoice: op(p4.recordShopSupplierInvoice),
         matchShopSupplierInvoice: op(p4.matchShopSupplierInvoice),
         resolveSupplierDiscrepancy: op(p4.resolveSupplierDiscrepancy),
+        clockInShift: op(p5.clockInShift),
+        clockOutShift: op(p5.clockOutShift),
+        startShiftBreak: op(p5.startShiftBreak),
+        endShiftBreak: op(p5.endShiftBreak),
+        startTechJobClock: op(p5.startTechJobClock),
+        stopTechJobClock: op(p5.stopTechJobClock),
+        logJobWaiting: op(p5.logJobWaiting),
+        requestTimeCorrection: op(p5.requestTimeCorrection),
+        saveTechCredential: op(p5.saveTechCredential),
+        assignShopJobTechnicians: op(p5.assignShopJobTechnicians),
+        adjustTechFlaggedHours: op(p5.adjustTechFlaggedHours),
+        closeShopPayPeriod: op(p5.closeShopPayPeriod),
+        exportShopPayPeriod: op(p5.exportShopPayPeriod),
+        openShopComeback: op(p5.openShopComeback),
+        diagnoseShopComeback: op(p5.diagnoseShopComeback),
+        requestComebackGoodwill: op(p5.requestComebackGoodwill),
+        resolveShopComeback: op(p5.resolveShopComeback),
+        createShopPartWarrantyClaim: op(p5.createShopPartWarrantyClaim),
         approveShopSupplierInvoice: op(p4.approveShopSupplierInvoice),
         exportShopSupplierInvoice: op(p4.exportShopSupplierInvoice),
         recordShopJobTire: op(p4.recordShopJobTire),

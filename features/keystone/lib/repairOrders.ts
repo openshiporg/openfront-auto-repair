@@ -8,6 +8,8 @@ import { canonicalJson, sha256, toJsonValue } from './canonical'
 import { chargeCeilingMinor, parseToleranceRule } from './ceiling'
 import { identityHash, priceJob, type JobPrice, type LineInput, type LineKind, type PricingPolicy } from './pricing'
 import type { UnitOfWork } from './unitOfWork'
+import { flagJob, shopPolicy } from './flagging'
+import { assertCredentialForJob } from './labor'
 import { guideSnapshot, laborGuide, type GuideOperation, type LibraryRow } from '../../integrations/labor-guide'
 
 /*
@@ -439,10 +441,20 @@ export async function refreshRoTotals(tx: Tx, repairOrderId: string) {
   await tx.repairOrder.update({ where: { id: repairOrderId }, data: { currentTotalMinor: current, authorizedTotalMinor: authorized } })
 }
 
+/** A technician who starts refrigerant work needs a current EPA Section 609 certificate (I-R11). */
+async function assertActorCredential(uow: UnitOfWork, actor: Actor, jobId: string, repairOrderId: string) {
+  const userId = actorUserId(actor)
+  if (!userId) return
+  const ro = await uow.tx.repairOrder.findUnique({ where: { id: repairOrderId }, select: { shopId: true } })
+  const profile = ro?.shopId ? await uow.tx.technicianProfile.findFirst({ where: { userId, shopId: ro.shopId, active: true }, select: { id: true } }) : null
+  if (profile) await assertCredentialForJob(uow.tx, profile.id, jobId, uow.now)
+}
+
 /** authorized → in_progress (I-R1: work starts only on authorized jobs). */
 export async function startJob(uow: UnitOfWork, actor: Actor, input: { jobId: string; expectedVersion: number }) {
   const job = await uow.tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { repairOrderId: true } })
   await assertOpen(uow.tx, job.repairOrderId!)
+  await assertActorCredential(uow, actor, input.jobId, job.repairOrderId!)
   const row = await transition(uow, {
     model: 'Job', id: input.jobId, from: ['authorized'], to: 'in_progress', expectedVersion: input.expectedVersion, actor, eventType: 'job.started', data: { workStartedAt: uow.now },
     guard: (j: any) => { if (!j.currentAuthorizationId && !j.noChargeReason && !j.belowThresholdRecordedAt) throw new DomainError(Codes.AUTHORIZATION_REQUIRED, 'Work cannot start before the customer authorizes it.') },
@@ -460,6 +472,13 @@ export async function completeJob(uow: UnitOfWork, actor: Actor, input: { jobId:
   await assertOpen(uow.tx, job.repairOrderId!)
   await transition(uow, { model: 'Job', id: input.jobId, from: ['in_progress'], to: 'completed', expectedVersion: input.expectedVersion, actor, eventType: 'job.completed', data: { completedAt: uow.now } })
   if (job.concernId) await uow.tx.concern.update({ where: { id: job.concernId }, data: { cause, correction } })
+  const ro = await uow.tx.repairOrder.findUniqueOrThrow({ where: { id: job.repairOrderId! }, select: { shopId: true, warrantyTermSetVersionId: true } })
+  // The job carries the shop's standard warranty term from the set pinned on the order (I-W1), unless one was chosen.
+  if (!(await uow.tx.job.findUnique({ where: { id: input.jobId }, select: { warrantyTermId: true } }))?.warrantyTermId && ro.warrantyTermSetVersionId) {
+    const term = await uow.tx.warrantyTerm.findFirst({ where: { termSetId: ro.warrantyTermSetVersionId, code: 'standard' }, select: { id: true } })
+    if (term) await uow.tx.job.update({ where: { id: input.jobId }, data: { warrantyTermId: term.id } })
+  }
+  if ((await shopPolicy(uow.tx, ro.shopId!)).flagHoursAt === 'job_completed') await flagJob(uow, actor, input.jobId, 'job.completed')
   return { id: input.jobId, status: 'completed' }
 }
 
