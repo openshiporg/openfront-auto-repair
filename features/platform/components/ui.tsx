@@ -3,8 +3,8 @@ import { cn } from '@/lib/utils';
 import { PageContainer } from '@/features/dashboard/components/PageContainer';
 import { label } from '../lib/format';
 
-const GREEN = ['active', 'open', 'approved', 'authorized', 'completed', 'delivered', 'published', 'paid', 'settled', 'ok', 'applied', 'acknowledged', 'checked_in', 'confirmed']
-const AMBER = ['pending', 'requested', 'draft', 'running', 'proposed', 'leased', 'submitted', 'unknown', 'paused', 'started', 'held', 'waiting', 'needs_reauthorization', 'onboarding']
+const GREEN = ['received', 'matched', 'credited', 'returned', 'placed', 'exported', 'handed_over', 'active', 'open', 'approved', 'authorized', 'completed', 'delivered', 'published', 'paid', 'settled', 'ok', 'applied', 'acknowledged', 'checked_in', 'confirmed']
+const AMBER = ['discrepancy', 'owed', 'placing', 'partially_received', 'pending', 'requested', 'draft', 'running', 'proposed', 'leased', 'submitted', 'unknown', 'paused', 'started', 'held', 'waiting', 'needs_reauthorization', 'onboarding']
 const BLUE = ['expired', 'superseded', 'scheduled', 'closed', 'inactive']
 const RED = ['rejected', 'declined', 'cancelled', 'failed', 'dead', 'revoked', 'broken', 'no_show', 'retired', 'overdue', 'suspended']
 const DOT: Record<string, string> = Object.fromEntries([
