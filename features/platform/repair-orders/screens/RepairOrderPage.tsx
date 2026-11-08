@@ -60,7 +60,7 @@ function JobBlock({ job, ro }: { job: JobDetail; ro: RoDetail }) {
                       {label(l.kind)}{l.partNumber ? ` · ${l.brand ? `${l.brand} ` : ''}${l.partNumber}` : ''}{l.condition ? ` · ${label(l.condition)}` : l.kind === 'part' || l.kind === 'tire' ? ' · condition not set' : ''}{l.subletVendorName ? ` · by ${l.subletVendorName}` : ''}{l.overlapCentiHours ? ` · overlap −${hours(l.overlapCentiHours)}` : ''}{l.auto ? ' · added by the fee rules' : ''}
                     </div>
                   </td>
-                  <td className="py-2 pr-3 font-mono">{l.kind === 'labor' ? hours(l.soldCentiHours) : milli(l.quantityMilli)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 font-mono">{l.kind === 'labor' ? hours(l.soldCentiHours) : milli(l.quantityMilli)}</td>
                   <td className="py-2 pr-3 text-right font-mono max-sm:hidden">{l.kind === 'labor' ? '' : money(l.unitPriceMinor)}</td>
                   <td className="py-2 pr-3 text-right font-mono">{money(l.extendedMinor)}</td>
                   <td className="py-2 pr-3 text-right font-mono max-sm:hidden">{l.taxable ? money(l.taxMinor) : 'none'}</td>
@@ -128,7 +128,7 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <Meta>{ro.shop?.name} · advisor {ro.serviceAdvisor?.name ?? 'none'} · odometer in {ro.odometerIn ? `${ro.odometerIn.value.toLocaleString('en-US')} ${ro.odometerIn.unit}` : 'not recorded'} · work order signed by {ro.checkIn?.signerName ?? 'nobody'}{ro.designee?.name ? ` · designee ${ro.designee.name}` : ''} · replaced parts: {label(ro.replacedPartsElection)}</Meta>
-        {ro.jurisdictionPolicyVersion?.pack ? <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">{ro.jurisdictionPolicyVersion.pack.code} rules v{ro.jurisdictionPolicyVersion.versionNumber}{ro.jurisdictionPolicyVersion.pack.verified ? '' : ' · DRAFT RULES'}</span> : null}
+        {ro.jurisdictionPolicyVersion?.pack ? <span className="font-mono text-xs text-muted-foreground">{ro.jurisdictionPolicyVersion.pack.name} rules, version {ro.jurisdictionPolicyVersion.versionNumber}{ro.jurisdictionPolicyVersion.pack.verified ? "" : " (draft, not checked)"}</span> : null}
         {ro.status === 'on_hold' ? <span className="font-mono text-xs text-amber-600">ON HOLD: {label(ro.holdReason).toUpperCase()}</span> : null}
         {open ? <HoldForm repairOrderId={ro.id} version={ro.version} onHold={ro.status === 'on_hold'} /> : null}
       </div>

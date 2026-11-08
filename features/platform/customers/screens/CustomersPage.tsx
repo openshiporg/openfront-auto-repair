@@ -7,14 +7,14 @@ import { NewCustomerForm } from './NewCustomerForm';
 type Contact = { id: string; kind: string; label: string; isPrimary: boolean; status: string; consents: { channel: string; purpose: string; action: string; method: string; at: string }[] };
 type Customer = {
   id: string; kind: string; displayName: string; status: string; noShowCount: number; preferredChannel: string; notes: string; createdAt: string;
-  homeShop: { code: string } | null; businessAccount: { id: string; name: string; termsDays: number; poRequired: boolean } | null;
+  homeShop: { name: string } | null; businessAccount: { id: string; name: string; termsDays: number; poRequired: boolean } | null;
   contacts: Contact[];
   ownerships: { vehicle: { id: string; label: string; vin: string } | null }[];
   appointments: { reference: string; startsAt: string; status: string }[];
 };
 type Account = { id: string; name: string; accountNumber: string; termsDays: number; creditLimitMinor: string; poRequired: boolean; billingMode: string; customersCount: number; status: string };
 
-const CUSTOMER = `id kind displayName status noShowCount preferredChannel notes createdAt homeShop { code } businessAccount { id name termsDays poRequired }
+const CUSTOMER = `id kind displayName status noShowCount preferredChannel notes createdAt homeShop { name } businessAccount { id name termsDays poRequired }
   contacts(orderBy: { createdAt: asc }) { id kind label isPrimary status consents(orderBy: { at: desc }) { channel purpose action method at } }
   ownerships(where: { endedAt: null }) { vehicle { id label vin } }
   appointments(orderBy: { startsAt: desc }, take: 1) { reference startsAt status }`;
@@ -71,7 +71,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
             <Stat name="Active customers" value={data.customersCount} />
             <Stat name="Fleet accounts" value={data.businessAccounts.length} />
             <Stat name="Texting stopped" value={data.stopped} />
-            <Stat name="Shops" value={data.shops.map(s => s.code).join(' · ') || '—'} />
+            <Stat name="Shops" value={data.shops.map(s => s.name).join(' · ') || '—'} />
           </div>
           <NewCustomerForm shops={data.shops} />
           <Section title={search ? `Matching “${search}”` : 'Customers'} aside={
@@ -85,7 +85,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{c.displayName}</span>
                     {c.kind === 'business' ? <span className="text-xs text-muted-foreground">Business</span> : null}
-                    {c.homeShop ? <span className="font-mono text-xs text-muted-foreground">{c.homeShop.code}</span> : null}
+                    {c.homeShop ? <span className="font-mono text-xs text-muted-foreground">{c.homeShop.name}</span> : null}
                     {c.noShowCount > 0 ? <span className="font-mono text-xs text-red-600">{c.noShowCount} no-show{c.noShowCount === 1 ? '' : 's'}</span> : null}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">

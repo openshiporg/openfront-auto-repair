@@ -19,7 +19,7 @@ function Card({ ro, tz, now }: { ro: RoCard; tz: string; now: Date }) {
     <Link href={`/dashboard/platform/repair-orders/${ro.id}`} className="block rounded-lg border bg-background p-3 text-sm shadow-xs hover:bg-muted/40">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs">{ro.roNumber}</span>
-        <span className="font-mono text-xs text-muted-foreground">{ro.shop?.code}{ro.keyTag ? ` · KEY ${ro.keyTag}` : ''}</span>
+        <span className="font-mono text-xs text-muted-foreground">{ro.shop?.name}{ro.keyTag ? ` · KEY ${ro.keyTag}` : ''}</span>
       </div>
       <div className="mt-1 font-medium">{ro.customer?.displayName}</div>
       <div className="truncate text-xs text-muted-foreground">{ro.vehicle?.label}</div>
@@ -54,7 +54,7 @@ export default async function BoardPage({ searchParams }: { searchParams?: Promi
   return (
     <Page title="Work board">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tabs active={params.shop ?? 'all'} items={[{ key: 'all', label: 'All shops', href: '/dashboard/platform/board' }, ...shops.map(s => ({ key: s.id, label: s.code, href: `/dashboard/platform/board?shop=${s.id}` }))]} />
+        <Tabs active={params.shop ?? 'all'} items={[{ key: 'all', label: 'All shops', href: '/dashboard/platform/board' }, ...shops.map(s => ({ key: s.id, label: s.name, href: `/dashboard/platform/board?shop=${s.id}` }))]} />
         <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs uppercase tracking-wide text-muted-foreground">
           <span>{repairOrders.length} open</span>
           <span className={waiting ? 'text-amber-600' : ''}>{waiting} waiting on customer</span>
@@ -62,12 +62,12 @@ export default async function BoardPage({ searchParams }: { searchParams?: Promi
         </div>
       </div>
       {repairOrders.length ? (
-        <div className="-mx-4 overflow-x-auto px-4 md:-mx-6 md:px-6">
-          <div className="grid auto-cols-[15rem] grid-flow-col gap-3 pb-2 max-md:auto-cols-[85%]">
+        <div className="-mx-4 overflow-x-auto px-4 md:-mx-6 md:px-6 max-md:overflow-visible">
+          <div className="grid auto-cols-[15rem] grid-flow-col gap-3 pb-2 max-md:grid-flow-row max-md:auto-cols-fr">
             {COLUMNS.map(stage => {
               const cards = by.get(stage)!;
               return (
-                <div key={stage} className="min-w-0 space-y-2 rounded-lg bg-muted/50 p-2">
+                <div key={stage} className={`min-w-0 space-y-2 rounded-lg bg-muted/50 p-2 ${cards.length ? '' : 'max-md:hidden'}`}>
                   <div className="flex items-center justify-between px-1 pt-1">
                     <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">{BOARD_LABELS[stage]}</span>
                     <span className="font-mono text-xs text-muted-foreground">{cards.length}</span>

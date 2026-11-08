@@ -5,7 +5,7 @@ import { Page, Row, Empty, Meta, Section, Status, Tabs } from '../../components/
 type Item = {
   id: string; status: string; startedAt: string | null; completedAt: string | null; createdAt: string
   technician: { name: string } | null; templateVersion: { template: { name: string } | null } | null
-  repairOrder: { id: string; roNumber: string; shop: { code: string; timeZone: string } | null; customer: { displayName: string } | null; vehicle: { label: string } | null } | null
+  repairOrder: { id: string; roNumber: string; shop: { name: string; timeZone: string } | null; customer: { displayName: string } | null; vehicle: { label: string } | null } | null
   red: number; yellow: number; open: number
 }
 
@@ -19,7 +19,7 @@ export default async function InspectionsPage({ searchParams }: { searchParams?:
   const d = await q<{ inspections: Item[] }>(`query($statuses: [String!]) {
     inspections(where: { status: { in: $statuses } }, orderBy: { createdAt: desc }, take: 60) {
       id status startedAt completedAt createdAt technician { name } templateVersion { template { name } }
-      repairOrder { id roNumber shop { code timeZone } customer { displayName } vehicle { label } }
+      repairOrder { id roNumber shop { name timeZone } customer { displayName } vehicle { label } }
       red: resultsCount(where: { condition: { equals: "red" } })
       yellow: resultsCount(where: { condition: { equals: "yellow" } })
       open: resultsCount(where: { condition: { equals: "not_inspected" } })
@@ -32,7 +32,7 @@ export default async function InspectionsPage({ searchParams }: { searchParams?:
         {d.inspections.length ? d.inspections.map(i => (
           <Row key={i.id} href={`/dashboard/platform/inspections/${i.id}`}>
             <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{i.repairOrder?.vehicle?.label}</span><span className="font-mono text-xs text-muted-foreground">{i.repairOrder?.shop?.code} · {i.repairOrder?.roNumber}</span></div>
+              <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{i.repairOrder?.vehicle?.label}</span><span className="font-mono text-xs text-muted-foreground">{i.repairOrder?.shop?.name} · {i.repairOrder?.roNumber}</span></div>
               <Meta>{i.repairOrder?.customer?.displayName} · {i.templateVersion?.template?.name} · {i.technician?.name ?? 'unassigned'} · {when(i.completedAt ?? i.startedAt ?? i.createdAt, i.repairOrder?.shop?.timeZone ?? tz)}</Meta>
             </div>
             <div className="flex items-center gap-4 font-mono text-xs">

@@ -24,10 +24,10 @@ export default async function CheckInPage({ searchParams }: { searchParams?: Pro
   const tz = await orgTimeZone();
   const since = new Date(Date.now() - 12 * 3_600_000).toISOString();
   const until = new Date(Date.now() + 4 * 86_400_000).toISOString();
-  const data = await q<{ due: Appointment[]; selected?: Appointment | null; recent: { id: string; reference: string; at: string; signerName: string; signedAt: string | null; shop: { code: string } | null; customer: { displayName: string } | null; vehicle: { label: string } | null; recallWarning: { count: number; doNotDrive: boolean } | null }[] }>(`query(${params.appointment ? '$id: ID!, ' : ''}$since: DateTime!, $until: DateTime!) {
+  const data = await q<{ due: Appointment[]; selected?: Appointment | null; recent: { id: string; reference: string; at: string; signerName: string; signedAt: string | null; shop: { name: string } | null; customer: { displayName: string } | null; vehicle: { label: string } | null; recallWarning: { count: number; doNotDrive: boolean } | null }[] }>(`query(${params.appointment ? '$id: ID!, ' : ''}$since: DateTime!, $until: DateTime!) {
     due: appointments(where: { status: { in: ["requested", "confirmed"] }, startsAt: { gte: $since, lte: $until }, customer: { id: { not: null } } }, orderBy: { startsAt: asc }, take: 30) { ${APPOINTMENT} }
     ${params.appointment ? `selected: appointment(where: { id: $id }) { ${APPOINTMENT} }` : ''}
-    recent: checkIns(orderBy: { at: desc }, take: 8) { id reference at signerName signedAt shop { code } customer { displayName } vehicle { label } recallWarning }
+    recent: checkIns(orderBy: { at: desc }, take: 8) { id reference at signerName signedAt shop { name } customer { displayName } vehicle { label } recallWarning }
   }`, { ...(params.appointment ? { id: params.appointment } : {}), since, until });
 
   const a = data.selected && ['requested', 'confirmed'].includes(data.selected.status) ? data.selected : null;
@@ -40,7 +40,7 @@ export default async function CheckInPage({ searchParams }: { searchParams?: Pro
   return (
     <Page title="Check-in">
       {a && a.customer && a.vehicle && a.shop ? (
-        <Section title={`${a.reference} · ${a.shop.code}`} aside={<Link href="/dashboard/platform/check-in" className="text-xs underline">Back to the list</Link>}>
+        <Section title={`${a.reference} · ${a.shop.name}`} aside={<Link href="/dashboard/platform/check-in" className="text-xs underline">Back to the list</Link>}>
           {law?.pack && !law.pack.verified ? (
             <div role="note" className="rounded-lg border border-amber-500/60 bg-amber-500/5 p-3 text-sm">
               The {law.pack.name} rules are a draft that has not been checked against the regulations. Check the work-order wording with the state before relying on it.
@@ -58,7 +58,7 @@ export default async function CheckInPage({ searchParams }: { searchParams?: Pro
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{x.customer?.displayName}</span>
-                  <span className="font-mono text-xs text-muted-foreground">{x.shop?.code} · {x.reference}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{x.shop?.name} · {x.reference}</span>
                   {x.vehicle?.recallChecks[0]?.parkItAny ? <span className="font-mono text-xs text-red-600">RECALL: PARK OUTSIDE</span> : x.vehicle?.recallChecks[0]?.campaignCount ? <span className="font-mono text-xs text-amber-600">{x.vehicle.recallChecks[0].campaignCount} recalls</span> : null}
                 </div>
                 <Meta>{when(x.startsAt, x.shop?.timeZone ?? tz)} · {label(x.kind)} · {x.vehicle?.label ?? 'vehicle not chosen'}</Meta>

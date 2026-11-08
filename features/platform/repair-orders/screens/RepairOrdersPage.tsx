@@ -16,9 +16,9 @@ export default async function RepairOrdersPage({ searchParams }: { searchParams?
   const params = (await searchParams) ?? {};
   const view = VIEWS[params.view ?? ''] ? params.view! : 'open';
   const tz = await orgTimeZone();
-  const d = await q<{ repairOrders: RoCard[]; waiting: { id: string; reference: string; at: string; signerName: string; shop: { code: string } | null; customer: { displayName: string } | null; vehicle: { label: string } | null }[] }>(`query($statuses: [String!]) {
+  const d = await q<{ repairOrders: RoCard[]; waiting: { id: string; reference: string; at: string; signerName: string; shop: { name: string } | null; customer: { displayName: string } | null; vehicle: { label: string } | null }[] }>(`query($statuses: [String!]) {
     repairOrders(where: { status: { in: $statuses } }, orderBy: { openedAt: desc }, take: 100) { ${RO_CARD} }
-    waiting: checkIns(where: { repairOrder: null, signedAt: { not: null } }, orderBy: { at: desc }, take: 20) { id reference at signerName shop { code } customer { displayName } vehicle { label } }
+    waiting: checkIns(where: { repairOrder: null, signedAt: { not: null } }, orderBy: { at: desc }, take: 20) { id reference at signerName shop { name } customer { displayName } vehicle { label } }
   }`, { statuses: VIEWS[view].statuses });
 
   return (
@@ -28,7 +28,7 @@ export default async function RepairOrdersPage({ searchParams }: { searchParams?
           {d.waiting.map(c => (
             <Row key={c.id}>
               <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{c.customer?.displayName}</span><span className="font-mono text-xs text-muted-foreground">{c.shop?.code} · {c.reference}</span></div>
+                <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{c.customer?.displayName}</span><span className="font-mono text-xs text-muted-foreground">{c.shop?.name} · {c.reference}</span></div>
                 <Meta>{c.vehicle?.label} · signed by {c.signerName} · {when(c.at, tz)}</Meta>
               </div>
               <ActionButton op="openShopRepairOrder" vars={{ input: { checkInId: c.id } }} className="bg-primary text-primary-foreground">Open repair order</ActionButton>
@@ -41,7 +41,7 @@ export default async function RepairOrdersPage({ searchParams }: { searchParams?
         {d.repairOrders.length ? d.repairOrders.map(ro => (
           <Row key={ro.id} href={`/dashboard/platform/repair-orders/${ro.id}`}>
             <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm">{ro.roNumber}</span><span className="font-medium">{ro.customer?.displayName}</span><span className="font-mono text-xs text-muted-foreground">{ro.shop?.code}</span></div>
+              <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm">{ro.roNumber}</span><span className="font-medium">{ro.customer?.displayName}</span><span className="font-mono text-xs text-muted-foreground">{ro.shop?.name}</span></div>
               <Meta>{ro.vehicle?.label} · {ro.jobs.length} job{ro.jobs.length === 1 ? '' : 's'} · advisor {ro.serviceAdvisor?.name ?? 'none'} · opened {when(ro.openedAt, ro.shop?.timeZone ?? tz)}</Meta>
             </div>
             <div className="flex items-center gap-4">

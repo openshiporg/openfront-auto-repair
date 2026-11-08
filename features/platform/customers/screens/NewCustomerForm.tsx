@@ -37,7 +37,7 @@ export function NewCustomerForm({ shops }: { shops: { id: string; code: string; 
         <label className={labelClass}>Last name<input className={inputClass} value={form.lastName} onChange={set('lastName')} autoComplete="off" /></label>
         <label className={labelClass}>Mobile<input className={inputClass} inputMode="tel" placeholder="(916) 555-0100" value={form.mobile} onChange={set('mobile')} autoComplete="off" /></label>
         <label className={labelClass}>Email<input className={inputClass} type="email" value={form.email} onChange={set('email')} autoComplete="off" /></label>
-        <label className={labelClass}>Home shop<select className={inputClass} value={form.homeShopId} onChange={set('homeShopId')}>{shops.map(s => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}</select></label>
+        <label className={labelClass}>Home shop<select className={inputClass} value={form.homeShopId} onChange={set('homeShopId')}>{shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
       </div>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-1" checked={form.serviceTexts} onChange={set('serviceTexts')} />

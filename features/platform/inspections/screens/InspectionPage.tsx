@@ -10,7 +10,7 @@ type Detail = {
   id: string; status: string; version: number; startedAt: string | null; completedAt: string | null; sentAt: string | null
   technician: { name: string } | null
   templateVersion: { versionNumber: number; template: { name: string } | null } | null
-  repairOrder: { id: string; roNumber: string; shop: { code: string; timeZone: string } | null; customer: { displayName: string } | null; vehicle: { label: string; lastOdometer: number | null } | null; jobs: { id: string; title: string; status: string; inspectionItemResult: { id: string } | null }[] } | null
+  repairOrder: { id: string; roNumber: string; shop: { name: string; timeZone: string } | null; customer: { displayName: string } | null; vehicle: { label: string; lastOdometer: number | null } | null; jobs: { id: string; title: string; status: string; inspectionItemResult: { id: string } | null }[] } | null
   results: ItemView[]
 };
 
@@ -22,7 +22,7 @@ export default async function InspectionPage({ params }: { params: Promise<{ id:
   const tz = await orgTimeZone();
   const d = await q<{ inspection: Detail | null }>(`query($id: ID!) { inspection(where: { id: $id }) {
     id status version startedAt completedAt sentAt technician { name } templateVersion { versionNumber template { name } }
-    repairOrder { id roNumber shop { code timeZone } customer { displayName } vehicle { label lastOdometer } jobs { id title status inspectionItemResult { id } } }
+    repairOrder { id roNumber shop { name timeZone } customer { displayName } vehicle { label lastOdometer } jobs { id title status inspectionItemResult { id } } }
     results { id condition derivedCondition overrideReason measurements notes version mediaCount
       templateItem { code section label measurement photoRequiredOn required sortOrder cannedJobCode } }
   } }`, { id });

@@ -47,7 +47,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
   return (
     <Page title="Schedule">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tabs active={shop.code} items={base.shops.map(s => ({ key: s.code, label: `${s.code} · ${s.name}`, href: href(date, s.code) }))} />
+        <Tabs active={shop.code} items={base.shops.map(s => ({ key: s.code, label: s.name, href: href(date, s.code) }))} />
         <div className="flex items-center gap-2 text-sm">
           <Link className="rounded-md border px-2 py-1" href={href(addDays(date, -1))} aria-label="Previous day">←</Link>
           <span className="font-mono">{new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
@@ -65,7 +65,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
 
       <BookingForm shopId={shop.id} timeZone={shop.timeZone} date={date} customers={data.customers.map(c => ({ id: c.id, name: c.displayName, vehicles: c.ownerships.map(o => o.vehicle).filter((v): v is { id: string; label: string } => Boolean(v)) }))} waiterCutoff={typeof rules.no_waiters_after === 'string' ? rules.no_waiters_after : null} />
 
-      <Section title={`Appointments · ${shop.code}`}>
+      <Section title={`Appointments · ${shop.name}`}>
         {data.appointments.length ? data.appointments.map(a => (
           <Row key={a.id}>
             <div className="flex min-w-0 flex-[1_1_18rem] items-start gap-3 sm:gap-4">

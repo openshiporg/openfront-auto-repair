@@ -61,7 +61,7 @@ export default async function PoliciesPage({ searchParams }: { searchParams?: Pr
   const view = params.view === 'law' ? 'law' : 'shop';
   const shop = base.shops.find(s => s.code === params.shop) ?? base.shops[0];
   const tabs = [
-    ...base.shops.map(s => ({ key: s.code, label: s.code, href: `/dashboard/platform/policies?shop=${s.code}` })),
+    ...base.shops.map(s => ({ key: s.code, label: s.name, href: `/dashboard/platform/policies?shop=${s.code}` })),
     { key: 'law', label: 'State rules', href: '/dashboard/platform/policies?view=law', count: base.jurisdictionPacks.length },
   ];
 
@@ -77,7 +77,6 @@ export default async function PoliciesPage({ searchParams }: { searchParams?: Pr
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{p.name}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{p.code}</span>
                     {p.verified ? <span className="font-mono text-xs text-emerald-700 dark:text-emerald-400">VERIFIED</span> : <span className="font-mono text-xs uppercase tracking-wide text-amber-700 dark:text-amber-400">draft · not checked against the regulations</span>}
                   </div>
                   {v ? (
@@ -112,11 +111,11 @@ export default async function PoliciesPage({ searchParams }: { searchParams?: Pr
       <Tabs active={shop.code} items={tabs} />
       {pack && !pack.verified ? (
         <div role="note" className="rounded-lg border border-amber-500/60 bg-amber-500/5 p-3 text-sm">
-          {shop.code} follows the {pack.name} rules, which are a draft that has not been checked against the regulations. Check them before relying on them.
+          {shop.name} follows the {pack.name} rules, which are a draft that has not been checked against the regulations. Check them before relying on them.
         </div>
       ) : null}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat name="State rules" value={pack ? `${pack.code}${pack.verified ? ' ✓' : ' (draft)'}` : '—'} />
+        <Stat name="State rules" value={pack ? `${pack.name}${pack.verified ? " (verified)" : " (draft)"}` : '—'} />
         <Stat name="Published" value={`${published} / ${KINDS.length}`} />
         <Stat name="Drafts" value={drafts} />
         <Stat name="Shop" value={shop.name} />
