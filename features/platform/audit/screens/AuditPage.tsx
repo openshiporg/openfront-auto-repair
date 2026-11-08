@@ -33,7 +33,7 @@ export default async function AuditPage({ searchParams }: { searchParams?: Promi
         <Stat name="Head hash" value={<span className="break-all font-mono text-xs">{v.lastHash.slice(0, 16)}</span>} />
       </div>
       {!v.ok && v.problem ? <p role="alert" className="text-sm text-red-600">{v.problem}</p> : null}
-      <Section title={entity ? `Events for ${entity}` : 'Latest events'} aside={entity ? <Link href="/dashboard/platform/audit" className="text-xs underline">Show all</Link> : null}>
+      <Section title={entity ? `Events for ${entity}` : 'Latest events'} aside={entity ? <Link href="/dashboard/platform/audit" className="inline-flex min-h-11 items-center text-xs underline md:min-h-0">Show all</Link> : null}>
         {data.auditEvents.length ? data.auditEvents.map(e => (
           <Row key={e.id}>
             <div className="min-w-0 flex-1 space-y-1">
@@ -50,7 +50,7 @@ export default async function AuditPage({ searchParams }: { searchParams?: Promi
           </Row>
         )) : <Empty>No audit events yet.</Empty>}
       </Section>
-      {last && last.seq > 1 && data.auditEvents.length === PAGE ? <Link href={`/dashboard/platform/audit?before=${last.seq}${entity ? `&entity=${encodeURIComponent(entity)}` : ''}`} className="text-sm underline">Older events</Link> : null}
+      {last && last.seq > 1 && data.auditEvents.length === PAGE ? <Link href={`/dashboard/platform/audit?before=${last.seq}${entity ? `&entity=${encodeURIComponent(entity)}` : ''}`} className="inline-flex min-h-11 items-center text-sm underline md:min-h-0">Older events</Link> : null}
     </Page>
   );
 }

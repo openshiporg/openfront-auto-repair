@@ -128,7 +128,7 @@ export default async function PoliciesPage({ searchParams }: { searchParams?: Pr
           <Section key={k.kind} title={k.label} aside={
             draft
               ? <span className="flex flex-wrap items-center gap-2">
-                  <Link className="text-xs underline" href={`/dashboard/${k.path}/${draft.id}`}>Edit draft v{draft.versionNumber}</Link>
+                  <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/${k.path}/${draft.id}`}>Edit draft v{draft.versionNumber}</Link>
                   <ActionButton op="publishPolicyVersion" vars={{ kind: k.kind, versionId: draft.id, expectedVersion: draft.version }} confirm={`Publish ${k.label} v${draft.versionNumber}? New repair orders will use it.`}>Publish</ActionButton>
                 </span>
               : <ActionButton op="createPolicyDraft" vars={{ kind: k.kind, headId: shop.id }}>New draft</ActionButton>

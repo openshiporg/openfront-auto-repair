@@ -54,7 +54,7 @@ export default async function VehiclesPage({ searchParams }: { searchParams?: Pr
       </div>
 
       {v ? (
-        <Section title={v.label || v.vin} aside={<Link href="/dashboard/platform/vehicles" className="text-xs underline">Close</Link>}>
+        <Section title={v.label || v.vin} aside={<Link href="/dashboard/platform/vehicles" className="inline-flex min-h-11 items-center text-xs underline md:min-h-0">Close</Link>}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Stat name="VIN" value={<span className="break-all font-mono text-sm">{v.vin || '—'}</span>} />
             <Stat name="Odometer" value={v.lastOdometer !== null ? `${v.lastOdometer.toLocaleString('en-US')} ${v.lastOdometerUnit}` : '—'} />
@@ -110,7 +110,7 @@ export default async function VehiclesPage({ searchParams }: { searchParams?: Pr
 
       <Section title={search ? `Matching “${search}”` : 'Vehicles'} aside={
         <form className="flex gap-2" action="/dashboard/platform/vehicles">
-          <input name="q" defaultValue={search} placeholder="VIN or model" aria-label="Search vehicles by VIN or model" className="h-8 w-40 rounded-md border bg-background px-2 font-mono text-sm sm:w-56" />
+          <input name="q" defaultValue={search} placeholder="VIN or model" aria-label="Search vehicles by VIN or model" className="h-8 max-md:h-11 w-40 rounded-md border bg-background px-2 font-mono text-sm sm:w-56" />
         </form>
       }>
         {data.vehicles.length ? data.vehicles.map(x => (

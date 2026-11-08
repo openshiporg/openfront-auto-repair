@@ -40,7 +40,7 @@ export default async function CheckInPage({ searchParams }: { searchParams?: Pro
   return (
     <Page title="Check-in">
       {a && a.customer && a.vehicle && a.shop ? (
-        <Section title={`${a.reference} · ${a.shop.name}`} aside={<Link href="/dashboard/platform/check-in" className="text-xs underline">Back to the list</Link>}>
+        <Section title={`${a.reference} · ${a.shop.name}`} aside={<Link href="/dashboard/platform/check-in" className="inline-flex min-h-11 items-center text-xs underline md:min-h-0">Back to the list</Link>}>
           {law?.pack && !law.pack.verified ? (
             <div role="note" className="rounded-lg border border-amber-500/60 bg-amber-500/5 p-3 text-sm">
               The {law.pack.name} rules are a draft that has not been checked against the regulations. Check the work-order wording with the state before relying on it.
@@ -65,7 +65,7 @@ export default async function CheckInPage({ searchParams }: { searchParams?: Pro
               </div>
               <div className="flex items-center gap-3">
                 <Status value={x.status} />
-                {x.vehicle ? <Link className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground" href={`/dashboard/platform/check-in?appointment=${x.id}`}>Check in</Link> : <Meta>Add the vehicle on the Schedule first</Meta>}
+                {x.vehicle ? <Link className="inline-flex h-8 max-md:h-11 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground" href={`/dashboard/platform/check-in?appointment=${x.id}`}>Check in</Link> : <Meta>Add the vehicle on the Schedule first</Meta>}
               </div>
             </Row>
           )) : <Empty>Nobody is due in. Book from the Schedule.</Empty>}

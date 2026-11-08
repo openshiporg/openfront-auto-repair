@@ -60,7 +60,7 @@ export default async function InspectionPage({ params }: { params: Promise<{ id:
               return (
                 <div key={r.id} className="space-y-1">
                   <ItemCard item={r} editable={editable} />
-                  {job ? <Link href={`/dashboard/platform/repair-orders/${i.repairOrder?.id}`} className={`block px-1 text-xs ${COLOR[r.condition] ?? ''}`}>Recommended: {job.title} ({label(job.status)})</Link> : null}
+                  {job ? <Link href={`/dashboard/platform/repair-orders/${i.repairOrder?.id}`} className={`block px-1 max-md:py-3 text-xs ${COLOR[r.condition] ?? ''}`}>Recommended: {job.title} ({label(job.status)})</Link> : null}
                 </div>
               );
             })}

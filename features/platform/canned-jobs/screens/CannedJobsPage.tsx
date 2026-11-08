@@ -22,7 +22,7 @@ export default async function CannedJobsPage({ searchParams }: { searchParams?: 
   return (
     <Page title="Canned jobs">
       {selected ? (
-        <Section title={`${selected.code} · ${selected.name}`} aside={<Link className="text-xs underline" href="/dashboard/platform/canned-jobs">All canned jobs</Link>}>
+        <Section title={`${selected.code} · ${selected.name}`} aside={<Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href="/dashboard/platform/canned-jobs">All canned jobs</Link>}>
           <div className="flex flex-wrap items-center gap-3">
             {selected.versions.map(v => <span key={v.id} className="inline-flex items-center gap-2 text-sm">v{v.versionNumber} <Status value={v.status} /></span>)}
             {draft ? <ActionButton op="publishCannedJobVersion" vars={{ versionId: draft.id, expectedVersion: draft.version }} confirm={`Publish v${draft.versionNumber}? New jobs will copy it. Jobs already on repair orders keep their lines.`} className="bg-primary text-primary-foreground">Publish v{draft.versionNumber}</ActionButton> : null}

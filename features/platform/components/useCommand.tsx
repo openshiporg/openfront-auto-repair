@@ -33,7 +33,7 @@ export function useCommand<T = Record<string, unknown>>(op: string, paths: strin
   return { run, pending, error, result, reset: () => { setError(''); setResult(null); } };
 }
 
-export const inputClass = 'h-9 w-full min-w-0 rounded-md border bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
+export const inputClass = 'h-9 max-md:h-11 w-full min-w-0 rounded-md border bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
 export const labelClass = 'block space-y-1 text-xs font-medium text-muted-foreground';
 
 export function FormError({ error }: { error: string }) {

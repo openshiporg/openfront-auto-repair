@@ -49,10 +49,10 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs active={shop.code} items={base.shops.map(s => ({ key: s.code, label: s.name, href: href(date, s.code) }))} />
         <div className="flex items-center gap-2 text-sm">
-          <Link className="rounded-md border px-2 py-1" href={href(addDays(date, -1))} aria-label="Previous day">←</Link>
+          <Link className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 py-1 md:min-h-0 md:min-w-0" href={href(addDays(date, -1))} aria-label="Previous day">←</Link>
           <span className="font-mono">{new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
-          <Link className="rounded-md border px-2 py-1" href={href(addDays(date, 1))} aria-label="Next day">→</Link>
-          <Link className="text-xs underline" href={href(today(shop.timeZone))}>Today</Link>
+          <Link className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 py-1 md:min-h-0 md:min-w-0" href={href(addDays(date, 1))} aria-label="Next day">→</Link>
+          <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={href(today(shop.timeZone))}>Today</Link>
         </div>
       </div>
 
@@ -82,7 +82,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
             <div className="flex flex-wrap items-center gap-2">
               <Status value={a.status} />
               {a.status === 'requested' && a.customer ? <ActionButton op="transitionAppointment" vars={{ id: a.id, to: 'confirmed', expectedVersion: a.version }}>Confirm</ActionButton> : null}
-              {['requested', 'confirmed'].includes(a.status) && a.customer && a.vehicle ? <Link className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground" href={`/dashboard/platform/check-in?appointment=${a.id}`}>Check in</Link> : null}
+              {['requested', 'confirmed'].includes(a.status) && a.customer && a.vehicle ? <Link className="inline-flex h-8 max-md:h-11 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground" href={`/dashboard/platform/check-in?appointment=${a.id}`}>Check in</Link> : null}
               {['requested', 'confirmed'].includes(a.status) ? <ActionButton op="transitionAppointment" vars={{ id: a.id, to: 'no_show', expectedVersion: a.version }} confirm="Mark as a no-show? This counts against the customer.">No-show</ActionButton> : null}
               {['requested', 'confirmed'].includes(a.status) ? <ActionButton op="transitionAppointment" vars={{ id: a.id, to: 'cancelled', expectedVersion: a.version }} ask="Why is this appointment cancelled?">Cancel</ActionButton> : null}
               {a.checkIn ? <Meta>{a.checkIn.reference}</Meta> : null}

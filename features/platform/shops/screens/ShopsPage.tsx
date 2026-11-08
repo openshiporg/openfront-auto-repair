@@ -43,7 +43,7 @@ export default async function ShopsPage() {
       {data.shops.length ? data.shops.map(shop => {
         const upcoming = (shop.calendar?.exceptions ?? []).filter(e => e.date >= today).slice(0, 4);
         return (
-          <Section key={shop.id} title={shop.name} aside={<Link href={`/dashboard/shops/${shop.id}`} className="text-xs underline">Edit</Link>}>
+          <Section key={shop.id} title={shop.name} aside={<Link href={`/dashboard/shops/${shop.id}`} className="inline-flex min-h-11 items-center text-xs underline md:min-h-0">Edit</Link>}>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Stat name="Status" value={<Status value={shop.status} />} />
               <Stat name="Bays" value={shop.bays.filter(b => b.active).length} />

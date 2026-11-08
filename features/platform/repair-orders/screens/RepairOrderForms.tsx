@@ -156,7 +156,7 @@ export function DecisionPicker({ jobs, value, onChange }: { jobs: { id: string; 
           <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
             {DECISIONS.map(d => (
               <button key={d.v} type="button" aria-pressed={value[j.id] === d.v} onClick={() => onChange({ ...value, [j.id]: d.v })}
-                className={cn('h-8 rounded-md px-3 text-sm font-medium', value[j.id] === d.v ? 'bg-background shadow-sm' : 'text-muted-foreground')}>{d.l}</button>
+                className={cn('h-8 max-md:h-11 rounded-md px-3 text-sm font-medium', value[j.id] === d.v ? 'bg-background shadow-sm' : 'text-muted-foreground')}>{d.l}</button>
             ))}
           </div>
         </div>
@@ -266,7 +266,7 @@ export function HoldForm({ repairOrderId, version, onHold }: { repairOrderId: st
   if (onHold) return <span className="inline-flex items-center gap-2"><button type="button" className={pillClass} disabled={save.pending} onClick={() => save.run({ repairOrderId, expectedVersion: version, hold: false })}>Resume</button><FormError error={save.error} /></span>;
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
-      <select aria-label="Hold reason" className={cn(inputClass, 'h-8 w-auto')} value={reason} onChange={e => setReason(e.target.value)}>
+      <select aria-label="Hold reason" className={cn(inputClass, 'h-8 w-auto max-md:h-11')} value={reason} onChange={e => setReason(e.target.value)}>
         <option value="">Put on hold…</option>
         {HOLDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>

@@ -82,7 +82,7 @@ export async function BillingSection({ ro, zone, odometerHint, cardReady }: {
             <div className="flex flex-wrap items-center gap-4">
               <span className="font-mono text-sm">{money(inv.totalMinor)}</span>
               <Status value={inv.arStage === 'overdue' ? 'overdue' : inv.status} />
-              <a className="text-xs underline" href={`/api/invoices/${inv.id}/pdf`}>Invoice PDF</a>
+              <a className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/api/invoices/${inv.id}/pdf`}>Invoice PDF</a>
             </div>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs text-muted-foreground">

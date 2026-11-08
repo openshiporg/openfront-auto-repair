@@ -405,7 +405,7 @@ function SidebarTrigger({
       data-side={targetSide}
       variant="ghost"
       size="icon"
-      className={cn("size-7", className)}
+      className={cn("size-7 max-md:size-11", className)}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();

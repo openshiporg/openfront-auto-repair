@@ -86,7 +86,7 @@ function JobBlock({ job, ro }: { job: JobDetail; ro: RoDetail }) {
       </div>
       {job.authorizations.length || job.decisions.length ? (
         <details className="text-sm">
-          <summary className="cursor-pointer font-mono text-xs uppercase tracking-wide text-muted-foreground">Authorization history</summary>
+          <summary className="cursor-pointer py-3 font-mono text-xs uppercase md:py-0 tracking-wide text-muted-foreground">Authorization history</summary>
           <div className="mt-2 space-y-1">
             {job.authorizations.map(a => <div key={a.id} className="text-xs"><span className="font-mono">{a.estimateVersion?.reference}</span> · {money(a.amountMinor)} · {label(a.method)} by {a.actorName}{a.contactUsed ? ` at ${a.contactUsed}` : ''} · recorded by {a.recordedByUser?.name ?? 'link'} · {when(a.authorizedAt, ro.shop?.timeZone)} · <Status value={a.status} /></div>)}
             {job.decisions.filter(d => d.decision !== 'approved').map(d => <div key={d.id} className="text-xs">{label(d.decision)} by {d.actorName} · {label(d.method)} · {when(d.at, ro.shop?.timeZone)}{d.reason ? ` · ${d.reason}` : ''}</div>)}
@@ -163,7 +163,7 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
         {ro.jobs.length !== jobs.length ? <Meta>{ro.jobs.length - jobs.length} voided job{ro.jobs.length - jobs.length === 1 ? '' : 's'} hidden.</Meta> : null}
       </Section>
 
-      <Section title="Inspection" aside={inspection ? <Link className="text-xs underline" href={`/dashboard/platform/inspections/${inspection.id}`}>Open the inspection</Link> : null}>
+      <Section title="Inspection" aside={inspection ? <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/platform/inspections/${inspection.id}`}>Open the inspection</Link> : null}>
         {inspection ? (
           <Row href={`/dashboard/platform/inspections/${inspection.id}`}>
             <div className="min-w-0 space-y-1"><div className="font-medium">{inspection.templateVersion?.template?.name} v{inspection.templateVersion?.versionNumber}</div><Meta>{inspection.technician?.name ?? 'unassigned'} · {inspection.resultsCount} items{inspection.completedAt ? ` · completed ${when(inspection.completedAt, zone)}` : ''}{inspection.sentAt ? ` · sent ${when(inspection.sentAt, zone)}` : ''}</Meta></div>
@@ -174,7 +174,7 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
         ) : <Empty>No inspection.</Empty>}
       </Section>
 
-      <Section title="Estimate and authorization" aside={sent ? <a className="text-xs underline" href={`/api/estimates/${sent.id}/pdf`}>Estimate PDF</a> : null}>
+      <Section title="Estimate and authorization" aside={sent ? <a className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/api/estimates/${sent.id}/pdf`}>Estimate PDF</a> : null}>
         {open && unsent ? (
           <div className="flex flex-wrap items-center gap-3">
             <ActionButton op="sendRepairEstimate" vars={{ repairOrderId: ro.id, expectedVersion: ro.version }} className="bg-primary text-primary-foreground">{sent ? 'Send a new estimate version' : 'Send the estimate'}</ActionButton>
@@ -186,7 +186,7 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="font-medium">{sent.reference} waiting on the customer · {money(sent.totalMinor)}</div>
               <div className="flex flex-wrap gap-2">
-                <Link href={`/dashboard/platform/repair-orders/${ro.id}/authorize`} className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">Customer is here: sign on the tablet</Link>
+                <Link href={`/dashboard/platform/repair-orders/${ro.id}/authorize`} className="inline-flex h-8 max-md:h-11 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">Customer is here: sign on the tablet</Link>
                 <AuthorizationLinkButton estimateVersionId={sent.id} contacts={extra.contacts} />
               </div>
             </div>
@@ -197,7 +197,7 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
         {ro.estimateVersions.length ? ro.estimateVersions.map(e => (
           <Row key={e.id}>
             <div className="min-w-0 space-y-1"><span className="font-mono text-sm">{e.reference}</span><Meta>Sent {when(e.sentAt, zone)} by {e.sentBy?.name ?? 'staff'} · {(e.includedJobIds ?? []).length} jobs · tax {money(e.taxMinor)}</Meta></div>
-            <div className="flex items-center gap-4"><span className="font-mono text-sm">{money(e.totalMinor)}</span><Status value={e.status} /><a className="text-xs underline" href={`/api/estimates/${e.id}/pdf`}>PDF</a></div>
+            <div className="flex items-center gap-4"><span className="font-mono text-sm">{money(e.totalMinor)}</span><Status value={e.status} /><a className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/api/estimates/${e.id}/pdf`}>PDF</a></div>
           </Row>
         )) : <Empty>No estimate sent yet.</Empty>}
         {ro.authorizationRequests.length ? (

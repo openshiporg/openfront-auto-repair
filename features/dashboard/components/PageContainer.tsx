@@ -47,7 +47,7 @@ export function PageContainer({ children, title, header, breadcrumbs }: PageCont
                     {/* Phones keep the last two crumbs so the trail stays on one line next to the header buttons. */}
                     <BreadcrumbItem className={index < breadcrumbs.length - 2 ? 'max-sm:hidden' : undefined}>
                       {item.type === 'link' && item.href ? (
-                        <BreadcrumbLink href={item.href}>
+                        <BreadcrumbLink href={item.href} className="inline-flex max-md:min-h-11 items-center">
                           {item.label}
                         </BreadcrumbLink>
                       ) : (

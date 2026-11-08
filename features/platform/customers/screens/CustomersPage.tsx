@@ -76,7 +76,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
           <NewCustomerForm shops={data.shops} />
           <Section title={search ? `Matching “${search}”` : 'Customers'} aside={
             <form className="flex gap-2" action="/dashboard/platform/customers">
-              <input name="q" defaultValue={search} placeholder="Search by name" aria-label="Search customers by name" className="h-8 w-40 rounded-md border bg-background px-2 text-sm sm:w-56" />
+              <input name="q" defaultValue={search} placeholder="Search by name" aria-label="Search customers by name" className="h-8 max-md:h-11 w-40 rounded-md border bg-background px-2 text-sm sm:w-56" />
             </form>
           }>
             {data.customers.length ? data.customers.map(c => (
@@ -107,8 +107,8 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
                   </Meta>
                 </div>
                 <div className="flex items-center gap-3">
-                  {c.ownerships[0]?.vehicle ? <Link className="text-xs underline" href={`/dashboard/platform/vehicles?id=${c.ownerships[0].vehicle.id}`}>Vehicle</Link> : null}
-                  <Link className="text-xs underline" href={`/dashboard/customers/${c.id}`}>Record</Link>
+                  {c.ownerships[0]?.vehicle ? <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/platform/vehicles?id=${c.ownerships[0].vehicle.id}`}>Vehicle</Link> : null}
+                  <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/customers/${c.id}`}>Record</Link>
                 </div>
               </Row>
             )) : <Empty>{search ? 'Nobody matches that name.' : 'No customers yet. Use “Set up your shop” to load the Northgate demo.'}</Empty>}
