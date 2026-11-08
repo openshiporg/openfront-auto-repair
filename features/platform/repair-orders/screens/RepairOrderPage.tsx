@@ -6,6 +6,7 @@ import { money, when, label, hours, milli } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Status, Stat } from '../../components/ui';
 import { ActionButton } from '../../components/ActionButton';
 import { answerableJobs, repairOrder, type JobDetail, type RoDetail } from '../lib/queries';
+import { BillingSection } from '../../billing/screens/BillingSection';
 import { AddJobForm, AddLineForm, VariantChooser, CallbackTaskForm, AuthorizationLinkButton, PhoneAuthorizationForm, CloseTaskButton, HoldForm } from './RepairOrderForms';
 
 const EDITABLE = ['draft', 'priced', 'offered', 'authorized', 'in_progress', 'needs_reauthorization'];
@@ -205,6 +206,8 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
           </div>
         ) : null}
       </Section>
+
+      <BillingSection ro={ro} zone={zone} odometerHint={ro.odometerIn?.value ?? null} cardReady={/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY ?? '')} />
 
       {open ? (
         <Section title="Leave a callback for staff">

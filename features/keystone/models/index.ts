@@ -9,6 +9,7 @@ import * as scheduling from './scheduling'
 import * as repairOrders from './repairOrders'
 import * as inspections from './inspections'
 import * as estimates from './estimates'
+import * as billing from './billing'
 
 export const models = {
   User,
@@ -22,6 +23,7 @@ export const models = {
   ...repairOrders,
   ...inspections,
   ...estimates,
+  ...billing,
 }
 
 export default models

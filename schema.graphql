@@ -8949,6 +8949,1348 @@ input JobDecisionCreateInput {
   updatedAt: DateTime
 }
 
+type BusinessDayClose {
+  id: ID!
+  shop: Shop
+  businessDate: CalendarDay
+  tenderTotals: JSON
+  expectedCashMinor: BigInt
+  drawerCountMinor: BigInt
+  varianceMinor: BigInt
+  varianceReason: String
+  closedBy: User
+  closedAt: DateTime
+  reopenApproval: ApprovalRequest
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BusinessDayCloseWhereUniqueInput {
+  id: ID
+}
+
+input BusinessDayCloseWhereInput {
+  AND: [BusinessDayCloseWhereInput!]
+  OR: [BusinessDayCloseWhereInput!]
+  NOT: [BusinessDayCloseWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  businessDate: CalendarDayNullableFilter
+  expectedCashMinor: BigIntFilter
+  drawerCountMinor: BigIntFilter
+  varianceMinor: BigIntFilter
+  varianceReason: StringFilter
+  closedBy: UserWhereInput
+  closedAt: DateTimeNullableFilter
+  reopenApproval: ApprovalRequestWhereInput
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input BusinessDayCloseOrderByInput {
+  id: OrderDirection
+  businessDate: OrderDirection
+  expectedCashMinor: OrderDirection
+  drawerCountMinor: OrderDirection
+  varianceMinor: OrderDirection
+  varianceReason: OrderDirection
+  closedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input BusinessDayCloseUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  businessDate: CalendarDay
+  tenderTotals: JSON
+  expectedCashMinor: BigInt
+  drawerCountMinor: BigInt
+  varianceMinor: BigInt
+  varianceReason: String
+  closedBy: UserRelateToOneForUpdateInput
+  closedAt: DateTime
+  reopenApproval: ApprovalRequestRelateToOneForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BusinessDayCloseUpdateArgs {
+  where: BusinessDayCloseWhereUniqueInput!
+  data: BusinessDayCloseUpdateInput!
+}
+
+input BusinessDayCloseCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  businessDate: CalendarDay
+  tenderTotals: JSON
+  expectedCashMinor: BigInt
+  drawerCountMinor: BigInt
+  varianceMinor: BigInt
+  varianceReason: String
+  closedBy: UserRelateToOneForCreateInput
+  closedAt: DateTime
+  reopenApproval: ApprovalRequestRelateToOneForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type CreditMemo {
+  id: ID!
+  shop: Shop
+  reference: String
+  invoice: Invoice
+  reason: String
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  lines(where: CreditMemoLineWhereInput! = {}, orderBy: [CreditMemoLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CreditMemoLineWhereUniqueInput): [CreditMemoLine!]
+  linesCount(where: CreditMemoLineWhereInput! = {}): Int
+  approval: ApprovalRequest
+  createdBy: User
+  issuedBy: User
+  issuedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreditMemoWhereUniqueInput {
+  id: ID
+  reference: String
+}
+
+input CreditMemoWhereInput {
+  AND: [CreditMemoWhereInput!]
+  OR: [CreditMemoWhereInput!]
+  NOT: [CreditMemoWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  invoice: InvoiceWhereInput
+  reason: StringFilter
+  subtotalMinor: BigIntFilter
+  taxMinor: BigIntFilter
+  totalMinor: BigIntFilter
+  lines: CreditMemoLineManyRelationFilter
+  approval: ApprovalRequestWhereInput
+  createdBy: UserWhereInput
+  issuedBy: UserWhereInput
+  issuedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CreditMemoLineManyRelationFilter {
+  every: CreditMemoLineWhereInput
+  some: CreditMemoLineWhereInput
+  none: CreditMemoLineWhereInput
+}
+
+input CreditMemoOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  reason: OrderDirection
+  subtotalMinor: OrderDirection
+  taxMinor: OrderDirection
+  totalMinor: OrderDirection
+  issuedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CreditMemoUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  invoice: InvoiceRelateToOneForUpdateInput
+  reason: String
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  lines: CreditMemoLineRelateToManyForUpdateInput
+  approval: ApprovalRequestRelateToOneForUpdateInput
+  createdBy: UserRelateToOneForUpdateInput
+  issuedBy: UserRelateToOneForUpdateInput
+  issuedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InvoiceRelateToOneForUpdateInput {
+  create: InvoiceCreateInput
+  connect: InvoiceWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CreditMemoLineRelateToManyForUpdateInput {
+  disconnect: [CreditMemoLineWhereUniqueInput!]
+  set: [CreditMemoLineWhereUniqueInput!]
+  create: [CreditMemoLineCreateInput!]
+  connect: [CreditMemoLineWhereUniqueInput!]
+}
+
+input CreditMemoUpdateArgs {
+  where: CreditMemoWhereUniqueInput!
+  data: CreditMemoUpdateInput!
+}
+
+input CreditMemoCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  invoice: InvoiceRelateToOneForCreateInput
+  reason: String
+  subtotalMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  lines: CreditMemoLineRelateToManyForCreateInput
+  approval: ApprovalRequestRelateToOneForCreateInput
+  createdBy: UserRelateToOneForCreateInput
+  issuedBy: UserRelateToOneForCreateInput
+  issuedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InvoiceRelateToOneForCreateInput {
+  create: InvoiceCreateInput
+  connect: InvoiceWhereUniqueInput
+}
+
+input CreditMemoLineRelateToManyForCreateInput {
+  create: [CreditMemoLineCreateInput!]
+  connect: [CreditMemoLineWhereUniqueInput!]
+}
+
+type CreditMemoLine {
+  id: ID!
+  creditMemo: CreditMemo
+  invoiceLine: InvoiceLine
+  description: String
+  amountMinor: BigInt
+  taxMinor: BigInt
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreditMemoLineWhereUniqueInput {
+  id: ID
+}
+
+input CreditMemoLineWhereInput {
+  AND: [CreditMemoLineWhereInput!]
+  OR: [CreditMemoLineWhereInput!]
+  NOT: [CreditMemoLineWhereInput!]
+  id: IDFilter
+  creditMemo: CreditMemoWhereInput
+  invoiceLine: InvoiceLineWhereInput
+  description: StringFilter
+  amountMinor: BigIntFilter
+  taxMinor: BigIntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CreditMemoLineOrderByInput {
+  id: OrderDirection
+  description: OrderDirection
+  amountMinor: OrderDirection
+  taxMinor: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CreditMemoLineUpdateInput {
+  creditMemo: CreditMemoRelateToOneForUpdateInput
+  invoiceLine: InvoiceLineRelateToOneForUpdateInput
+  description: String
+  amountMinor: BigInt
+  taxMinor: BigInt
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreditMemoRelateToOneForUpdateInput {
+  create: CreditMemoCreateInput
+  connect: CreditMemoWhereUniqueInput
+  disconnect: Boolean
+}
+
+input InvoiceLineRelateToOneForUpdateInput {
+  create: InvoiceLineCreateInput
+  connect: InvoiceLineWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CreditMemoLineUpdateArgs {
+  where: CreditMemoLineWhereUniqueInput!
+  data: CreditMemoLineUpdateInput!
+}
+
+input CreditMemoLineCreateInput {
+  creditMemo: CreditMemoRelateToOneForCreateInput
+  invoiceLine: InvoiceLineRelateToOneForCreateInput
+  description: String
+  amountMinor: BigInt
+  taxMinor: BigInt
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreditMemoRelateToOneForCreateInput {
+  create: CreditMemoCreateInput
+  connect: CreditMemoWhereUniqueInput
+}
+
+input InvoiceLineRelateToOneForCreateInput {
+  create: InvoiceLineCreateInput
+  connect: InvoiceLineWhereUniqueInput
+}
+
+type FinancingApplication {
+  id: ID!
+  repairOrder: RepairOrder
+  customer: Customer
+  provider: String
+  requestedMinor: BigInt
+  approvedMinor: BigInt
+  terms: JSON
+  lenderReference: String
+  payment: Payment
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FinancingApplicationWhereUniqueInput {
+  id: ID
+}
+
+input FinancingApplicationWhereInput {
+  AND: [FinancingApplicationWhereInput!]
+  OR: [FinancingApplicationWhereInput!]
+  NOT: [FinancingApplicationWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  customer: CustomerWhereInput
+  provider: StringFilter
+  requestedMinor: BigIntFilter
+  approvedMinor: BigIntFilter
+  lenderReference: StringFilter
+  payment: PaymentWhereInput
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input FinancingApplicationOrderByInput {
+  id: OrderDirection
+  provider: OrderDirection
+  requestedMinor: OrderDirection
+  approvedMinor: OrderDirection
+  lenderReference: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input FinancingApplicationUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  provider: String
+  requestedMinor: BigInt
+  approvedMinor: BigInt
+  terms: JSON
+  lenderReference: String
+  payment: PaymentRelateToOneForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PaymentRelateToOneForUpdateInput {
+  create: PaymentCreateInput
+  connect: PaymentWhereUniqueInput
+  disconnect: Boolean
+}
+
+input FinancingApplicationUpdateArgs {
+  where: FinancingApplicationWhereUniqueInput!
+  data: FinancingApplicationUpdateInput!
+}
+
+input FinancingApplicationCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  provider: String
+  requestedMinor: BigInt
+  approvedMinor: BigInt
+  terms: JSON
+  lenderReference: String
+  payment: PaymentRelateToOneForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PaymentRelateToOneForCreateInput {
+  create: PaymentCreateInput
+  connect: PaymentWhereUniqueInput
+}
+
+type Invoice {
+  id: ID!
+  shop: Shop
+  invoiceNumber: String
+  repairOrder: RepairOrder
+  payerKind: String
+  customer: Customer
+  businessAccount: BusinessAccount
+  poNumber: String
+  invoiceDate: CalendarDay
+  dueDate: CalendarDay
+  retentionUntil: CalendarDay
+  odometerOut: Int
+  lines(where: InvoiceLineWhereInput! = {}, orderBy: [InvoiceLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InvoiceLineWhereUniqueInput): [InvoiceLine!]
+  linesCount(where: InvoiceLineWhereInput! = {}): Int
+  laborSubtotalMinor: BigInt
+  partsSubtotalMinor: BigInt
+  feesSubtotalMinor: BigInt
+  subletSubtotalMinor: BigInt
+  discountMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  paidMinor: BigInt
+  creditedMinor: BigInt
+  balanceMinor: BigInt
+  disclosures: JSON
+  statement: Statement
+  allocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
+  allocationsCount(where: PaymentAllocationWhereInput! = {}): Int
+  creditMemos(where: CreditMemoWhereInput! = {}, orderBy: [CreditMemoOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CreditMemoWhereUniqueInput): [CreditMemo!]
+  creditMemosCount(where: CreditMemoWhereInput! = {}): Int
+  sentAt: DateTime
+  sentChannel: String
+  finalizedBy: User
+  finalizedAt: DateTime
+  arStage: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InvoiceWhereUniqueInput {
+  id: ID
+  invoiceNumber: String
+}
+
+input InvoiceWhereInput {
+  AND: [InvoiceWhereInput!]
+  OR: [InvoiceWhereInput!]
+  NOT: [InvoiceWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  invoiceNumber: StringFilter
+  repairOrder: RepairOrderWhereInput
+  payerKind: StringFilter
+  customer: CustomerWhereInput
+  businessAccount: BusinessAccountWhereInput
+  poNumber: StringFilter
+  invoiceDate: CalendarDayNullableFilter
+  dueDate: CalendarDayNullableFilter
+  retentionUntil: CalendarDayNullableFilter
+  odometerOut: IntNullableFilter
+  lines: InvoiceLineManyRelationFilter
+  laborSubtotalMinor: BigIntFilter
+  partsSubtotalMinor: BigIntFilter
+  feesSubtotalMinor: BigIntFilter
+  subletSubtotalMinor: BigIntFilter
+  discountMinor: BigIntFilter
+  taxMinor: BigIntFilter
+  totalMinor: BigIntFilter
+  paidMinor: BigIntFilter
+  creditedMinor: BigIntFilter
+  balanceMinor: BigIntFilter
+  statement: StatementWhereInput
+  allocations: PaymentAllocationManyRelationFilter
+  creditMemos: CreditMemoManyRelationFilter
+  sentAt: DateTimeNullableFilter
+  sentChannel: StringFilter
+  finalizedBy: UserWhereInput
+  finalizedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input InvoiceLineManyRelationFilter {
+  every: InvoiceLineWhereInput
+  some: InvoiceLineWhereInput
+  none: InvoiceLineWhereInput
+}
+
+input PaymentAllocationManyRelationFilter {
+  every: PaymentAllocationWhereInput
+  some: PaymentAllocationWhereInput
+  none: PaymentAllocationWhereInput
+}
+
+input CreditMemoManyRelationFilter {
+  every: CreditMemoWhereInput
+  some: CreditMemoWhereInput
+  none: CreditMemoWhereInput
+}
+
+input InvoiceOrderByInput {
+  id: OrderDirection
+  invoiceNumber: OrderDirection
+  payerKind: OrderDirection
+  poNumber: OrderDirection
+  invoiceDate: OrderDirection
+  dueDate: OrderDirection
+  retentionUntil: OrderDirection
+  odometerOut: OrderDirection
+  laborSubtotalMinor: OrderDirection
+  partsSubtotalMinor: OrderDirection
+  feesSubtotalMinor: OrderDirection
+  subletSubtotalMinor: OrderDirection
+  discountMinor: OrderDirection
+  taxMinor: OrderDirection
+  totalMinor: OrderDirection
+  paidMinor: OrderDirection
+  creditedMinor: OrderDirection
+  balanceMinor: OrderDirection
+  sentAt: OrderDirection
+  sentChannel: OrderDirection
+  finalizedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input InvoiceUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  invoiceNumber: String
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  payerKind: String
+  customer: CustomerRelateToOneForUpdateInput
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  poNumber: String
+  invoiceDate: CalendarDay
+  dueDate: CalendarDay
+  retentionUntil: CalendarDay
+  odometerOut: Int
+  lines: InvoiceLineRelateToManyForUpdateInput
+  laborSubtotalMinor: BigInt
+  partsSubtotalMinor: BigInt
+  feesSubtotalMinor: BigInt
+  subletSubtotalMinor: BigInt
+  discountMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  paidMinor: BigInt
+  creditedMinor: BigInt
+  balanceMinor: BigInt
+  disclosures: JSON
+  statement: StatementRelateToOneForUpdateInput
+  allocations: PaymentAllocationRelateToManyForUpdateInput
+  creditMemos: CreditMemoRelateToManyForUpdateInput
+  sentAt: DateTime
+  sentChannel: String
+  finalizedBy: UserRelateToOneForUpdateInput
+  finalizedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InvoiceLineRelateToManyForUpdateInput {
+  disconnect: [InvoiceLineWhereUniqueInput!]
+  set: [InvoiceLineWhereUniqueInput!]
+  create: [InvoiceLineCreateInput!]
+  connect: [InvoiceLineWhereUniqueInput!]
+}
+
+input StatementRelateToOneForUpdateInput {
+  create: StatementCreateInput
+  connect: StatementWhereUniqueInput
+  disconnect: Boolean
+}
+
+input PaymentAllocationRelateToManyForUpdateInput {
+  disconnect: [PaymentAllocationWhereUniqueInput!]
+  set: [PaymentAllocationWhereUniqueInput!]
+  create: [PaymentAllocationCreateInput!]
+  connect: [PaymentAllocationWhereUniqueInput!]
+}
+
+input CreditMemoRelateToManyForUpdateInput {
+  disconnect: [CreditMemoWhereUniqueInput!]
+  set: [CreditMemoWhereUniqueInput!]
+  create: [CreditMemoCreateInput!]
+  connect: [CreditMemoWhereUniqueInput!]
+}
+
+input InvoiceUpdateArgs {
+  where: InvoiceWhereUniqueInput!
+  data: InvoiceUpdateInput!
+}
+
+input InvoiceCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  invoiceNumber: String
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  payerKind: String
+  customer: CustomerRelateToOneForCreateInput
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  poNumber: String
+  invoiceDate: CalendarDay
+  dueDate: CalendarDay
+  retentionUntil: CalendarDay
+  odometerOut: Int
+  lines: InvoiceLineRelateToManyForCreateInput
+  laborSubtotalMinor: BigInt
+  partsSubtotalMinor: BigInt
+  feesSubtotalMinor: BigInt
+  subletSubtotalMinor: BigInt
+  discountMinor: BigInt
+  taxMinor: BigInt
+  totalMinor: BigInt
+  paidMinor: BigInt
+  creditedMinor: BigInt
+  balanceMinor: BigInt
+  disclosures: JSON
+  statement: StatementRelateToOneForCreateInput
+  allocations: PaymentAllocationRelateToManyForCreateInput
+  creditMemos: CreditMemoRelateToManyForCreateInput
+  sentAt: DateTime
+  sentChannel: String
+  finalizedBy: UserRelateToOneForCreateInput
+  finalizedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InvoiceLineRelateToManyForCreateInput {
+  create: [InvoiceLineCreateInput!]
+  connect: [InvoiceLineWhereUniqueInput!]
+}
+
+input StatementRelateToOneForCreateInput {
+  create: StatementCreateInput
+  connect: StatementWhereUniqueInput
+}
+
+input PaymentAllocationRelateToManyForCreateInput {
+  create: [PaymentAllocationCreateInput!]
+  connect: [PaymentAllocationWhereUniqueInput!]
+}
+
+input CreditMemoRelateToManyForCreateInput {
+  create: [CreditMemoCreateInput!]
+  connect: [CreditMemoWhereUniqueInput!]
+}
+
+type InvoiceLine {
+  id: ID!
+  invoice: Invoice
+  sourceJobLine: JobLine
+  jobNumber: Int
+  jobTitle: String
+  kind: String
+  description: String
+  partNumber: String
+  brand: String
+  condition: String
+  subletVendorName: String
+  quantityMilli: Int
+  centiHours: Int
+  unitPriceMinor: BigInt
+  extendedMinor: BigInt
+  taxCategoryCode: String
+  taxMinor: BigInt
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input InvoiceLineWhereUniqueInput {
+  id: ID
+}
+
+input InvoiceLineWhereInput {
+  AND: [InvoiceLineWhereInput!]
+  OR: [InvoiceLineWhereInput!]
+  NOT: [InvoiceLineWhereInput!]
+  id: IDFilter
+  invoice: InvoiceWhereInput
+  sourceJobLine: JobLineWhereInput
+  jobNumber: IntNullableFilter
+  jobTitle: StringFilter
+  kind: StringFilter
+  description: StringFilter
+  partNumber: StringFilter
+  brand: StringFilter
+  condition: StringFilter
+  subletVendorName: StringFilter
+  quantityMilli: IntNullableFilter
+  centiHours: IntNullableFilter
+  unitPriceMinor: BigIntFilter
+  extendedMinor: BigIntFilter
+  taxCategoryCode: StringFilter
+  taxMinor: BigIntFilter
+  sortOrder: IntNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input InvoiceLineOrderByInput {
+  id: OrderDirection
+  jobNumber: OrderDirection
+  jobTitle: OrderDirection
+  kind: OrderDirection
+  description: OrderDirection
+  partNumber: OrderDirection
+  brand: OrderDirection
+  condition: OrderDirection
+  subletVendorName: OrderDirection
+  quantityMilli: OrderDirection
+  centiHours: OrderDirection
+  unitPriceMinor: OrderDirection
+  extendedMinor: OrderDirection
+  taxCategoryCode: OrderDirection
+  taxMinor: OrderDirection
+  sortOrder: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input InvoiceLineUpdateInput {
+  invoice: InvoiceRelateToOneForUpdateInput
+  sourceJobLine: JobLineRelateToOneForUpdateInput
+  jobNumber: Int
+  jobTitle: String
+  kind: String
+  description: String
+  partNumber: String
+  brand: String
+  condition: String
+  subletVendorName: String
+  quantityMilli: Int
+  centiHours: Int
+  unitPriceMinor: BigInt
+  extendedMinor: BigInt
+  taxCategoryCode: String
+  taxMinor: BigInt
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobLineRelateToOneForUpdateInput {
+  create: JobLineCreateInput
+  connect: JobLineWhereUniqueInput
+  disconnect: Boolean
+}
+
+input InvoiceLineUpdateArgs {
+  where: InvoiceLineWhereUniqueInput!
+  data: InvoiceLineUpdateInput!
+}
+
+input InvoiceLineCreateInput {
+  invoice: InvoiceRelateToOneForCreateInput
+  sourceJobLine: JobLineRelateToOneForCreateInput
+  jobNumber: Int
+  jobTitle: String
+  kind: String
+  description: String
+  partNumber: String
+  brand: String
+  condition: String
+  subletVendorName: String
+  quantityMilli: Int
+  centiHours: Int
+  unitPriceMinor: BigInt
+  extendedMinor: BigInt
+  taxCategoryCode: String
+  taxMinor: BigInt
+  sortOrder: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input JobLineRelateToOneForCreateInput {
+  create: JobLineCreateInput
+  connect: JobLineWhereUniqueInput
+}
+
+type Payment {
+  id: ID!
+  shop: Shop
+  purpose: String
+  repairOrder: RepairOrder
+  customer: Customer
+  targetInvoiceIds: JSON
+  tender: String
+  amountMinor: BigInt
+  surchargeMinor: BigInt
+  allocatedMinor: BigInt
+  refundedMinor: BigInt
+  provider: String
+  providerSessionId: String
+  providerPaymentId: String
+  idempotencyKey: String
+  payerName: String
+  checkNumber: String
+  cardBrand: String
+  cardLast4: String
+  failureMessage: String
+  businessDate: CalendarDay
+  receivedBy: User
+  allocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
+  allocationsCount(where: PaymentAllocationWhereInput! = {}): Int
+  refunds(where: RefundWhereInput! = {}, orderBy: [RefundOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RefundWhereUniqueInput): [Refund!]
+  refundsCount(where: RefundWhereInput! = {}): Int
+  settledAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PaymentWhereUniqueInput {
+  id: ID
+  idempotencyKey: String
+}
+
+input PaymentWhereInput {
+  AND: [PaymentWhereInput!]
+  OR: [PaymentWhereInput!]
+  NOT: [PaymentWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  purpose: StringFilter
+  repairOrder: RepairOrderWhereInput
+  customer: CustomerWhereInput
+  tender: StringFilter
+  amountMinor: BigIntFilter
+  surchargeMinor: BigIntFilter
+  allocatedMinor: BigIntFilter
+  refundedMinor: BigIntFilter
+  provider: StringFilter
+  providerSessionId: StringFilter
+  providerPaymentId: StringFilter
+  idempotencyKey: StringFilter
+  payerName: StringFilter
+  checkNumber: StringFilter
+  cardBrand: StringFilter
+  cardLast4: StringFilter
+  failureMessage: StringFilter
+  businessDate: CalendarDayNullableFilter
+  receivedBy: UserWhereInput
+  allocations: PaymentAllocationManyRelationFilter
+  refunds: RefundManyRelationFilter
+  settledAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input RefundManyRelationFilter {
+  every: RefundWhereInput
+  some: RefundWhereInput
+  none: RefundWhereInput
+}
+
+input PaymentOrderByInput {
+  id: OrderDirection
+  purpose: OrderDirection
+  tender: OrderDirection
+  amountMinor: OrderDirection
+  surchargeMinor: OrderDirection
+  allocatedMinor: OrderDirection
+  refundedMinor: OrderDirection
+  provider: OrderDirection
+  providerSessionId: OrderDirection
+  providerPaymentId: OrderDirection
+  idempotencyKey: OrderDirection
+  payerName: OrderDirection
+  checkNumber: OrderDirection
+  cardBrand: OrderDirection
+  cardLast4: OrderDirection
+  failureMessage: OrderDirection
+  businessDate: OrderDirection
+  settledAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PaymentUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  purpose: String
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  targetInvoiceIds: JSON
+  tender: String
+  amountMinor: BigInt
+  surchargeMinor: BigInt
+  allocatedMinor: BigInt
+  refundedMinor: BigInt
+  provider: String
+  providerSessionId: String
+  providerPaymentId: String
+  idempotencyKey: String
+  payerName: String
+  checkNumber: String
+  cardBrand: String
+  cardLast4: String
+  failureMessage: String
+  businessDate: CalendarDay
+  receivedBy: UserRelateToOneForUpdateInput
+  allocations: PaymentAllocationRelateToManyForUpdateInput
+  refunds: RefundRelateToManyForUpdateInput
+  settledAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RefundRelateToManyForUpdateInput {
+  disconnect: [RefundWhereUniqueInput!]
+  set: [RefundWhereUniqueInput!]
+  create: [RefundCreateInput!]
+  connect: [RefundWhereUniqueInput!]
+}
+
+input PaymentUpdateArgs {
+  where: PaymentWhereUniqueInput!
+  data: PaymentUpdateInput!
+}
+
+input PaymentCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  purpose: String
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  targetInvoiceIds: JSON
+  tender: String
+  amountMinor: BigInt
+  surchargeMinor: BigInt
+  allocatedMinor: BigInt
+  refundedMinor: BigInt
+  provider: String
+  providerSessionId: String
+  providerPaymentId: String
+  idempotencyKey: String
+  payerName: String
+  checkNumber: String
+  cardBrand: String
+  cardLast4: String
+  failureMessage: String
+  businessDate: CalendarDay
+  receivedBy: UserRelateToOneForCreateInput
+  allocations: PaymentAllocationRelateToManyForCreateInput
+  refunds: RefundRelateToManyForCreateInput
+  settledAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RefundRelateToManyForCreateInput {
+  create: [RefundCreateInput!]
+  connect: [RefundWhereUniqueInput!]
+}
+
+type PaymentAllocation {
+  id: ID!
+  payment: Payment
+  invoice: Invoice
+  refund: Refund
+  amountMinor: BigInt
+  at: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PaymentAllocationWhereUniqueInput {
+  id: ID
+}
+
+input PaymentAllocationWhereInput {
+  AND: [PaymentAllocationWhereInput!]
+  OR: [PaymentAllocationWhereInput!]
+  NOT: [PaymentAllocationWhereInput!]
+  id: IDFilter
+  payment: PaymentWhereInput
+  invoice: InvoiceWhereInput
+  refund: RefundWhereInput
+  amountMinor: BigIntFilter
+  at: DateTimeNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input PaymentAllocationOrderByInput {
+  id: OrderDirection
+  amountMinor: OrderDirection
+  at: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input PaymentAllocationUpdateInput {
+  payment: PaymentRelateToOneForUpdateInput
+  invoice: InvoiceRelateToOneForUpdateInput
+  refund: RefundRelateToOneForUpdateInput
+  amountMinor: BigInt
+  at: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RefundRelateToOneForUpdateInput {
+  create: RefundCreateInput
+  connect: RefundWhereUniqueInput
+  disconnect: Boolean
+}
+
+input PaymentAllocationUpdateArgs {
+  where: PaymentAllocationWhereUniqueInput!
+  data: PaymentAllocationUpdateInput!
+}
+
+input PaymentAllocationCreateInput {
+  payment: PaymentRelateToOneForCreateInput
+  invoice: InvoiceRelateToOneForCreateInput
+  refund: RefundRelateToOneForCreateInput
+  amountMinor: BigInt
+  at: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RefundRelateToOneForCreateInput {
+  create: RefundCreateInput
+  connect: RefundWhereUniqueInput
+}
+
+type Refund {
+  id: ID!
+  payment: Payment
+  amountMinor: BigInt
+  reason: String
+  approval: ApprovalRequest
+  provider: String
+  providerRefundId: String
+  businessDate: CalendarDay
+  requestedBy: User
+  failureMessage: String
+  settledAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RefundWhereUniqueInput {
+  id: ID
+}
+
+input RefundWhereInput {
+  AND: [RefundWhereInput!]
+  OR: [RefundWhereInput!]
+  NOT: [RefundWhereInput!]
+  id: IDFilter
+  payment: PaymentWhereInput
+  amountMinor: BigIntFilter
+  reason: StringFilter
+  approval: ApprovalRequestWhereInput
+  provider: StringFilter
+  providerRefundId: StringFilter
+  businessDate: CalendarDayNullableFilter
+  requestedBy: UserWhereInput
+  failureMessage: StringFilter
+  settledAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input RefundOrderByInput {
+  id: OrderDirection
+  amountMinor: OrderDirection
+  reason: OrderDirection
+  provider: OrderDirection
+  providerRefundId: OrderDirection
+  businessDate: OrderDirection
+  failureMessage: OrderDirection
+  settledAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input RefundUpdateInput {
+  payment: PaymentRelateToOneForUpdateInput
+  amountMinor: BigInt
+  reason: String
+  approval: ApprovalRequestRelateToOneForUpdateInput
+  provider: String
+  providerRefundId: String
+  businessDate: CalendarDay
+  requestedBy: UserRelateToOneForUpdateInput
+  failureMessage: String
+  settledAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RefundUpdateArgs {
+  where: RefundWhereUniqueInput!
+  data: RefundUpdateInput!
+}
+
+input RefundCreateInput {
+  payment: PaymentRelateToOneForCreateInput
+  amountMinor: BigInt
+  reason: String
+  approval: ApprovalRequestRelateToOneForCreateInput
+  provider: String
+  providerRefundId: String
+  businessDate: CalendarDay
+  requestedBy: UserRelateToOneForCreateInput
+  failureMessage: String
+  settledAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type Statement {
+  id: ID!
+  businessAccount: BusinessAccount
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  openingMinor: BigInt
+  chargesMinor: BigInt
+  paymentsMinor: BigInt
+  creditsMinor: BigInt
+  closingMinor: BigInt
+  sentAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StatementWhereUniqueInput {
+  id: ID
+}
+
+input StatementWhereInput {
+  AND: [StatementWhereInput!]
+  OR: [StatementWhereInput!]
+  NOT: [StatementWhereInput!]
+  id: IDFilter
+  businessAccount: BusinessAccountWhereInput
+  periodStart: CalendarDayNullableFilter
+  periodEnd: CalendarDayNullableFilter
+  openingMinor: BigIntFilter
+  chargesMinor: BigIntFilter
+  paymentsMinor: BigIntFilter
+  creditsMinor: BigIntFilter
+  closingMinor: BigIntFilter
+  sentAt: DateTimeNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input StatementOrderByInput {
+  id: OrderDirection
+  periodStart: OrderDirection
+  periodEnd: OrderDirection
+  openingMinor: OrderDirection
+  chargesMinor: OrderDirection
+  paymentsMinor: OrderDirection
+  creditsMinor: OrderDirection
+  closingMinor: OrderDirection
+  sentAt: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input StatementUpdateInput {
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  openingMinor: BigInt
+  chargesMinor: BigInt
+  paymentsMinor: BigInt
+  creditsMinor: BigInt
+  closingMinor: BigInt
+  sentAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StatementUpdateArgs {
+  where: StatementWhereUniqueInput!
+  data: StatementUpdateInput!
+}
+
+input StatementCreateInput {
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  openingMinor: BigInt
+  chargesMinor: BigInt
+  paymentsMinor: BigInt
+  creditsMinor: BigInt
+  closingMinor: BigInt
+  sentAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type WarrantyCoverage {
+  id: ID!
+  repairOrder: RepairOrder
+  job: Job
+  invoice: Invoice
+  vehicle: Vehicle
+  termCode: String
+  termName: String
+  invoiceText: String
+  startsOn: CalendarDay
+  endsOn: CalendarDay
+  startMiles: Int
+  endsAtMiles: Int
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyCoverageWhereUniqueInput {
+  id: ID
+}
+
+input WarrantyCoverageWhereInput {
+  AND: [WarrantyCoverageWhereInput!]
+  OR: [WarrantyCoverageWhereInput!]
+  NOT: [WarrantyCoverageWhereInput!]
+  id: IDFilter
+  repairOrder: RepairOrderWhereInput
+  job: JobWhereInput
+  invoice: InvoiceWhereInput
+  vehicle: VehicleWhereInput
+  termCode: StringFilter
+  termName: StringFilter
+  invoiceText: StringFilter
+  startsOn: CalendarDayNullableFilter
+  endsOn: CalendarDayNullableFilter
+  startMiles: IntNullableFilter
+  endsAtMiles: IntNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input WarrantyCoverageOrderByInput {
+  id: OrderDirection
+  termCode: OrderDirection
+  termName: OrderDirection
+  invoiceText: OrderDirection
+  startsOn: OrderDirection
+  endsOn: OrderDirection
+  startMiles: OrderDirection
+  endsAtMiles: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input WarrantyCoverageUpdateInput {
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  job: JobRelateToOneForUpdateInput
+  invoice: InvoiceRelateToOneForUpdateInput
+  vehicle: VehicleRelateToOneForUpdateInput
+  termCode: String
+  termName: String
+  invoiceText: String
+  startsOn: CalendarDay
+  endsOn: CalendarDay
+  startMiles: Int
+  endsAtMiles: Int
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WarrantyCoverageUpdateArgs {
+  where: WarrantyCoverageWhereUniqueInput!
+  data: WarrantyCoverageUpdateInput!
+}
+
+input WarrantyCoverageCreateInput {
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  job: JobRelateToOneForCreateInput
+  invoice: InvoiceRelateToOneForCreateInput
+  vehicle: VehicleRelateToOneForCreateInput
+  termCode: String
+  termName: String
+  invoiceText: String
+  startsOn: CalendarDay
+  endsOn: CalendarDay
+  startMiles: Int
+  endsAtMiles: Int
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -9405,6 +10747,72 @@ type Mutation {
   updateJobDecisions(data: [JobDecisionUpdateArgs!]!): [JobDecision]
   deleteJobDecision(where: JobDecisionWhereUniqueInput!): JobDecision
   deleteJobDecisions(where: [JobDecisionWhereUniqueInput!]!): [JobDecision]
+  createBusinessDayClose(data: BusinessDayCloseCreateInput!): BusinessDayClose
+  createBusinessDayCloses(data: [BusinessDayCloseCreateInput!]!): [BusinessDayClose]
+  updateBusinessDayClose(where: BusinessDayCloseWhereUniqueInput!, data: BusinessDayCloseUpdateInput!): BusinessDayClose
+  updateBusinessDayCloses(data: [BusinessDayCloseUpdateArgs!]!): [BusinessDayClose]
+  deleteBusinessDayClose(where: BusinessDayCloseWhereUniqueInput!): BusinessDayClose
+  deleteBusinessDayCloses(where: [BusinessDayCloseWhereUniqueInput!]!): [BusinessDayClose]
+  createCreditMemo(data: CreditMemoCreateInput!): CreditMemo
+  createCreditMemos(data: [CreditMemoCreateInput!]!): [CreditMemo]
+  updateCreditMemo(where: CreditMemoWhereUniqueInput!, data: CreditMemoUpdateInput!): CreditMemo
+  updateCreditMemos(data: [CreditMemoUpdateArgs!]!): [CreditMemo]
+  deleteCreditMemo(where: CreditMemoWhereUniqueInput!): CreditMemo
+  deleteCreditMemos(where: [CreditMemoWhereUniqueInput!]!): [CreditMemo]
+  createCreditMemoLine(data: CreditMemoLineCreateInput!): CreditMemoLine
+  createCreditMemoLines(data: [CreditMemoLineCreateInput!]!): [CreditMemoLine]
+  updateCreditMemoLine(where: CreditMemoLineWhereUniqueInput!, data: CreditMemoLineUpdateInput!): CreditMemoLine
+  updateCreditMemoLines(data: [CreditMemoLineUpdateArgs!]!): [CreditMemoLine]
+  deleteCreditMemoLine(where: CreditMemoLineWhereUniqueInput!): CreditMemoLine
+  deleteCreditMemoLines(where: [CreditMemoLineWhereUniqueInput!]!): [CreditMemoLine]
+  createFinancingApplication(data: FinancingApplicationCreateInput!): FinancingApplication
+  createFinancingApplications(data: [FinancingApplicationCreateInput!]!): [FinancingApplication]
+  updateFinancingApplication(where: FinancingApplicationWhereUniqueInput!, data: FinancingApplicationUpdateInput!): FinancingApplication
+  updateFinancingApplications(data: [FinancingApplicationUpdateArgs!]!): [FinancingApplication]
+  deleteFinancingApplication(where: FinancingApplicationWhereUniqueInput!): FinancingApplication
+  deleteFinancingApplications(where: [FinancingApplicationWhereUniqueInput!]!): [FinancingApplication]
+  createInvoice(data: InvoiceCreateInput!): Invoice
+  createInvoices(data: [InvoiceCreateInput!]!): [Invoice]
+  updateInvoice(where: InvoiceWhereUniqueInput!, data: InvoiceUpdateInput!): Invoice
+  updateInvoices(data: [InvoiceUpdateArgs!]!): [Invoice]
+  deleteInvoice(where: InvoiceWhereUniqueInput!): Invoice
+  deleteInvoices(where: [InvoiceWhereUniqueInput!]!): [Invoice]
+  createInvoiceLine(data: InvoiceLineCreateInput!): InvoiceLine
+  createInvoiceLines(data: [InvoiceLineCreateInput!]!): [InvoiceLine]
+  updateInvoiceLine(where: InvoiceLineWhereUniqueInput!, data: InvoiceLineUpdateInput!): InvoiceLine
+  updateInvoiceLines(data: [InvoiceLineUpdateArgs!]!): [InvoiceLine]
+  deleteInvoiceLine(where: InvoiceLineWhereUniqueInput!): InvoiceLine
+  deleteInvoiceLines(where: [InvoiceLineWhereUniqueInput!]!): [InvoiceLine]
+  createPayment(data: PaymentCreateInput!): Payment
+  createPayments(data: [PaymentCreateInput!]!): [Payment]
+  updatePayment(where: PaymentWhereUniqueInput!, data: PaymentUpdateInput!): Payment
+  updatePayments(data: [PaymentUpdateArgs!]!): [Payment]
+  deletePayment(where: PaymentWhereUniqueInput!): Payment
+  deletePayments(where: [PaymentWhereUniqueInput!]!): [Payment]
+  createPaymentAllocation(data: PaymentAllocationCreateInput!): PaymentAllocation
+  createPaymentAllocations(data: [PaymentAllocationCreateInput!]!): [PaymentAllocation]
+  updatePaymentAllocation(where: PaymentAllocationWhereUniqueInput!, data: PaymentAllocationUpdateInput!): PaymentAllocation
+  updatePaymentAllocations(data: [PaymentAllocationUpdateArgs!]!): [PaymentAllocation]
+  deletePaymentAllocation(where: PaymentAllocationWhereUniqueInput!): PaymentAllocation
+  deletePaymentAllocations(where: [PaymentAllocationWhereUniqueInput!]!): [PaymentAllocation]
+  createRefund(data: RefundCreateInput!): Refund
+  createRefunds(data: [RefundCreateInput!]!): [Refund]
+  updateRefund(where: RefundWhereUniqueInput!, data: RefundUpdateInput!): Refund
+  updateRefunds(data: [RefundUpdateArgs!]!): [Refund]
+  deleteRefund(where: RefundWhereUniqueInput!): Refund
+  deleteRefunds(where: [RefundWhereUniqueInput!]!): [Refund]
+  createStatement(data: StatementCreateInput!): Statement
+  createStatements(data: [StatementCreateInput!]!): [Statement]
+  updateStatement(where: StatementWhereUniqueInput!, data: StatementUpdateInput!): Statement
+  updateStatements(data: [StatementUpdateArgs!]!): [Statement]
+  deleteStatement(where: StatementWhereUniqueInput!): Statement
+  deleteStatements(where: [StatementWhereUniqueInput!]!): [Statement]
+  createWarrantyCoverage(data: WarrantyCoverageCreateInput!): WarrantyCoverage
+  createWarrantyCoverages(data: [WarrantyCoverageCreateInput!]!): [WarrantyCoverage]
+  updateWarrantyCoverage(where: WarrantyCoverageWhereUniqueInput!, data: WarrantyCoverageUpdateInput!): WarrantyCoverage
+  updateWarrantyCoverages(data: [WarrantyCoverageUpdateArgs!]!): [WarrantyCoverage]
+  deleteWarrantyCoverage(where: WarrantyCoverageWhereUniqueInput!): WarrantyCoverage
+  deleteWarrantyCoverages(where: [WarrantyCoverageWhereUniqueInput!]!): [WarrantyCoverage]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -9706,6 +11114,39 @@ type Query {
   jobDecision(where: JobDecisionWhereUniqueInput!): JobDecision
   jobDecisions(where: JobDecisionWhereInput! = {}, orderBy: [JobDecisionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobDecisionWhereUniqueInput): [JobDecision!]
   jobDecisionsCount(where: JobDecisionWhereInput! = {}): Int
+  businessDayClose(where: BusinessDayCloseWhereUniqueInput!): BusinessDayClose
+  businessDayCloses(where: BusinessDayCloseWhereInput! = {}, orderBy: [BusinessDayCloseOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BusinessDayCloseWhereUniqueInput): [BusinessDayClose!]
+  businessDayClosesCount(where: BusinessDayCloseWhereInput! = {}): Int
+  creditMemo(where: CreditMemoWhereUniqueInput!): CreditMemo
+  creditMemos(where: CreditMemoWhereInput! = {}, orderBy: [CreditMemoOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CreditMemoWhereUniqueInput): [CreditMemo!]
+  creditMemosCount(where: CreditMemoWhereInput! = {}): Int
+  creditMemoLine(where: CreditMemoLineWhereUniqueInput!): CreditMemoLine
+  creditMemoLines(where: CreditMemoLineWhereInput! = {}, orderBy: [CreditMemoLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CreditMemoLineWhereUniqueInput): [CreditMemoLine!]
+  creditMemoLinesCount(where: CreditMemoLineWhereInput! = {}): Int
+  financingApplication(where: FinancingApplicationWhereUniqueInput!): FinancingApplication
+  financingApplications(where: FinancingApplicationWhereInput! = {}, orderBy: [FinancingApplicationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FinancingApplicationWhereUniqueInput): [FinancingApplication!]
+  financingApplicationsCount(where: FinancingApplicationWhereInput! = {}): Int
+  invoice(where: InvoiceWhereUniqueInput!): Invoice
+  invoices(where: InvoiceWhereInput! = {}, orderBy: [InvoiceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InvoiceWhereUniqueInput): [Invoice!]
+  invoicesCount(where: InvoiceWhereInput! = {}): Int
+  invoiceLine(where: InvoiceLineWhereUniqueInput!): InvoiceLine
+  invoiceLines(where: InvoiceLineWhereInput! = {}, orderBy: [InvoiceLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InvoiceLineWhereUniqueInput): [InvoiceLine!]
+  invoiceLinesCount(where: InvoiceLineWhereInput! = {}): Int
+  payment(where: PaymentWhereUniqueInput!): Payment
+  payments(where: PaymentWhereInput! = {}, orderBy: [PaymentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentWhereUniqueInput): [Payment!]
+  paymentsCount(where: PaymentWhereInput! = {}): Int
+  paymentAllocation(where: PaymentAllocationWhereUniqueInput!): PaymentAllocation
+  paymentAllocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
+  paymentAllocationsCount(where: PaymentAllocationWhereInput! = {}): Int
+  refund(where: RefundWhereUniqueInput!): Refund
+  refunds(where: RefundWhereInput! = {}, orderBy: [RefundOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RefundWhereUniqueInput): [Refund!]
+  refundsCount(where: RefundWhereInput! = {}): Int
+  statement(where: StatementWhereUniqueInput!): Statement
+  statements(where: StatementWhereInput! = {}, orderBy: [StatementOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StatementWhereUniqueInput): [Statement!]
+  statementsCount(where: StatementWhereInput! = {}): Int
+  warrantyCoverage(where: WarrantyCoverageWhereUniqueInput!): WarrantyCoverage
+  warrantyCoverages(where: WarrantyCoverageWhereInput! = {}, orderBy: [WarrantyCoverageOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyCoverageWhereUniqueInput): [WarrantyCoverage!]
+  warrantyCoveragesCount(where: WarrantyCoverageWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult

@@ -4,6 +4,11 @@ import { runInTransaction } from '../lib/unitOfWork'
 import { toJsonValue } from '../lib/canonical'
 import { answerAuthorizationRequest, viewAuthorizationRequest, type PublicAnswerInput } from '../lib/authorization'
 import { resolveAccessToken } from '../lib/publicTokens'
+import { createPayment } from '../lib/payments'
+import { openCardPage, resolvePayment } from '../lib/cardFlow'
+import { cardPaymentsConfigured } from '../lib/stripeGateway'
+import { closeIfSettled } from '../lib/settlement'
+import { randomUUID } from 'node:crypto'
 import type { Db } from '../lib/db'
 
 /*
@@ -15,7 +20,7 @@ import type { Db } from '../lib/db'
 const CUSTOMER = systemActor('customer-link')
 const STATUS: Record<string, number> = {
   TOKEN_INVALID: 404, TOKEN_EXPIRED: 410, ESTIMATE_SUPERSEDED: 409, CONTENT_CHANGED: 409, METHOD_NOT_ALLOWED: 403,
-  EVIDENCE_MISSING: 422, INVALID_INPUT: 422, DISCLOSURE_MISSING: 422, INVALID_TRANSITION: 409, STALE_STATE: 409, RATE_LIMITED: 429,
+  EVIDENCE_MISSING: 422, PROVIDER_UNAVAILABLE: 503, GUARD_FAILED: 409, INVALID_INPUT: 422, DISCLOSURE_MISSING: 422, INVALID_TRANSITION: 409, STALE_STATE: 409, RATE_LIMITED: 429,
 }
 
 const respond = (body: unknown, status = 200) => new Response(JSON.stringify(toJsonValue(body)), {
@@ -119,3 +124,65 @@ export async function getInspection(db: Db, request: Request, token: string) {
     return fail(error)
   }
 }
+
+// ── Paying an invoice by link ─────────────────────────────────────────────────
+
+async function invoiceView(db: Db, token: string, consume: boolean) {
+  return runInTransaction(db, async uow => {
+    const access = await resolveAccessToken(uow.tx, 'invoice_pay', token, uow.now, { consume })
+    const invoice = await uow.tx.invoice.findUnique({
+      where: { id: access.subjectId },
+      include: { shop: { select: { name: true, legalName: true, phone: true, addressLine1: true, city: true, region: true, postalCode: true } }, customer: { select: { displayName: true } }, repairOrder: { select: { roNumber: true, vehicle: { select: { year: true, make: true, model: true } } } }, lines: { orderBy: { sortOrder: 'asc' } } },
+    })
+    if (!invoice) throw new (await import('../lib/errors')).DomainError('TOKEN_INVALID', 'This link is not valid.')
+    const pending = await uow.tx.payment.findFirst({ where: { targetInvoiceIds: { equals: [invoice.id] as never }, status: { in: ['initiated', 'pending', 'unknown'] } }, orderBy: { createdAt: 'desc' }, select: { id: true } })
+    return {
+      invoiceNumber: invoice.invoiceNumber, status: invoice.status, shop: invoice.shop, customerName: invoice.customer?.displayName ?? '', roNumber: invoice.repairOrder?.roNumber, vehicle: [invoice.repairOrder?.vehicle?.year, invoice.repairOrder?.vehicle?.make, invoice.repairOrder?.vehicle?.model].filter(Boolean).join(' '),
+      invoiceDate: invoice.invoiceDate?.toISOString().slice(0, 10), dueDate: invoice.dueDate?.toISOString().slice(0, 10),
+      totals: { subtotalMinor: (invoice.totalMinor - invoice.taxMinor).toString(), taxMinor: invoice.taxMinor.toString(), totalMinor: invoice.totalMinor.toString(), paidMinor: invoice.paidMinor.toString(), creditedMinor: invoice.creditedMinor.toString(), balanceMinor: invoice.balanceMinor.toString() },
+      lines: invoice.lines.map(l => ({ job: l.jobNumber, kind: l.kind, description: l.description, quantityMilli: l.quantityMilli, centiHours: l.centiHours, extendedMinor: l.extendedMinor.toString() })),
+      canPayByCard: cardPaymentsConfigured() && invoice.balanceMinor > 0n,
+      paymentInProgress: pending?.id ?? null,
+    }
+  }, { actorKind: 'system' })
+}
+
+export async function getInvoice(db: Db, request: Request, token: string) {
+  if (limited(request, 'inv-get', 60)) return tooMany()
+  try { return respond(await invoiceView(db, token, true)) } catch (error) { return fail(error) }
+}
+
+/** POST {} starts a card payment for the whole balance and returns the Stripe page. POST { paymentId } asks where it stands. */
+export async function postInvoicePayment(db: Db, request: Request, token: string) {
+  if (limited(request, 'inv-post', 12)) return tooMany()
+  try {
+    const input = await body(request)
+    const view = await invoiceView(db, token, false)
+    const access = await db.publicAccessToken.findUnique({ where: { tokenHash: (await import('../lib/publicTokens')).hashToken('invoice_pay', token) } })
+    const invoiceId = access!.subjectId
+    if (typeof input.paymentId === 'string') {
+      const payment = await db.payment.findUnique({ where: { id: input.paymentId }, select: { id: true, targetInvoiceIds: true } })
+      if (!payment || !(payment.targetInvoiceIds as string[]).includes(invoiceId)) throw new (await import('../lib/errors')).DomainError('TOKEN_INVALID', 'This link is not valid.')
+      const result = await resolvePayment(db, payment.id, CUSTOMER)
+      return respond({ status: result.status, invoice: await invoiceView(db, token, false) })
+    }
+    if (!cardPaymentsConfigured()) throw new (await import('../lib/errors')).DomainError('PROVIDER_UNAVAILABLE', 'Card payments are not available right now. Please call the shop.')
+    if (BigInt(view.totals.balanceMinor) <= 0n) throw new (await import('../lib/errors')).DomainError('GUARD_FAILED', 'This invoice is already paid.')
+    if (view.paymentInProgress) {
+      const resolved = await resolvePayment(db, view.paymentInProgress, CUSTOMER)
+      if (['initiated', 'pending', 'unknown'].includes(resolved.status)) {
+        const again = await openCardPage(db, view.paymentInProgress, { description: `Invoice ${view.invoiceNumber}`, returnPath: `/pay/${token}` })
+        return respond({ status: 'pending', paymentId: view.paymentInProgress, checkoutUrl: again.url })
+      }
+    }
+    const made = await runInTransaction(db, async uow => {
+      const key = `link-${randomUUID()}`
+      return createPayment(uow, CUSTOMER, { purpose: 'invoice', invoiceIds: [invoiceId], tender: 'card_link', amountMinor: view.totals.balanceMinor, payerName: view.customerName }, key)
+    }, { actorKind: 'system' })
+    const page = await openCardPage(db, made.id, { description: `Invoice ${view.invoiceNumber}`, returnPath: `/pay/${token}` })
+    return respond({ status: 'pending', paymentId: made.id, checkoutUrl: page.url }, 201)
+  } catch (error) {
+    return fail(error)
+  }
+}
+export { closeIfSettled }

@@ -38,6 +38,10 @@ export const COMPOUND_UNIQUES: Record<string, string[]> = {
   EstimateVersion: ['@@unique([repairOrderId, versionNumber], map: "EstimateVersion_ro_number_key")'],
   InspectionTemplateVersion: ['@@unique([templateId, versionNumber], map: "InspectionTemplateVersion_template_number_key")'],
   InspectionItemResult: ['@@unique([inspectionId, templateItemId], map: "InspectionItemResult_inspection_item_key")'],
+  // Invoicing, payments and day close (SCHEMA §11).
+  Invoice: ['@@index([repairOrderId, payerKind], map: "Invoice_ro_payer_idx")', '@@index([shopId, status], map: "Invoice_shop_status_idx")'],
+  Payment: ['@@index([shopId, businessDate], map: "Payment_shop_date_idx")', '@@index([status, createdAt], map: "Payment_status_created_idx")'],
+  BusinessDayClose: ['@@unique([shopId, businessDate], map: "BusinessDayClose_shop_date_key")'],
   CannedJobVersion: ['@@unique([cannedJobId, versionNumber], map: "CannedJobVersion_job_number_key")'],
   PublishedService: ['@@unique([shopId, slug], map: "PublishedService_shop_slug_key")'],
   LaborOperation: ['@@index([code], map: "LaborOperation_code_idx")'],

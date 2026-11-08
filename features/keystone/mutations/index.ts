@@ -8,6 +8,7 @@ import * as audit from './audit'
 import * as approvals from './approvals'
 import * as p1 from './phase1'
 import * as p2 from './phase2'
+import * as p3 from './phase3'
 import '../lib/orgControls'
 import '../lib/policy'
 
@@ -24,6 +25,8 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         redirectToInit: Boolean
         verifyAuditChain: JSON
         checkAuthorizedCeiling(shopId: ID!, authorizedMinor: String!, priceMinor: String!, taxMinor: String): JSON
+        previewShopInvoice(repairOrderId: ID!): JSON
+        shopDaySummary(shopId: ID!, businessDate: String!): JSON
       }
       input UserUpdateProfileInput { name: String, email: String, password: String, onboardingStatus: String }
       type Mutation {
@@ -66,6 +69,16 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         requestCustomerAuthorization(estimateVersionId: ID!, channel: String!, contactId: ID, idempotencyKey: String!): JSON
         recordCustomerAuthorization(input: JSON!, idempotencyKey: String!): JSON
         createCallbackTask(repairOrderId: ID!, kind: String, title: String!, detail: String, idempotencyKey: String!): JSON
+        finalizeShopInvoice(input: JSON!, idempotencyKey: String!): JSON
+        createInvoicePayLink(invoiceId: ID!, idempotencyKey: String!): JSON
+        takeShopPayment(input: JSON!, idempotencyKey: String!): JSON
+        checkShopPayment(paymentId: ID!): JSON
+        resolveShopPayments(shopId: ID!): JSON
+        refundShopPayment(input: JSON!, idempotencyKey: String!): JSON
+        issueShopCreditMemo(input: JSON!, idempotencyKey: String!): JSON
+        closeShopDay(shopId: ID!, businessDate: String!, drawerCountMinor: String!, varianceReason: String, idempotencyKey: String!): JSON
+        reopenShopDay(dayCloseId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        releaseShopVehicle(repairOrderId: ID!, reason: String, approvalRequestId: ID, idempotencyKey: String!): JSON
         closeCallbackTask(taskId: ID!, expectedVersion: Int!, outcome: String!, cancel: Boolean, idempotencyKey: String!): JSON
       }
     `,
@@ -74,6 +87,8 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         redirectToInit,
         verifyAuditChain: op(audit.verifyAuditChain),
         checkAuthorizedCeiling: op(p1.checkAuthorizedCeiling),
+        previewShopInvoice: op(p3.previewShopInvoice),
+        shopDaySummary: op(p3.shopDaySummary),
       },
       Mutation: {
         updateActiveUser,
@@ -116,6 +131,16 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         recordCustomerAuthorization: op(p2.recordCustomerAuthorization),
         createCallbackTask: op(p2.createCallbackTask),
         closeCallbackTask: op(p2.closeCallbackTask),
+        finalizeShopInvoice: op(p3.finalizeShopInvoice),
+        createInvoicePayLink: op(p3.createInvoicePayLink),
+        takeShopPayment: op(p3.takeShopPayment),
+        checkShopPayment: op(p3.checkShopPayment),
+        resolveShopPayments: op(p3.resolveShopPayments),
+        refundShopPayment: op(p3.refundShopPayment),
+        issueShopCreditMemo: op(p3.issueShopCreditMemo),
+        closeShopDay: op(p3.closeShopDay),
+        reopenShopDay: op(p3.reopenShopDay),
+        releaseShopVehicle: op(p3.releaseShopVehicle),
       },
     },
   })

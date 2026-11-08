@@ -40,6 +40,16 @@ const OPS: Record<string, Record<string, string>> = {
   requestCustomerAuthorization: { estimateVersionId: 'ID!', channel: 'String!', contactId: 'ID' },
   recordCustomerAuthorization: { input: 'JSON!' },
   createCallbackTask: { repairOrderId: 'ID!', kind: 'String', title: 'String!', detail: 'String' },
+  finalizeShopInvoice: { input: 'JSON!' },
+  createInvoicePayLink: { invoiceId: 'ID!' },
+  takeShopPayment: { input: 'JSON!' },
+  checkShopPayment: { paymentId: 'ID!' },
+  resolveShopPayments: { shopId: 'ID!' },
+  refundShopPayment: { input: 'JSON!' },
+  issueShopCreditMemo: { input: 'JSON!' },
+  closeShopDay: { shopId: 'ID!', businessDate: 'String!', drawerCountMinor: 'String!', varianceReason: 'String' },
+  reopenShopDay: { dayCloseId: 'ID!', reason: 'String!', approvalRequestId: 'ID' },
+  releaseShopVehicle: { repairOrderId: 'ID!', reason: 'String', approvalRequestId: 'ID' },
   closeCallbackTask: { taskId: 'ID!', expectedVersion: 'Int!', outcome: 'String!', cancel: 'Boolean' },
 };
 

@@ -31,7 +31,7 @@ export const CREDENTIAL_MESSAGE =
 export const HUMAN_ONLY_MESSAGE =
   'Connected apps and assistants cannot record customer authorizations, approve, or publish policy. A person does this in the dashboard.'
 /** Human-only commands (INTEGRATIONS §8 "never exposed"): refused for every MCP session, write scope or not. */
-export const HUMAN_ONLY_MUTATIONS = new Set(['recordCustomerAuthorization', 'decideApprovalRequest', 'publishPolicyVersion', 'requestOrgControls', 'closeCallbackTask'])
+export const HUMAN_ONLY_MUTATIONS = new Set(['recordCustomerAuthorization', 'decideApprovalRequest', 'publishPolicyVersion', 'requestOrgControls', 'closeCallbackTask', 'finalizeShopInvoice', 'createInvoicePayLink', 'takeShopPayment', 'refundShopPayment', 'issueShopCreditMemo', 'closeShopDay', 'reopenShopDay', 'releaseShopVehicle'])
 const CREDENTIAL_MUTATION = /password|passcode|magicauth|apikey|oauth|token|endsession|initialuser|^authenticate/i
 const USER_UPDATE_MUTATION = /^update.*user/i
 const CREDENTIAL_FIELDS = ['password', 'email']
