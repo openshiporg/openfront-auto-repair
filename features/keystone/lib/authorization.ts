@@ -131,7 +131,6 @@ export async function issueEstimate(uow: UnitOfWork, actor: Actor, input: { repa
       await tx.job.update({ where: { id: job.id }, data: { offeredInVersionId: row.id, version: { increment: 1 } } })
     }
   }
-  uow.emit({ topic: 'estimate.sent', aggregateType: 'EstimateVersion', aggregateId: row.id, payload: { repairOrderId: ro.id, reference: row.reference }, dedupeKey: `estimate.sent:${row.id}` })
   return { id: row.id, reference: row.reference, versionNumber, contentHash, totalMinor: String(totals.totalMinor) }
 }
 
@@ -163,7 +162,6 @@ export async function requestAuthorization(uow: UnitOfWork, actor: Actor, input:
     },
   })
   auditCreate(uow, actor, 'AuthorizationRequest', row.id, 'authorization_request.created', { estimate: ev.reference, channel: input.channel, contact: contact?.label ?? null, expiresAt: row.expiresAt })
-  if (contact) uow.emit({ topic: 'authorization.link', aggregateType: 'AuthorizationRequest', aggregateId: row.id, payload: { channel: input.channel, contactId: contact.id, repairOrderId: ro.id }, dedupeKey: `authorization.link:${row.id}` })
   // The token is not returned here (command receipts are stored); callers derive it with authorizationLink().
   return { id: row.id, expiresAt: row.expiresAt?.toISOString() ?? null, status: row.status }
 }
@@ -335,7 +333,6 @@ async function applyAnswers(uow: UnitOfWork, actor: Actor, ev: any, ro: any, law
   }
   await refreshRoTotals(tx, ro.id)
   await tx.repairOrder.update({ where: { id: ro.id }, data: { version: { increment: 1 } } })
-  uow.emit({ topic: 'authorization.recorded', aggregateType: 'RepairOrder', aggregateId: ro.id, payload: { estimate: ev.reference, approved: approved.map(a => a.jobId), decided: decided.map(d => d.jobId), method: e.method }, dedupeKey: `authorization.recorded:${ev.id}:${sha256(canonicalJson(answers))}` })
   return { estimate: ev.reference, approved, decided, replacedPartsElection: election }
 }
 
@@ -440,7 +437,6 @@ export async function createStaffTask(uow: UnitOfWork, actor: Actor, input: Task
     },
   })
   auditCreate(uow, actor, 'StaffTask', row.id, 'task.created', { kind: input.kind, source: input.source, repairOrderId: input.repairOrderId ?? null })
-  uow.emit({ topic: 'task.created', aggregateType: 'StaffTask', aggregateId: row.id, payload: { kind: input.kind, shopId: input.shopId }, dedupeKey: `task.created:${row.id}` })
   return { id: row.id }
 }
 

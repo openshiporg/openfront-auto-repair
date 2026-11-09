@@ -302,7 +302,6 @@ export async function applyPublish(uow: UnitOfWork, actor: Actor, payload: Publi
     after: { versionNumber: row.versionNumber, contentHash: payload.contentHash, shops: shops.map(s => s.id) },
     metadata: { kind, solo: options.solo ?? false },
   })
-  uow.emit({ topic: 'policy.published', aggregateType: spec.model, aggregateId: payload.versionId, payload: { kind, headId, versionNumber: row.versionNumber }, dedupeKey: `policy.published:${payload.versionId}` })
   return { versionId: payload.versionId, versionNumber: row.versionNumber as number, retiredVersionId: (previous?.id as string | undefined) ?? null, shops: shops.length }
 }
 

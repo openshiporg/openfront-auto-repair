@@ -221,14 +221,12 @@ export async function bookAppointment(uow: UnitOfWork, actor: Actor, input: Book
   })
   if (hold) await tx.bookingHold.update({ where: { id: hold.id }, data: { status: 'consumed', appointmentId: row.id } })
   auditCreate(uow, actor, 'Appointment', row.id, 'appointment.requested', { reference, shopId: input.shopId, startsAt: input.startsAt, kind: input.kind, source: input.source, status, holdId: hold?.id ?? null })
-  uow.emit({ topic: 'appointment.requested', aggregateType: 'Appointment', aggregateId: row.id, payload: { reference, shopId: input.shopId, startsAt: input.startsAt.toISOString(), status }, dedupeKey: `appointment.requested:${row.id}` })
   if (status === 'confirmed') emitConfirmation(uow, row.id, reference)
   return { id: row.id, reference, status, date: slot.date }
 }
 
 /** The confirmation is a transactional message; the sender checks consent and quiet hours when it goes out. */
 function emitConfirmation(uow: UnitOfWork, appointmentId: string, reference: string) {
-  uow.emit({ topic: 'message.appointment_confirmation', aggregateType: 'Appointment', aggregateId: appointmentId, payload: { reference, purpose: 'transactional' }, dedupeKey: `appointment.confirmed:${appointmentId}` })
 }
 
 export async function confirmAppointment(uow: UnitOfWork, actor: Actor, id: string, expectedVersion?: number | null) {
@@ -256,7 +254,6 @@ export async function rescheduleAppointment(uow: UnitOfWork, actor: Actor, input
   const endsAt = new Date(input.startsAt.getTime() + (row.endsAt.getTime() - row.startsAt.getTime()))
   await tx.appointment.update({ where: { id: row.id }, data: { startsAt: input.startsAt, endsAt, date: dateOnly(slot.date), kind, version: { increment: 1 } } })
   uow.audit({ eventType: 'appointment.rescheduled', entityType: 'Appointment', entityId: row.id, actorUserId: actorUserId(actor), before: { startsAt: row.startsAt, kind: row.kind }, after: { startsAt: input.startsAt, kind } })
-  uow.emit({ topic: 'message.appointment_rescheduled', aggregateType: 'Appointment', aggregateId: row.id, payload: { reference: row.reference, startsAt: input.startsAt.toISOString(), purpose: 'transactional' }, dedupeKey: `appointment.rescheduled:${row.id}:${row.version + 1}` })
   return { id: row.id, date: slot.date }
 }
 
@@ -264,7 +261,6 @@ export async function cancelAppointment(uow: UnitOfWork, actor: Actor, input: { 
   const reason = input.reason?.trim()
   if (!reason) throw new DomainError(Codes.INVALID_INPUT, 'Say why the appointment is cancelled.', { field: 'reason' })
   const row = await transition<Record<string, any>>(uow, { model: 'Appointment', id: input.id, from: ['requested', 'confirmed'], to: 'cancelled', expectedVersion: input.expectedVersion, actor, eventType: 'appointment.cancelled', reason, data: { cancelReason: reason.slice(0, 300) } })
-  uow.emit({ topic: 'appointment.cancelled', aggregateType: 'Appointment', aggregateId: input.id, payload: { reference: row.reference }, dedupeKey: `appointment.cancelled:${input.id}` })
   return { id: input.id, status: 'cancelled' }
 }
 

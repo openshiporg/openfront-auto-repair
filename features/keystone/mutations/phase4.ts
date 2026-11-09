@@ -11,7 +11,7 @@ import {
   type ApprovalGate, type OrderInput, type QuoteInput, type ReceiveInput,
 } from '../lib/supplierOrders'
 import { approveSupplierInvoice, exportSupplierInvoice, matchSupplierInvoice, recordSupplierInvoice, resolveDiscrepancy, type SupplierInvoiceInput } from '../lib/supplierInvoices'
-import { completeTireRegistration, confirmTireRegistration, recordJobTire, sweepTireRegistrations } from '../lib/tires'
+import { completeTireRegistration, confirmTireRegistration, recordJobTire } from '../lib/tires'
 import { AmbiguousSendError, supplierAdapter, type QuoteRequest } from '../../integrations/parts-supplier'
 import { textOf } from '../lib/partsInput'
 import type { Permission } from '../access'
@@ -328,9 +328,3 @@ export async function confirmShopTireRegistration(_root: unknown, args: { obliga
   return run(context, actor, 'tire_registration.confirm', args.idempotencyKey, args, uow => confirmTireRegistration(uow, actor, args))
 }
 
-/** Mark open registrations past their due day overdue. Safe to press any time; the worker runs the same sweep. */
-export async function sweepShopTireRegistrations(_root: unknown, args: { idempotencyKey: string }, context: Ctx) {
-  const actor = actorFromSession(context.session)
-  requirePermission(actor, 'canManageTireRegistrations')
-  return run(context, actor, 'tire_registration.sweep', args.idempotencyKey, {}, async uow => ({ overdue: await sweepTireRegistrations(uow, actor) }))
-}

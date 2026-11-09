@@ -589,7 +589,6 @@ __export(platform_exports, {
   Notification: () => Notification,
   Obligation: () => Obligation,
   OrganizationSettings: () => OrganizationSettings,
-  OutboxEvent: () => OutboxEvent,
   SecretBox: () => SecretBox,
   Sequence: () => Sequence,
   Shop: () => Shop,
@@ -1101,26 +1100,6 @@ var CommandReceipt = (0, import_core7.list)({
     responseBody: (0, import_fields7.json)(),
     recoveryPoint: (0, import_fields7.text)({ defaultValue: "completed" }),
     completedAt: (0, import_fields7.timestamp)({ defaultValue: { kind: "now" } }),
-    ...trackingFields
-  }
-});
-var OutboxEvent = (0, import_core7.list)({
-  access: governed("canReadAudit"),
-  ui: { listView: { initialColumns: ["topic", "status", "attempts", "nextAttemptAt", "aggregateType", "aggregateId"] } },
-  fields: {
-    topic: systemText({ indexed: true, required: true }),
-    aggregateType: systemText({ required: true }),
-    aggregateId: systemText({ indexed: true, required: true }),
-    dedupeKey: systemText({ indexed: "unique", required: true }),
-    payload: (0, import_fields7.json)({ ...readOnly }),
-    status: lifecycle(["pending", "leased", "delivered", "failed", "dead"]),
-    attempts: (0, import_fields7.integer)({ defaultValue: 0, ...readOnly }),
-    nextAttemptAt: (0, import_fields7.timestamp)({ defaultValue: { kind: "now" }, ...readOnly }),
-    leaseOwner: systemText(),
-    leaseExpiresAt: (0, import_fields7.timestamp)({ ...readOnly }),
-    fencingToken: (0, import_fields7.integer)({ defaultValue: 0, ...readOnly }),
-    lastError: systemText(),
-    deliveredAt: (0, import_fields7.timestamp)({ ...readOnly }),
     ...trackingFields
   }
 });
@@ -2835,8 +2814,352 @@ __export(parts_exports, {
   SupplierReturn: () => SupplierReturn,
   TireRegistrationObligation: () => TireRegistrationObligation
 });
-var import_core16 = require("@keystone-6/core");
+var import_core17 = require("@keystone-6/core");
 var import_fields15 = require("@keystone-6/core/fields");
+
+// features/keystone/lib/errors.ts
+var DomainError = class extends Error {
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = "DomainError";
+    this.code = code;
+    this.details = details;
+  }
+};
+var isDomainError = (error) => error instanceof DomainError;
+var Codes = {
+  NOT_AUTHORIZED: "NOT_AUTHORIZED",
+  NOT_FOUND: "NOT_FOUND",
+  INVALID_INPUT: "INVALID_INPUT",
+  INVALID_TRANSITION: "INVALID_TRANSITION",
+  STALE_STATE: "STALE_STATE",
+  GUARD_FAILED: "GUARD_FAILED",
+  IDEMPOTENCY_KEY_REQUIRED: "IDEMPOTENCY_KEY_REQUIRED",
+  IDEMPOTENCY_KEY_REUSED: "IDEMPOTENCY_KEY_REUSED",
+  IN_PROGRESS: "IN_PROGRESS",
+  APPROVAL_REQUIRED: "APPROVAL_REQUIRED",
+  SELF_APPROVAL: "SELF_APPROVAL",
+  AGENT_CANNOT_APPROVE: "AGENT_CANNOT_APPROVE",
+  APPROVAL_MISMATCH: "APPROVAL_MISMATCH",
+  LEASE_LOST: "LEASE_LOST",
+  STALE_FENCING_TOKEN: "STALE_FENCING_TOKEN",
+  AUDIT_CHAIN_BROKEN: "AUDIT_CHAIN_BROKEN",
+  IDEMPOTENCY_CONFLICT: "IDEMPOTENCY_CONFLICT",
+  AGENT_FORBIDDEN_ACTION: "AGENT_FORBIDDEN_ACTION",
+  AUTHORIZATION_REQUIRED: "AUTHORIZATION_REQUIRED",
+  REAUTHORIZATION_REQUIRED: "REAUTHORIZATION_REQUIRED",
+  DISCLOSURE_MISSING: "DISCLOSURE_MISSING",
+  CONSENT_BLOCKED: "CONSENT_BLOCKED",
+  CREDENTIAL_REQUIRED: "CREDENTIAL_REQUIRED",
+  CREDIT_HOLD: "CREDIT_HOLD",
+  PO_REQUIRED: "PO_REQUIRED",
+  TIN_REQUIRED: "TIN_REQUIRED",
+  TRUST_GATE: "TRUST_GATE",
+  POLICY_PUBLISHED: "POLICY_PUBLISHED",
+  POLICY_UNVERIFIED: "POLICY_UNVERIFIED",
+  ODOMETER_REGRESSION: "ODOMETER_REGRESSION",
+  CAPACITY_FULL: "CAPACITY_FULL",
+  HOLD_EXPIRED: "HOLD_EXPIRED",
+  OUTSIDE_HOURS: "OUTSIDE_HOURS",
+  PROVIDER_UNAVAILABLE: "PROVIDER_UNAVAILABLE",
+  SHOP_SUPPLIES_PROHIBITED: "SHOP_SUPPLIES_PROHIBITED",
+  POLICY_INVALID: "POLICY_INVALID",
+  POLICY_MISSING: "POLICY_MISSING",
+  SIGNATURE_REQUIRED: "SIGNATURE_REQUIRED",
+  ODOMETER_REQUIRED: "ODOMETER_REQUIRED",
+  DUPLICATE: "DUPLICATE",
+  GUIDE_AMBIGUOUS: "GUIDE_AMBIGUOUS",
+  PRICE_OVERRIDE_REQUIRED: "PRICE_OVERRIDE_REQUIRED",
+  CONTENT_CHANGED: "CONTENT_CHANGED",
+  TOKEN_INVALID: "TOKEN_INVALID",
+  TOKEN_EXPIRED: "TOKEN_EXPIRED",
+  ESTIMATE_SUPERSEDED: "ESTIMATE_SUPERSEDED",
+  EVIDENCE_MISSING: "EVIDENCE_MISSING",
+  METHOD_NOT_ALLOWED: "METHOD_NOT_ALLOWED",
+  RO_LOCKED: "RO_LOCKED"
+};
+
+// features/keystone/mcp-oauth/session.ts
+async function resolveMcpAccessToken(context, token, listKey = "User") {
+  try {
+    const sudo = context.sudo();
+    const record = await sudo.db.OAuthToken.findOne({ where: { token: digestToken(token) } });
+    if (!record || record.tokenType !== "access_token" || record.isRevoked !== "false" || !record.userId || !record.expiresAt || new Date(record.expiresAt).getTime() <= Date.now()) {
+      return void 0;
+    }
+    const app = await sudo.db.OAuthApp.findOne({ where: { clientId: record.clientId } });
+    if (!app || app.status !== "active") return void 0;
+    const mcp = {
+      clientId: record.clientId,
+      scopes: storedScopes(record.scopes),
+      tokenId: String(record.id)
+    };
+    const bound = await sudo.db.AgentIdentity.findMany({ where: { oauthApp: { id: { equals: app.id } } }, take: 1 });
+    if (bound[0]) return void 0;
+    return { itemId: String(record.userId), listKey, mcp };
+  } catch {
+    return void 0;
+  }
+}
+function withMcpBearerSessions(strategy, listKey = "User") {
+  return {
+    ...strategy,
+    async get({ context }) {
+      const token = bearerToken(context?.req?.headers?.authorization);
+      if (isMcpAccessToken(token)) return resolveMcpAccessToken(context, token, listKey);
+      return strategy.get({ context });
+    }
+  };
+}
+function mcpSessionMarker(session) {
+  const marker = session?.mcp;
+  return marker && typeof marker.clientId === "string" && Array.isArray(marker.scopes) ? marker : null;
+}
+
+// features/keystone/lib/actor.ts
+function actorFromSession(session) {
+  if (!session || !isSignedIn({ session })) throw new DomainError(Codes.NOT_AUTHORIZED, "Sign in to continue.");
+  const role = session.data.role;
+  const granted = new Set(role ? permissionNames.filter((name) => role[name] === true) : []);
+  const channel = mcpSessionMarker(session) ? "mcp" : "web";
+  return { kind: "user", userId: session.itemId, name: session.data.name, permissions: granted, channel };
+}
+var isMachine = (actor) => actor.kind === "agent" || actor.kind === "user" && actor.channel === "mcp";
+var dbActorKind = (actor) => isMachine(actor) ? "agent" : actor.kind;
+function requireHuman(actor, action) {
+  if (isMachine(actor)) throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, `Only a person can ${action}. An assistant can draft it or create a callback task for staff.`);
+}
+var systemActor = (name) => ({ kind: "system", name });
+function can(actor, permission) {
+  return actor.kind === "user" && actor.permissions.has(permission);
+}
+function requirePermission(actor, ...anyOf2) {
+  if (actor.kind === "system") return;
+  if (actor.kind === "agent") throw new DomainError(Codes.NOT_AUTHORIZED, "Agents act only through their tool grants.");
+  if (!anyOf2.some((permission) => actor.permissions.has(permission))) {
+    throw new DomainError(Codes.NOT_AUTHORIZED, `This needs the ${anyOf2.join(" or ")} permission.`);
+  }
+}
+var principalKey = (actor) => actor.kind === "user" ? `user:${actor.userId}` : actor.kind === "agent" ? `agent:${actor.agentId}` : `system:${actor.name}`;
+var actorUserId = (actor) => actor.kind === "user" ? actor.userId : null;
+var actorAgentId = (actor) => actor.kind === "agent" ? actor.agentId : null;
+
+// features/keystone/lib/cas.ts
+var COLUMN = /^[a-z][A-Za-z0-9]*$/;
+async function lockRow(tx, model, id) {
+  const rows = await tx.$queryRawUnsafe(`SELECT id FROM ${tableName(model)} WHERE id = $1 FOR UPDATE`, id);
+  if (!rows.length) throw new DomainError(Codes.NOT_FOUND, `${model} not found.`, { model, id });
+  const row = await delegateOf(tx, model).findUnique({ where: { id } });
+  return row;
+}
+async function transition(uow, spec) {
+  const statusField = spec.statusField ?? "status";
+  if (!COLUMN.test(statusField)) throw new Error("Invalid status field");
+  const row = await lockRow(uow.tx, spec.model, spec.id);
+  const currentStatus = String(row[statusField]);
+  const currentVersion = Number(row.version);
+  if (spec.expectedVersion !== void 0 && spec.expectedVersion !== null && spec.expectedVersion !== currentVersion) {
+    throw new DomainError(Codes.STALE_STATE, `${spec.model} changed since you loaded it. Reload and try again.`, { currentStatus, currentVersion });
+  }
+  if (!spec.from.includes(currentStatus)) {
+    throw new DomainError(Codes.INVALID_TRANSITION, `${spec.model} can't move from ${currentStatus} to ${spec.to}.`, { currentStatus, currentVersion, to: spec.to });
+  }
+  if (spec.guard) await spec.guard(row);
+  const extra = typeof spec.data === "function" ? await spec.data(row) : spec.data ?? {};
+  const result = await delegateOf(uow.tx, spec.model).updateMany({
+    where: { id: spec.id, version: currentVersion, [statusField]: { in: [...spec.from] } },
+    data: { ...extra, [statusField]: spec.to, version: { increment: 1 } }
+  });
+  if (result.count !== 1) {
+    throw new DomainError(Codes.STALE_STATE, `${spec.model} changed since you loaded it. Reload and try again.`, { currentStatus, currentVersion });
+  }
+  uow.audit({
+    eventType: spec.eventType,
+    entityType: spec.model,
+    entityId: spec.id,
+    actorUserId: actorUserId(spec.actor),
+    actorAgentId: actorAgentId(spec.actor),
+    approverId: spec.approverId ?? null,
+    reason: spec.reason ?? null,
+    before: { [statusField]: currentStatus, version: currentVersion },
+    after: { [statusField]: spec.to, version: currentVersion + 1, ...extra },
+    metadata: { ...spec.metadata ?? {}, ...spec.actor.kind === "system" ? { system: spec.actor.name } : {} }
+  });
+  return await delegateOf(uow.tx, spec.model).findUnique({ where: { id: spec.id } });
+}
+function auditCreate(uow, actor, model, id, eventType, after, extra = {}) {
+  uow.audit({
+    eventType,
+    entityType: model,
+    entityId: id,
+    actorUserId: actorUserId(actor),
+    actorAgentId: actorAgentId(actor),
+    reason: extra.reason ?? null,
+    after,
+    metadata: { ...extra.metadata ?? {}, ...actor.kind === "system" ? { system: actor.name } : {} }
+  });
+}
+
+// features/keystone/lib/partsInput.ts
+function milliOf(value, field, options = {}) {
+  const n = typeof value === "string" && /^-?\d+$/.test(value.trim()) ? Math.trunc(+value.trim()) : value;
+  const min = options.min ?? 1;
+  if (typeof n !== "number" || !Number.isSafeInteger(n) || n < min || n > (options.max ?? 1e8)) {
+    throw new DomainError(Codes.INVALID_INPUT, `${field} must be a whole number of thousandths${min >= 1 ? " above zero" : ""}.`, { field });
+  }
+  return n;
+}
+function centsOf(value, field, required = true) {
+  if (value === null || value === void 0 || value === "") {
+    if (required) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed, in whole cents.`, { field });
+    return 0n;
+  }
+  const text18 = String(value).trim();
+  if (!/^\d{1,12}$/.test(text18)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
+  return BigInt(text18);
+}
+function textOf(value, field, max, required = false) {
+  const text18 = String(value ?? "").trim().slice(0, max);
+  if (required && !text18) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed.`, { field });
+  return text18;
+}
+function idOf(value, field) {
+  if (typeof value !== "string" || !value || value.length > 64) throw new DomainError(Codes.INVALID_INPUT, `Choose ${field}.`, { field });
+  return value;
+}
+function choiceOf(value, allowed, field, fallback) {
+  if ((value === void 0 || value === null || value === "") && fallback !== void 0) return fallback;
+  if (!allowed.includes(value)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be one of: ${allowed.join(", ")}.`, { field });
+  return value;
+}
+function objectOf(value, field) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed.`, { field });
+  return value;
+}
+function listOf(value, field, max = 200) {
+  if (!Array.isArray(value) || value.length === 0) throw new DomainError(Codes.INVALID_INPUT, `Add at least one line to ${field}.`, { field });
+  if (value.length > max) throw new DomainError(Codes.INVALID_INPUT, `${field} can hold ${max} lines at most.`, { field });
+  return value;
+}
+var cents = (minor2) => {
+  const t = (minor2 < 0n ? -minor2 : minor2).toString().padStart(3, "0");
+  return `${minor2 < 0n ? "-" : ""}$${t.slice(0, -2)}.${t.slice(-2)}`;
+};
+
+// lib/zonedTime.ts
+var zoneParts = (timeZone, at) => Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at)).map((p) => [p.type, p.value]));
+function zonedDate(timeZone, at) {
+  const p = zoneParts(timeZone, typeof at === "number" ? at : at.getTime());
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function wallClockInstant(timeZone, date2, hhmm) {
+  const [h, m] = hhmm.split(":").map((x) => Number.parseInt(x, 10));
+  let guess = Date.parse(`${date2}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00Z`);
+  for (let i = 0; i < 3; i += 1) {
+    const p = zoneParts(timeZone, guess);
+    const local = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second));
+    const target = Date.UTC(Number(date2.slice(0, 4)), Number(date2.slice(5, 7)) - 1, Number(date2.slice(8, 10)), h, m);
+    const diff = target - local;
+    if (diff === 0) break;
+    guess += diff;
+  }
+  return new Date(guess);
+}
+
+// features/keystone/lib/tires.ts
+var TIRE_REGISTRATION_DAYS = 30;
+function normaliseTin(raw) {
+  const compact = String(raw ?? "").toUpperCase().replace(/[\s-]/g, "").replace(/^DOT/, "");
+  if (!/^[A-Z0-9]{8,13}$/.test(compact)) throw new DomainError(Codes.INVALID_INPUT, 'A tire number (DOT TIN) is 8 to 13 letters and digits, stamped on the sidewall after "DOT".', { field: "tin" });
+  if (/[IOQ]/.test(compact.slice(0, 8))) throw new DomainError(Codes.INVALID_INPUT, "A tire number never uses the letters I, O or Q in its plant and size code. Check the sidewall.", { field: "tin" });
+  return compact;
+}
+var addDaysUtc = (from, days) => new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() + days));
+async function recordJobTire(uow, actor, input) {
+  const tin = normaliseTin(input.tin);
+  const job = await uow.tx.job.findUnique({ where: { id: idOf(input.jobId, "a job") }, select: { id: true, status: true } });
+  if (!job) throw new DomainError(Codes.NOT_FOUND, "Job not found.", { field: "jobId" });
+  const position = choiceOf(input.position, ["LF", "RF", "LR", "RR", "spare", "other"], "Position");
+  const dupe = await uow.tx.jobTire.findUnique({ where: { tin }, select: { jobId: true } });
+  if (dupe) throw new DomainError(Codes.DUPLICATE, "That tire number is already recorded" + (dupe.jobId === job.id ? " on this job." : " on another job. Check the sidewall."), { field: "tin" });
+  const row = await uow.tx.jobTire.create({ data: { jobId: job.id, tireSize: textOf(input.tireSize, "Tire size", 30), position, tin, recordedById: actorUserId(actor) } });
+  auditCreate(uow, actor, "JobTire", row.id, "job_tire.recorded", { position, tin, tireSize: row.tireSize });
+  const owed = await uow.tx.tireRegistrationObligation.findMany({ where: { status: { in: ["open", "overdue"] }, jobLine: { jobId: job.id } }, select: { id: true, tins: true } });
+  for (const ob of owed) {
+    const tins = Array.isArray(ob.tins) ? ob.tins : [];
+    if (tins.includes(tin)) continue;
+    await uow.tx.tireRegistrationObligation.update({ where: { id: ob.id }, data: { tins: [...tins, tin], version: { increment: 1 } } });
+    auditCreate(uow, actor, "TireRegistrationObligation", ob.id, "tire_registration.tin_added", { tin, count: tins.length + 1 });
+  }
+  return { id: row.id, tin };
+}
+async function createTireObligations(uow, actor, invoiceId) {
+  const { tx } = uow;
+  const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { id: true, shopId: true, invoiceDate: true, customerId: true, invoiceNumber: true } });
+  const lines = await tx.invoiceLine.findMany({ where: { invoiceId, kind: "tire", sourceJobLineId: { not: null } }, include: { sourceJobLine: { select: { id: true, isNewTire: true, tireSize: true, jobId: true, quantityMilli: true } } } });
+  const fresh = lines.filter((l) => l.sourceJobLine?.isNewTire);
+  if (!fresh.length) return 0;
+  const customer = invoice.customerId ? await tx.customer.findUnique({ where: { id: invoice.customerId }, select: { displayName: true, addresses: true } }) : null;
+  const shop = await tx.shop.findUnique({ where: { id: invoice.shopId }, select: { name: true, registrations: true } });
+  const sale = invoice.invoiceDate ?? uow.now;
+  let made = 0;
+  for (const line of fresh) {
+    const exists = await tx.tireRegistrationObligation.findFirst({ where: { invoiceLineId: line.id }, select: { id: true } });
+    if (exists) continue;
+    const jobId = line.sourceJobLine.jobId;
+    const tins = jobId ? (await tx.jobTire.findMany({ where: { jobId }, select: { tin: true } })).map((t) => t.tin) : [];
+    const row = await tx.tireRegistrationObligation.create({
+      data: {
+        shopId: invoice.shopId,
+        invoiceId,
+        invoiceLineId: line.id,
+        jobLineId: line.sourceJobLine.id,
+        tireDescription: `${Math.round((line.quantityMilli ?? 1e3) / 1e3)} \xD7 ${line.description}`.slice(0, 200),
+        tins,
+        purchaserName: customer?.displayName ?? "",
+        purchaserAddress: customer?.addresses ?? void 0,
+        dealerIdentity: { name: shop?.name ?? "", registrations: shop?.registrations ?? {} },
+        dueAt: addDaysUtc(sale, TIRE_REGISTRATION_DAYS),
+        status: "open"
+      }
+    });
+    auditCreate(uow, actor, "TireRegistrationObligation", row.id, "tire_registration.opened", { invoice: invoice.invoiceNumber, dueAt: row.dueAt, tins: tins.length });
+    made += 1;
+  }
+  return made;
+}
+async function completeTireRegistration(uow, actor, input) {
+  const method = choiceOf(input.method, ["form_handed_over", "submitted_electronic", "submitted_paper"], "Method");
+  const row = await uow.tx.tireRegistrationObligation.findUnique({ where: { id: idOf(input.obligationId, "a registration") }, include: { jobLine: { select: { quantityMilli: true } } } });
+  if (!row) throw new DomainError(Codes.NOT_FOUND, "Registration not found.");
+  const given = (input.tins ?? []).map(normaliseTin);
+  const tins = [.../* @__PURE__ */ new Set([...Array.isArray(row.tins) ? row.tins : [], ...given])];
+  const need = Math.max(1, Math.round((row.jobLine?.quantityMilli ?? 1e3) / 1e3));
+  if (tins.length < need) throw new DomainError(Codes.TIN_REQUIRED, `This sale needs ${need} tire number${need === 1 ? "" : "s"}; ${tins.length} recorded.`, { field: "tins" });
+  await transition(uow, {
+    model: "TireRegistrationObligation",
+    id: row.id,
+    from: ["open", "overdue"],
+    to: method === "form_handed_over" ? "handed_over" : "submitted",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "tire_registration.completed",
+    data: { method, tins, completedAt: uow.now, evidence: { note: textOf(input.note, "Note", 300), by: actorUserId(actor), at: uow.now.toISOString() } }
+  });
+  return { id: row.id, tins: tins.length };
+}
+async function confirmTireRegistration(uow, actor, input) {
+  await transition(uow, { model: "TireRegistrationObligation", id: idOf(input.obligationId, "a registration"), from: ["handed_over", "submitted"], to: "confirmed", expectedVersion: input.expectedVersion, actor, eventType: "tire_registration.confirmed" });
+  return { id: input.obligationId };
+}
+function registrationOverdue(row, timeZone, now = /* @__PURE__ */ new Date()) {
+  if (row.status !== "open" && row.status !== "overdue") return false;
+  if (!row.dueAt) return false;
+  const due = typeof row.dueAt === "string" ? row.dueAt.slice(0, 10) : row.dueAt.toISOString().slice(0, 10);
+  return due < zonedDate(timeZone || "America/Los_Angeles", now);
+}
+
+// features/keystone/models/parts.ts
 var READ2 = ["canManageParts", "canOrderParts", "canReceiveParts", "canApproveSupplierInvoice", "canApproveStockAdjustment", "canManageTireRegistrations", "canReadRepairOrders"];
 var sys8 = () => false;
 var cost2 = { read: anyOf("canSeeCost"), create: sys8, update: sys8 };
@@ -2846,7 +3169,7 @@ var UNITS = ["each", "quart", "liter", "gallon", "ounce", "pound", "foot", "set"
 var MOVEMENTS = ["receipt", "issue", "return_to_stock", "return_to_supplier", "adjustment", "count", "commit", "release", "po_order", "po_cancel"];
 var ORDER_STATUSES = ["draft", "placing", "unknown", "placed", "confirmed", "partially_received", "received", "closed", "cancel_requested", "cancelled", "failed"];
 var SOURCES = ["api", "phone", "web", "counter"];
-var Supplier = (0, import_core16.list)({
+var Supplier = (0, import_core17.list)({
   access: governed([...READ2]),
   ui: { labelField: "name", listView: { initialColumns: ["name", "kind", "adapter", "preferred", "active"] } },
   fields: {
@@ -2866,7 +3189,7 @@ var Supplier = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var ShopItem = (0, import_core16.list)({
+var ShopItem = (0, import_core17.list)({
   access: scoped(),
   ui: { labelField: "sku", listView: { initialColumns: ["sku", "description", "brand", "isStocked", "binLocation"] } },
   fields: {
@@ -2891,7 +3214,7 @@ var ShopItem = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var StockLevel = (0, import_core16.list)({
+var StockLevel = (0, import_core17.list)({
   access: scoped("shopItem.shop"),
   ui: { labelField: "id", listView: { initialColumns: ["shopItem", "onHandMilli", "committedMilli", "onOrderMilli"] } },
   fields: {
@@ -2905,7 +3228,7 @@ var StockLevel = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var StockMovement = (0, import_core16.list)({
+var StockMovement = (0, import_core17.list)({
   access: scoped("shopItem.shop"),
   ui: { labelField: "type", listView: { initialColumns: ["shopItem", "type", "quantityMilli", "unitCostMinor", "at"] } },
   fields: {
@@ -2928,7 +3251,7 @@ var StockMovement = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var CycleCount = (0, import_core16.list)({
+var CycleCount = (0, import_core17.list)({
   access: scoped(),
   ui: { labelField: "reference", listView: { initialColumns: ["reference", "shop", "status", "createdAt"] } },
   fields: {
@@ -2943,7 +3266,7 @@ var CycleCount = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var PartQuote = (0, import_core16.list)({
+var PartQuote = (0, import_core17.list)({
   access: scoped(),
   ui: { labelField: "partNumber", listView: { initialColumns: ["partNumber", "supplier", "unitCostMinor", "availability", "status"] } },
   fields: {
@@ -2971,7 +3294,7 @@ var PartQuote = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var SupplierOrder = (0, import_core16.list)({
+var SupplierOrder = (0, import_core17.list)({
   access: scoped(),
   ui: { labelField: "reference", listView: { initialColumns: ["reference", "supplier", "kind", "totalMinor", "status"] } },
   fields: {
@@ -2993,7 +3316,7 @@ var SupplierOrder = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var SupplierOrderLine = (0, import_core16.list)({
+var SupplierOrderLine = (0, import_core17.list)({
   access: scoped("order.shop"),
   ui: { labelField: "partNumber", listView: { initialColumns: ["order", "partNumber", "quantityMilli", "receivedQuantityMilli", "unitCostMinor"] } },
   fields: {
@@ -3014,7 +3337,7 @@ var SupplierOrderLine = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var Receipt = (0, import_core16.list)({
+var Receipt = (0, import_core17.list)({
   access: scoped("order.shop"),
   ui: { labelField: "receiptKey", listView: { initialColumns: ["order", "receiptKey", "at"] } },
   fields: {
@@ -3027,7 +3350,7 @@ var Receipt = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var ReceiptLine = (0, import_core16.list)({
+var ReceiptLine = (0, import_core17.list)({
   access: scoped("receipt.order.shop"),
   ui: { labelField: "id" },
   fields: {
@@ -3038,7 +3361,7 @@ var ReceiptLine = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var CoreObligation = (0, import_core16.list)({
+var CoreObligation = (0, import_core17.list)({
   access: scoped(),
   ui: { labelField: "id", listView: { initialColumns: ["supplier", "coreChargeMinor", "dueAt", "status"] } },
   fields: {
@@ -3064,7 +3387,7 @@ var CoreObligation = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var SupplierReturn = (0, import_core16.list)({
+var SupplierReturn = (0, import_core17.list)({
   access: scoped(),
   ui: { labelField: "rmaNumber", listView: { initialColumns: ["rmaNumber", "supplier", "reason", "status"] } },
   fields: {
@@ -3079,7 +3402,7 @@ var SupplierReturn = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var SupplierInvoice = (0, import_core16.list)({
+var SupplierInvoice = (0, import_core17.list)({
   access: scoped(),
   ui: { labelField: "invoiceNumber", listView: { initialColumns: ["invoiceNumber", "supplier", "invoiceDate", "totalMinor", "status"] } },
   fields: {
@@ -3099,7 +3422,7 @@ var SupplierInvoice = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var SupplierInvoiceLine = (0, import_core16.list)({
+var SupplierInvoiceLine = (0, import_core17.list)({
   access: scoped("invoice.shop"),
   ui: { labelField: "partNumber", listView: { initialColumns: ["invoice", "partNumber", "quantityMilli", "unitCostMinor", "matchStatus"] } },
   fields: {
@@ -3113,7 +3436,7 @@ var SupplierInvoiceLine = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var Discrepancy = (0, import_core16.list)({
+var Discrepancy = (0, import_core17.list)({
   access: scoped("invoice.shop"),
   ui: { labelField: "kind", listView: { initialColumns: ["invoice", "kind", "amountMinor", "status"] } },
   fields: {
@@ -3130,7 +3453,7 @@ var Discrepancy = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var TireRegistrationObligation = (0, import_core16.list)({
+var TireRegistrationObligation = (0, import_core17.list)({
   access: shopScoped(governed(["canManageTireRegistrations", "canReadRepairOrders"])),
   ui: { labelField: "id", listView: { initialColumns: ["shop", "invoice", "purchaserName", "dueAt", "status"] } },
   fields: {
@@ -3145,6 +3468,16 @@ var TireRegistrationObligation = (0, import_core16.list)({
     dealerIdentity: (0, import_fields15.json)({ ...readOnly }),
     method: optionalChoice(["form_handed_over", "submitted_electronic", "submitted_paper"]),
     dueAt: (0, import_fields15.calendarDay)({ ...readOnly }),
+    /** Computed on read: still open and past its due day in the shop's own day. No scheduled job sets it. */
+    isOverdue: (0, import_fields15.virtual)({
+      field: import_core17.graphql.field({
+        type: import_core17.graphql.Boolean,
+        async resolve(item, _args, context) {
+          const shop = item.shopId ? await context.sudo().prisma.shop.findUnique({ where: { id: item.shopId }, select: { timeZone: true } }) : null;
+          return registrationOverdue({ status: item.status, dueAt: item.dueAt }, shop?.timeZone);
+        }
+      })
+    }),
     evidence: (0, import_fields15.json)({ ...readOnly }),
     completedAt: (0, import_fields15.timestamp)({ ...readOnly }),
     status: lifecycle(["open", "handed_over", "submitted", "confirmed", "overdue"]),
@@ -3152,7 +3485,7 @@ var TireRegistrationObligation = (0, import_core16.list)({
     ...trackingFields
   }
 });
-var JobTire = (0, import_core16.list)({
+var JobTire = (0, import_core17.list)({
   access: shopScoped(governed(["canManageParts", "canManageTireRegistrations", "canReadRepairOrders"]), "job.repairOrder.shop"),
   ui: { labelField: "tin", listView: { initialColumns: ["job", "tireSize", "position", "tin"] } },
   fields: {
@@ -3179,7 +3512,7 @@ __export(labor_exports, {
   TechnicianProfile: () => TechnicianProfile,
   WaitingInterval: () => WaitingInterval
 });
-var import_core17 = require("@keystone-6/core");
+var import_core18 = require("@keystone-6/core");
 var import_fields16 = require("@keystone-6/core/fields");
 var READ3 = ["canClockSelf", "canManageTime", "canApproveTime", "canClosePayPeriod", "canReadTechPay", "canManageComebacks", "canApproveGoodwill", "canReadRepairOrders"];
 var sys9 = () => false;
@@ -3188,7 +3521,7 @@ var scoped2 = (path = "shop") => shopScoped(governed([...READ3]), path);
 var PAY_PLANS = ["flat_rate", "hourly", "salary_plus_bonus"];
 var CREDENTIAL_KINDS = ["epa_609", "ase", "state_license", "manufacturer", "other"];
 var WAIT_REASONS = ["parts", "authorization", "bay", "tool", "info", "other"];
-var TechnicianProfile = (0, import_core17.list)({
+var TechnicianProfile = (0, import_core18.list)({
   access: scoped2(),
   ui: { labelField: "displayName", listView: { initialColumns: ["displayName", "shop", "payPlan", "active"] } },
   fields: {
@@ -3206,7 +3539,7 @@ var TechnicianProfile = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var TechnicianCredential = (0, import_core17.list)({
+var TechnicianCredential = (0, import_core18.list)({
   access: scoped2("technician.shop"),
   ui: { labelField: "kind", listView: { initialColumns: ["technician", "kind", "identifier", "expiresAt", "status"] } },
   fields: {
@@ -3221,7 +3554,7 @@ var TechnicianCredential = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var ShiftClock = (0, import_core17.list)({
+var ShiftClock = (0, import_core18.list)({
   access: scoped2(),
   ui: { labelField: "status", listView: { initialColumns: ["technician", "clockInAt", "clockOutAt", "status"] } },
   fields: {
@@ -3235,7 +3568,7 @@ var ShiftClock = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var JobClock = (0, import_core17.list)({
+var JobClock = (0, import_core18.list)({
   access: scoped2(),
   ui: { labelField: "status", listView: { initialColumns: ["technician", "job", "startedAt", "stoppedAt", "workedCentiHours", "status"] } },
   fields: {
@@ -3251,7 +3584,7 @@ var JobClock = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var WaitingInterval = (0, import_core17.list)({
+var WaitingInterval = (0, import_core18.list)({
   access: scoped2("jobClock.shop"),
   ui: { labelField: "reason", listView: { initialColumns: ["jobClock", "reason", "startedAt", "endedAt"] } },
   fields: {
@@ -3263,7 +3596,7 @@ var WaitingInterval = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var ClockCorrection = (0, import_core17.list)({
+var ClockCorrection = (0, import_core18.list)({
   access: scoped2(),
   ui: { labelField: "targetKind", listView: { initialColumns: ["technician", "targetKind", "reason", "status", "createdAt"] } },
   fields: {
@@ -3282,7 +3615,7 @@ var ClockCorrection = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var PayPeriod = (0, import_core17.list)({
+var PayPeriod = (0, import_core18.list)({
   access: scoped2(),
   ui: { labelField: "startsOn", listView: { initialColumns: ["shop", "startsOn", "endsOn", "status"] } },
   fields: {
@@ -3299,7 +3632,7 @@ var PayPeriod = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var FlaggedHoursEntry = (0, import_core17.list)({
+var FlaggedHoursEntry = (0, import_core18.list)({
   access: scoped2(),
   ui: { labelField: "kind", listView: { initialColumns: ["technician", "job", "centiHours", "kind", "flaggedAt"] } },
   fields: {
@@ -3315,7 +3648,7 @@ var FlaggedHoursEntry = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var ComebackCase = (0, import_core17.list)({
+var ComebackCase = (0, import_core18.list)({
   access: scoped2(),
   ui: { labelField: "reference", listView: { initialColumns: ["reference", "originalJob", "cause", "noCharge", "status"] } },
   fields: {
@@ -3338,7 +3671,7 @@ var ComebackCase = (0, import_core17.list)({
     ...trackingFields
   }
 });
-var PartWarrantyClaim = (0, import_core17.list)({
+var PartWarrantyClaim = (0, import_core18.list)({
   access: scoped2(),
   ui: { labelField: "claimNumber", listView: { initialColumns: ["claimNumber", "supplier", "laborReimbursementMinor", "status"] } },
   fields: {
@@ -3427,70 +3760,6 @@ var updateActiveUser_default = updateActiveUser;
 
 // features/keystone/mutations/op.ts
 var import_graphql = require("graphql");
-
-// features/keystone/lib/errors.ts
-var DomainError = class extends Error {
-  constructor(code, message, details = {}) {
-    super(message);
-    this.name = "DomainError";
-    this.code = code;
-    this.details = details;
-  }
-};
-var isDomainError = (error) => error instanceof DomainError;
-var Codes = {
-  NOT_AUTHORIZED: "NOT_AUTHORIZED",
-  NOT_FOUND: "NOT_FOUND",
-  INVALID_INPUT: "INVALID_INPUT",
-  INVALID_TRANSITION: "INVALID_TRANSITION",
-  STALE_STATE: "STALE_STATE",
-  GUARD_FAILED: "GUARD_FAILED",
-  IDEMPOTENCY_KEY_REQUIRED: "IDEMPOTENCY_KEY_REQUIRED",
-  IDEMPOTENCY_KEY_REUSED: "IDEMPOTENCY_KEY_REUSED",
-  IN_PROGRESS: "IN_PROGRESS",
-  APPROVAL_REQUIRED: "APPROVAL_REQUIRED",
-  SELF_APPROVAL: "SELF_APPROVAL",
-  AGENT_CANNOT_APPROVE: "AGENT_CANNOT_APPROVE",
-  APPROVAL_MISMATCH: "APPROVAL_MISMATCH",
-  LEASE_LOST: "LEASE_LOST",
-  STALE_FENCING_TOKEN: "STALE_FENCING_TOKEN",
-  AUDIT_CHAIN_BROKEN: "AUDIT_CHAIN_BROKEN",
-  IDEMPOTENCY_CONFLICT: "IDEMPOTENCY_CONFLICT",
-  AGENT_FORBIDDEN_ACTION: "AGENT_FORBIDDEN_ACTION",
-  AUTHORIZATION_REQUIRED: "AUTHORIZATION_REQUIRED",
-  REAUTHORIZATION_REQUIRED: "REAUTHORIZATION_REQUIRED",
-  DISCLOSURE_MISSING: "DISCLOSURE_MISSING",
-  CONSENT_BLOCKED: "CONSENT_BLOCKED",
-  CREDENTIAL_REQUIRED: "CREDENTIAL_REQUIRED",
-  CREDIT_HOLD: "CREDIT_HOLD",
-  PO_REQUIRED: "PO_REQUIRED",
-  TIN_REQUIRED: "TIN_REQUIRED",
-  TRUST_GATE: "TRUST_GATE",
-  POLICY_PUBLISHED: "POLICY_PUBLISHED",
-  POLICY_UNVERIFIED: "POLICY_UNVERIFIED",
-  ODOMETER_REGRESSION: "ODOMETER_REGRESSION",
-  CAPACITY_FULL: "CAPACITY_FULL",
-  HOLD_EXPIRED: "HOLD_EXPIRED",
-  OUTSIDE_HOURS: "OUTSIDE_HOURS",
-  PROVIDER_UNAVAILABLE: "PROVIDER_UNAVAILABLE",
-  SHOP_SUPPLIES_PROHIBITED: "SHOP_SUPPLIES_PROHIBITED",
-  POLICY_INVALID: "POLICY_INVALID",
-  POLICY_MISSING: "POLICY_MISSING",
-  SIGNATURE_REQUIRED: "SIGNATURE_REQUIRED",
-  ODOMETER_REQUIRED: "ODOMETER_REQUIRED",
-  DUPLICATE: "DUPLICATE",
-  GUIDE_AMBIGUOUS: "GUIDE_AMBIGUOUS",
-  PRICE_OVERRIDE_REQUIRED: "PRICE_OVERRIDE_REQUIRED",
-  CONTENT_CHANGED: "CONTENT_CHANGED",
-  TOKEN_INVALID: "TOKEN_INVALID",
-  TOKEN_EXPIRED: "TOKEN_EXPIRED",
-  ESTIMATE_SUPERSEDED: "ESTIMATE_SUPERSEDED",
-  EVIDENCE_MISSING: "EVIDENCE_MISSING",
-  METHOD_NOT_ALLOWED: "METHOD_NOT_ALLOWED",
-  RO_LOCKED: "RO_LOCKED"
-};
-
-// features/keystone/mutations/op.ts
 var UNSAFE = /prisma|invocation|\bat\s+\S+\s*\(|node_modules|postgres(ql)?:\/\/|\bSQL\b|ECONN|query engine|\.ts:\d+|\.js:\d+/i;
 var SAFE_DETAIL_KEYS = /* @__PURE__ */ new Set(["currentStatus", "currentVersion", "to", "reason", "field", "problems", "replay", "ceilingMinor", "priceMinor", "authorizedMinor", "previous", "existingId", "candidates", "missing"]);
 var op = (fn) => async (root, args, context) => {
@@ -3508,71 +3777,6 @@ var op = (fn) => async (root, args, context) => {
     throw new import_graphql.GraphQLError(safe ? message : "Unable to complete the request. Please try again.", { extensions: { code: "KS_USER_INPUT_ERROR" } });
   }
 };
-
-// features/keystone/mcp-oauth/session.ts
-async function resolveMcpAccessToken(context, token, listKey = "User") {
-  try {
-    const sudo = context.sudo();
-    const record = await sudo.db.OAuthToken.findOne({ where: { token: digestToken(token) } });
-    if (!record || record.tokenType !== "access_token" || record.isRevoked !== "false" || !record.userId || !record.expiresAt || new Date(record.expiresAt).getTime() <= Date.now()) {
-      return void 0;
-    }
-    const app = await sudo.db.OAuthApp.findOne({ where: { clientId: record.clientId } });
-    if (!app || app.status !== "active") return void 0;
-    const mcp = {
-      clientId: record.clientId,
-      scopes: storedScopes(record.scopes),
-      tokenId: String(record.id)
-    };
-    const bound = await sudo.db.AgentIdentity.findMany({ where: { oauthApp: { id: { equals: app.id } } }, take: 1 });
-    if (bound[0]) return void 0;
-    return { itemId: String(record.userId), listKey, mcp };
-  } catch {
-    return void 0;
-  }
-}
-function withMcpBearerSessions(strategy, listKey = "User") {
-  return {
-    ...strategy,
-    async get({ context }) {
-      const token = bearerToken(context?.req?.headers?.authorization);
-      if (isMcpAccessToken(token)) return resolveMcpAccessToken(context, token, listKey);
-      return strategy.get({ context });
-    }
-  };
-}
-function mcpSessionMarker(session) {
-  const marker = session?.mcp;
-  return marker && typeof marker.clientId === "string" && Array.isArray(marker.scopes) ? marker : null;
-}
-
-// features/keystone/lib/actor.ts
-function actorFromSession(session) {
-  if (!session || !isSignedIn({ session })) throw new DomainError(Codes.NOT_AUTHORIZED, "Sign in to continue.");
-  const role = session.data.role;
-  const granted = new Set(role ? permissionNames.filter((name) => role[name] === true) : []);
-  const channel = mcpSessionMarker(session) ? "mcp" : "web";
-  return { kind: "user", userId: session.itemId, name: session.data.name, permissions: granted, channel };
-}
-var isMachine = (actor) => actor.kind === "agent" || actor.kind === "user" && actor.channel === "mcp";
-var dbActorKind = (actor) => isMachine(actor) ? "agent" : actor.kind;
-function requireHuman(actor, action) {
-  if (isMachine(actor)) throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, `Only a person can ${action}. An assistant can draft it or create a callback task for staff.`);
-}
-var systemActor = (name) => ({ kind: "system", name });
-function can(actor, permission) {
-  return actor.kind === "user" && actor.permissions.has(permission);
-}
-function requirePermission(actor, ...anyOf2) {
-  if (actor.kind === "system") return;
-  if (actor.kind === "agent") throw new DomainError(Codes.NOT_AUTHORIZED, "Agents act only through their tool grants.");
-  if (!anyOf2.some((permission) => actor.permissions.has(permission))) {
-    throw new DomainError(Codes.NOT_AUTHORIZED, `This needs the ${anyOf2.join(" or ")} permission.`);
-  }
-}
-var principalKey = (actor) => actor.kind === "user" ? `user:${actor.userId}` : actor.kind === "agent" ? `agent:${actor.agentId}` : `system:${actor.name}`;
-var actorUserId = (actor) => actor.kind === "user" ? actor.userId : null;
-var actorAgentId = (actor) => actor.kind === "agent" ? actor.agentId : null;
 
 // features/keystone/lib/idempotency.ts
 var IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{8,200}$/;
@@ -3614,40 +3818,16 @@ var UnitOfWork = class {
     this.now = now;
     this.requestId = requestId;
     this.audits = [];
-    this.outbox = [];
   }
   audit(event) {
     this.audits.push({ requestId: this.requestId, ...event });
   }
-  emit(message) {
-    this.outbox.push(message);
-  }
 };
-async function flushOutbox(tx, messages, now) {
-  for (const message of messages) {
-    const payload = toJsonValue(message.payload);
-    const dedupeKey = message.dedupeKey ?? `${message.topic}:${message.aggregateType}:${message.aggregateId}:${sha256(canonicalJson(payload))}`;
-    await tx.outboxEvent.upsert({
-      where: { dedupeKey },
-      create: {
-        topic: message.topic,
-        aggregateType: message.aggregateType,
-        aggregateId: message.aggregateId,
-        dedupeKey,
-        payload,
-        status: "pending",
-        nextAttemptAt: message.availableAt ?? now
-      },
-      update: {}
-    });
-  }
-}
 async function runInTransaction(db, work, options = {}) {
   return db.$transaction(async (tx) => {
     if (options.actorKind) await tx.$executeRaw`SELECT set_config('app.actor_kind', ${options.actorKind}, true)`;
     const uow = new UnitOfWork(tx, options.now ?? /* @__PURE__ */ new Date(), options.requestId ?? null);
     const result = await work(uow);
-    await flushOutbox(tx, uow.outbox, uow.now);
     await appendAuditEvents(tx, uow.audits, uow.now);
     return result;
   }, TRANSACTION_OPTIONS);
@@ -3898,82 +4078,6 @@ var fixtureFetcher = async (url) => {
 };
 function fixtureAdapter() {
   return { ...nhtsaAdapter(fixtureFetcher), key: "fixture" };
-}
-
-// features/keystone/lib/cas.ts
-var COLUMN = /^[a-z][A-Za-z0-9]*$/;
-async function lockRow(tx, model, id) {
-  const rows = await tx.$queryRawUnsafe(`SELECT id FROM ${tableName(model)} WHERE id = $1 FOR UPDATE`, id);
-  if (!rows.length) throw new DomainError(Codes.NOT_FOUND, `${model} not found.`, { model, id });
-  const row = await delegateOf(tx, model).findUnique({ where: { id } });
-  return row;
-}
-async function transition(uow, spec) {
-  const statusField = spec.statusField ?? "status";
-  if (!COLUMN.test(statusField)) throw new Error("Invalid status field");
-  const row = await lockRow(uow.tx, spec.model, spec.id);
-  const currentStatus = String(row[statusField]);
-  const currentVersion = Number(row.version);
-  if (spec.expectedVersion !== void 0 && spec.expectedVersion !== null && spec.expectedVersion !== currentVersion) {
-    throw new DomainError(Codes.STALE_STATE, `${spec.model} changed since you loaded it. Reload and try again.`, { currentStatus, currentVersion });
-  }
-  if (!spec.from.includes(currentStatus)) {
-    throw new DomainError(Codes.INVALID_TRANSITION, `${spec.model} can't move from ${currentStatus} to ${spec.to}.`, { currentStatus, currentVersion, to: spec.to });
-  }
-  if (spec.guard) await spec.guard(row);
-  const extra = typeof spec.data === "function" ? await spec.data(row) : spec.data ?? {};
-  const result = await delegateOf(uow.tx, spec.model).updateMany({
-    where: { id: spec.id, version: currentVersion, [statusField]: { in: [...spec.from] } },
-    data: { ...extra, [statusField]: spec.to, version: { increment: 1 } }
-  });
-  if (result.count !== 1) {
-    throw new DomainError(Codes.STALE_STATE, `${spec.model} changed since you loaded it. Reload and try again.`, { currentStatus, currentVersion });
-  }
-  uow.audit({
-    eventType: spec.eventType,
-    entityType: spec.model,
-    entityId: spec.id,
-    actorUserId: actorUserId(spec.actor),
-    actorAgentId: actorAgentId(spec.actor),
-    approverId: spec.approverId ?? null,
-    reason: spec.reason ?? null,
-    before: { [statusField]: currentStatus, version: currentVersion },
-    after: { [statusField]: spec.to, version: currentVersion + 1, ...extra },
-    metadata: { ...spec.metadata ?? {}, ...spec.actor.kind === "system" ? { system: spec.actor.name } : {} }
-  });
-  return await delegateOf(uow.tx, spec.model).findUnique({ where: { id: spec.id } });
-}
-function auditCreate(uow, actor, model, id, eventType, after, extra = {}) {
-  uow.audit({
-    eventType,
-    entityType: model,
-    entityId: id,
-    actorUserId: actorUserId(actor),
-    actorAgentId: actorAgentId(actor),
-    reason: extra.reason ?? null,
-    after,
-    metadata: { ...extra.metadata ?? {}, ...actor.kind === "system" ? { system: actor.name } : {} }
-  });
-}
-
-// lib/zonedTime.ts
-var zoneParts = (timeZone, at) => Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at)).map((p) => [p.type, p.value]));
-function zonedDate(timeZone, at) {
-  const p = zoneParts(timeZone, typeof at === "number" ? at : at.getTime());
-  return `${p.year}-${p.month}-${p.day}`;
-}
-function wallClockInstant(timeZone, date2, hhmm) {
-  const [h, m] = hhmm.split(":").map((x) => Number.parseInt(x, 10));
-  let guess = Date.parse(`${date2}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00Z`);
-  for (let i = 0; i < 3; i += 1) {
-    const p = zoneParts(timeZone, guess);
-    const local = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second));
-    const target = Date.UTC(Number(date2.slice(0, 4)), Number(date2.slice(5, 7)) - 1, Number(date2.slice(8, 10)), h, m);
-    const diff = target - local;
-    if (diff === 0) break;
-    guess += diff;
-  }
-  return new Date(guess);
 }
 
 // features/keystone/lib/calendar.ts
@@ -4390,12 +4494,10 @@ async function bookAppointment(uow, actor, input) {
   });
   if (hold) await tx.bookingHold.update({ where: { id: hold.id }, data: { status: "consumed", appointmentId: row.id } });
   auditCreate(uow, actor, "Appointment", row.id, "appointment.requested", { reference, shopId: input.shopId, startsAt: input.startsAt, kind: input.kind, source: input.source, status, holdId: hold?.id ?? null });
-  uow.emit({ topic: "appointment.requested", aggregateType: "Appointment", aggregateId: row.id, payload: { reference, shopId: input.shopId, startsAt: input.startsAt.toISOString(), status }, dedupeKey: `appointment.requested:${row.id}` });
   if (status === "confirmed") emitConfirmation(uow, row.id, reference);
   return { id: row.id, reference, status, date: slot.date };
 }
 function emitConfirmation(uow, appointmentId, reference) {
-  uow.emit({ topic: "message.appointment_confirmation", aggregateType: "Appointment", aggregateId: appointmentId, payload: { reference, purpose: "transactional" }, dedupeKey: `appointment.confirmed:${appointmentId}` });
 }
 async function confirmAppointment(uow, actor, id, expectedVersion) {
   const row = await transition(uow, {
@@ -4428,14 +4530,12 @@ async function rescheduleAppointment(uow, actor, input) {
   const endsAt = new Date(input.startsAt.getTime() + (row.endsAt.getTime() - row.startsAt.getTime()));
   await tx.appointment.update({ where: { id: row.id }, data: { startsAt: input.startsAt, endsAt, date: dateOnly(slot.date), kind, version: { increment: 1 } } });
   uow.audit({ eventType: "appointment.rescheduled", entityType: "Appointment", entityId: row.id, actorUserId: actorUserId(actor), before: { startsAt: row.startsAt, kind: row.kind }, after: { startsAt: input.startsAt, kind } });
-  uow.emit({ topic: "message.appointment_rescheduled", aggregateType: "Appointment", aggregateId: row.id, payload: { reference: row.reference, startsAt: input.startsAt.toISOString(), purpose: "transactional" }, dedupeKey: `appointment.rescheduled:${row.id}:${row.version + 1}` });
   return { id: row.id, date: slot.date };
 }
 async function cancelAppointment(uow, actor, input) {
   const reason = input.reason?.trim();
   if (!reason) throw new DomainError(Codes.INVALID_INPUT, "Say why the appointment is cancelled.", { field: "reason" });
   const row = await transition(uow, { model: "Appointment", id: input.id, from: ["requested", "confirmed"], to: "cancelled", expectedVersion: input.expectedVersion, actor, eventType: "appointment.cancelled", reason, data: { cancelReason: reason.slice(0, 300) } });
-  uow.emit({ topic: "appointment.cancelled", aggregateType: "Appointment", aggregateId: input.id, payload: { reference: row.reference }, dedupeKey: `appointment.cancelled:${input.id}` });
   return { id: input.id, status: "cancelled" };
 }
 async function graceMinutes(tx, shopId) {
@@ -5261,52 +5361,6 @@ function formatMilli(value) {
   return `${sign}${Math.trunc(abs / 1e3)}${frac ? `.${frac}` : ""}`;
 }
 
-// features/keystone/lib/partsInput.ts
-function milliOf(value, field, options = {}) {
-  const n = typeof value === "string" && /^-?\d+$/.test(value.trim()) ? Math.trunc(+value.trim()) : value;
-  const min = options.min ?? 1;
-  if (typeof n !== "number" || !Number.isSafeInteger(n) || n < min || n > (options.max ?? 1e8)) {
-    throw new DomainError(Codes.INVALID_INPUT, `${field} must be a whole number of thousandths${min >= 1 ? " above zero" : ""}.`, { field });
-  }
-  return n;
-}
-function centsOf(value, field, required = true) {
-  if (value === null || value === void 0 || value === "") {
-    if (required) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed, in whole cents.`, { field });
-    return 0n;
-  }
-  const text18 = String(value).trim();
-  if (!/^\d{1,12}$/.test(text18)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
-  return BigInt(text18);
-}
-function textOf(value, field, max, required = false) {
-  const text18 = String(value ?? "").trim().slice(0, max);
-  if (required && !text18) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed.`, { field });
-  return text18;
-}
-function idOf(value, field) {
-  if (typeof value !== "string" || !value || value.length > 64) throw new DomainError(Codes.INVALID_INPUT, `Choose ${field}.`, { field });
-  return value;
-}
-function choiceOf(value, allowed, field, fallback) {
-  if ((value === void 0 || value === null || value === "") && fallback !== void 0) return fallback;
-  if (!allowed.includes(value)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be one of: ${allowed.join(", ")}.`, { field });
-  return value;
-}
-function objectOf(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed.`, { field });
-  return value;
-}
-function listOf(value, field, max = 200) {
-  if (!Array.isArray(value) || value.length === 0) throw new DomainError(Codes.INVALID_INPUT, `Add at least one line to ${field}.`, { field });
-  if (value.length > max) throw new DomainError(Codes.INVALID_INPUT, `${field} can hold ${max} lines at most.`, { field });
-  return value;
-}
-var cents = (minor2) => {
-  const t = (minor2 < 0n ? -minor2 : minor2).toString().padStart(3, "0");
-  return `${minor2 < 0n ? "-" : ""}$${t.slice(0, -2)}.${t.slice(-2)}`;
-};
-
 // features/keystone/lib/stock.ts
 var asLevels = (row) => ({
   onHandMilli: row.onHandMilli,
@@ -5755,7 +5809,6 @@ async function requestApproval(uow, actor, input) {
     }
   });
   uow.audit({ eventType: "approval.requested", entityType: "ApprovalRequest", entityId: created.id, actorUserId: actorUserId(actor), actorAgentId: actorAgentId(actor), after: { action: input.action, targetList: input.targetList, targetId: input.targetId, payloadHash: created.payloadHash, requiredPermission } });
-  uow.emit({ topic: "notify.approval", aggregateType: "ApprovalRequest", aggregateId: created.id, payload: { action: input.action, requiredPermission }, dedupeKey: `notify.approval:${created.id}` });
   return created;
 }
 async function decideApproval(uow, actor, input) {
@@ -6085,7 +6138,6 @@ async function applyPublish(uow, actor, payload, options = {}) {
     after: { versionNumber: row.versionNumber, contentHash: payload.contentHash, shops: shops.map((s) => s.id) },
     metadata: { kind, solo: options.solo ?? false }
   });
-  uow.emit({ topic: "policy.published", aggregateType: spec.model, aggregateId: payload.versionId, payload: { kind, headId, versionNumber: row.versionNumber }, dedupeKey: `policy.published:${payload.versionId}` });
   return { versionId: payload.versionId, versionNumber: row.versionNumber, retiredVersionId: previous?.id ?? null, shops: shops.length };
 }
 var publishApplier = async (uow, actor, request) => applyPublish(uow, actor, request.payload, { approverId: actor.kind === "user" ? actor.userId : null });
@@ -6215,7 +6267,6 @@ async function checkInVehicle(uow, actor, input) {
     });
   }
   auditCreate(uow, actor, "CheckIn", row.id, "vehicle.checked_in", { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text18), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id });
-  uow.emit({ topic: "vehicle.checked_in", aggregateType: "CheckIn", aggregateId: row.id, payload: { reference, shopId: input.shopId }, dedupeKey: `checkin:${row.id}` });
   return { id: row.id, reference, recallWarning, odometerAnomaly: odometer?.anomaly ?? null };
 }
 
@@ -7108,7 +7159,6 @@ async function openRepairOrder(uow, actor, input) {
   await tx.checkIn.update({ where: { id: checkIn.id }, data: { repairOrderId: ro.id } });
   auditCreate(uow, actor, "RepairOrder", ro.id, "ro.created", { roNumber, shopId: shop.id, checkIn: checkIn.reference, pins, designee: designee ? { relationship: designee.relationship } : null });
   await transition(uow, { model: "RepairOrder", id: ro.id, from: ["draft"], to: "checked_in", actor, eventType: "ro.checked_in" });
-  uow.emit({ topic: "ro.checked_in", aggregateType: "RepairOrder", aggregateId: ro.id, payload: { roNumber, shopId: shop.id }, dedupeKey: `ro.checked_in:${ro.id}` });
   return { id: ro.id, roNumber };
 }
 async function markInService(uow, actor, repairOrderId, cause) {
@@ -7451,7 +7501,6 @@ async function writeAndPrice(uow, actor, jobId, inputs) {
     auditCreate(uow, actor, "Job", jobId, "job.repriced", { contentHash: data.contentHash, totalMinor: price.totalMinor, lines: price.lines.length, problems: problems.length });
   } else {
     await transition(uow, { model: "Job", id: jobId, from: [job.status], to, actor, eventType: to === "needs_reauthorization" ? "job.needs_reauthorization" : `job.${to}`, reason, data });
-    if (to === "needs_reauthorization") uow.emit({ topic: "job.needs_reauthorization", aggregateType: "Job", aggregateId: jobId, payload: { repairOrderId: ro.id, number: job.number }, dedupeKey: `job.reauth:${jobId}:${price.contentHash}` });
   }
   await refreshRoTotals(tx, ro.id);
   return { id: jobId, status: to, problems, contentHash: data.contentHash, totalMinor: price.totalMinor.toString(), subtotalMinor: price.subtotalMinor.toString(), taxMinor: price.taxMinor.toString(), reason };
@@ -7658,7 +7707,6 @@ async function sendInspection(uow, actor, input) {
   await transition(uow, { model: "Inspection", id: input.inspectionId, from: ["completed"], to: "sent", expectedVersion: input.expectedVersion, actor, eventType: "inspection.sent", metadata: { channel: input.channel }, data: { sentAt: now } });
   const policy = inspection.repairOrder.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: inspection.repairOrder.shopPolicyVersionId }, select: { authorizationLinkTtlHours: true } }) : null;
   const { id: tokenId, expiresAt } = await createAccessToken(uow, { purpose: "inspection", subjectType: "Inspection", subjectId: inspection.id, shopId: inspection.repairOrder.shopId, ttlHours: policy?.authorizationLinkTtlHours ?? 72, maxUses: 50 });
-  uow.emit({ topic: "inspection.sent", aggregateType: "Inspection", aggregateId: inspection.id, payload: { repairOrderId: inspection.repairOrderId, channel: input.channel }, dedupeKey: `inspection.sent:${inspection.id}` });
   return { id: inspection.id, status: "sent", tokenId, expiresAt: expiresAt.toISOString() };
 }
 async function requireTransactionalConsent(uow, customerId2, contactId, channel) {
@@ -7809,7 +7857,6 @@ async function issueEstimate(uow, actor, input) {
       await tx.job.update({ where: { id: job.id }, data: { offeredInVersionId: row.id, version: { increment: 1 } } });
     }
   }
-  uow.emit({ topic: "estimate.sent", aggregateType: "EstimateVersion", aggregateId: row.id, payload: { repairOrderId: ro.id, reference: row.reference }, dedupeKey: `estimate.sent:${row.id}` });
   return { id: row.id, reference: row.reference, versionNumber, contentHash: contentHash2, totalMinor: String(totals.totalMinor) };
 }
 async function currentSentVersion(tx, estimateVersionId) {
@@ -7847,7 +7894,6 @@ async function requestAuthorization(uow, actor, input) {
     }
   });
   auditCreate(uow, actor, "AuthorizationRequest", row.id, "authorization_request.created", { estimate: ev.reference, channel: input.channel, contact: contact?.label ?? null, expiresAt: row.expiresAt });
-  if (contact) uow.emit({ topic: "authorization.link", aggregateType: "AuthorizationRequest", aggregateId: row.id, payload: { channel: input.channel, contactId: contact.id, repairOrderId: ro.id }, dedupeKey: `authorization.link:${row.id}` });
   return { id: row.id, expiresAt: row.expiresAt?.toISOString() ?? null, status: row.status };
 }
 var authorizationLink = (requestId) => {
@@ -8024,7 +8070,6 @@ async function applyAnswers(uow, actor, ev, ro, law, answers, election, e) {
   }
   await refreshRoTotals(tx, ro.id);
   await tx.repairOrder.update({ where: { id: ro.id }, data: { version: { increment: 1 } } });
-  uow.emit({ topic: "authorization.recorded", aggregateType: "RepairOrder", aggregateId: ro.id, payload: { estimate: ev.reference, approved: approved.map((a) => a.jobId), decided: decided.map((d2) => d2.jobId), method: e.method }, dedupeKey: `authorization.recorded:${ev.id}:${sha256(canonicalJson(answers))}` });
   return { estimate: ev.reference, approved, decided, replacedPartsElection: election };
 }
 async function createStaffTask(uow, actor, input) {
@@ -8048,7 +8093,6 @@ async function createStaffTask(uow, actor, input) {
     }
   });
   auditCreate(uow, actor, "StaffTask", row.id, "task.created", { kind: input.kind, source: input.source, repairOrderId: input.repairOrderId ?? null });
-  uow.emit({ topic: "task.created", aggregateType: "StaffTask", aggregateId: row.id, payload: { kind: input.kind, shopId: input.shopId }, dedupeKey: `task.created:${row.id}` });
   return { id: row.id };
 }
 async function closeStaffTask(uow, actor, input) {
@@ -9122,104 +9166,6 @@ async function setCannedJobStatus(_root, args, context) {
   const actor = actorFromSession(context.session);
   requirePermission(actor, "canManagePolicies");
   return run2(context, actor, args.active ? "canned_job.activate" : "canned_job.deactivate", args.idempotencyKey, args, (uow) => setCannedJobActive(uow, actor, args));
-}
-
-// features/keystone/lib/tires.ts
-var TIRE_REGISTRATION_DAYS = 30;
-function normaliseTin(raw) {
-  const compact = String(raw ?? "").toUpperCase().replace(/[\s-]/g, "").replace(/^DOT/, "");
-  if (!/^[A-Z0-9]{8,13}$/.test(compact)) throw new DomainError(Codes.INVALID_INPUT, 'A tire number (DOT TIN) is 8 to 13 letters and digits, stamped on the sidewall after "DOT".', { field: "tin" });
-  if (/[IOQ]/.test(compact.slice(0, 8))) throw new DomainError(Codes.INVALID_INPUT, "A tire number never uses the letters I, O or Q in its plant and size code. Check the sidewall.", { field: "tin" });
-  return compact;
-}
-var addDaysUtc = (from, days) => new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() + days));
-async function recordJobTire(uow, actor, input) {
-  const tin = normaliseTin(input.tin);
-  const job = await uow.tx.job.findUnique({ where: { id: idOf(input.jobId, "a job") }, select: { id: true, status: true } });
-  if (!job) throw new DomainError(Codes.NOT_FOUND, "Job not found.", { field: "jobId" });
-  const position = choiceOf(input.position, ["LF", "RF", "LR", "RR", "spare", "other"], "Position");
-  const dupe = await uow.tx.jobTire.findUnique({ where: { tin }, select: { jobId: true } });
-  if (dupe) throw new DomainError(Codes.DUPLICATE, "That tire number is already recorded" + (dupe.jobId === job.id ? " on this job." : " on another job. Check the sidewall."), { field: "tin" });
-  const row = await uow.tx.jobTire.create({ data: { jobId: job.id, tireSize: textOf(input.tireSize, "Tire size", 30), position, tin, recordedById: actorUserId(actor) } });
-  auditCreate(uow, actor, "JobTire", row.id, "job_tire.recorded", { position, tin, tireSize: row.tireSize });
-  const owed = await uow.tx.tireRegistrationObligation.findMany({ where: { status: { in: ["open", "overdue"] }, jobLine: { jobId: job.id } }, select: { id: true, tins: true } });
-  for (const ob of owed) {
-    const tins = Array.isArray(ob.tins) ? ob.tins : [];
-    if (tins.includes(tin)) continue;
-    await uow.tx.tireRegistrationObligation.update({ where: { id: ob.id }, data: { tins: [...tins, tin], version: { increment: 1 } } });
-    auditCreate(uow, actor, "TireRegistrationObligation", ob.id, "tire_registration.tin_added", { tin, count: tins.length + 1 });
-  }
-  return { id: row.id, tin };
-}
-async function createTireObligations(uow, actor, invoiceId) {
-  const { tx } = uow;
-  const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { id: true, shopId: true, invoiceDate: true, customerId: true, invoiceNumber: true } });
-  const lines = await tx.invoiceLine.findMany({ where: { invoiceId, kind: "tire", sourceJobLineId: { not: null } }, include: { sourceJobLine: { select: { id: true, isNewTire: true, tireSize: true, jobId: true, quantityMilli: true } } } });
-  const fresh = lines.filter((l) => l.sourceJobLine?.isNewTire);
-  if (!fresh.length) return 0;
-  const customer = invoice.customerId ? await tx.customer.findUnique({ where: { id: invoice.customerId }, select: { displayName: true, addresses: true } }) : null;
-  const shop = await tx.shop.findUnique({ where: { id: invoice.shopId }, select: { name: true, registrations: true } });
-  const sale = invoice.invoiceDate ?? uow.now;
-  let made = 0;
-  for (const line of fresh) {
-    const exists = await tx.tireRegistrationObligation.findFirst({ where: { invoiceLineId: line.id }, select: { id: true } });
-    if (exists) continue;
-    const jobId = line.sourceJobLine.jobId;
-    const tins = jobId ? (await tx.jobTire.findMany({ where: { jobId }, select: { tin: true } })).map((t) => t.tin) : [];
-    const row = await tx.tireRegistrationObligation.create({
-      data: {
-        shopId: invoice.shopId,
-        invoiceId,
-        invoiceLineId: line.id,
-        jobLineId: line.sourceJobLine.id,
-        tireDescription: `${Math.round((line.quantityMilli ?? 1e3) / 1e3)} \xD7 ${line.description}`.slice(0, 200),
-        tins,
-        purchaserName: customer?.displayName ?? "",
-        purchaserAddress: customer?.addresses ?? void 0,
-        dealerIdentity: { name: shop?.name ?? "", registrations: shop?.registrations ?? {} },
-        dueAt: addDaysUtc(sale, TIRE_REGISTRATION_DAYS),
-        status: "open"
-      }
-    });
-    auditCreate(uow, actor, "TireRegistrationObligation", row.id, "tire_registration.opened", { invoice: invoice.invoiceNumber, dueAt: row.dueAt, tins: tins.length });
-    made += 1;
-  }
-  return made;
-}
-async function completeTireRegistration(uow, actor, input) {
-  const method = choiceOf(input.method, ["form_handed_over", "submitted_electronic", "submitted_paper"], "Method");
-  const row = await uow.tx.tireRegistrationObligation.findUnique({ where: { id: idOf(input.obligationId, "a registration") }, include: { jobLine: { select: { quantityMilli: true } } } });
-  if (!row) throw new DomainError(Codes.NOT_FOUND, "Registration not found.");
-  const given = (input.tins ?? []).map(normaliseTin);
-  const tins = [.../* @__PURE__ */ new Set([...Array.isArray(row.tins) ? row.tins : [], ...given])];
-  const need = Math.max(1, Math.round((row.jobLine?.quantityMilli ?? 1e3) / 1e3));
-  if (tins.length < need) throw new DomainError(Codes.TIN_REQUIRED, `This sale needs ${need} tire number${need === 1 ? "" : "s"}; ${tins.length} recorded.`, { field: "tins" });
-  await transition(uow, {
-    model: "TireRegistrationObligation",
-    id: row.id,
-    from: ["open", "overdue"],
-    to: method === "form_handed_over" ? "handed_over" : "submitted",
-    expectedVersion: input.expectedVersion,
-    actor,
-    eventType: "tire_registration.completed",
-    data: { method, tins, completedAt: uow.now, evidence: { note: textOf(input.note, "Note", 300), by: actorUserId(actor), at: uow.now.toISOString() } }
-  });
-  return { id: row.id, tins: tins.length };
-}
-async function confirmTireRegistration(uow, actor, input) {
-  await transition(uow, { model: "TireRegistrationObligation", id: idOf(input.obligationId, "a registration"), from: ["handed_over", "submitted"], to: "confirmed", expectedVersion: input.expectedVersion, actor, eventType: "tire_registration.confirmed" });
-  return { id: input.obligationId };
-}
-async function sweepTireRegistrations(uow, actor) {
-  const open = await uow.tx.tireRegistrationObligation.findMany({ where: { status: "open", dueAt: { not: null } }, select: { id: true, dueAt: true, shop: { select: { timeZone: true } } } });
-  let n = 0;
-  for (const d2 of open) {
-    const today = zonedDate(d2.shop?.timeZone || "America/Los_Angeles", uow.now);
-    if (d2.dueAt.toISOString().slice(0, 10) >= today) continue;
-    await transition(uow, { model: "TireRegistrationObligation", id: d2.id, from: ["open"], to: "overdue", actor, eventType: "tire_registration.overdue" });
-    n += 1;
-  }
-  return n;
 }
 
 // features/keystone/lib/invoiceMath.ts
@@ -11098,11 +11044,6 @@ async function confirmShopTireRegistration(_root, args, context) {
   await shopOf3(context, "tireRegistrationObligation", args.obligationId);
   return run4(context, actor, "tire_registration.confirm", args.idempotencyKey, args, (uow) => confirmTireRegistration(uow, actor, args));
 }
-async function sweepShopTireRegistrations(_root, args, context) {
-  const actor = actorFromSession(context.session);
-  requirePermission(actor, "canManageTireRegistrations");
-  return run4(context, actor, "tire_registration.sweep", args.idempotencyKey, {}, async (uow) => ({ overdue: await sweepTireRegistrations(uow, actor) }));
-}
 
 // features/keystone/lib/comebacks.ts
 var CLOSED_CASE = ["resolved", "cancelled"];
@@ -11411,11 +11352,11 @@ async function attachShopComebackJob(_root, args, context) {
 }
 
 // features/keystone/mutations/index.ts
-var graphql4 = String.raw;
+var graphql5 = String.raw;
 function extendGraphqlSchema(baseSchema) {
   return (0, import_schema.mergeSchemas)({
     schemas: [baseSchema],
-    typeDefs: graphql4`
+    typeDefs: graphql5`
       scalar JSON
       type Query {
         redirectToInit: Boolean
@@ -11506,7 +11447,6 @@ function extendGraphqlSchema(baseSchema) {
         recordShopJobTire(jobId: ID!, tireSize: String, position: String!, tin: String!, idempotencyKey: String!): JSON
         completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
         confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
-        sweepShopTireRegistrations(idempotencyKey: String!): JSON
         clockInShift(shopId: ID!, idempotencyKey: String!): JSON
         clockOutShift(shopId: ID!, idempotencyKey: String!): JSON
         startShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
@@ -11641,8 +11581,7 @@ function extendGraphqlSchema(baseSchema) {
         exportShopSupplierInvoice: op(exportShopSupplierInvoice),
         recordShopJobTire: op(recordShopJobTire),
         completeShopTireRegistration: op(completeShopTireRegistration),
-        confirmShopTireRegistration: op(confirmShopTireRegistration),
-        sweepShopTireRegistrations: op(sweepShopTireRegistrations)
+        confirmShopTireRegistration: op(confirmShopTireRegistration)
       }
     }
   });

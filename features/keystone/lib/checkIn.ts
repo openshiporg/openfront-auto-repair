@@ -131,6 +131,5 @@ export async function checkInVehicle(uow: UnitOfWork, actor: Actor, input: Check
     })
   }
   auditCreate(uow, actor, 'CheckIn', row.id, 'vehicle.checked_in', { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id })
-  uow.emit({ topic: 'vehicle.checked_in', aggregateType: 'CheckIn', aggregateId: row.id, payload: { reference, shopId: input.shopId }, dedupeKey: `checkin:${row.id}` })
   return { id: row.id, reference, recallWarning, odometerAnomaly: odometer?.anomaly ?? null }
 }

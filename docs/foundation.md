@@ -8,7 +8,7 @@ The platform spine every later feature builds on.
 - **Roles.** Eleven seeded roles with separated duties: Owner, Shop Manager, Service Advisor, Lead Technician, Technician, Parts Manager, Bookkeeper, Marketing, Auditor, Customer Portal and Fleet Approver. `canBreakGlass` is never seeded.
 - **Write path.** One mutation per state change:
   - every change takes a version check and a row lock;
-  - the state change, audit event and outbox message commit in one transaction, with no network calls inside it;
+  - the state change and audit event commit in one transaction, with no network calls inside it;
   - an idempotency key makes retries safe.
 - **Audit.** A hash-chained, append-only `AuditEvent` log. The database refuses updates and deletes. You can verify the chain under Settings → Audit log.
 - **Maker-checker.** `ApprovalRequest` and `ApprovalDecision` record approvals. The approver must be a different person, and an agent can never approve; a database trigger enforces this even for raw SQL. The approval is bound to the exact payload it was given for and can be used only once. Organisation controls (agent-owner separation, cross-shop customer visibility, record retention) change only through this path.
@@ -24,7 +24,7 @@ The platform spine every later feature builds on.
 - **Shop calendar** (`lib/calendar.ts`):
   - shop-local dates, DST-safe opening times and business-day arithmetic;
   - it fails closed past the calendar's coverage date.
-- **Workers.** Outbox delivery is exactly-once in effect, using leases with fencing tokens. Gap-free staff references (`RO-2026-000412`) and random customer-visible codes.
+- **No workers.** There is no outbox, cron or worker service; time-based states (tire registration overdue) are computed on read. Gap-free staff references (`RO-2026-000412`) and random customer-visible codes.
 
 ## Setup data
 

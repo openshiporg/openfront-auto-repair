@@ -8,7 +8,8 @@ import type { UnitOfWork } from './unitOfWork'
 /*
  * New-tire records (SCHEMA §10.1, STATE-MACHINES §11). Each new tire carries a DOT tire identification number (TIN).
  * Finalising an invoice with a new tire line creates a registration obligation due 30 days after the sale. It
- * moves open → handed_over | submitted → confirmed, or becomes overdue when the day passes.
+ * moves open → handed_over | submitted → confirmed. Overdue is not stored: it is computed on read from the due day
+ * and the shop's own day (registrationOverdue), so nothing has to run on a schedule.
  */
 export const TIRE_REGISTRATION_DAYS = 30
 
@@ -92,15 +93,10 @@ export async function confirmTireRegistration(uow: UnitOfWork, actor: Actor, inp
   return { id: input.obligationId }
 }
 
-/** Worker sweep: open registrations past their due day, counted in each shop's own day, become overdue. */
-export async function sweepTireRegistrations(uow: UnitOfWork, actor: Actor) {
-  const open = await uow.tx.tireRegistrationObligation.findMany({ where: { status: 'open', dueAt: { not: null } }, select: { id: true, dueAt: true, shop: { select: { timeZone: true } } } })
-  let n = 0
-  for (const d of open) {
-    const today = zonedDate(d.shop?.timeZone || 'America/Los_Angeles', uow.now)
-    if (d.dueAt!.toISOString().slice(0, 10) >= today) continue
-    await transition(uow, { model: 'TireRegistrationObligation', id: d.id, from: ['open'], to: 'overdue', actor, eventType: 'tire_registration.overdue' })
-    n += 1
-  }
-  return n
+/** An open registration is overdue once its due day has passed in the shop's own time zone. */
+export function registrationOverdue(row: { status: string; dueAt: Date | string | null }, timeZone: string | null | undefined, now: Date = new Date()) {
+  if (row.status !== 'open' && row.status !== 'overdue') return false
+  if (!row.dueAt) return false
+  const due = typeof row.dueAt === 'string' ? row.dueAt.slice(0, 10) : row.dueAt.toISOString().slice(0, 10)
+  return due < zonedDate(timeZone || 'America/Los_Angeles', now)
 }

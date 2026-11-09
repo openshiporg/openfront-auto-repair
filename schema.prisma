@@ -483,28 +483,6 @@ model OrganizationSettings {
   updatedAt              DateTime @default(now()) @updatedAt
 }
 
-model OutboxEvent {
-  id             String    @id @default(cuid())
-  topic          String    @default("")
-  aggregateType  String    @default("")
-  aggregateId    String    @default("")
-  dedupeKey      String    @unique @default("")
-  payload        Json?
-  status         String    @default("pending")
-  attempts       Int?      @default(0)
-  nextAttemptAt  DateTime? @default(now())
-  leaseOwner     String    @default("")
-  leaseExpiresAt DateTime?
-  fencingToken   Int?      @default(0)
-  lastError      String    @default("")
-  deliveredAt    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @default(now()) @updatedAt
-
-  @@index([topic])
-  @@index([aggregateId])
-}
-
 model SecretBox {
   id         String    @id @default(cuid())
   key        String    @unique @default("")

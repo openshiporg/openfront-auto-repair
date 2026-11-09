@@ -81,7 +81,6 @@ const OPS: Record<string, Record<string, string>> = {
   recordShopJobTire: { jobId: 'ID!', tireSize: 'String', position: 'String!', tin: 'String!' },
   completeShopTireRegistration: { obligationId: 'ID!', method: 'String!', tins: '[String!]', note: 'String', expectedVersion: 'Int' },
   confirmShopTireRegistration: { obligationId: 'ID!', expectedVersion: 'Int' },
-  sweepShopTireRegistrations: {  },
   clockInShift: { shopId: 'ID!' },
   clockOutShift: { shopId: 'ID!' },
   startShiftBreak: { shopId: 'ID!' },

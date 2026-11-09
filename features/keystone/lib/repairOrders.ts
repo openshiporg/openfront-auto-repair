@@ -94,7 +94,6 @@ export async function openRepairOrder(uow: UnitOfWork, actor: Actor, input: Open
   await tx.checkIn.update({ where: { id: checkIn.id }, data: { repairOrderId: ro.id } })
   auditCreate(uow, actor, 'RepairOrder', ro.id, 'ro.created', { roNumber, shopId: shop.id, checkIn: checkIn.reference, pins, designee: designee ? { relationship: designee.relationship } : null })
   await transition(uow, { model: 'RepairOrder', id: ro.id, from: ['draft'], to: 'checked_in', actor, eventType: 'ro.checked_in' })
-  uow.emit({ topic: 'ro.checked_in', aggregateType: 'RepairOrder', aggregateId: ro.id, payload: { roNumber, shopId: shop.id }, dedupeKey: `ro.checked_in:${ro.id}` })
   return { id: ro.id, roNumber }
 }
 
@@ -426,7 +425,6 @@ export async function writeAndPrice(uow: UnitOfWork, actor: Actor, jobId: string
     auditCreate(uow, actor, 'Job', jobId, 'job.repriced', { contentHash: data.contentHash, totalMinor: price.totalMinor, lines: price.lines.length, problems: problems.length })
   } else {
     await transition(uow, { model: 'Job', id: jobId, from: [job.status], to, actor, eventType: to === 'needs_reauthorization' ? 'job.needs_reauthorization' : `job.${to}`, reason, data })
-    if (to === 'needs_reauthorization') uow.emit({ topic: 'job.needs_reauthorization', aggregateType: 'Job', aggregateId: jobId, payload: { repairOrderId: ro.id, number: job.number }, dedupeKey: `job.reauth:${jobId}:${price.contentHash}` })
   }
   await refreshRoTotals(tx, ro.id)
   return { id: jobId, status: to, problems, contentHash: data.contentHash, totalMinor: price.totalMinor.toString(), subtotalMinor: price.subtotalMinor.toString(), taxMinor: price.taxMinor.toString(), reason }

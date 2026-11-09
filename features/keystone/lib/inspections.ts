@@ -141,7 +141,6 @@ export async function sendInspection(uow: UnitOfWork, actor: Actor, input: { ins
   await transition(uow, { model: 'Inspection', id: input.inspectionId, from: ['completed'], to: 'sent', expectedVersion: input.expectedVersion, actor, eventType: 'inspection.sent', metadata: { channel: input.channel }, data: { sentAt: now } })
   const policy = inspection.repairOrder!.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: inspection.repairOrder!.shopPolicyVersionId }, select: { authorizationLinkTtlHours: true } }) : null
   const { id: tokenId, expiresAt } = await createAccessToken(uow, { purpose: 'inspection', subjectType: 'Inspection', subjectId: inspection.id, shopId: inspection.repairOrder!.shopId!, ttlHours: policy?.authorizationLinkTtlHours ?? 72, maxUses: 50 })
-  uow.emit({ topic: 'inspection.sent', aggregateType: 'Inspection', aggregateId: inspection.id, payload: { repairOrderId: inspection.repairOrderId, channel: input.channel }, dedupeKey: `inspection.sent:${inspection.id}` })
   return { id: inspection.id, status: 'sent', tokenId, expiresAt: expiresAt.toISOString() }
 }
 

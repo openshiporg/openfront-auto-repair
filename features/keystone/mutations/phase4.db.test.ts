@@ -13,7 +13,7 @@ import { finalizeShopInvoice } from './phase3'
 import {
   adjustShopStock, approveShopSupplierInvoice, cancelShopSupplierOrder, completeShopTireRegistration, createShopSupplierOrder, issueJobPart, markShopCoreReturned, matchShopSupplierInvoice,
   placeSupplierOrder, postShopCycleCount, receiveShopSupplierOrder, recordShopCounts, recordShopJobTire, recordShopSupplierInvoice, requestSupplierQuote, reserveJobPart, resolveSupplierDiscrepancy,
-  resolveUnknownSupplierOrder, startShopCycleCount, sweepShopTireRegistrations, writeOffShopCore, returnJobPart, saveShopPartItem, selectSupplierQuote,
+  resolveUnknownSupplierOrder, startShopCycleCount, writeOffShopCore, returnJobPart, saveShopPartItem, selectSupplierQuote,
 } from './phase4'
 import { zonedDate } from '../../../lib/zonedTime'
 import { addDays as addCalendarDays } from '../lib/invoiceMath'
@@ -395,14 +395,11 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     expect((ob.tins as string[]).sort()).toEqual(['B3HX4C8R2423', 'B3HX4C8R2523', 'B3HX4C8R2623', 'B3HX4C8R2723'])
     expect(ob.tireDescription).toMatch(/^4 × /)
     expect(await prisma.invoiceLine.count({ where: { invoiceId: invoice.id, kind: 'fee', description: { contains: 'tire', mode: 'insensitive' } } })).toBeGreaterThanOrEqual(0)
-    // Today it is not overdue; 31 days on, the sweep marks it.
-    expect(await sweepShopTireRegistrations(null, { idempotencyKey: key('sw') }, manager)).toMatchObject({ overdue: 0 })
-    const { runInTransaction } = await import('../lib/unitOfWork')
-    const { sweepTireRegistrations } = await import('../lib/tires')
-    const { actorFromSession } = await import('../lib/actor')
-    const later = new Date(Date.now() + 32 * 86_400_000)
-    expect(await runInTransaction(prisma, uow => sweepTireRegistrations(uow, actorFromSession((manager as any).session)), { now: later })).toBeGreaterThanOrEqual(1)
-    expect((await prisma.tireRegistrationObligation.findUniqueOrThrow({ where: { id: ob.id } })).status).toBe('overdue')
+    // Overdue is computed on read from the shop's day: not today, but 32 days on.
+    const { registrationOverdue } = await import('../lib/tires')
+    expect(registrationOverdue(ob, 'America/Los_Angeles')).toBe(false)
+    expect(registrationOverdue(ob, 'America/Los_Angeles', new Date(Date.now() + 32 * 86_400_000))).toBe(true)
+    expect(registrationOverdue({ ...ob, status: 'submitted' }, 'America/Los_Angeles', new Date(Date.now() + 32 * 86_400_000))).toBe(false)
     // An assistant cannot complete it; a person can, and then confirm it.
     const viaAgent = { session: sessionFor('mgr', MANAGER, { mcp: { clientId: 'c', scopes: ['mcp:write'] } }), prisma }
     await expect(completeShopTireRegistration(null, { obligationId: ob.id, method: 'form_handed_over', idempotencyKey: key('tc') }, viaAgent)).rejects.toMatchObject({ code: 'AGENT_FORBIDDEN_ACTION' })

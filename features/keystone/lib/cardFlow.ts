@@ -119,7 +119,7 @@ export async function resolveRefund(db: Db, refundId: string, actor: Actor = SYS
   } catch { return { status: refund.status } }
 }
 
-/** Sweep: payments and refunds still unresolved. Called by the pay page, the dashboard and the outbox worker. */
+/** Sweep: payments and refunds still unresolved. Called by the pay page and the dashboard. */
 export async function resolveOpen(db: Db, shopId?: string) {
   const payments = await db.payment.findMany({ where: { provider: 'stripe', status: { in: ['initiated', 'pending', 'unknown'] }, ...(shopId ? { shopId } : {}) }, select: { id: true }, take: 25, orderBy: { createdAt: 'asc' } })
   const refunds = await db.refund.findMany({ where: { provider: 'stripe', status: { in: ['requested', 'pending', 'unknown'] }, ...(shopId ? { payment: { shopId } } : {}) }, select: { id: true }, take: 25 })

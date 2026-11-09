@@ -17,7 +17,7 @@ import '../lib/policy'
 const graphql = String.raw
 
 // Every domain resolver checks permission itself and runs as one idempotent command: the state
-// change, audit events and outbox messages commit in one transaction (features/keystone/lib).
+// change, audit events commit in one transaction (features/keystone/lib).
 export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
   return mergeSchemas({
     schemas: [baseSchema],
@@ -112,7 +112,6 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         recordShopJobTire(jobId: ID!, tireSize: String, position: String!, tin: String!, idempotencyKey: String!): JSON
         completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
         confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
-        sweepShopTireRegistrations(idempotencyKey: String!): JSON
         clockInShift(shopId: ID!, idempotencyKey: String!): JSON
         clockOutShift(shopId: ID!, idempotencyKey: String!): JSON
         startShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
@@ -248,7 +247,6 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         recordShopJobTire: op(p4.recordShopJobTire),
         completeShopTireRegistration: op(p4.completeShopTireRegistration),
         confirmShopTireRegistration: op(p4.confirmShopTireRegistration),
-        sweepShopTireRegistrations: op(p4.sweepShopTireRegistrations),
       },
     },
   })

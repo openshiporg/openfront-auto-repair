@@ -1895,110 +1895,6 @@ input OrganizationSettingsCreateInput {
   updatedAt: DateTime
 }
 
-type OutboxEvent {
-  id: ID!
-  topic: String
-  aggregateType: String
-  aggregateId: String
-  dedupeKey: String
-  payload: JSON
-  status: String
-  attempts: Int
-  nextAttemptAt: DateTime
-  leaseOwner: String
-  leaseExpiresAt: DateTime
-  fencingToken: Int
-  lastError: String
-  deliveredAt: DateTime
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-input OutboxEventWhereUniqueInput {
-  id: ID
-  dedupeKey: String
-}
-
-input OutboxEventWhereInput {
-  AND: [OutboxEventWhereInput!]
-  OR: [OutboxEventWhereInput!]
-  NOT: [OutboxEventWhereInput!]
-  id: IDFilter
-  topic: StringFilter
-  aggregateType: StringFilter
-  aggregateId: StringFilter
-  dedupeKey: StringFilter
-  status: StringFilter
-  attempts: IntNullableFilter
-  nextAttemptAt: DateTimeNullableFilter
-  leaseOwner: StringFilter
-  leaseExpiresAt: DateTimeNullableFilter
-  fencingToken: IntNullableFilter
-  lastError: StringFilter
-  deliveredAt: DateTimeNullableFilter
-  createdAt: DateTimeFilter
-  updatedAt: DateTimeFilter
-}
-
-input OutboxEventOrderByInput {
-  id: OrderDirection
-  topic: OrderDirection
-  aggregateType: OrderDirection
-  aggregateId: OrderDirection
-  dedupeKey: OrderDirection
-  status: OrderDirection
-  attempts: OrderDirection
-  nextAttemptAt: OrderDirection
-  leaseOwner: OrderDirection
-  leaseExpiresAt: OrderDirection
-  fencingToken: OrderDirection
-  lastError: OrderDirection
-  deliveredAt: OrderDirection
-  createdAt: OrderDirection
-  updatedAt: OrderDirection
-}
-
-input OutboxEventUpdateInput {
-  topic: String
-  aggregateType: String
-  aggregateId: String
-  dedupeKey: String
-  payload: JSON
-  status: String
-  attempts: Int
-  nextAttemptAt: DateTime
-  leaseOwner: String
-  leaseExpiresAt: DateTime
-  fencingToken: Int
-  lastError: String
-  deliveredAt: DateTime
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-input OutboxEventUpdateArgs {
-  where: OutboxEventWhereUniqueInput!
-  data: OutboxEventUpdateInput!
-}
-
-input OutboxEventCreateInput {
-  topic: String
-  aggregateType: String
-  aggregateId: String
-  dedupeKey: String
-  payload: JSON
-  status: String
-  attempts: Int
-  nextAttemptAt: DateTime
-  leaseOwner: String
-  leaseExpiresAt: DateTime
-  fencingToken: Int
-  lastError: String
-  deliveredAt: DateTime
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
 type Shop {
   id: ID!
   code: String
@@ -12008,6 +11904,7 @@ type TireRegistrationObligation {
   dealerIdentity: JSON
   method: String
   dueAt: CalendarDay
+  isOverdue: Boolean
   evidence: JSON
   completedAt: DateTime
   status: String
@@ -13122,12 +13019,6 @@ type Mutation {
   updateOrganizationSettingsItems(data: [OrganizationSettingsUpdateArgs!]!): [OrganizationSettings]
   deleteOrganizationSettings(where: OrganizationSettingsWhereUniqueInput! = {id: 1}): OrganizationSettings
   deleteOrganizationSettingsItems(where: [OrganizationSettingsWhereUniqueInput!]!): [OrganizationSettings]
-  createOutboxEvent(data: OutboxEventCreateInput!): OutboxEvent
-  createOutboxEvents(data: [OutboxEventCreateInput!]!): [OutboxEvent]
-  updateOutboxEvent(where: OutboxEventWhereUniqueInput!, data: OutboxEventUpdateInput!): OutboxEvent
-  updateOutboxEvents(data: [OutboxEventUpdateArgs!]!): [OutboxEvent]
-  deleteOutboxEvent(where: OutboxEventWhereUniqueInput!): OutboxEvent
-  deleteOutboxEvents(where: [OutboxEventWhereUniqueInput!]!): [OutboxEvent]
   createShop(data: ShopCreateInput!): Shop
   createShops(data: [ShopCreateInput!]!): [Shop]
   updateShop(where: ShopWhereUniqueInput!, data: ShopUpdateInput!): Shop
@@ -13795,7 +13686,6 @@ type Mutation {
   recordShopJobTire(jobId: ID!, tireSize: String, position: String!, tin: String!, idempotencyKey: String!): JSON
   completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
   confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
-  sweepShopTireRegistrations(idempotencyKey: String!): JSON
   clockInShift(shopId: ID!, idempotencyKey: String!): JSON
   clockOutShift(shopId: ID!, idempotencyKey: String!): JSON
   startShiftBreak(shopId: ID!, idempotencyKey: String!): JSON
@@ -13894,9 +13784,6 @@ type Query {
   organizationSettings(where: OrganizationSettingsWhereUniqueInput! = {id: 1}): OrganizationSettings
   organizationSettingsItems(where: OrganizationSettingsWhereInput! = {id: {equals: 1}}, orderBy: [OrganizationSettingsOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OrganizationSettingsWhereUniqueInput): [OrganizationSettings!]
   organizationSettingsItemsCount(where: OrganizationSettingsWhereInput! = {id: {equals: 1}}): Int
-  outboxEvent(where: OutboxEventWhereUniqueInput!): OutboxEvent
-  outboxEvents(where: OutboxEventWhereInput! = {}, orderBy: [OutboxEventOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: OutboxEventWhereUniqueInput): [OutboxEvent!]
-  outboxEventsCount(where: OutboxEventWhereInput! = {}): Int
   shop(where: ShopWhereUniqueInput!): Shop
   shops(where: ShopWhereInput! = {}, orderBy: [ShopOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopWhereUniqueInput): [Shop!]
   shopsCount(where: ShopWhereInput! = {}): Int

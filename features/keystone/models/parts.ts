@@ -1,5 +1,6 @@
-import { list } from '@keystone-6/core'
-import { calendarDay, checkbox, integer, json, relationship, timestamp } from '@keystone-6/core/fields'
+import { graphql, list } from '@keystone-6/core'
+import { calendarDay, checkbox, integer, json, relationship, timestamp, virtual } from '@keystone-6/core/fields'
+import { registrationOverdue } from '../lib/tires'
 import { anyOf } from '../access'
 import { lifecycle, milli, minor, optionalChoice, readOnly, systemChoice, systemText, versionField } from './domainFields'
 import { governed, shopScoped } from './listAccess'
@@ -342,6 +343,16 @@ export const TireRegistrationObligation = list({
     dealerIdentity: json({ ...readOnly }),
     method: optionalChoice(['form_handed_over', 'submitted_electronic', 'submitted_paper']),
     dueAt: calendarDay({ ...readOnly }),
+    /** Computed on read: still open and past its due day in the shop's own day. No scheduled job sets it. */
+    isOverdue: virtual({
+      field: graphql.field({
+        type: graphql.Boolean,
+        async resolve(item: any, _args, context) {
+          const shop = item.shopId ? await context.sudo().prisma.shop.findUnique({ where: { id: item.shopId }, select: { timeZone: true } }) : null
+          return registrationOverdue({ status: item.status, dueAt: item.dueAt }, shop?.timeZone)
+        },
+      }),
+    }),
     evidence: json({ ...readOnly }),
     completedAt: timestamp({ ...readOnly }),
     status: lifecycle(['open', 'handed_over', 'submitted', 'confirmed', 'overdue']),
