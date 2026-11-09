@@ -12,6 +12,28 @@ function splitDecimal(value: string) {
   return { negative, whole: whole.replace(/^0+(?=\d)/, '') || '0', fraction }
 }
 
+/**
+ * A money string GraphQL returned, as a bigint; null when the reader may not see it (role-hidden cost comes back null)
+ * or it is not a whole number. Screens add these up, so they must never call BigInt(null) (review r3 N2).
+ */
+export function minorOrNull(minor: string | bigint | null | undefined): bigint | null {
+  if (typeof minor === 'bigint') return minor
+  if (minor === null || minor === undefined) return null
+  const text = String(minor).trim()
+  return /^-?\d+$/.test(text) ? BigInt(text) : null
+}
+
+/** Sum of money strings; null when any of them is hidden, so a partial total is never shown as the whole. */
+export function sumMinorOrNull<T>(rows: T[], pick: (row: T) => string | bigint | null | undefined): bigint | null {
+  let total = 0n
+  for (const row of rows) {
+    const v = minorOrNull(pick(row))
+    if (v === null) return null
+    total += v
+  }
+  return total
+}
+
 /** Minor units ("123456") → "$1,234.56". */
 export function money(minor: string | bigint | null | undefined, currency = 'USD', digits = 2) {
   if (minor === null || minor === undefined || minor === '') return '—'

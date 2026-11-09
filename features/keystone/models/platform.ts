@@ -5,6 +5,7 @@ import { choice, lifecycle, minor, readOnly, systemText, versionField } from './
 import { governed, immutable, managed, serverOnly, shopScoped } from './listAccess'
 import { auditedHooks } from './auditHooks'
 import { trackingFields } from './trackingFields'
+import { auditJsonWithoutCost, hashHiddenWithCost, withoutCostKeys } from '../security/costRedaction'
 
 /*
  * Platform spine (SCHEMA §1, §2.9, §4.1-4.2, §16), ported from openfront-hedge-fund models/platform.ts.
@@ -184,9 +185,10 @@ export const AuditEvent = list({
     actorAgent: relationship({ ref: 'AgentIdentity', ...readOnly }),
     approver: relationship({ ref: 'User', ...readOnly }),
     reason: systemText(),
-    before: json({ ...readOnly }),
-    after: json({ ...readOnly }),
-    metadata: json({ ...readOnly }),
+    // An auditor without canSeeCost reads the trail without cost (review r3 N3); verifyAuditChain hashes the stored rows.
+    before: auditJsonWithoutCost(json({ ...readOnly })),
+    after: auditJsonWithoutCost(json({ ...readOnly })),
+    metadata: auditJsonWithoutCost(json({ ...readOnly })),
     requestId: systemText(),
     prevHash: systemText({ required: true }),
     hash: systemText({ indexed: 'unique', required: true }),
@@ -342,8 +344,9 @@ export const ApprovalRequest = list({
     targetList: systemText({ required: true }),
     targetId: systemText({ indexed: true, required: true }),
     amountMinor: minor(),
-    payload: json({ ...readOnly }),
-    payloadHash: systemText({ required: true }),
+    // Cost in a payload (a core charge, a count variance) is removed for a reader without canSeeCost, and so is the hash that would let them guess it (review r3 N3).
+    payload: withoutCostKeys(json({ ...readOnly })),
+    payloadHash: hashHiddenWithCost(systemText({ required: true })),
     requiredPermission: systemText({ required: true }),
     requestedBy: relationship({ ref: 'User', ...readOnly }),
     requestedByAgent: relationship({ ref: 'AgentIdentity', ...readOnly }),

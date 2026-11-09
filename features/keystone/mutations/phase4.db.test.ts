@@ -270,7 +270,7 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
   it('a duplicate supplier invoice number is rejected, in the command and in the database', { timeout: 120_000 }, async () => {
     await orderAndReceive(capitol, [{ partNumber: 'CF10285', brand: 'Fram', description: 'Cabin air filter', quantityMilli: 2000, unitCostMinor: '1150' }])
     const input = {
-      shopId: NGA, supplierId: capitol, invoiceNumber: 'CAP-884217', invoiceDate: today(), totalMinor: String(18900 + 2000 * 1400),
+      shopId: NGA, supplierId: capitol, invoiceNumber: 'CAP-884217', invoiceDate: today(), totalMinor: String(18900 + 2 * 1400),
       lines: [{ partNumber: 'ALT-11481', quantityMilli: 1000, unitCostMinor: '18900' }, { partNumber: 'CF10285', quantityMilli: 2000, unitCostMinor: '1400' }],
     }
     const made = await recordShopSupplierInvoice(null, { input, idempotencyKey: key('inv') }, parts) as { id: string }
@@ -419,6 +419,83 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     await expect(requestSupplierQuote(null, { shopId: NGA, supplierId: sierra, partNumber: 'P06075', quantityMilli: 1000, idempotencyKey: key('q') }, viaMcp)).resolves.toMatchObject({ found: false })
     const quoted = await requestSupplierQuote(null, { shopId: NGA, supplierId: capitol, partNumber: 'P06075', quantityMilli: 1000, idempotencyKey: key('q') }, viaMcp) as { found: boolean }
     expect(quoted.found).toBe(true)
+  })
+
+  it('r3 N1: a header that disagrees with its lines is refused at entry, never matched clean, never approved, and is reversed without deleting it', { timeout: 180_000 }, async () => {
+    const { reverseShopSupplierInvoice, exportShopSupplierInvoice } = await import('./phase4')
+    await orderAndReceive(valley, [{ partNumber: 'MON-171578', brand: 'Monroe', description: 'Rear strut assembly', quantityMilli: 1000, unitCostMinor: '8800' }])
+    const base = { shopId: NGA, supplierId: valley, invoiceDate: today(), lines: [{ partNumber: 'MON-171578', quantityMilli: 1000, unitCostMinor: '8800' }] }
+    // Entry: header $880.00 against $88.00 of lines, a zero header and a negative header are refused.
+    await expect(recordShopSupplierInvoice(null, { input: { ...base, invoiceNumber: 'VWD-7001', totalMinor: '88000' }, idempotencyKey: key('inv') }, parts)).rejects.toMatchObject({ code: 'INVALID_INPUT', details: expect.objectContaining({ linesTotalMinor: '8800' }) })
+    await expect(recordShopSupplierInvoice(null, { input: { ...base, invoiceNumber: 'VWD-7001', totalMinor: '0', lines: [] }, idempotencyKey: key('inv') }, parts)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
+    await expect(recordShopSupplierInvoice(null, { input: { ...base, invoiceNumber: 'VWD-7001', totalMinor: '-8800' }, idempotencyKey: key('inv') }, parts)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
+    await expect(prisma.supplierInvoice.create({ data: { shopId: NGA, supplierId: valley, invoiceNumber: 'VWD-ZERO', totalMinor: 0n } })).rejects.toThrow(/SupplierInvoice_total_positive|check/i)
+    // A cent of rounding is allowed.
+    const ok = await recordShopSupplierInvoice(null, { input: { ...base, invoiceNumber: 'VWD-7002', totalMinor: '8801' }, idempotencyKey: key('inv') }, parts) as { id: string }
+    expect(await matchShopSupplierInvoice(null, { invoiceId: ok.id, idempotencyKey: key('m') }, parts)).toMatchObject({ status: 'matched', discrepancies: 0 })
+
+    // An invoice that got in before the check (the VW-EO299-4 shape): header 115000 against 1150 of lines.
+    await orderAndReceive(valley, [{ partNumber: 'CF10285', brand: 'Fram', description: 'Cabin air filter', quantityMilli: 1000, unitCostMinor: '1150' }])
+    const legacy = await prisma.supplierInvoice.create({ data: { shopId: NGA, supplierId: valley, invoiceNumber: 'VW-LEGACY-4', totalMinor: 115000n, status: 'received', invoiceDate: new Date() } })
+    await prisma.supplierInvoiceLine.create({ data: { invoiceId: legacy.id, partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: 1150n, matchStatus: 'unmatched' } })
+    // The database refuses to mark it matched, approved or exported while the header disagrees.
+    for (const status of ['matched', 'approved', 'exported']) {
+      await expect(prisma.supplierInvoice.update({ where: { id: legacy.id }, data: { status } })).rejects.toThrow(/does not match its lines/)
+    }
+    const matched = await matchShopSupplierInvoice(null, { invoiceId: legacy.id, idempotencyKey: key('m') }, parts) as { status: string; linesTotalMinor: string }
+    expect(matched).toMatchObject({ status: 'discrepancy', linesTotalMinor: '1150' })
+    const mismatch = await prisma.discrepancy.findFirstOrThrow({ where: { invoiceId: legacy.id, kind: 'total_mismatch' } })
+    expect(mismatch.amountMinor).toBe(113850n)
+    expect(mismatch.detail).not.toMatch(/\$|\d+\.\d\d/)
+    // It cannot be settled by a note or accepted, and approval is refused.
+    for (const outcome of ['resolved', 'accepted'] as const) {
+      await expect(resolveSupplierDiscrepancy(null, { discrepancyId: mismatch.id, outcome, resolution: 'Looks fine to me', idempotencyKey: key('rd') }, manager)).rejects.toMatchObject({ code: 'GUARD_FAILED' })
+    }
+    await expect(approveShopSupplierInvoice(null, { invoiceId: legacy.id, idempotencyKey: key('ap') }, manager)).rejects.toMatchObject({ code: expect.stringMatching(/GUARD_FAILED|INVALID_TRANSITION/) })
+    // Approval also re-checks the total, even with no discrepancy row: an approved legacy row cannot be exported.
+    await prisma.$transaction(async tx => {
+      await tx.$executeRawUnsafe(`ALTER TABLE "SupplierInvoice" DISABLE TRIGGER "SupplierInvoice_total_matches_lines"`)
+      await tx.supplierInvoice.update({ where: { id: legacy.id }, data: { status: 'approved', approvedById: (manager.session as any).itemId, approvedAt: new Date() } })
+      await tx.$executeRawUnsafe(`ALTER TABLE "SupplierInvoice" ENABLE TRIGGER "SupplierInvoice_total_matches_lines"`)
+    })
+    await expect(exportShopSupplierInvoice(null, { invoiceId: legacy.id, idempotencyKey: key('ex') }, manager)).rejects.toMatchObject({ code: expect.stringMatching(/GUARD_FAILED|INTERNAL|CHECK/) })
+
+    // Reversal: a person with the permission, never an assistant or a parts clerk; append-only; frees the number.
+    const filterLine = await prisma.supplierOrderLine.findFirstOrThrow({ where: { partNumber: 'CF10285', order: { supplierId: valley } }, orderBy: { createdAt: 'desc' } })
+    expect(filterLine.invoicedQuantityMilli).toBe(1000)
+    const managerViaMcp = { session: sessionFor('mgr', MANAGER, { mcp: { clientId: 'c', scopes: ['mcp:read', 'mcp:write'] } }), prisma }
+    await expect(reverseShopSupplierInvoice(null, { invoiceId: legacy.id, reason: 'Header keyed as 1150.00', idempotencyKey: key('rv') }, managerViaMcp)).rejects.toMatchObject({ code: 'AGENT_FORBIDDEN_ACTION' })
+    await expect(reverseShopSupplierInvoice(null, { invoiceId: legacy.id, reason: 'Header keyed as 1150.00', idempotencyKey: key('rv') }, parts)).rejects.toMatchObject({ code: 'NOT_AUTHORIZED' })
+    expect(mcpOperationProblem({ document: parse('mutation { reverseShopSupplierInvoice(invoiceId: "x", reason: "abc", idempotencyKey: "abcdefgh") }'), scopes: ['mcp:read', 'mcp:write'] })).toBeTruthy()
+    const rev = await reverseShopSupplierInvoice(null, { invoiceId: legacy.id, reason: 'Header keyed as 1150.00 instead of 11.50', idempotencyKey: key('rv') }, manager) as { status: string; releasedQuantityMilli: number; discrepanciesClosed: number }
+    expect(rev).toMatchObject({ status: 'reversed', releasedQuantityMilli: 1000, discrepanciesClosed: 1 })
+    const after = await prisma.supplierInvoice.findUniqueOrThrow({ where: { id: legacy.id }, include: { lines: true, discrepancies: true } })
+    expect(after).toMatchObject({ status: 'reversed', totalMinor: 115000n, reversalReason: 'Header keyed as 1150.00 instead of 11.50' })
+    expect(after.reversedById).not.toBeNull()
+    expect(after.lines).toHaveLength(1)
+    expect((await prisma.supplierOrderLine.findUniqueOrThrow({ where: { id: filterLine.id } })).invoicedQuantityMilli).toBe(0)
+    // Final: it cannot be moved again, deleted, or reversed twice.
+    await expect(prisma.supplierInvoice.update({ where: { id: legacy.id }, data: { status: 'received' } })).rejects.toThrow(/final/)
+    await expect(prisma.supplierInvoice.delete({ where: { id: legacy.id } })).rejects.toThrow()
+    await expect(reverseShopSupplierInvoice(null, { invoiceId: legacy.id, reason: 'Again', idempotencyKey: key('rv') }, manager)).rejects.toMatchObject({ code: 'INVALID_TRANSITION' })
+    await expect(matchShopSupplierInvoice(null, { invoiceId: legacy.id, idempotencyKey: key('m') }, parts)).rejects.toMatchObject({ code: 'INVALID_TRANSITION' })
+    // The corrected invoice uses the same number and matches the units the reversal gave back.
+    const fixed = await recordShopSupplierInvoice(null, { input: { shopId: NGA, supplierId: valley, invoiceNumber: 'VW-LEGACY-4', invoiceDate: today(), totalMinor: '1150', lines: [{ partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: '1150' }] }, idempotencyKey: key('inv') }, parts) as { id: string }
+    expect(await matchShopSupplierInvoice(null, { invoiceId: fixed.id, idempotencyKey: key('m') }, parts)).toMatchObject({ status: 'matched', discrepancies: 0 })
+    await approveShopSupplierInvoice(null, { invoiceId: fixed.id, idempotencyKey: key('ap') }, manager)
+    await expect(recordShopSupplierInvoice(null, { input: { shopId: NGA, supplierId: valley, invoiceNumber: 'vw-legacy-4', invoiceDate: today(), totalMinor: '1150', lines: [{ partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: '1150' }] }, idempotencyKey: key('inv') }, parts)).rejects.toMatchObject({ code: 'DUPLICATE' })
+    expect(await prisma.auditEvent.count({ where: { entityId: legacy.id, eventType: 'supplier_invoice.reversed' } })).toBe(1)
+  })
+
+  it('r3: the review\'s missing CHECKs are in the database', { timeout: 60_000 }, async () => {
+    const names = (await prisma.$queryRaw<{ conname: string }[]>`SELECT conname FROM pg_constraint WHERE contype = 'c' AND connamespace = current_schema()::regnamespace`).map(r => r.conname)
+    for (const n of ['SupplierInvoice_total_positive', 'SupplierInvoice_status_check', 'SupplierInvoice_reversal_complete', 'SupplierOrder_money_nonnegative', 'SupplierOrder_kind_status_check', 'CoreObligation_charge_nonnegative', 'CoreObligation_status_check',
+      'SupplierReturn_credit_nonnegative', 'SupplierReturn_status_check', 'Discrepancy_amount_nonnegative', 'Discrepancy_kind_status_check', 'JobTire_position_tin_check', 'TireRegistrationObligation_status_check', 'CannedJobVersion_status_check']) expect(names, n).toContain(n)
+    const core = await prisma.coreObligation.findFirstOrThrow()
+    await expect(prisma.coreObligation.update({ where: { id: core.id }, data: { coreChargeMinor: -1n } })).rejects.toThrow()
+    await expect(prisma.coreObligation.update({ where: { id: core.id }, data: { status: 'lost' } })).rejects.toThrow()
+    const tire = await prisma.jobTire.findFirst()
+    if (tire) await expect(prisma.jobTire.update({ where: { id: tire.id }, data: { position: 'roof' } })).rejects.toThrow()
   })
 
   it('stays within the audit chain, and every stock level equals the sum of its ledger', { timeout: 180_000 }, async () => {

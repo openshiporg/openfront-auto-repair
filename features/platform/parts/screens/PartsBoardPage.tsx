@@ -1,5 +1,5 @@
 import { q } from '../../lib/server';
-import { money, milli, label } from '../../lib/format';
+import { money, milli, label, minorOrNull } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Status } from '../../components/ui';
 import { PartsTabs } from './PartsTabs';
 import { Act, OrderQuoteButton, PhoneQuoteForm, QuoteForm, TinForm } from './PartsActions';
@@ -7,7 +7,7 @@ import { Act, OrderQuoteButton, PhoneQuoteForm, QuoteForm, TinForm } from './Par
 type Line = { id: string; kind: string; partNumber: string; description: string; quantityMilli: number; isNewTire: boolean };
 type Job = { id: string; number: number; title: string; repairOrder: { id: string; roNumber: string; shop: { id: string } } | null; lines: Line[]; currentAuthorization: { id: string } | null };
 type Tire = { id: string; position: string; tin: string; job: { id: string } | null };
-type Quote = { id: string; job: { id: string } | null; partNumber: string; status: string; unitCostMinor: string; coreChargeMinor: string; availability: string; source: string; version: number; supplier: { id: string; name: string } | null };
+type Quote = { id: string; job: { id: string } | null; partNumber: string; status: string; unitCostMinor: string | null; coreChargeMinor: string | null; availability: string; source: string; version: number; supplier: { id: string; name: string } | null };
 type OrderLine = { id: string; job: { id: string } | null; partNumber: string; quantityMilli: number; receivedQuantityMilli: number; order: { reference: string; status: string } | null };
 type Supplier = { id: string; name: string; adapter: string };
 type Item = { id: string; partNumber: string; sku: string; stock: { onHandMilli: number; committedMilli: number } | null };
@@ -56,7 +56,7 @@ export default async function PartsBoardPage() {
                   ) : null}
                   {quotes.length ? quotes.map(x => (
                     <Row key={x.id}>
-                      <div className="min-w-0"><span className="text-sm">{x.supplier?.name}</span> <Meta>{label(x.availability)} · {label(x.source)}{BigInt(x.coreChargeMinor) > 0n ? ` · core ${money(x.coreChargeMinor)}` : ''}</Meta></div>
+                      <div className="min-w-0"><span className="text-sm">{x.supplier?.name}</span> <Meta>{label(x.availability)} · {label(x.source)}{(minorOrNull(x.coreChargeMinor) ?? 0n) > 0n ? ` · core ${money(x.coreChargeMinor)}` : ''}</Meta></div>
                       <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm">{money(x.unitCostMinor)}</span><Status value={x.status} />
                         {x.status === 'offered' ? <Act op="selectSupplierQuote" vars={{ quoteId: x.id, expectedVersion: x.version }}>Pick</Act> : null}
                         {x.status === 'selected' && x.supplier ? <OrderQuoteButton shopId={shopId} supplierId={x.supplier.id} quoteId={x.id} jobId={job.id} quantityMilli={line.quantityMilli} /> : null}

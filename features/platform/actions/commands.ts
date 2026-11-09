@@ -78,6 +78,7 @@ const OPS: Record<string, Record<string, string>> = {
   resolveSupplierDiscrepancy: { discrepancyId: 'ID!', outcome: 'String!', resolution: 'String!', expectedVersion: 'Int' },
   approveShopSupplierInvoice: { invoiceId: 'ID!', expectedVersion: 'Int' },
   exportShopSupplierInvoice: { invoiceId: 'ID!', expectedVersion: 'Int' },
+  reverseShopSupplierInvoice: { invoiceId: 'ID!', reason: 'String!', expectedVersion: 'Int' },
   recordShopJobTire: { jobId: 'ID!', tireSize: 'String', position: 'String!', tin: 'String!' },
   completeShopTireRegistration: { obligationId: 'ID!', method: 'String!', tins: '[String!]', note: 'String', expectedVersion: 'Int' },
   confirmShopTireRegistration: { obligationId: 'ID!', expectedVersion: 'Int' },

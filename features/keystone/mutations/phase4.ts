@@ -10,7 +10,7 @@ import {
   receiveSupplierOrder, recordManualPlacement, recordPartQuote, reservePartForJob, resolveUnknownOrder, returnPartFromJob, selectPartQuote, writeOffCore,
   type ApprovalGate, type OrderInput, type QuoteInput, type ReceiveInput,
 } from '../lib/supplierOrders'
-import { approveSupplierInvoice, exportSupplierInvoice, matchSupplierInvoice, recordSupplierInvoice, resolveDiscrepancy, type SupplierInvoiceInput } from '../lib/supplierInvoices'
+import { approveSupplierInvoice, exportSupplierInvoice, matchSupplierInvoice, recordSupplierInvoice, resolveDiscrepancy, reverseSupplierInvoice, type SupplierInvoiceInput } from '../lib/supplierInvoices'
 import { completeTireRegistration, confirmTireRegistration, recordJobTire } from '../lib/tires'
 import { AmbiguousSendError, supplierAdapter, type QuoteRequest } from '../../integrations/parts-supplier'
 import { textOf } from '../lib/partsInput'
@@ -293,6 +293,15 @@ export async function approveShopSupplierInvoice(_root: unknown, args: { invoice
   requireHuman(actor, 'approve a supplier invoice')
   await shopOf(context, 'supplierInvoice', args.invoiceId)
   return run(context, actor, 'supplier_invoice.approve', args.idempotencyKey, args, uow => approveSupplierInvoice(uow, actor, args))
+}
+
+/** Reverse an invoice entered wrong (r3 N1): append-only, it frees the number for the corrected entry. A person with the approval permission does it. */
+export async function reverseShopSupplierInvoice(_root: unknown, args: { invoiceId: string; reason: string; expectedVersion?: number | null; idempotencyKey: string }, context: Ctx) {
+  const actor = actorFromSession(context.session)
+  requirePermission(actor, 'canApproveSupplierInvoice')
+  requireHuman(actor, 'reverse a supplier invoice')
+  await shopOf(context, 'supplierInvoice', args.invoiceId)
+  return run(context, actor, 'supplier_invoice.reverse', args.idempotencyKey, args, uow => reverseSupplierInvoice(uow, actor, args))
 }
 
 export async function exportShopSupplierInvoice(_root: unknown, args: { invoiceId: string; expectedVersion?: number | null; idempotencyKey: string }, context: Ctx) {

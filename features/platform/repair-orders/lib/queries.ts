@@ -37,7 +37,8 @@ export const RO_DETAIL = `${RO_BASE}
   concerns(orderBy: { sortOrder: asc }) { id customerWords category cause correction }
   jobs(orderBy: { number: asc }) {
     id number title kind status source urgency customerDescription version contentHash authorizedContentHash reauthorizationReason priceSnapshot
-    laborMinor partsMinor feesMinor subtotalMinor taxMinor totalMinor authorizedAmountMinor chargeCeilingMinor workStartedAt completedAt
+    laborMinor partsMinor feesMinor subtotalMinor taxMinor totalMinor authorizedAmountMinor chargeCeilingMinor workStartedAt completedAt noChargeReason
+    payerSplits { payerKind }
     concern { id customerWords }
     inspectionItemResult { id condition templateItem { label } }
     lines(orderBy: { sortOrder: asc }) { id kind description auto partNumber brand condition quantityMilli soldCentiHours guideCentiHours overlapCentiHours unitPriceMinor extendedMinor taxMinor taxable feeCode subletVendorName }
@@ -58,6 +59,7 @@ export type JobDetail = {
   contentHash: string; authorizedContentHash: string; reauthorizationReason: string; priceSnapshot: { problems?: string[]; candidates?: { variant: string; centiHours: number; description: string }[] } | null
   laborMinor: string; partsMinor: string; feesMinor: string; subtotalMinor: string; taxMinor: string; totalMinor: string; authorizedAmountMinor: string; chargeCeilingMinor: string | null
   workStartedAt: string | null; completedAt: string | null
+  noChargeReason: string; payerSplits: { payerKind: string }[]
   concern: { id: string; customerWords: string } | null
   inspectionItemResult: { id: string; condition: string; templateItem: { label: string } | null } | null
   lines: JobLine[]

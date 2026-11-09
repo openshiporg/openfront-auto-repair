@@ -11355,6 +11355,9 @@ type SupplierInvoice {
   approvedBy: User
   approvedAt: DateTime
   exportReference: String
+  reversedBy: User
+  reversedAt: DateTime
+  reversalReason: String
   status: String
   version: Int
   createdAt: DateTime
@@ -11381,6 +11384,9 @@ input SupplierInvoiceWhereInput {
   approvedBy: UserWhereInput
   approvedAt: DateTimeNullableFilter
   exportReference: StringFilter
+  reversedBy: UserWhereInput
+  reversedAt: DateTimeNullableFilter
+  reversalReason: StringFilter
   status: StringFilter
   version: IntFilter
   createdAt: DateTimeFilter
@@ -11406,6 +11412,8 @@ input SupplierInvoiceOrderByInput {
   totalMinor: OrderDirection
   approvedAt: OrderDirection
   exportReference: OrderDirection
+  reversedAt: OrderDirection
+  reversalReason: OrderDirection
   status: OrderDirection
   version: OrderDirection
   createdAt: OrderDirection
@@ -11424,6 +11432,9 @@ input SupplierInvoiceUpdateInput {
   approvedBy: UserRelateToOneForUpdateInput
   approvedAt: DateTime
   exportReference: String
+  reversedBy: UserRelateToOneForUpdateInput
+  reversedAt: DateTime
+  reversalReason: String
   status: String
   version: Int
   createdAt: DateTime
@@ -11461,6 +11472,9 @@ input SupplierInvoiceCreateInput {
   approvedBy: UserRelateToOneForCreateInput
   approvedAt: DateTime
   exportReference: String
+  reversedBy: UserRelateToOneForCreateInput
+  reversedAt: DateTime
+  reversalReason: String
   status: String
   version: Int
   createdAt: DateTime
@@ -11485,6 +11499,7 @@ type SupplierInvoiceLine {
   unitCostMinor: BigInt
   coreCreditMinor: BigInt
   matchedOrderLine: SupplierOrderLine
+  allocations: JSON
   matchStatus: String
   createdAt: DateTime
   updatedAt: DateTime
@@ -11528,6 +11543,7 @@ input SupplierInvoiceLineUpdateInput {
   unitCostMinor: BigInt
   coreCreditMinor: BigInt
   matchedOrderLine: SupplierOrderLineRelateToOneForUpdateInput
+  allocations: JSON
   matchStatus: String
   createdAt: DateTime
   updatedAt: DateTime
@@ -11545,6 +11561,7 @@ input SupplierInvoiceLineCreateInput {
   unitCostMinor: BigInt
   coreCreditMinor: BigInt
   matchedOrderLine: SupplierOrderLineRelateToOneForCreateInput
+  allocations: JSON
   matchStatus: String
   createdAt: DateTime
   updatedAt: DateTime
@@ -13683,6 +13700,7 @@ type Mutation {
   resolveSupplierDiscrepancy(discrepancyId: ID!, outcome: String!, resolution: String!, expectedVersion: Int, idempotencyKey: String!): JSON
   approveShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
   exportShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+  reverseShopSupplierInvoice(invoiceId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
   recordShopJobTire(jobId: ID!, tireSize: String, position: String!, tin: String!, idempotencyKey: String!): JSON
   completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
   confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON

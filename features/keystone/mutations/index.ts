@@ -109,6 +109,7 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         resolveSupplierDiscrepancy(discrepancyId: ID!, outcome: String!, resolution: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         approveShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
         exportShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+        reverseShopSupplierInvoice(invoiceId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         recordShopJobTire(jobId: ID!, tireSize: String, position: String!, tin: String!, idempotencyKey: String!): JSON
         completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
         confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
@@ -244,6 +245,7 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         releaseShopJobReservations: op(p4.releaseShopJobReservations),
         approveShopSupplierInvoice: op(p4.approveShopSupplierInvoice),
         exportShopSupplierInvoice: op(p4.exportShopSupplierInvoice),
+        reverseShopSupplierInvoice: op(p4.reverseShopSupplierInvoice),
         recordShopJobTire: op(p4.recordShopJobTire),
         completeShopTireRegistration: op(p4.completeShopTireRegistration),
         confirmShopTireRegistration: op(p4.confirmShopTireRegistration),

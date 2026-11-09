@@ -4,6 +4,7 @@ import { registrationOverdue } from '../lib/tires'
 import { anyOf } from '../access'
 import { lifecycle, milli, minor, optionalChoice, readOnly, systemChoice, systemText, versionField } from './domainFields'
 import { governed, shopScoped } from './listAccess'
+import { withoutCostKeys, withoutMoneyText } from '../security/costRedaction'
 import { trackingFields } from './trackingFields'
 
 /*
@@ -109,7 +110,8 @@ export const StockMovement = list({
     actorUser: relationship({ ref: 'User', ...readOnly }),
     actorName: systemText(),
     at: timestamp({ ...readOnly }),
-    after: json({ ...readOnly }),
+    // The level after the move; its avgCost is removed for a reader without canSeeCost (review r3 N3).
+    after: withoutCostKeys(json({ ...readOnly })),
     ...trackingFields,
   },
 })
@@ -264,7 +266,7 @@ export const SupplierReturn = list({
     shop: relationship({ ref: 'Shop', ...readOnly }),
     supplier: relationship({ ref: 'Supplier', ...readOnly }),
     rmaNumber: systemText(),
-    lines: json({ defaultValue: [], ...readOnly }),
+    lines: withoutCostKeys(json({ defaultValue: [], ...readOnly })),
     reason: systemChoice(['wrong_part', 'unused', 'defective', 'warranty', 'core'], 'unused'),
     creditMinor: minor({ defaultValue: 0n, access: cost }),
     status: lifecycle(['requested', 'shipped', 'credited', 'rejected']),
@@ -288,7 +290,10 @@ export const SupplierInvoice = list({
     approvedBy: relationship({ ref: 'User', ...readOnly }),
     approvedAt: timestamp({ ...readOnly }),
     exportReference: systemText(),
-    status: lifecycle(['received', 'matching', 'matched', 'discrepancy', 'approved', 'exported']),
+    reversedBy: relationship({ ref: 'User', ...readOnly }),
+    reversedAt: timestamp({ ...readOnly }),
+    reversalReason: systemText(),
+    status: lifecycle(['received', 'matching', 'matched', 'discrepancy', 'approved', 'exported', 'reversed']),
     version: versionField(),
     ...trackingFields,
   },
@@ -304,6 +309,8 @@ export const SupplierInvoiceLine = list({
     unitCostMinor: minor({ defaultValue: 0n, access: cost }),
     coreCreditMinor: minor({ defaultValue: 0n, access: cost }),
     matchedOrderLine: relationship({ ref: 'SupplierOrderLine', ...readOnly }),
+    /** The order lines and quantities this line was matched against; a reversal gives exactly these back. */
+    allocations: json({ defaultValue: [], ...readOnly }),
     matchStatus: systemChoice(['unmatched', 'matched', 'variance'], 'unmatched'),
     ...trackingFields,
   },
@@ -315,9 +322,10 @@ export const Discrepancy = list({
   fields: {
     invoice: relationship({ ref: 'SupplierInvoice.discrepancies', ...readOnly }),
     line: relationship({ ref: 'SupplierInvoiceLine', ...readOnly }),
-    kind: systemChoice(['overcharge', 'duplicate', 'missing_credit', 'core_not_credited', 'unordered_item', 'quantity_mismatch'], 'overcharge'),
+    kind: systemChoice(['overcharge', 'duplicate', 'missing_credit', 'core_not_credited', 'unordered_item', 'quantity_mismatch', 'total_mismatch'], 'overcharge'),
     amountMinor: minor({ defaultValue: 0n, access: cost }),
-    detail: systemText(),
+    // Never written with money in it now; older rows have the amounts masked for a reader without canSeeCost.
+    detail: withoutMoneyText(systemText()),
     openedBy: relationship({ ref: 'User', ...readOnly }),
     openedByAgent: relationship({ ref: 'AgentIdentity', ...readOnly }),
     resolution: systemText(),

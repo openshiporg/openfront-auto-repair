@@ -4,7 +4,7 @@ import path from 'node:path'
 export default defineConfig({
   resolve: { alias: { '@': path.resolve(import.meta.dirname) } },
   test: {
-    include: ['features/**/*.test.ts', 'tests/**/*.test.ts'],
+    include: ['features/**/*.test.ts', 'features/**/*.test.tsx', 'tests/**/*.test.ts'],
     exclude: ['node_modules/**', '.keystone/**', 'tests/**/*.test.cjs'],
     environment: 'node',
     env: { AUTO_SECRET_KEY: '07'.repeat(32) },

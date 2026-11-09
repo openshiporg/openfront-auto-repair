@@ -1,16 +1,17 @@
 import { q } from '../../lib/server';
-import { money, milli } from '../../lib/format';
+import { money, milli, minorOrNull, sumMinorOrNull } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Stat } from '../../components/ui';
 import { PartsTabs } from './PartsTabs';
 import { AdjustForm, CountForm } from './PartsActions';
 
-type Item = { id: string; sku: string; partNumber: string; brand: string; description: string; binLocation: string; minQuantityMilli: number; shop: { id: string; name: string } | null; stock: { onHandMilli: number; committedMilli: number; onOrderMilli: number; averageCostMinor: string } | null };
+type Item = { id: string; sku: string; partNumber: string; brand: string; description: string; binLocation: string; minQuantityMilli: number; shop: { id: string; name: string } | null; stock: { onHandMilli: number; committedMilli: number; onOrderMilli: number; averageCostMinor: string | null } | null };
 
 /** Stocked parts: on hand, committed to jobs, on order, and the average cost the shelf holds. */
 export default async function StockPage() {
   const { shopItems } = await q<{ shopItems: Item[] }>(`{ shopItems(where: { isStocked: { equals: true }, active: { equals: true } }, orderBy: { sku: asc }, take: 400) {
     id sku partNumber brand description binLocation minQuantityMilli shop { id name } stock { onHandMilli committedMilli onOrderMilli averageCostMinor } } }`);
-  const value = shopItems.reduce((s, i) => s + (i.stock ? BigInt(i.stock.onHandMilli) * BigInt(i.stock.averageCostMinor) : 0n), 0n);
+  // Average cost is null for a role without canSeeCost: then there is no value to show, not a zero (review r3 N2).
+  const value = sumMinorOrNull(shopItems.filter(i => i.stock), i => { const avg = minorOrNull(i.stock!.averageCostMinor); return avg === null ? null : BigInt(i.stock!.onHandMilli) * avg; });
   const low = shopItems.filter(i => i.stock && i.stock.onHandMilli - i.stock.committedMilli + i.stock.onOrderMilli < i.minQuantityMilli);
   const shops = [...new Map(shopItems.filter(i => i.shop).map(i => [i.shop!.id, i.shop!.name])).entries()];
   return (
@@ -18,7 +19,7 @@ export default async function StockPage() {
       <PartsTabs active="stock" />
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat name="Parts stocked" value={<span className="font-mono text-base">{shopItems.length}</span>} />
-        <Stat name="Value on hand" value={<span className="font-mono text-base">{money((value / 1000n).toString())}</span>} />
+        {value !== null ? <Stat name="Value on hand" value={<span className="font-mono text-base">{money((value / 1000n).toString())}</span>} /> : null}
         <Stat name="At or under minimum" value={<span className={`font-mono text-base ${low.length ? 'text-amber-600' : ''}`}>{low.length}</span>} />
       </div>
       {shops.map(([shopId, shopName]) => {
@@ -31,7 +32,7 @@ export default async function StockPage() {
                   <div className="min-w-0 break-words"><span className="font-mono text-sm">{i.sku}</span> <span className="text-sm">{i.description}</span> <Meta>{i.brand}{i.binLocation ? ` · bin ${i.binLocation}` : ''}</Meta></div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                     <span className="font-mono">{milli(i.stock?.onHandMilli)} on hand</span>
-                    <Meta>{milli(i.stock?.committedMilli)} for jobs · {milli(i.stock?.onOrderMilli)} on order · avg {money(i.stock?.averageCostMinor)}</Meta>
+                    <Meta>{milli(i.stock?.committedMilli)} for jobs · {milli(i.stock?.onOrderMilli)} on order{minorOrNull(i.stock?.averageCostMinor) !== null ? ` · avg ${money(i.stock?.averageCostMinor)}` : ''}</Meta>
                     <AdjustForm shopItemId={i.id} sku={i.sku} />
                   </div>
                 </Row>

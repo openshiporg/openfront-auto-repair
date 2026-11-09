@@ -91,6 +91,7 @@ model User {
   from_Receipt_receivedBy                    Receipt[]                   @relation("Receipt_receivedBy")
   from_StockMovement_actorUser               StockMovement[]             @relation("StockMovement_actorUser")
   from_SupplierInvoice_approvedBy            SupplierInvoice[]           @relation("SupplierInvoice_approvedBy")
+  from_SupplierInvoice_reversedBy            SupplierInvoice[]           @relation("SupplierInvoice_reversedBy")
   from_SupplierOrder_createdBy               SupplierOrder[]             @relation("SupplierOrder_createdBy")
   from_ClockCorrection_requestedBy           ClockCorrection[]           @relation("ClockCorrection_requestedBy")
   from_ComebackCase_openedBy                 ComebackCase[]              @relation("ComebackCase_openedBy")
@@ -2801,6 +2802,10 @@ model SupplierInvoice {
   approvedById    String?               @map("approvedBy")
   approvedAt      DateTime?
   exportReference String                @default("")
+  reversedBy      User?                 @relation("SupplierInvoice_reversedBy", fields: [reversedById], references: [id])
+  reversedById    String?               @map("reversedBy")
+  reversedAt      DateTime?
+  reversalReason  String                @default("")
   status          String                @default("received")
   version         Int                   @default(0)
   createdAt       DateTime              @default(now())
@@ -2810,6 +2815,7 @@ model SupplierInvoice {
   @@index([supplierId])
   @@index([documentId])
   @@index([approvedById])
+  @@index([reversedById])
 }
 
 model SupplierInvoiceLine {
@@ -2822,6 +2828,7 @@ model SupplierInvoiceLine {
   coreCreditMinor                         BigInt             @default(0)
   matchedOrderLine                        SupplierOrderLine? @relation("SupplierInvoiceLine_matchedOrderLine", fields: [matchedOrderLineId], references: [id])
   matchedOrderLineId                      String?            @map("matchedOrderLine")
+  allocations                             Json?              @default("[]")
   matchStatus                             String             @default("unmatched")
   createdAt                               DateTime           @default(now())
   updatedAt                               DateTime           @default(now()) @updatedAt

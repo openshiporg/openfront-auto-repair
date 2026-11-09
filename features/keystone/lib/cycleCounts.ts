@@ -62,7 +62,7 @@ export async function postCycleCount(uow: UnitOfWork, actor: Actor, input: { cyc
   }
   let approvalId: string | null = null
   if (variance >= STOCK_ADJUST_APPROVAL_MINOR) {
-    const g = await gate(uow, actor, { action: 'stock.adjust', targetList: 'CycleCount', targetId: row.id, payload: { cycleCountId: row.id, varianceValueMinor: variance.toString(), items: plan.map(p => ({ shopItemId: p.shopItemId, delta: p.delta })) }, summary: `Post count ${row.reference}: ${variance} cents of variance`, approvalRequestId: input.approvalRequestId })
+    const g = await gate(uow, actor, { action: 'stock.adjust', targetList: 'CycleCount', targetId: row.id, payload: { cycleCountId: row.id, varianceValueMinor: variance.toString(), items: plan.map(p => ({ shopItemId: p.shopItemId, delta: p.delta })) }, summary: `Post count ${row.reference}: ${plan.filter(p => p.delta !== 0).length} part(s) off the expected count`, approvalRequestId: input.approvalRequestId })
     if (!g.approved) return { approvalRequired: true as const, approvalRequestId: g.approvalRequestId }
     approvalId = g.approvalRequestId
   }

@@ -11,6 +11,9 @@ import { AddJobForm, AddLineForm, VariantChooser, CallbackTaskForm, Authorizatio
 
 const EDITABLE = ['draft', 'priced', 'offered', 'authorized', 'in_progress', 'needs_reauthorization'];
 
+/** A comeback redo the shop covers: every payer is the shop's warranty, so the customer owes nothing for it (review r3 minor). */
+const shopCovered = (job: JobDetail) => job.payerSplits.length > 0 && job.payerSplits.every(p => p.payerKind === 'shop_warranty');
+
 function JobBlock({ job, ro }: { job: JobDetail; ro: RoDetail }) {
   const problems = job.priceSnapshot?.problems ?? [];
   const candidates = job.priceSnapshot?.candidates ?? [];
@@ -31,7 +34,9 @@ function JobBlock({ job, ro }: { job: JobDetail; ro: RoDetail }) {
           </Meta>
         </div>
         <div className="flex items-center gap-4">
-          <span className="font-mono text-sm">{money(job.totalMinor)}</span>
+          {shopCovered(job) ? (
+            <span className="text-right text-sm"><span className="font-mono">Customer {money('0')}</span> <span className="block text-xs text-muted-foreground">Covered by shop warranty · work valued at {money(job.totalMinor)}</span></span>
+          ) : <span className="font-mono text-sm">{money(job.totalMinor)}</span>}
           <Status value={job.status} />
         </div>
       </div>
@@ -46,6 +51,7 @@ function JobBlock({ job, ro }: { job: JobDetail; ro: RoDetail }) {
           {problems.map(p => <div key={p}>{p}</div>)}
         </div>
       ) : null}
+      {shopCovered(job) ? <p role="note" className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">{job.noChargeReason || 'Covered by the shop\'s warranty'}. The customer is not charged; the prices below are what the shop absorbs.</p> : null}
       {candidates.length ? <VariantChooser jobId={job.id} version={job.version} candidates={candidates} /> : null}
 
       {job.lines.length ? (
@@ -117,6 +123,11 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
   const methods = ro.jurisdictionPolicyVersion?.allowedAuthorizationMethods ?? [];
   const openTasks = ro.tasks.filter(t => t.status === 'open');
   const inspection = ro.inspections[0];
+  // Jobs the shop's warranty covers are not the customer's to pay: the header says so instead of "total / authorized $0".
+  const coveredJobs = jobs.filter(shopCovered);
+  const covered = coveredJobs.length > 0;
+  const coveredTotal = coveredJobs.reduce((s, j) => s + BigInt(j.totalMinor ?? '0'), 0n);
+  const customerTotal = BigInt(ro.currentTotalMinor ?? '0') - coveredTotal;
 
   return (
     <Page title={ro.roNumber} crumbs={[{ label: 'Repair orders', href: '/dashboard/platform/repair-orders' }]}>
@@ -125,7 +136,9 @@ export default async function RepairOrderPage({ params }: { params: Promise<{ id
         <Stat name="Vehicle" value={<span className="text-base">{ro.vehicle?.label}</span>} />
         <Stat name="Stage" value={<span className="text-base">{BOARD_LABELS[ro.boardStage] ?? label(ro.boardStage)}</span>} />
         <Stat name="Promised" value={<span className={`text-base ${risk === 'late' ? 'text-red-600' : risk === 'due_soon' ? 'text-amber-600' : ''}`}>{ro.promisedAt ? when(ro.promisedAt, zone) : 'Not set'}{risk === 'late' ? ' (late)' : ''}</span>} />
-        <Stat name="Total / authorized" value={<span className="font-mono text-base">{money(ro.currentTotalMinor)} / {money(ro.authorizedTotalMinor)}</span>} />
+        {covered ? (
+          <Stat name="Customer total" value={<span className="text-base"><span className="font-mono">{money(customerTotal)}</span> <span className="block text-xs text-muted-foreground">Covered by shop warranty: {money(coveredTotal)}</span></span>} />
+        ) : <Stat name="Total / authorized" value={<span className="font-mono text-base">{money(ro.currentTotalMinor)} / {money(ro.authorizedTotalMinor)}</span>} />}
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <Meta>{ro.shop?.name} · advisor {ro.serviceAdvisor?.name ?? 'none'} · odometer in {ro.odometerIn ? `${ro.odometerIn.value.toLocaleString('en-US')} ${ro.odometerIn.unit}` : 'not recorded'} · work order signed by {ro.checkIn?.signerName ?? 'nobody'}{ro.designee?.name ? ` · designee ${ro.designee.name}` : ''} · replaced parts: {label(ro.replacedPartsElection)}</Meta>

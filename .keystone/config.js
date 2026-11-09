@@ -915,6 +915,46 @@ function auditedHooks(entityType) {
   };
 }
 
+// features/keystone/security/costRedaction.ts
+var COST_KEY = /cost|corecharge|variance|margin|creditminor|linestotal/i;
+var SUPPLIER_ENTITIES = /* @__PURE__ */ new Set(["SupplierInvoice", "SupplierInvoiceLine", "SupplierOrder", "SupplierOrderLine", "Discrepancy", "CoreObligation", "SupplierReturn", "StockLevel", "StockMovement", "CycleCount", "PartQuote"]);
+var ANY_MINOR = /minor$/i;
+var canSeeCost = (context) => hasPermission(context?.session, "canSeeCost");
+function stripCost(value, allMinor = false) {
+  if (Array.isArray(value)) return value.map((v) => stripCost(v, allMinor));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).filter(([k]) => !COST_KEY.test(k) && !(allMinor && ANY_MINOR.test(k))).map(([k, v]) => [k, stripCost(v, allMinor)]));
+  }
+  return value;
+}
+function holdsCost(value, allMinor = false) {
+  if (Array.isArray(value)) return value.some((v) => holdsCost(v, allMinor));
+  if (value && typeof value === "object") return Object.entries(value).some(([k, v]) => COST_KEY.test(k) || allMinor && ANY_MINOR.test(k) || holdsCost(v, allMinor));
+  return false;
+}
+var stripMoneyText = (text18) => typeof text18 === "string" ? text18.replace(/\$\s?-?[\d,]+(\.\d+)?|\b-?[\d,]+(\.\d{2})?\s?(USD|dollars|cents)\b/gi, "\u2014") : text18;
+function costRedacted(field, redact) {
+  return (args) => {
+    const f = field(args);
+    const inner = f.output.resolve;
+    return {
+      ...f,
+      output: {
+        ...f.output,
+        resolve: async (root, a, context, info) => {
+          const value = inner ? await inner(root, a, context, info) : root.value;
+          if (value === null || value === void 0 || canSeeCost(context)) return value;
+          return redact(value, root.item);
+        }
+      }
+    };
+  };
+}
+var withoutCostKeys = (field) => costRedacted(field, (v) => stripCost(v));
+var withoutMoneyText = (field) => costRedacted(field, (v) => stripMoneyText(v));
+var auditJsonWithoutCost = (field) => costRedacted(field, (v, item) => stripCost(v, SUPPLIER_ENTITIES.has(String(item.entityType))));
+var hashHiddenWithCost = (field, payloadKey = "payload") => costRedacted(field, (v, item) => holdsCost(item[payloadKey]) ? null : v);
+
 // features/keystone/models/platform.ts
 var OrganizationSettings = (0, import_core7.list)({
   isSingleton: true,
@@ -1077,9 +1117,10 @@ var AuditEvent = (0, import_core7.list)({
     actorAgent: (0, import_fields7.relationship)({ ref: "AgentIdentity", ...readOnly }),
     approver: (0, import_fields7.relationship)({ ref: "User", ...readOnly }),
     reason: systemText(),
-    before: (0, import_fields7.json)({ ...readOnly }),
-    after: (0, import_fields7.json)({ ...readOnly }),
-    metadata: (0, import_fields7.json)({ ...readOnly }),
+    // An auditor without canSeeCost reads the trail without cost (review r3 N3); verifyAuditChain hashes the stored rows.
+    before: auditJsonWithoutCost((0, import_fields7.json)({ ...readOnly })),
+    after: auditJsonWithoutCost((0, import_fields7.json)({ ...readOnly })),
+    metadata: auditJsonWithoutCost((0, import_fields7.json)({ ...readOnly })),
     requestId: systemText(),
     prevHash: systemText({ required: true }),
     hash: systemText({ indexed: "unique", required: true }),
@@ -1236,8 +1277,9 @@ var ApprovalRequest = (0, import_core7.list)({
     targetList: systemText({ required: true }),
     targetId: systemText({ indexed: true, required: true }),
     amountMinor: minor(),
-    payload: (0, import_fields7.json)({ ...readOnly }),
-    payloadHash: systemText({ required: true }),
+    // Cost in a payload (a core charge, a count variance) is removed for a reader without canSeeCost, and so is the hash that would let them guess it (review r3 N3).
+    payload: withoutCostKeys((0, import_fields7.json)({ ...readOnly })),
+    payloadHash: hashHiddenWithCost(systemText({ required: true })),
     requiredPermission: systemText({ required: true }),
     requestedBy: (0, import_fields7.relationship)({ ref: "User", ...readOnly }),
     requestedByAgent: (0, import_fields7.relationship)({ ref: "AgentIdentity", ...readOnly }),
@@ -3247,7 +3289,8 @@ var StockMovement = (0, import_core17.list)({
     actorUser: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
     actorName: systemText(),
     at: (0, import_fields15.timestamp)({ ...readOnly }),
-    after: (0, import_fields15.json)({ ...readOnly }),
+    // The level after the move; its avgCost is removed for a reader without canSeeCost (review r3 N3).
+    after: withoutCostKeys((0, import_fields15.json)({ ...readOnly })),
     ...trackingFields
   }
 });
@@ -3394,7 +3437,7 @@ var SupplierReturn = (0, import_core17.list)({
     shop: (0, import_fields15.relationship)({ ref: "Shop", ...readOnly }),
     supplier: (0, import_fields15.relationship)({ ref: "Supplier", ...readOnly }),
     rmaNumber: systemText(),
-    lines: (0, import_fields15.json)({ defaultValue: [], ...readOnly }),
+    lines: withoutCostKeys((0, import_fields15.json)({ defaultValue: [], ...readOnly })),
     reason: systemChoice(["wrong_part", "unused", "defective", "warranty", "core"], "unused"),
     creditMinor: minor({ defaultValue: 0n, access: cost2 }),
     status: lifecycle(["requested", "shipped", "credited", "rejected"]),
@@ -3417,7 +3460,10 @@ var SupplierInvoice = (0, import_core17.list)({
     approvedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
     approvedAt: (0, import_fields15.timestamp)({ ...readOnly }),
     exportReference: systemText(),
-    status: lifecycle(["received", "matching", "matched", "discrepancy", "approved", "exported"]),
+    reversedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
+    reversedAt: (0, import_fields15.timestamp)({ ...readOnly }),
+    reversalReason: systemText(),
+    status: lifecycle(["received", "matching", "matched", "discrepancy", "approved", "exported", "reversed"]),
     version: versionField(),
     ...trackingFields
   }
@@ -3432,6 +3478,8 @@ var SupplierInvoiceLine = (0, import_core17.list)({
     unitCostMinor: minor({ defaultValue: 0n, access: cost2 }),
     coreCreditMinor: minor({ defaultValue: 0n, access: cost2 }),
     matchedOrderLine: (0, import_fields15.relationship)({ ref: "SupplierOrderLine", ...readOnly }),
+    /** The order lines and quantities this line was matched against; a reversal gives exactly these back. */
+    allocations: (0, import_fields15.json)({ defaultValue: [], ...readOnly }),
     matchStatus: systemChoice(["unmatched", "matched", "variance"], "unmatched"),
     ...trackingFields
   }
@@ -3442,9 +3490,10 @@ var Discrepancy = (0, import_core17.list)({
   fields: {
     invoice: (0, import_fields15.relationship)({ ref: "SupplierInvoice.discrepancies", ...readOnly }),
     line: (0, import_fields15.relationship)({ ref: "SupplierInvoiceLine", ...readOnly }),
-    kind: systemChoice(["overcharge", "duplicate", "missing_credit", "core_not_credited", "unordered_item", "quantity_mismatch"], "overcharge"),
+    kind: systemChoice(["overcharge", "duplicate", "missing_credit", "core_not_credited", "unordered_item", "quantity_mismatch", "total_mismatch"], "overcharge"),
     amountMinor: minor({ defaultValue: 0n, access: cost2 }),
-    detail: systemText(),
+    // Never written with money in it now; older rows have the amounts masked for a reader without canSeeCost.
+    detail: withoutMoneyText(systemText()),
     openedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
     openedByAgent: (0, import_fields15.relationship)({ ref: "AgentIdentity", ...readOnly }),
     resolution: systemText(),
@@ -10272,7 +10321,7 @@ async function postCycleCount(uow, actor, input, gate2) {
   }
   let approvalId = null;
   if (variance >= STOCK_ADJUST_APPROVAL_MINOR) {
-    const g = await gate2(uow, actor, { action: "stock.adjust", targetList: "CycleCount", targetId: row.id, payload: { cycleCountId: row.id, varianceValueMinor: variance.toString(), items: plan.map((p) => ({ shopItemId: p.shopItemId, delta: p.delta })) }, summary: `Post count ${row.reference}: ${variance} cents of variance`, approvalRequestId: input.approvalRequestId });
+    const g = await gate2(uow, actor, { action: "stock.adjust", targetList: "CycleCount", targetId: row.id, payload: { cycleCountId: row.id, varianceValueMinor: variance.toString(), items: plan.map((p) => ({ shopItemId: p.shopItemId, delta: p.delta })) }, summary: `Post count ${row.reference}: ${plan.filter((p) => p.delta !== 0).length} part(s) off the expected count`, approvalRequestId: input.approvalRequestId });
     if (!g.approved) return { approvalRequired: true, approvalRequestId: g.approvalRequestId };
     approvalId = g.approvalRequestId;
   }
@@ -10646,6 +10695,9 @@ async function returnPartFromJob(uow, actor, input) {
 }
 
 // features/keystone/lib/supplierInvoices.ts
+var TOTAL_TOLERANCE_MINOR = 1n;
+var linesTotalMinor = (lines) => sumMinor(lines.map((l) => extendMinor(l.quantityMilli, BigInt(l.unitCostMinor)) - BigInt(l.coreCreditMinor)));
+var apart = (a, b) => (a > b ? a - b : b - a) > TOTAL_TOLERANCE_MINOR;
 async function recordSupplierInvoice(uow, actor, input) {
   const { tx } = uow;
   const number = textOf(input.invoiceNumber, "Invoice number", 60, true);
@@ -10653,13 +10705,18 @@ async function recordSupplierInvoice(uow, actor, input) {
   if (!supplier) throw new DomainError(Codes.NOT_FOUND, "Supplier not found.", { field: "supplierId" });
   const date2 = /* @__PURE__ */ new Date(`${String(input.invoiceDate).slice(0, 10)}T00:00:00Z`);
   if (Number.isNaN(date2.getTime())) throw new DomainError(Codes.INVALID_INPUT, "Enter the invoice date.", { field: "invoiceDate" });
-  const dupe = await tx.supplierInvoice.findFirst({ where: { supplierId: supplier.id, invoiceNumber: { equals: number, mode: "insensitive" } }, select: { id: true } });
+  const dupe = await tx.supplierInvoice.findFirst({ where: { supplierId: supplier.id, invoiceNumber: { equals: number, mode: "insensitive" }, status: { not: "reversed" } }, select: { id: true } });
   if (dupe) throw new DomainError(Codes.DUPLICATE, `${supplier.name} invoice ${number} is already recorded.`, { field: "invoiceNumber", existingId: dupe.id });
   const lines = listOf(input.lines, "the invoice").map((entry, i) => {
     const l = objectOf(entry, `line ${i + 1}`);
     return { partNumber: textOf(l.partNumber, "Part number", 60, true), quantityMilli: milliOf(l.quantityMilli, `Quantity on line ${i + 1}`), unitCostMinor: centsOf(l.unitCostMinor, "Cost"), coreCreditMinor: centsOf(l.coreCreditMinor, "Core credit", false) };
   });
   const total = centsOf(input.totalMinor, "Invoice total");
+  if (total <= 0n) throw new DomainError(Codes.INVALID_INPUT, "The invoice total must be above zero. Enter a supplier credit as a return, not as an invoice.", { field: "totalMinor" });
+  const sum = linesTotalMinor(lines);
+  if (apart(total, sum)) {
+    throw new DomainError(Codes.INVALID_INPUT, `The invoice total is ${cents(total)} but its lines add up to ${cents(sum)}. Check the total and each line against the paper invoice.`, { field: "totalMinor", totalMinor: total.toString(), linesTotalMinor: sum.toString() });
+  }
   const row = await tx.supplierInvoice.create({ data: { shopId: input.shopId, supplierId: supplier.id, invoiceNumber: number, invoiceDate: date2, totalMinor: total, documentId: input.documentId || null, status: "received" } });
   await tx.supplierInvoiceLine.createMany({ data: lines.map((l) => ({ invoiceId: row.id, ...l, matchStatus: "unmatched" })) });
   auditCreate(uow, actor, "SupplierInvoice", row.id, "supplier_invoice.received", { supplier: supplier.name, invoiceNumber: number, totalMinor: total, lines: lines.length });
@@ -10687,20 +10744,22 @@ async function matchSupplierInvoice(uow, actor, input) {
     }
     let remaining = line.quantityMilli;
     let first = null;
+    const allocations = [];
     for (const c of open) {
       if (remaining <= 0) break;
       const take = Math.min(remaining, c.receivedQuantityMilli - c.invoicedQuantityMilli);
       await tx.supplierOrderLine.update({ where: { id: c.id }, data: { invoicedQuantityMilli: { increment: take } } });
       first ??= c;
+      allocations.push({ orderLineId: c.id, quantityMilli: take });
       remaining -= take;
       const diff = BigInt(line.unitCostMinor) - BigInt(c.unitCostMinor);
-      if (diff > tolerance) found.push({ kind: "overcharge", amountMinor: extendMinor(take, diff), detail: `${line.partNumber} was ordered at ${cents(BigInt(c.unitCostMinor))} and billed at ${cents(BigInt(line.unitCostMinor))}.`, lineId: line.id });
+      if (diff > tolerance) found.push({ kind: "overcharge", amountMinor: extendMinor(take, diff), detail: `${line.partNumber} was billed above the ordered price on ${take / 1e3} unit${take === 1e3 ? "" : "s"}.`, lineId: line.id });
     }
     if (remaining > 0) {
       found.push({ kind: "quantity_mismatch", amountMinor: extendMinor(remaining, BigInt(line.unitCostMinor)), detail: `${line.partNumber}: billed ${line.quantityMilli / 1e3}, but only ${(line.quantityMilli - remaining) / 1e3} was received and not yet invoiced.`, lineId: line.id });
     }
     const kinds = found.filter((f) => f.lineId === line.id);
-    await tx.supplierInvoiceLine.update({ where: { id: line.id }, data: { matchedOrderLineId: first?.id ?? null, matchStatus: kinds.length ? "variance" : "matched" } });
+    await tx.supplierInvoiceLine.update({ where: { id: line.id }, data: { matchedOrderLineId: first?.id ?? null, allocations, matchStatus: kinds.length ? "variance" : "matched" } });
   }
   const returned = await tx.coreObligation.findMany({ where: { supplierId: invoice.supplierId, shopId: invoice.shopId, status: "returned", returnedAt: { lte: new Date(invoice.invoiceDate.getTime() + 864e5) } } });
   const credits = lines.map((l) => ({ line: l, left: BigInt(l.coreCreditMinor) }));
@@ -10716,6 +10775,11 @@ async function matchSupplierInvoice(uow, actor, input) {
       found.push({ kind: "core_not_credited", amountMinor: BigInt(core.coreChargeMinor), detail: `The ${core.partNumber} core was returned but invoice ${invoice.invoiceNumber} shows no credit. (core ${core.id})`, lineId: null });
     }
   }
+  const lineSum = linesTotalMinor(lines);
+  const header = BigInt(invoice.totalMinor);
+  if (apart(header, lineSum)) {
+    found.push({ kind: "total_mismatch", amountMinor: header > lineSum ? header - lineSum : lineSum - header, detail: `Invoice ${invoice.invoiceNumber}: the header total does not match the sum of its lines.`, lineId: null });
+  }
   const stillOpen = await tx.discrepancy.findMany({ where: { invoiceId: invoice.id }, select: { kind: true, detail: true } });
   const seen = new Set(stillOpen.map((d2) => `${d2.kind}|${d2.detail}`));
   let created = 0;
@@ -10727,14 +10791,16 @@ async function matchSupplierInvoice(uow, actor, input) {
   }
   const openCount = await tx.discrepancy.count({ where: { invoiceId: invoice.id, status: { in: ["open", "disputed"] } } });
   const to = openCount ? "discrepancy" : "matched";
-  const lineSum = sumMinor(lines.map((l) => extendMinor(l.quantityMilli, BigInt(l.unitCostMinor)) - BigInt(l.coreCreditMinor)));
   await transition(uow, { model: "SupplierInvoice", id: invoice.id, from: ["received", "matching", "discrepancy"], to, actor, eventType: `supplier_invoice.${to}`, data: {}, metadata: { newDiscrepancies: created, linesTotalMinor: lineSum.toString() } });
-  return { id: invoice.id, status: to, discrepancies: openCount, linesTotalMinor: lineSum.toString(), totalMinor: BigInt(invoice.totalMinor).toString() };
+  return { id: invoice.id, status: to, discrepancies: openCount, linesTotalMinor: lineSum.toString(), totalMinor: header.toString() };
 }
 async function resolveDiscrepancy(uow, actor, input) {
   const resolution = textOf(input.resolution, "Resolution", 400, true);
   if (!["accepted", "disputed", "resolved"].includes(input.outcome)) throw new DomainError(Codes.INVALID_INPUT, "Choose accepted, disputed or resolved.", { field: "outcome" });
   const row = await transition(uow, {
+    guard: (d2) => {
+      if (d2.kind === "total_mismatch" && input.outcome !== "disputed") throw new DomainError(Codes.GUARD_FAILED, "The header total does not match the lines. Reverse this invoice and enter it again as billed.");
+    },
     model: "Discrepancy",
     id: idOf(input.discrepancyId, "a discrepancy"),
     from: input.outcome === "disputed" ? ["open"] : ["open", "disputed"],
@@ -10755,8 +10821,63 @@ async function resolveDiscrepancy(uow, actor, input) {
 async function approveSupplierInvoice(uow, actor, input) {
   const open = await uow.tx.discrepancy.count({ where: { invoiceId: idOf(input.invoiceId, "an invoice"), status: { in: ["open", "disputed"] } } });
   if (open) throw new DomainError(Codes.GUARD_FAILED, `${open} discrepanc${open === 1 ? "y is" : "ies are"} still open on this invoice. Settle them first.`);
-  await transition(uow, { model: "SupplierInvoice", id: input.invoiceId, from: ["matched"], to: "approved", expectedVersion: input.expectedVersion, actor, eventType: "supplier_invoice.approved", data: { approvedById: actorUserId(actor), approvedAt: uow.now } });
+  await transition(uow, {
+    model: "SupplierInvoice",
+    id: input.invoiceId,
+    from: ["matched"],
+    to: "approved",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "supplier_invoice.approved",
+    data: { approvedById: actorUserId(actor), approvedAt: uow.now },
+    guard: async (row) => {
+      const lines = await uow.tx.supplierInvoiceLine.findMany({ where: { invoiceId: input.invoiceId } });
+      const sum = linesTotalMinor(lines);
+      if (!lines.length || apart(BigInt(row.totalMinor), sum)) {
+        throw new DomainError(Codes.GUARD_FAILED, `The invoice total is ${cents(BigInt(row.totalMinor))} but its lines add up to ${cents(sum)}. It cannot be approved for payment; reverse it and enter it again.`, { totalMinor: String(row.totalMinor), linesTotalMinor: sum.toString() });
+      }
+    }
+  });
   return { id: input.invoiceId };
+}
+async function reverseSupplierInvoice(uow, actor, input) {
+  const reason = textOf(input.reason, "Reason", 300, true);
+  const id = idOf(input.invoiceId, "an invoice");
+  const row = await transition(uow, {
+    model: "SupplierInvoice",
+    id,
+    from: ["received", "matching", "matched", "discrepancy", "approved"],
+    to: "reversed",
+    expectedVersion: input.expectedVersion,
+    actor,
+    eventType: "supplier_invoice.reversed",
+    reason,
+    data: { reversedById: actorUserId(actor), reversedAt: uow.now, reversalReason: reason }
+  });
+  const lines = await uow.tx.supplierInvoiceLine.findMany({ where: { invoiceId: id } });
+  let released = 0;
+  for (const line of lines) {
+    if (line.matchStatus === "unmatched") continue;
+    const taken = Array.isArray(line.allocations) ? line.allocations : line.matchedOrderLineId ? [{ orderLineId: line.matchedOrderLineId, quantityMilli: line.quantityMilli }] : [];
+    for (const a of taken) {
+      const ol = await uow.tx.supplierOrderLine.findUnique({ where: { id: a.orderLineId }, select: { invoicedQuantityMilli: true } });
+      const give = Math.min(a.quantityMilli, ol?.invoicedQuantityMilli ?? 0);
+      if (give > 0) {
+        await uow.tx.supplierOrderLine.update({ where: { id: a.orderLineId }, data: { invoicedQuantityMilli: { decrement: give } } });
+        released += give;
+      }
+    }
+  }
+  const cores = await uow.tx.coreObligation.findMany({ where: { supplierInvoiceLineId: { in: lines.map((l) => l.id) }, status: "credited" } });
+  for (const core of cores) {
+    await uow.tx.coreObligation.update({ where: { id: core.id }, data: { status: "returned", creditedAt: null, supplierInvoiceLineId: null, version: { increment: 1 } } });
+    auditCreate(uow, actor, "CoreObligation", core.id, "core.credit_reversed", { invoice: row.invoiceNumber }, { reason });
+  }
+  const open = await uow.tx.discrepancy.findMany({ where: { invoiceId: id, status: { in: ["open", "disputed"] } }, select: { id: true } });
+  for (const d2 of open) {
+    await transition(uow, { model: "Discrepancy", id: d2.id, from: ["open", "disputed"], to: "resolved", actor, eventType: "discrepancy.resolved", reason: `Invoice reversed: ${reason}`, data: { resolution: `Invoice reversed: ${reason}` } });
+  }
+  return { id, status: "reversed", releasedQuantityMilli: released, coresReopened: cores.length, discrepanciesClosed: open.length };
 }
 async function exportSupplierInvoice(uow, actor, input) {
   const row = await transition(uow, {
@@ -10767,7 +10888,11 @@ async function exportSupplierInvoice(uow, actor, input) {
     expectedVersion: input.expectedVersion,
     actor,
     eventType: "supplier_invoice.exported",
-    data: (row2) => ({ exportReference: `AP-${String(row2.invoiceNumber)}`.slice(0, 80) })
+    data: (row2) => ({ exportReference: `AP-${String(row2.invoiceNumber)}`.slice(0, 80) }),
+    guard: async (row2) => {
+      const sum = linesTotalMinor(await uow.tx.supplierInvoiceLine.findMany({ where: { invoiceId: input.invoiceId } }));
+      if (apart(BigInt(row2.totalMinor), sum)) throw new DomainError(Codes.GUARD_FAILED, `The invoice total is ${cents(BigInt(row2.totalMinor))} but its lines add up to ${cents(sum)}. Reverse it and enter it again as billed.`);
+    }
   });
   const supplier = await uow.tx.supplier.findUniqueOrThrow({ where: { id: row.supplierId }, select: { name: true } });
   const lines = await uow.tx.supplierInvoiceLine.findMany({ where: { invoiceId: input.invoiceId }, orderBy: { createdAt: "asc" } });
@@ -11016,6 +11141,13 @@ async function approveShopSupplierInvoice(_root, args, context) {
   requireHuman(actor, "approve a supplier invoice");
   await shopOf3(context, "supplierInvoice", args.invoiceId);
   return run4(context, actor, "supplier_invoice.approve", args.idempotencyKey, args, (uow) => approveSupplierInvoice(uow, actor, args));
+}
+async function reverseShopSupplierInvoice(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canApproveSupplierInvoice");
+  requireHuman(actor, "reverse a supplier invoice");
+  await shopOf3(context, "supplierInvoice", args.invoiceId);
+  return run4(context, actor, "supplier_invoice.reverse", args.idempotencyKey, args, (uow) => reverseSupplierInvoice(uow, actor, args));
 }
 async function exportShopSupplierInvoice(_root, args, context) {
   const actor = actorFromSession(context.session);
@@ -11444,6 +11576,7 @@ function extendGraphqlSchema(baseSchema) {
         resolveSupplierDiscrepancy(discrepancyId: ID!, outcome: String!, resolution: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         approveShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
         exportShopSupplierInvoice(invoiceId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
+        reverseShopSupplierInvoice(invoiceId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         recordShopJobTire(jobId: ID!, tireSize: String, position: String!, tin: String!, idempotencyKey: String!): JSON
         completeShopTireRegistration(obligationId: ID!, method: String!, tins: [String!], note: String, expectedVersion: Int, idempotencyKey: String!): JSON
         confirmShopTireRegistration(obligationId: ID!, expectedVersion: Int, idempotencyKey: String!): JSON
@@ -11579,6 +11712,7 @@ function extendGraphqlSchema(baseSchema) {
         releaseShopJobReservations: op(releaseShopJobReservations),
         approveShopSupplierInvoice: op(approveShopSupplierInvoice),
         exportShopSupplierInvoice: op(exportShopSupplierInvoice),
+        reverseShopSupplierInvoice: op(reverseShopSupplierInvoice),
         recordShopJobTire: op(recordShopJobTire),
         completeShopTireRegistration: op(completeShopTireRegistration),
         confirmShopTireRegistration: op(confirmShopTireRegistration)
