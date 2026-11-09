@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
 import { plain } from './decimal'
 
 /**
@@ -32,6 +32,18 @@ export function canonicalize(value: unknown): unknown {
 export const canonicalJson = (value: unknown) => JSON.stringify(canonicalize(value))
 
 export const sha256 = (text: string) => createHash('sha256').update(text).digest('hex')
+
+/**
+ * Keyed hash of a contact value, for matching without storing it in the clear. HMAC-SHA256 under a key derived from
+ * AUTO_SECRET_KEY, so it cannot be searched offline from a database copy. The `h1:` prefix names the scheme.
+ */
+export const keyedContactHash = (namespace: string, normalized: string, keyText: string | undefined = process.env.AUTO_SECRET_KEY) => {
+  const text = String(keyText || '').trim()
+  if (!text) throw new Error('AUTO_SECRET_KEY is not set: contact values cannot be hashed.')
+  const root = /^[a-f0-9]{64}$/i.test(text) ? Buffer.from(text, 'hex') : Buffer.from(text, 'base64')
+  const key = createHmac('sha256', root).update('auto-repair.contact-hash.v1').digest()
+  return `h1:${createHmac('sha256', key).update(`${namespace}:${normalized}`).digest('hex')}`
+}
 
 /** Hash of the canonical form: binds approvals and idempotency keys to an exact payload. */
 export const payloadHash = (value: unknown) => sha256(canonicalJson(value))

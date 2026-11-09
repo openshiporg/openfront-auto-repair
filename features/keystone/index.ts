@@ -10,7 +10,17 @@ import { isSignedIn, permissionNames, type Session } from "./access";
 import { addDatabaseConstraints } from "./prismaConstraints";
 import { throwKeystonePrismaErrors } from "./lib/keystonePrismaErrors";
 
-const databaseURL = process.env.DATABASE_URL || "file:./keystone.db";
+/** The pool is bounded explicitly: Prisma's default (2 x CPUs + 1) per instance left ~50 idle connections at rest. */
+function withConnectionLimit(url: string) {
+  if (!/^postgres(ql)?:\/\//.test(url)) return url;
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has("connection_limit")) parsed.searchParams.set("connection_limit", process.env.DATABASE_CONNECTION_LIMIT || "10");
+    if (!parsed.searchParams.has("pool_timeout")) parsed.searchParams.set("pool_timeout", "20");
+    return parsed.toString();
+  } catch { return url; }
+}
+const databaseURL = withConnectionLimit(process.env.DATABASE_URL || "file:./keystone.db");
 
 const sessionConfig = {
   maxAge: 60 * 60 * 24 * 360, // How long they stay signed in?

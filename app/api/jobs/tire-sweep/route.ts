@@ -14,5 +14,9 @@ export async function POST(request: Request) {
   const given = (request.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
   if (!secret || !same(given, secret)) return Response.json({ error: 'Not allowed.' }, { status: 401 })
   const overdue = await runInTransaction(keystoneContext.sudo().prisma as never, uow => sweepTireRegistrations(uow, systemActor('tire-sweep')), { actorKind: 'system' })
+  // The scheduler's heartbeat: /api/health reports whether the hourly sweep is still running.
+  const prisma = keystoneContext.sudo().prisma as any
+  const expiresAt = new Date(Date.now() + 3 * 3_600_000)
+  await prisma.lease.upsert({ where: { key: 'heartbeat:tire-sweep' }, create: { key: 'heartbeat:tire-sweep', owner: 'tire-sweep-cron', fencingToken: 1, expiresAt }, update: { owner: 'tire-sweep-cron', expiresAt } })
   return Response.json({ ok: true, overdue })
 }

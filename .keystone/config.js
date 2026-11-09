@@ -760,6 +760,13 @@ function canonicalize(value) {
 }
 var canonicalJson = (value) => JSON.stringify(canonicalize(value));
 var sha256 = (text18) => (0, import_node_crypto2.createHash)("sha256").update(text18).digest("hex");
+var keyedContactHash = (namespace, normalized, keyText = process.env.AUTO_SECRET_KEY) => {
+  const text18 = String(keyText || "").trim();
+  if (!text18) throw new Error("AUTO_SECRET_KEY is not set: contact values cannot be hashed.");
+  const root = /^[a-f0-9]{64}$/i.test(text18) ? Buffer.from(text18, "hex") : Buffer.from(text18, "base64");
+  const key2 = (0, import_node_crypto2.createHmac)("sha256", root).update("auto-repair.contact-hash.v1").digest();
+  return `h1:${(0, import_node_crypto2.createHmac)("sha256", key2).update(`${namespace}:${normalized}`).digest("hex")}`;
+};
 var payloadHash = (value) => sha256(canonicalJson(value));
 var toJsonValue = (value) => canonicalize(value);
 
@@ -1621,7 +1628,8 @@ var CustomerContact = (0, import_core9.list)({
     customer: (0, import_fields9.relationship)({ ref: "Customer.contacts", ...readOnly }),
     kind: fixedChoice(["mobile", "landline", "email"]),
     value: (0, import_fields9.text)({ access: pii, ui: { createView: { fieldMode: "hidden" }, itemView: { fieldMode: "read" } } }),
-    valueHash: systemText({ indexed: true, required: true }),
+    // Keyed hash (HMAC under AUTO_SECRET_KEY). Not in the API at all: not readable, filterable or sortable by any role (review r2 F2).
+    valueHash: (0, import_fields9.text)({ isIndexed: true, validation: { isRequired: true }, graphql: { omit: true }, ui: { createView: { fieldMode: "hidden" }, itemView: { fieldMode: "hidden" }, listView: { fieldMode: "hidden" } } }),
     label: systemText(),
     isPrimary: (0, import_fields9.checkbox)({ defaultValue: false, ...readOnly }),
     verifiedAt: (0, import_fields9.timestamp)({ ...readOnly }),
@@ -3348,8 +3356,33 @@ var PartWarrantyClaim = (0, import_core17.list)({
   }
 });
 
+// features/keystone/security/fieldGate.ts
+function gateFilterAndOrder(models2) {
+  for (const list15 of Object.values(models2)) {
+    for (const [fieldKey, original] of Object.entries(list15.fields ?? {})) {
+      if (typeof original !== "function" || fieldKey.startsWith("__group")) continue;
+      list15.fields[fieldKey] = (args) => {
+        const field = original(args);
+        const read = typeof field.access === "function" ? field.access : field.access?.read;
+        if (typeof read !== "function") return field;
+        const gate2 = (base) => base === false ? false : async (input) => {
+          const allowed = await read({ ...input, operation: "read", item: void 0 });
+          if (allowed !== true) return false;
+          return typeof base === "function" ? await base(input) === true : true;
+        };
+        return { ...field, isFilterable: gate2(field.isFilterable), isOrderable: gate2(field.isOrderable) };
+      };
+    }
+  }
+  return models2;
+}
+var MAX_TAKE_DEFAULT = 1e3;
+function boundTake(models2, max = MAX_TAKE_DEFAULT) {
+  return Object.fromEntries(Object.entries(models2).map(([key2, config2]) => [key2, config2.isSingleton ? config2 : { ...config2, graphql: { ...config2.graphql, maxTake: config2.graphql?.maxTake ?? max } }]));
+}
+
 // features/keystone/models/index.ts
-var models = {
+var models = boundTake(gateFilterAndOrder({
   User,
   Role,
   OAuthApp,
@@ -3364,7 +3397,7 @@ var models = {
   ...billing_exports,
   ...parts_exports,
   ...labor_exports
-};
+}));
 
 // features/keystone/index.ts
 var import_session2 = require("@keystone-6/core/session");
@@ -3491,6 +3524,8 @@ async function resolveMcpAccessToken(context, token, listKey = "User") {
       scopes: storedScopes(record.scopes),
       tokenId: String(record.id)
     };
+    const bound = await sudo.db.AgentIdentity.findMany({ where: { oauthApp: { id: { equals: app.id } } }, take: 1 });
+    if (bound[0]) return void 0;
     return { itemId: String(record.userId), listKey, mcp };
   } catch {
     return void 0;
@@ -4040,7 +4075,7 @@ function normalizeContact(kind, value) {
   if (!e164) throw new DomainError(Codes.INVALID_INPUT, `${text18.slice(0, 30)} is not a phone number. Use 10 digits or +country code.`, { field: "value" });
   return e164;
 }
-var contactHash = (kind, normalized) => sha256(`${kind === "email" ? "email" : "phone"}:${normalized}`);
+var contactHash = (kind, normalized, key2) => keyedContactHash(kind === "email" ? "email" : "phone", normalized, key2 ?? process.env.AUTO_SECRET_KEY);
 function displayNameOf(input) {
   const person = [input.firstName, input.lastName].map((s) => (s ?? "").trim()).filter(Boolean).join(" ");
   return (input.kind === "business" ? input.companyName?.trim() || person : person || input.companyName?.trim()) || "Unnamed customer";
@@ -11800,7 +11835,18 @@ function throwKeystonePrismaErrors(client) {
 }
 
 // features/keystone/index.ts
-var databaseURL = process.env.DATABASE_URL || "file:./keystone.db";
+function withConnectionLimit(url) {
+  if (!/^postgres(ql)?:\/\//.test(url)) return url;
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has("connection_limit")) parsed.searchParams.set("connection_limit", process.env.DATABASE_CONNECTION_LIMIT || "10");
+    if (!parsed.searchParams.has("pool_timeout")) parsed.searchParams.set("pool_timeout", "20");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+var databaseURL = withConnectionLimit(process.env.DATABASE_URL || "file:./keystone.db");
 var sessionConfig = {
   maxAge: 60 * 60 * 24 * 360,
   // How long they stay signed in?

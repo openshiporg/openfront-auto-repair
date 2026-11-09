@@ -1,5 +1,5 @@
 import { advisoryLock, type Tx } from './db'
-import { sha256 } from './canonical'
+import { keyedContactHash } from './canonical'
 import { auditCreate, lockRow } from './cas'
 import { actorUserId, type Actor } from './actor'
 import { DomainError, Codes } from './errors'
@@ -36,7 +36,7 @@ export function normalizeContact(kind: ContactKind, value: unknown): string {
 }
 
 /** Lookup hash: phone kinds share one namespace so a mobile and a landline with the same number match. */
-export const contactHash = (kind: ContactKind, normalized: string) => sha256(`${kind === 'email' ? 'email' : 'phone'}:${normalized}`)
+export const contactHash = (kind: ContactKind, normalized: string, key?: string) => keyedContactHash(kind === 'email' ? 'email' : 'phone', normalized, key ?? process.env.AUTO_SECRET_KEY)
 
 export function displayNameOf(input: { kind?: string | null; firstName?: string | null; lastName?: string | null; companyName?: string | null }) {
   const person = [input.firstName, input.lastName].map(s => (s ?? '').trim()).filter(Boolean).join(' ')

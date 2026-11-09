@@ -72,7 +72,8 @@ export const CustomerContact = list({
     customer: relationship({ ref: 'Customer.contacts', ...readOnly }),
     kind: fixedChoice(['mobile', 'landline', 'email']),
     value: text({ access: pii, ui: { createView: { fieldMode: 'hidden' }, itemView: { fieldMode: 'read' } } }),
-    valueHash: systemText({ indexed: true, required: true }),
+    // Keyed hash (HMAC under AUTO_SECRET_KEY). Not in the API at all: not readable, filterable or sortable by any role (review r2 F2).
+    valueHash: text({ isIndexed: true, validation: { isRequired: true }, graphql: { omit: true }, ui: { createView: { fieldMode: 'hidden' }, itemView: { fieldMode: 'hidden' }, listView: { fieldMode: 'hidden' } } }),
     label: systemText(),
     isPrimary: checkbox({ defaultValue: false, ...readOnly }),
     verifiedAt: timestamp({ ...readOnly }),

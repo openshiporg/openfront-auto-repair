@@ -42,6 +42,9 @@ export async function resolveMcpAccessToken(context: any, token: string, listKey
       scopes: storedScopes(record.scopes),
       tokenId: String(record.id),
     }
+    // An app that is bound to an agent never acts as the person who approved it (a token with no matching binding gets no access).
+    const bound = await sudo.db.AgentIdentity.findMany({ where: { oauthApp: { id: { equals: app.id } } }, take: 1 })
+    if (bound[0]) return undefined
     return { itemId: String(record.userId), listKey, mcp }
   } catch {
     return undefined

@@ -12,8 +12,9 @@ import * as estimates from './estimates'
 import * as billing from './billing'
 import * as parts from './parts'
 import * as labor from './labor'
+import { boundTake, gateFilterAndOrder } from '../security/fieldGate'
 
-export const models = {
+export const models = boundTake(gateFilterAndOrder({
   User,
   Role,
   OAuthApp,
@@ -28,6 +29,6 @@ export const models = {
   ...billing,
   ...parts,
   ...labor,
-}
+}))
 
 export default models

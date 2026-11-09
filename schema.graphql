@@ -9,7 +9,7 @@ type User {
   role: Role
   kind: UserKindType
   title: String
-  memberships(where: ShopMembershipWhereInput! = {}, orderBy: [ShopMembershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopMembershipWhereUniqueInput): [ShopMembership!]
+  memberships(where: ShopMembershipWhereInput! = {}, orderBy: [ShopMembershipOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopMembershipWhereUniqueInput): [ShopMembership!]
   membershipsCount(where: ShopMembershipWhereInput! = {}): Int
   mfaEnrolled: Boolean
   accessExpiresAt: DateTime
@@ -313,7 +313,7 @@ type Role {
   canBreakGlass: Boolean
   createdAt: DateTime
   updatedAt: DateTime
-  assignedTo(where: UserWhereInput! = {}, orderBy: [UserOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: UserWhereUniqueInput): [User!]
+  assignedTo(where: UserWhereInput! = {}, orderBy: [UserOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: UserWhereUniqueInput): [User!]
   assignedToCount(where: UserWhereInput! = {}): Int
 }
 
@@ -869,7 +869,7 @@ type AgentIdentity {
   kind: String
   modelRef: String
   owner: User
-  shops(where: ShopWhereInput! = {}, orderBy: [ShopOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopWhereUniqueInput): [Shop!]
+  shops(where: ShopWhereInput! = {}, orderBy: [ShopOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopWhereUniqueInput): [Shop!]
   shopsCount(where: ShopWhereInput! = {}): Int
   paused: Boolean
   status: String
@@ -1162,7 +1162,7 @@ type ApprovalRequest {
   status: String
   expiresAt: DateTime
   consumedAt: DateTime
-  decisions(where: ApprovalDecisionWhereInput! = {}, orderBy: [ApprovalDecisionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ApprovalDecisionWhereUniqueInput): [ApprovalDecision!]
+  decisions(where: ApprovalDecisionWhereInput! = {}, orderBy: [ApprovalDecisionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ApprovalDecisionWhereUniqueInput): [ApprovalDecision!]
   decisionsCount(where: ApprovalDecisionWhereInput! = {}): Int
   version: Int
   createdAt: DateTime
@@ -2025,9 +2025,9 @@ type Shop {
   feePolicy: FeePolicyVersion
   taxRuleSet: TaxRuleSetVersion
   warrantyTermSet: WarrantyTermSetVersion
-  bays(where: BayWhereInput! = {}, orderBy: [BayOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BayWhereUniqueInput): [Bay!]
+  bays(where: BayWhereInput! = {}, orderBy: [BayOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: BayWhereUniqueInput): [Bay!]
   baysCount(where: BayWhereInput! = {}): Int
-  memberships(where: ShopMembershipWhereInput! = {}, orderBy: [ShopMembershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopMembershipWhereUniqueInput): [ShopMembership!]
+  memberships(where: ShopMembershipWhereInput! = {}, orderBy: [ShopMembershipOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopMembershipWhereUniqueInput): [ShopMembership!]
   membershipsCount(where: ShopMembershipWhereInput! = {}): Int
   publicProfile: JSON
   isPublished: Boolean
@@ -2310,7 +2310,7 @@ type ShopCalendar {
   shop: Shop
   name: String
   weeklyHours: JSON
-  exceptions(where: ShopCalendarExceptionWhereInput! = {}, orderBy: [ShopCalendarExceptionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopCalendarExceptionWhereUniqueInput): [ShopCalendarException!]
+  exceptions(where: ShopCalendarExceptionWhereInput! = {}, orderBy: [ShopCalendarExceptionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopCalendarExceptionWhereUniqueInput): [ShopCalendarException!]
   exceptionsCount(where: ShopCalendarExceptionWhereInput! = {}): Int
   coverageThrough: CalendarDay
   createdAt: DateTime
@@ -2617,7 +2617,7 @@ input WorkerScheduleCreateInput {
 type FeePolicyVersion {
   id: ID!
   shop: Shop
-  rules(where: FeeRuleWhereInput! = {}, orderBy: [FeeRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FeeRuleWhereUniqueInput): [FeeRule!]
+  rules(where: FeeRuleWhereInput! = {}, orderBy: [FeeRuleOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FeeRuleWhereUniqueInput): [FeeRule!]
   rulesCount(where: FeeRuleWhereInput! = {}): Int
   versionNumber: Int
   status: String
@@ -2864,7 +2864,7 @@ type JurisdictionPack {
   region: String
   verified: Boolean
   sourceRefs: JSON
-  versions(where: JurisdictionPolicyVersionWhereInput! = {}, orderBy: [JurisdictionPolicyVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JurisdictionPolicyVersionWhereUniqueInput): [JurisdictionPolicyVersion!]
+  versions(where: JurisdictionPolicyVersionWhereInput! = {}, orderBy: [JurisdictionPolicyVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JurisdictionPolicyVersionWhereUniqueInput): [JurisdictionPolicyVersion!]
   versionsCount(where: JurisdictionPolicyVersionWhereInput! = {}): Int
   createdAt: DateTime
   updatedAt: DateTime
@@ -3337,7 +3337,7 @@ input TaxCategoryRelateToOneForCreateInput {
 type LaborRateClassSetVersion {
   id: ID!
   shop: Shop
-  classes(where: LaborRateClassWhereInput! = {}, orderBy: [LaborRateClassOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborRateClassWhereUniqueInput): [LaborRateClass!]
+  classes(where: LaborRateClassWhereInput! = {}, orderBy: [LaborRateClassOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: LaborRateClassWhereUniqueInput): [LaborRateClass!]
   classesCount(where: LaborRateClassWhereInput! = {}): Int
   versionNumber: Int
   status: String
@@ -3881,7 +3881,7 @@ type TaxRuleSetVersion {
   id: ID!
   shop: Shop
   rounding: String
-  rules(where: TaxRuleWhereInput! = {}, orderBy: [TaxRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TaxRuleWhereUniqueInput): [TaxRule!]
+  rules(where: TaxRuleWhereInput! = {}, orderBy: [TaxRuleOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TaxRuleWhereUniqueInput): [TaxRule!]
   rulesCount(where: TaxRuleWhereInput! = {}): Int
   versionNumber: Int
   status: String
@@ -4072,7 +4072,7 @@ input WarrantyTermCreateInput {
 type WarrantyTermSetVersion {
   id: ID!
   shop: Shop
-  terms(where: WarrantyTermWhereInput! = {}, orderBy: [WarrantyTermOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyTermWhereUniqueInput): [WarrantyTerm!]
+  terms(where: WarrantyTermWhereInput! = {}, orderBy: [WarrantyTermOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WarrantyTermWhereUniqueInput): [WarrantyTerm!]
   termsCount(where: WarrantyTermWhereInput! = {}): Int
   versionNumber: Int
   status: String
@@ -4188,7 +4188,7 @@ type BusinessAccount {
   id: ID!
   name: String
   accountNumber: String
-  customers(where: CustomerWhereInput! = {}, orderBy: [CustomerOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerWhereUniqueInput): [Customer!]
+  customers(where: CustomerWhereInput! = {}, orderBy: [CustomerOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CustomerWhereUniqueInput): [Customer!]
   customersCount(where: CustomerWhereInput! = {}): Int
   termsDays: Int
   creditLimitMinor: BigInt
@@ -4402,16 +4402,16 @@ type Customer {
   lastName: String
   companyName: String
   displayName: String
-  contacts(where: CustomerContactWhereInput! = {}, orderBy: [CustomerContactOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerContactWhereUniqueInput): [CustomerContact!]
+  contacts(where: CustomerContactWhereInput! = {}, orderBy: [CustomerContactOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CustomerContactWhereUniqueInput): [CustomerContact!]
   contactsCount(where: CustomerContactWhereInput! = {}): Int
   addresses: JSON
   preferredChannel: String
   preferredLanguage: String
   homeShop: Shop
   businessAccount: BusinessAccount
-  ownerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
+  ownerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
   ownershipsCount(where: VehicleOwnershipWhereInput! = {}): Int
-  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
+  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
   appointmentsCount(where: AppointmentWhereInput! = {}): Int
   tags: JSON
   notes: String
@@ -4613,12 +4613,11 @@ type CustomerContact {
   customer: Customer
   kind: String
   value: String
-  valueHash: String
   label: String
   isPrimary: Boolean
   verifiedAt: DateTime
   status: String
-  consents(where: ContactConsentWhereInput! = {}, orderBy: [ContactConsentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ContactConsentWhereUniqueInput): [ContactConsent!]
+  consents(where: ContactConsentWhereInput! = {}, orderBy: [ContactConsentOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ContactConsentWhereUniqueInput): [ContactConsent!]
   consentsCount(where: ContactConsentWhereInput! = {}): Int
   createdAt: DateTime
   updatedAt: DateTime
@@ -4636,7 +4635,6 @@ input CustomerContactWhereInput {
   customer: CustomerWhereInput
   kind: StringFilter
   value: StringFilter
-  valueHash: StringFilter
   label: StringFilter
   isPrimary: BooleanFilter
   verifiedAt: DateTimeNullableFilter
@@ -4656,7 +4654,6 @@ input CustomerContactOrderByInput {
   id: OrderDirection
   kind: OrderDirection
   value: OrderDirection
-  valueHash: OrderDirection
   label: OrderDirection
   isPrimary: OrderDirection
   verifiedAt: OrderDirection
@@ -4669,7 +4666,6 @@ input CustomerContactUpdateInput {
   customer: CustomerRelateToOneForUpdateInput
   kind: String
   value: String
-  valueHash: String
   label: String
   isPrimary: Boolean
   verifiedAt: DateTime
@@ -4695,7 +4691,6 @@ input CustomerContactCreateInput {
   customer: CustomerRelateToOneForCreateInput
   kind: String
   value: String
-  valueHash: String
   label: String
   isPrimary: Boolean
   verifiedAt: DateTime
@@ -5081,17 +5076,17 @@ type Vehicle {
   bodyClass: String
   color: String
   currentDecode: VehicleDecode
-  decodes(where: VehicleDecodeWhereInput! = {}, orderBy: [VehicleDecodeOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleDecodeWhereUniqueInput): [VehicleDecode!]
+  decodes(where: VehicleDecodeWhereInput! = {}, orderBy: [VehicleDecodeOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: VehicleDecodeWhereUniqueInput): [VehicleDecode!]
   decodesCount(where: VehicleDecodeWhereInput! = {}): Int
-  recallChecks(where: RecallCheckWhereInput! = {}, orderBy: [RecallCheckOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RecallCheckWhereUniqueInput): [RecallCheck!]
+  recallChecks(where: RecallCheckWhereInput! = {}, orderBy: [RecallCheckOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: RecallCheckWhereUniqueInput): [RecallCheck!]
   recallChecksCount(where: RecallCheckWhereInput! = {}): Int
-  ownerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
+  ownerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
   ownershipsCount(where: VehicleOwnershipWhereInput! = {}): Int
-  plates(where: PlateRegistrationWhereInput! = {}, orderBy: [PlateRegistrationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PlateRegistrationWhereUniqueInput): [PlateRegistration!]
+  plates(where: PlateRegistrationWhereInput! = {}, orderBy: [PlateRegistrationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PlateRegistrationWhereUniqueInput): [PlateRegistration!]
   platesCount(where: PlateRegistrationWhereInput! = {}): Int
-  odometerReadings(where: OdometerReadingWhereInput! = {}, orderBy: [OdometerReadingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OdometerReadingWhereUniqueInput): [OdometerReading!]
+  odometerReadings(where: OdometerReadingWhereInput! = {}, orderBy: [OdometerReadingOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: OdometerReadingWhereUniqueInput): [OdometerReading!]
   odometerReadingsCount(where: OdometerReadingWhereInput! = {}): Int
-  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
+  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
   appointmentsCount(where: AppointmentWhereInput! = {}): Int
   lastOdometer: Int
   lastOdometerUnit: String
@@ -6020,7 +6015,7 @@ type Concern {
   diagnosis: String
   cause: String
   correction: String
-  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
+  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
   jobsCount(where: JobWhereInput! = {}): Int
   sortOrder: Int
   createdAt: DateTime
@@ -6120,11 +6115,11 @@ type Job {
   source: String
   cannedJobVersion: CannedJobVersion
   inspectionItemResult: InspectionItemResult
-  lines(where: JobLineWhereInput! = {}, orderBy: [JobLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobLineWhereUniqueInput): [JobLine!]
+  lines(where: JobLineWhereInput! = {}, orderBy: [JobLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobLineWhereUniqueInput): [JobLine!]
   linesCount(where: JobLineWhereInput! = {}): Int
-  techShares(where: JobTechShareWhereInput! = {}, orderBy: [JobTechShareOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobTechShareWhereUniqueInput): [JobTechShare!]
+  techShares(where: JobTechShareWhereInput! = {}, orderBy: [JobTechShareOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobTechShareWhereUniqueInput): [JobTechShare!]
   techSharesCount(where: JobTechShareWhereInput! = {}): Int
-  payerSplits(where: PayerSplitWhereInput! = {}, orderBy: [PayerSplitOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PayerSplitWhereUniqueInput): [PayerSplit!]
+  payerSplits(where: PayerSplitWhereInput! = {}, orderBy: [PayerSplitOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PayerSplitWhereUniqueInput): [PayerSplit!]
   payerSplitsCount(where: PayerSplitWhereInput! = {}): Int
   urgency: String
   warrantyTerm: WarrantyTerm
@@ -6145,9 +6140,9 @@ type Job {
   authorizedIdentityHash: String
   chargeCeilingMinor: BigInt
   currentAuthorization: Authorization
-  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
+  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
   authorizationsCount(where: AuthorizationWhereInput! = {}): Int
-  decisions(where: JobDecisionWhereInput! = {}, orderBy: [JobDecisionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobDecisionWhereUniqueInput): [JobDecision!]
+  decisions(where: JobDecisionWhereInput! = {}, orderBy: [JobDecisionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobDecisionWhereUniqueInput): [JobDecision!]
   decisionsCount(where: JobDecisionWhereInput! = {}): Int
   belowThresholdRecordedAt: DateTime
   noChargeReason: String
@@ -6973,15 +6968,15 @@ type RepairOrder {
   serviceAdvisor: User
   appointment: Appointment
   checkIn: CheckIn
-  concerns(where: ConcernWhereInput! = {}, orderBy: [ConcernOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ConcernWhereUniqueInput): [Concern!]
+  concerns(where: ConcernWhereInput! = {}, orderBy: [ConcernOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ConcernWhereUniqueInput): [Concern!]
   concernsCount(where: ConcernWhereInput! = {}): Int
-  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
+  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
   jobsCount(where: JobWhereInput! = {}): Int
-  inspections(where: InspectionWhereInput! = {}, orderBy: [InspectionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionWhereUniqueInput): [Inspection!]
+  inspections(where: InspectionWhereInput! = {}, orderBy: [InspectionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionWhereUniqueInput): [Inspection!]
   inspectionsCount(where: InspectionWhereInput! = {}): Int
-  estimateVersions(where: EstimateVersionWhereInput! = {}, orderBy: [EstimateVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: EstimateVersionWhereUniqueInput): [EstimateVersion!]
+  estimateVersions(where: EstimateVersionWhereInput! = {}, orderBy: [EstimateVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: EstimateVersionWhereUniqueInput): [EstimateVersion!]
   estimateVersionsCount(where: EstimateVersionWhereInput! = {}): Int
-  authorizationRequests(where: AuthorizationRequestWhereInput! = {}, orderBy: [AuthorizationRequestOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationRequestWhereUniqueInput): [AuthorizationRequest!]
+  authorizationRequests(where: AuthorizationRequestWhereInput! = {}, orderBy: [AuthorizationRequestOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AuthorizationRequestWhereUniqueInput): [AuthorizationRequest!]
   authorizationRequestsCount(where: AuthorizationRequestWhereInput! = {}): Int
   odometerIn: OdometerReading
   odometerOut: OdometerReading
@@ -7009,9 +7004,9 @@ type RepairOrder {
   releasedAt: DateTime
   releasedBy: User
   collisionClaimRef: CollisionClaimRef
-  qualityChecks(where: QualityCheckWhereInput! = {}, orderBy: [QualityCheckOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: QualityCheckWhereUniqueInput): [QualityCheck!]
+  qualityChecks(where: QualityCheckWhereInput! = {}, orderBy: [QualityCheckOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: QualityCheckWhereUniqueInput): [QualityCheck!]
   qualityChecksCount(where: QualityCheckWhereInput! = {}): Int
-  tasks(where: StaffTaskWhereInput! = {}, orderBy: [StaffTaskOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StaffTaskWhereUniqueInput): [StaffTask!]
+  tasks(where: StaffTaskWhereInput! = {}, orderBy: [StaffTaskOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: StaffTaskWhereUniqueInput): [StaffTask!]
   tasksCount(where: StaffTaskWhereInput! = {}): Int
   openedAt: DateTime
   openedBy: User
@@ -7555,7 +7550,7 @@ type CannedJob {
   name: String
   category: String
   active: Boolean
-  versions(where: CannedJobVersionWhereInput! = {}, orderBy: [CannedJobVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CannedJobVersionWhereUniqueInput): [CannedJobVersion!]
+  versions(where: CannedJobVersionWhereInput! = {}, orderBy: [CannedJobVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CannedJobVersionWhereUniqueInput): [CannedJobVersion!]
   versionsCount(where: CannedJobVersionWhereInput! = {}): Int
   currentVersion: CannedJobVersion
   createdAt: DateTime
@@ -7755,7 +7750,7 @@ type Inspection {
   repairOrder: RepairOrder
   templateVersion: InspectionTemplateVersion
   technician: User
-  results(where: InspectionItemResultWhereInput! = {}, orderBy: [InspectionItemResultOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionItemResultWhereUniqueInput): [InspectionItemResult!]
+  results(where: InspectionItemResultWhereInput! = {}, orderBy: [InspectionItemResultOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionItemResultWhereUniqueInput): [InspectionItemResult!]
   resultsCount(where: InspectionItemResultWhereInput! = {}): Int
   startedAt: DateTime
   completedAt: DateTime
@@ -7875,9 +7870,9 @@ type InspectionItemResult {
   overrideReason: String
   measurements: JSON
   notes: String
-  media(where: DocumentWhereInput! = {}, orderBy: [DocumentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: DocumentWhereUniqueInput): [Document!]
+  media(where: DocumentWhereInput! = {}, orderBy: [DocumentOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DocumentWhereUniqueInput): [Document!]
   mediaCount(where: DocumentWhereInput! = {}): Int
-  recommendedJobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
+  recommendedJobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
   recommendedJobsCount(where: JobWhereInput! = {}): Int
   recordedBy: User
   recordedAt: DateTime
@@ -8006,7 +8001,7 @@ type InspectionTemplate {
   name: String
   kind: String
   shop: Shop
-  versions(where: InspectionTemplateVersionWhereInput! = {}, orderBy: [InspectionTemplateVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateVersionWhereUniqueInput): [InspectionTemplateVersion!]
+  versions(where: InspectionTemplateVersionWhereInput! = {}, orderBy: [InspectionTemplateVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionTemplateVersionWhereUniqueInput): [InspectionTemplateVersion!]
   versionsCount(where: InspectionTemplateVersionWhereInput! = {}): Int
   createdAt: DateTime
   updatedAt: DateTime
@@ -8162,7 +8157,7 @@ type InspectionTemplateVersion {
   id: ID!
   template: InspectionTemplate
   versionNumber: Int
-  items(where: InspectionTemplateItemWhereInput! = {}, orderBy: [InspectionTemplateItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateItemWhereUniqueInput): [InspectionTemplateItem!]
+  items(where: InspectionTemplateItemWhereInput! = {}, orderBy: [InspectionTemplateItemOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionTemplateItemWhereUniqueInput): [InspectionTemplateItem!]
   itemsCount(where: InspectionTemplateItemWhereInput! = {}): Int
   status: String
   publishedAt: DateTime
@@ -8764,7 +8759,7 @@ type EstimateVersion {
   document: Document
   sentAt: DateTime
   sentBy: User
-  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
+  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
   authorizationsCount(where: AuthorizationWhereInput! = {}): Int
   status: String
   version: Int
@@ -9058,7 +9053,7 @@ type CreditMemo {
   subtotalMinor: BigInt
   taxMinor: BigInt
   totalMinor: BigInt
-  lines(where: CreditMemoLineWhereInput! = {}, orderBy: [CreditMemoLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CreditMemoLineWhereUniqueInput): [CreditMemoLine!]
+  lines(where: CreditMemoLineWhereInput! = {}, orderBy: [CreditMemoLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CreditMemoLineWhereUniqueInput): [CreditMemoLine!]
   linesCount(where: CreditMemoLineWhereInput! = {}): Int
   approval: ApprovalRequest
   createdBy: User
@@ -9378,7 +9373,7 @@ type Invoice {
   dueDate: CalendarDay
   retentionUntil: CalendarDay
   odometerOut: Int
-  lines(where: InvoiceLineWhereInput! = {}, orderBy: [InvoiceLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InvoiceLineWhereUniqueInput): [InvoiceLine!]
+  lines(where: InvoiceLineWhereInput! = {}, orderBy: [InvoiceLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InvoiceLineWhereUniqueInput): [InvoiceLine!]
   linesCount(where: InvoiceLineWhereInput! = {}): Int
   laborSubtotalMinor: BigInt
   partsSubtotalMinor: BigInt
@@ -9392,9 +9387,9 @@ type Invoice {
   balanceMinor: BigInt
   disclosures: JSON
   statement: Statement
-  allocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
+  allocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
   allocationsCount(where: PaymentAllocationWhereInput! = {}): Int
-  creditMemos(where: CreditMemoWhereInput! = {}, orderBy: [CreditMemoOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CreditMemoWhereUniqueInput): [CreditMemo!]
+  creditMemos(where: CreditMemoWhereInput! = {}, orderBy: [CreditMemoOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CreditMemoWhereUniqueInput): [CreditMemo!]
   creditMemosCount(where: CreditMemoWhereInput! = {}): Int
   sentAt: DateTime
   sentChannel: String
@@ -9781,9 +9776,9 @@ type Payment {
   failureMessage: String
   businessDate: CalendarDay
   receivedBy: User
-  allocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
+  allocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
   allocationsCount(where: PaymentAllocationWhereInput! = {}): Int
-  refunds(where: RefundWhereInput! = {}, orderBy: [RefundOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RefundWhereUniqueInput): [Refund!]
+  refunds(where: RefundWhereInput! = {}, orderBy: [RefundOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: RefundWhereUniqueInput): [Refund!]
   refundsCount(where: RefundWhereInput! = {}): Int
   settledAt: DateTime
   status: String
@@ -10849,7 +10844,7 @@ type Receipt {
   receivedBy: User
   at: DateTime
   packingSlip: Document
-  lines(where: ReceiptLineWhereInput! = {}, orderBy: [ReceiptLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReceiptLineWhereUniqueInput): [ReceiptLine!]
+  lines(where: ReceiptLineWhereInput! = {}, orderBy: [ReceiptLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ReceiptLineWhereUniqueInput): [ReceiptLine!]
   linesCount(where: ReceiptLineWhereInput! = {}): Int
   createdAt: DateTime
   updatedAt: DateTime
@@ -11457,9 +11452,9 @@ type SupplierInvoice {
   invoiceDate: CalendarDay
   totalMinor: BigInt
   document: Document
-  lines(where: SupplierInvoiceLineWhereInput! = {}, orderBy: [SupplierInvoiceLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierInvoiceLineWhereUniqueInput): [SupplierInvoiceLine!]
+  lines(where: SupplierInvoiceLineWhereInput! = {}, orderBy: [SupplierInvoiceLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: SupplierInvoiceLineWhereUniqueInput): [SupplierInvoiceLine!]
   linesCount(where: SupplierInvoiceLineWhereInput! = {}): Int
-  discrepancies(where: DiscrepancyWhereInput! = {}, orderBy: [DiscrepancyOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: DiscrepancyWhereUniqueInput): [Discrepancy!]
+  discrepancies(where: DiscrepancyWhereInput! = {}, orderBy: [DiscrepancyOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DiscrepancyWhereUniqueInput): [Discrepancy!]
   discrepanciesCount(where: DiscrepancyWhereInput! = {}): Int
   approvedBy: User
   approvedAt: DateTime
@@ -11670,9 +11665,9 @@ type SupplierOrder {
   etaAt: DateTime
   totalMinor: BigInt
   deliveryNote: String
-  lines(where: SupplierOrderLineWhereInput! = {}, orderBy: [SupplierOrderLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierOrderLineWhereUniqueInput): [SupplierOrderLine!]
+  lines(where: SupplierOrderLineWhereInput! = {}, orderBy: [SupplierOrderLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: SupplierOrderLineWhereUniqueInput): [SupplierOrderLine!]
   linesCount(where: SupplierOrderLineWhereInput! = {}): Int
-  receipts(where: ReceiptWhereInput! = {}, orderBy: [ReceiptOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReceiptWhereUniqueInput): [Receipt!]
+  receipts(where: ReceiptWhereInput! = {}, orderBy: [ReceiptOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ReceiptWhereUniqueInput): [Receipt!]
   receiptsCount(where: ReceiptWhereInput! = {}): Int
   placedAt: DateTime
   createdBy: User
@@ -12860,7 +12855,7 @@ type TechnicianProfile {
   skills: JSON
   rateClasses: JSON
   active: Boolean
-  credentials(where: TechnicianCredentialWhereInput! = {}, orderBy: [TechnicianCredentialOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TechnicianCredentialWhereUniqueInput): [TechnicianCredential!]
+  credentials(where: TechnicianCredentialWhereInput! = {}, orderBy: [TechnicianCredentialOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TechnicianCredentialWhereUniqueInput): [TechnicianCredential!]
   credentialsCount(where: TechnicianCredentialWhereInput! = {}): Int
   version: Int
   createdAt: DateTime
@@ -13855,343 +13850,343 @@ enum PasswordResetRedemptionErrorCode {
 
 type Query {
   user(where: UserWhereUniqueInput!): User
-  users(where: UserWhereInput! = {}, orderBy: [UserOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: UserWhereUniqueInput): [User!]
+  users(where: UserWhereInput! = {}, orderBy: [UserOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: UserWhereUniqueInput): [User!]
   usersCount(where: UserWhereInput! = {}): Int
   role(where: RoleWhereUniqueInput!): Role
-  roles(where: RoleWhereInput! = {}, orderBy: [RoleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RoleWhereUniqueInput): [Role!]
+  roles(where: RoleWhereInput! = {}, orderBy: [RoleOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: RoleWhereUniqueInput): [Role!]
   rolesCount(where: RoleWhereInput! = {}): Int
   oAuthApp(where: OAuthAppWhereUniqueInput!): OAuthApp
-  oAuthApps(where: OAuthAppWhereInput! = {}, orderBy: [OAuthAppOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OAuthAppWhereUniqueInput): [OAuthApp!]
+  oAuthApps(where: OAuthAppWhereInput! = {}, orderBy: [OAuthAppOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: OAuthAppWhereUniqueInput): [OAuthApp!]
   oAuthAppsCount(where: OAuthAppWhereInput! = {}): Int
   oAuthToken(where: OAuthTokenWhereUniqueInput!): OAuthToken
-  oAuthTokens(where: OAuthTokenWhereInput! = {}, orderBy: [OAuthTokenOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OAuthTokenWhereUniqueInput): [OAuthToken!]
+  oAuthTokens(where: OAuthTokenWhereInput! = {}, orderBy: [OAuthTokenOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: OAuthTokenWhereUniqueInput): [OAuthToken!]
   oAuthTokensCount(where: OAuthTokenWhereInput! = {}): Int
   agentIdentity(where: AgentIdentityWhereUniqueInput!): AgentIdentity
-  agentIdentities(where: AgentIdentityWhereInput! = {}, orderBy: [AgentIdentityOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AgentIdentityWhereUniqueInput): [AgentIdentity!]
+  agentIdentities(where: AgentIdentityWhereInput! = {}, orderBy: [AgentIdentityOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AgentIdentityWhereUniqueInput): [AgentIdentity!]
   agentIdentitiesCount(where: AgentIdentityWhereInput! = {}): Int
   approvalDecision(where: ApprovalDecisionWhereUniqueInput!): ApprovalDecision
-  approvalDecisions(where: ApprovalDecisionWhereInput! = {}, orderBy: [ApprovalDecisionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ApprovalDecisionWhereUniqueInput): [ApprovalDecision!]
+  approvalDecisions(where: ApprovalDecisionWhereInput! = {}, orderBy: [ApprovalDecisionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ApprovalDecisionWhereUniqueInput): [ApprovalDecision!]
   approvalDecisionsCount(where: ApprovalDecisionWhereInput! = {}): Int
   approvalPolicy(where: ApprovalPolicyWhereUniqueInput!): ApprovalPolicy
-  approvalPolicies(where: ApprovalPolicyWhereInput! = {}, orderBy: [ApprovalPolicyOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ApprovalPolicyWhereUniqueInput): [ApprovalPolicy!]
+  approvalPolicies(where: ApprovalPolicyWhereInput! = {}, orderBy: [ApprovalPolicyOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ApprovalPolicyWhereUniqueInput): [ApprovalPolicy!]
   approvalPoliciesCount(where: ApprovalPolicyWhereInput! = {}): Int
   approvalRequest(where: ApprovalRequestWhereUniqueInput!): ApprovalRequest
-  approvalRequests(where: ApprovalRequestWhereInput! = {}, orderBy: [ApprovalRequestOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ApprovalRequestWhereUniqueInput): [ApprovalRequest!]
+  approvalRequests(where: ApprovalRequestWhereInput! = {}, orderBy: [ApprovalRequestOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ApprovalRequestWhereUniqueInput): [ApprovalRequest!]
   approvalRequestsCount(where: ApprovalRequestWhereInput! = {}): Int
   auditEvent(where: AuditEventWhereUniqueInput!): AuditEvent
-  auditEvents(where: AuditEventWhereInput! = {}, orderBy: [AuditEventOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuditEventWhereUniqueInput): [AuditEvent!]
+  auditEvents(where: AuditEventWhereInput! = {}, orderBy: [AuditEventOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AuditEventWhereUniqueInput): [AuditEvent!]
   auditEventsCount(where: AuditEventWhereInput! = {}): Int
   bay(where: BayWhereUniqueInput!): Bay
-  bays(where: BayWhereInput! = {}, orderBy: [BayOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BayWhereUniqueInput): [Bay!]
+  bays(where: BayWhereInput! = {}, orderBy: [BayOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: BayWhereUniqueInput): [Bay!]
   baysCount(where: BayWhereInput! = {}): Int
   document(where: DocumentWhereUniqueInput!): Document
-  documents(where: DocumentWhereInput! = {}, orderBy: [DocumentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: DocumentWhereUniqueInput): [Document!]
+  documents(where: DocumentWhereInput! = {}, orderBy: [DocumentOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DocumentWhereUniqueInput): [Document!]
   documentsCount(where: DocumentWhereInput! = {}): Int
   machineCredential(where: MachineCredentialWhereUniqueInput!): MachineCredential
-  machineCredentials(where: MachineCredentialWhereInput! = {}, orderBy: [MachineCredentialOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: MachineCredentialWhereUniqueInput): [MachineCredential!]
+  machineCredentials(where: MachineCredentialWhereInput! = {}, orderBy: [MachineCredentialOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: MachineCredentialWhereUniqueInput): [MachineCredential!]
   machineCredentialsCount(where: MachineCredentialWhereInput! = {}): Int
   notification(where: NotificationWhereUniqueInput!): Notification
-  notifications(where: NotificationWhereInput! = {}, orderBy: [NotificationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: NotificationWhereUniqueInput): [Notification!]
+  notifications(where: NotificationWhereInput! = {}, orderBy: [NotificationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: NotificationWhereUniqueInput): [Notification!]
   notificationsCount(where: NotificationWhereInput! = {}): Int
   obligation(where: ObligationWhereUniqueInput!): Obligation
-  obligations(where: ObligationWhereInput! = {}, orderBy: [ObligationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ObligationWhereUniqueInput): [Obligation!]
+  obligations(where: ObligationWhereInput! = {}, orderBy: [ObligationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ObligationWhereUniqueInput): [Obligation!]
   obligationsCount(where: ObligationWhereInput! = {}): Int
   organizationSettings(where: OrganizationSettingsWhereUniqueInput! = {id: 1}): OrganizationSettings
   organizationSettingsItems(where: OrganizationSettingsWhereInput! = {id: {equals: 1}}, orderBy: [OrganizationSettingsOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OrganizationSettingsWhereUniqueInput): [OrganizationSettings!]
   organizationSettingsItemsCount(where: OrganizationSettingsWhereInput! = {id: {equals: 1}}): Int
   outboxEvent(where: OutboxEventWhereUniqueInput!): OutboxEvent
-  outboxEvents(where: OutboxEventWhereInput! = {}, orderBy: [OutboxEventOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OutboxEventWhereUniqueInput): [OutboxEvent!]
+  outboxEvents(where: OutboxEventWhereInput! = {}, orderBy: [OutboxEventOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: OutboxEventWhereUniqueInput): [OutboxEvent!]
   outboxEventsCount(where: OutboxEventWhereInput! = {}): Int
   shop(where: ShopWhereUniqueInput!): Shop
-  shops(where: ShopWhereInput! = {}, orderBy: [ShopOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopWhereUniqueInput): [Shop!]
+  shops(where: ShopWhereInput! = {}, orderBy: [ShopOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopWhereUniqueInput): [Shop!]
   shopsCount(where: ShopWhereInput! = {}): Int
   shopCalendar(where: ShopCalendarWhereUniqueInput!): ShopCalendar
-  shopCalendars(where: ShopCalendarWhereInput! = {}, orderBy: [ShopCalendarOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopCalendarWhereUniqueInput): [ShopCalendar!]
+  shopCalendars(where: ShopCalendarWhereInput! = {}, orderBy: [ShopCalendarOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopCalendarWhereUniqueInput): [ShopCalendar!]
   shopCalendarsCount(where: ShopCalendarWhereInput! = {}): Int
   shopCalendarException(where: ShopCalendarExceptionWhereUniqueInput!): ShopCalendarException
-  shopCalendarExceptions(where: ShopCalendarExceptionWhereInput! = {}, orderBy: [ShopCalendarExceptionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopCalendarExceptionWhereUniqueInput): [ShopCalendarException!]
+  shopCalendarExceptions(where: ShopCalendarExceptionWhereInput! = {}, orderBy: [ShopCalendarExceptionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopCalendarExceptionWhereUniqueInput): [ShopCalendarException!]
   shopCalendarExceptionsCount(where: ShopCalendarExceptionWhereInput! = {}): Int
   shopMembership(where: ShopMembershipWhereUniqueInput!): ShopMembership
-  shopMemberships(where: ShopMembershipWhereInput! = {}, orderBy: [ShopMembershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopMembershipWhereUniqueInput): [ShopMembership!]
+  shopMemberships(where: ShopMembershipWhereInput! = {}, orderBy: [ShopMembershipOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopMembershipWhereUniqueInput): [ShopMembership!]
   shopMembershipsCount(where: ShopMembershipWhereInput! = {}): Int
   workerSchedule(where: WorkerScheduleWhereUniqueInput!): WorkerSchedule
-  workerSchedules(where: WorkerScheduleWhereInput! = {}, orderBy: [WorkerScheduleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WorkerScheduleWhereUniqueInput): [WorkerSchedule!]
+  workerSchedules(where: WorkerScheduleWhereInput! = {}, orderBy: [WorkerScheduleOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WorkerScheduleWhereUniqueInput): [WorkerSchedule!]
   workerSchedulesCount(where: WorkerScheduleWhereInput! = {}): Int
   feePolicyVersion(where: FeePolicyVersionWhereUniqueInput!): FeePolicyVersion
-  feePolicyVersions(where: FeePolicyVersionWhereInput! = {}, orderBy: [FeePolicyVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FeePolicyVersionWhereUniqueInput): [FeePolicyVersion!]
+  feePolicyVersions(where: FeePolicyVersionWhereInput! = {}, orderBy: [FeePolicyVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FeePolicyVersionWhereUniqueInput): [FeePolicyVersion!]
   feePolicyVersionsCount(where: FeePolicyVersionWhereInput! = {}): Int
   feeRule(where: FeeRuleWhereUniqueInput!): FeeRule
-  feeRules(where: FeeRuleWhereInput! = {}, orderBy: [FeeRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FeeRuleWhereUniqueInput): [FeeRule!]
+  feeRules(where: FeeRuleWhereInput! = {}, orderBy: [FeeRuleOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FeeRuleWhereUniqueInput): [FeeRule!]
   feeRulesCount(where: FeeRuleWhereInput! = {}): Int
   jurisdictionPack(where: JurisdictionPackWhereUniqueInput!): JurisdictionPack
-  jurisdictionPacks(where: JurisdictionPackWhereInput! = {}, orderBy: [JurisdictionPackOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JurisdictionPackWhereUniqueInput): [JurisdictionPack!]
+  jurisdictionPacks(where: JurisdictionPackWhereInput! = {}, orderBy: [JurisdictionPackOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JurisdictionPackWhereUniqueInput): [JurisdictionPack!]
   jurisdictionPacksCount(where: JurisdictionPackWhereInput! = {}): Int
   jurisdictionPolicyVersion(where: JurisdictionPolicyVersionWhereUniqueInput!): JurisdictionPolicyVersion
-  jurisdictionPolicyVersions(where: JurisdictionPolicyVersionWhereInput! = {}, orderBy: [JurisdictionPolicyVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JurisdictionPolicyVersionWhereUniqueInput): [JurisdictionPolicyVersion!]
+  jurisdictionPolicyVersions(where: JurisdictionPolicyVersionWhereInput! = {}, orderBy: [JurisdictionPolicyVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JurisdictionPolicyVersionWhereUniqueInput): [JurisdictionPolicyVersion!]
   jurisdictionPolicyVersionsCount(where: JurisdictionPolicyVersionWhereInput! = {}): Int
   laborMatrixVersion(where: LaborMatrixVersionWhereUniqueInput!): LaborMatrixVersion
-  laborMatrixVersions(where: LaborMatrixVersionWhereInput! = {}, orderBy: [LaborMatrixVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborMatrixVersionWhereUniqueInput): [LaborMatrixVersion!]
+  laborMatrixVersions(where: LaborMatrixVersionWhereInput! = {}, orderBy: [LaborMatrixVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: LaborMatrixVersionWhereUniqueInput): [LaborMatrixVersion!]
   laborMatrixVersionsCount(where: LaborMatrixVersionWhereInput! = {}): Int
   laborRateClass(where: LaborRateClassWhereUniqueInput!): LaborRateClass
-  laborRateClasses(where: LaborRateClassWhereInput! = {}, orderBy: [LaborRateClassOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborRateClassWhereUniqueInput): [LaborRateClass!]
+  laborRateClasses(where: LaborRateClassWhereInput! = {}, orderBy: [LaborRateClassOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: LaborRateClassWhereUniqueInput): [LaborRateClass!]
   laborRateClassesCount(where: LaborRateClassWhereInput! = {}): Int
   laborRateClassSetVersion(where: LaborRateClassSetVersionWhereUniqueInput!): LaborRateClassSetVersion
-  laborRateClassSetVersions(where: LaborRateClassSetVersionWhereInput! = {}, orderBy: [LaborRateClassSetVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborRateClassSetVersionWhereUniqueInput): [LaborRateClassSetVersion!]
+  laborRateClassSetVersions(where: LaborRateClassSetVersionWhereInput! = {}, orderBy: [LaborRateClassSetVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: LaborRateClassSetVersionWhereUniqueInput): [LaborRateClassSetVersion!]
   laborRateClassSetVersionsCount(where: LaborRateClassSetVersionWhereInput! = {}): Int
   partsMatrixVersion(where: PartsMatrixVersionWhereUniqueInput!): PartsMatrixVersion
-  partsMatrixVersions(where: PartsMatrixVersionWhereInput! = {}, orderBy: [PartsMatrixVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PartsMatrixVersionWhereUniqueInput): [PartsMatrixVersion!]
+  partsMatrixVersions(where: PartsMatrixVersionWhereInput! = {}, orderBy: [PartsMatrixVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PartsMatrixVersionWhereUniqueInput): [PartsMatrixVersion!]
   partsMatrixVersionsCount(where: PartsMatrixVersionWhereInput! = {}): Int
   shopPolicyVersion(where: ShopPolicyVersionWhereUniqueInput!): ShopPolicyVersion
-  shopPolicyVersions(where: ShopPolicyVersionWhereInput! = {}, orderBy: [ShopPolicyVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopPolicyVersionWhereUniqueInput): [ShopPolicyVersion!]
+  shopPolicyVersions(where: ShopPolicyVersionWhereInput! = {}, orderBy: [ShopPolicyVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopPolicyVersionWhereUniqueInput): [ShopPolicyVersion!]
   shopPolicyVersionsCount(where: ShopPolicyVersionWhereInput! = {}): Int
   taxCategory(where: TaxCategoryWhereUniqueInput!): TaxCategory
-  taxCategories(where: TaxCategoryWhereInput! = {}, orderBy: [TaxCategoryOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TaxCategoryWhereUniqueInput): [TaxCategory!]
+  taxCategories(where: TaxCategoryWhereInput! = {}, orderBy: [TaxCategoryOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TaxCategoryWhereUniqueInput): [TaxCategory!]
   taxCategoriesCount(where: TaxCategoryWhereInput! = {}): Int
   taxRule(where: TaxRuleWhereUniqueInput!): TaxRule
-  taxRules(where: TaxRuleWhereInput! = {}, orderBy: [TaxRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TaxRuleWhereUniqueInput): [TaxRule!]
+  taxRules(where: TaxRuleWhereInput! = {}, orderBy: [TaxRuleOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TaxRuleWhereUniqueInput): [TaxRule!]
   taxRulesCount(where: TaxRuleWhereInput! = {}): Int
   taxRuleSetVersion(where: TaxRuleSetVersionWhereUniqueInput!): TaxRuleSetVersion
-  taxRuleSetVersions(where: TaxRuleSetVersionWhereInput! = {}, orderBy: [TaxRuleSetVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TaxRuleSetVersionWhereUniqueInput): [TaxRuleSetVersion!]
+  taxRuleSetVersions(where: TaxRuleSetVersionWhereInput! = {}, orderBy: [TaxRuleSetVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TaxRuleSetVersionWhereUniqueInput): [TaxRuleSetVersion!]
   taxRuleSetVersionsCount(where: TaxRuleSetVersionWhereInput! = {}): Int
   warrantyTerm(where: WarrantyTermWhereUniqueInput!): WarrantyTerm
-  warrantyTerms(where: WarrantyTermWhereInput! = {}, orderBy: [WarrantyTermOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyTermWhereUniqueInput): [WarrantyTerm!]
+  warrantyTerms(where: WarrantyTermWhereInput! = {}, orderBy: [WarrantyTermOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WarrantyTermWhereUniqueInput): [WarrantyTerm!]
   warrantyTermsCount(where: WarrantyTermWhereInput! = {}): Int
   warrantyTermSetVersion(where: WarrantyTermSetVersionWhereUniqueInput!): WarrantyTermSetVersion
-  warrantyTermSetVersions(where: WarrantyTermSetVersionWhereInput! = {}, orderBy: [WarrantyTermSetVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyTermSetVersionWhereUniqueInput): [WarrantyTermSetVersion!]
+  warrantyTermSetVersions(where: WarrantyTermSetVersionWhereInput! = {}, orderBy: [WarrantyTermSetVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WarrantyTermSetVersionWhereUniqueInput): [WarrantyTermSetVersion!]
   warrantyTermSetVersionsCount(where: WarrantyTermSetVersionWhereInput! = {}): Int
   businessAccount(where: BusinessAccountWhereUniqueInput!): BusinessAccount
-  businessAccounts(where: BusinessAccountWhereInput! = {}, orderBy: [BusinessAccountOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BusinessAccountWhereUniqueInput): [BusinessAccount!]
+  businessAccounts(where: BusinessAccountWhereInput! = {}, orderBy: [BusinessAccountOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: BusinessAccountWhereUniqueInput): [BusinessAccount!]
   businessAccountsCount(where: BusinessAccountWhereInput! = {}): Int
   contactConsent(where: ContactConsentWhereUniqueInput!): ContactConsent
-  contactConsents(where: ContactConsentWhereInput! = {}, orderBy: [ContactConsentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ContactConsentWhereUniqueInput): [ContactConsent!]
+  contactConsents(where: ContactConsentWhereInput! = {}, orderBy: [ContactConsentOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ContactConsentWhereUniqueInput): [ContactConsent!]
   contactConsentsCount(where: ContactConsentWhereInput! = {}): Int
   customer(where: CustomerWhereUniqueInput!): Customer
-  customers(where: CustomerWhereInput! = {}, orderBy: [CustomerOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerWhereUniqueInput): [Customer!]
+  customers(where: CustomerWhereInput! = {}, orderBy: [CustomerOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CustomerWhereUniqueInput): [Customer!]
   customersCount(where: CustomerWhereInput! = {}): Int
   customerContact(where: CustomerContactWhereUniqueInput!): CustomerContact
-  customerContacts(where: CustomerContactWhereInput! = {}, orderBy: [CustomerContactOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerContactWhereUniqueInput): [CustomerContact!]
+  customerContacts(where: CustomerContactWhereInput! = {}, orderBy: [CustomerContactOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CustomerContactWhereUniqueInput): [CustomerContact!]
   customerContactsCount(where: CustomerContactWhereInput! = {}): Int
   customerMergeEvent(where: CustomerMergeEventWhereUniqueInput!): CustomerMergeEvent
-  customerMergeEvents(where: CustomerMergeEventWhereInput! = {}, orderBy: [CustomerMergeEventOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CustomerMergeEventWhereUniqueInput): [CustomerMergeEvent!]
+  customerMergeEvents(where: CustomerMergeEventWhereInput! = {}, orderBy: [CustomerMergeEventOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CustomerMergeEventWhereUniqueInput): [CustomerMergeEvent!]
   customerMergeEventsCount(where: CustomerMergeEventWhereInput! = {}): Int
   externalReference(where: ExternalReferenceWhereUniqueInput!): ExternalReference
-  externalReferences(where: ExternalReferenceWhereInput! = {}, orderBy: [ExternalReferenceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ExternalReferenceWhereUniqueInput): [ExternalReference!]
+  externalReferences(where: ExternalReferenceWhereInput! = {}, orderBy: [ExternalReferenceOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ExternalReferenceWhereUniqueInput): [ExternalReference!]
   externalReferencesCount(where: ExternalReferenceWhereInput! = {}): Int
   odometerReading(where: OdometerReadingWhereUniqueInput!): OdometerReading
-  odometerReadings(where: OdometerReadingWhereInput! = {}, orderBy: [OdometerReadingOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OdometerReadingWhereUniqueInput): [OdometerReading!]
+  odometerReadings(where: OdometerReadingWhereInput! = {}, orderBy: [OdometerReadingOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: OdometerReadingWhereUniqueInput): [OdometerReading!]
   odometerReadingsCount(where: OdometerReadingWhereInput! = {}): Int
   plateRegistration(where: PlateRegistrationWhereUniqueInput!): PlateRegistration
-  plateRegistrations(where: PlateRegistrationWhereInput! = {}, orderBy: [PlateRegistrationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PlateRegistrationWhereUniqueInput): [PlateRegistration!]
+  plateRegistrations(where: PlateRegistrationWhereInput! = {}, orderBy: [PlateRegistrationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PlateRegistrationWhereUniqueInput): [PlateRegistration!]
   plateRegistrationsCount(where: PlateRegistrationWhereInput! = {}): Int
   recallCheck(where: RecallCheckWhereUniqueInput!): RecallCheck
-  recallChecks(where: RecallCheckWhereInput! = {}, orderBy: [RecallCheckOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RecallCheckWhereUniqueInput): [RecallCheck!]
+  recallChecks(where: RecallCheckWhereInput! = {}, orderBy: [RecallCheckOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: RecallCheckWhereUniqueInput): [RecallCheck!]
   recallChecksCount(where: RecallCheckWhereInput! = {}): Int
   vehicle(where: VehicleWhereUniqueInput!): Vehicle
-  vehicles(where: VehicleWhereInput! = {}, orderBy: [VehicleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleWhereUniqueInput): [Vehicle!]
+  vehicles(where: VehicleWhereInput! = {}, orderBy: [VehicleOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: VehicleWhereUniqueInput): [Vehicle!]
   vehiclesCount(where: VehicleWhereInput! = {}): Int
   vehicleDecode(where: VehicleDecodeWhereUniqueInput!): VehicleDecode
-  vehicleDecodes(where: VehicleDecodeWhereInput! = {}, orderBy: [VehicleDecodeOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleDecodeWhereUniqueInput): [VehicleDecode!]
+  vehicleDecodes(where: VehicleDecodeWhereInput! = {}, orderBy: [VehicleDecodeOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: VehicleDecodeWhereUniqueInput): [VehicleDecode!]
   vehicleDecodesCount(where: VehicleDecodeWhereInput! = {}): Int
   vehicleOwnership(where: VehicleOwnershipWhereUniqueInput!): VehicleOwnership
-  vehicleOwnerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
+  vehicleOwnerships(where: VehicleOwnershipWhereInput! = {}, orderBy: [VehicleOwnershipOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: VehicleOwnershipWhereUniqueInput): [VehicleOwnership!]
   vehicleOwnershipsCount(where: VehicleOwnershipWhereInput! = {}): Int
   appointment(where: AppointmentWhereUniqueInput!): Appointment
-  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
+  appointments(where: AppointmentWhereInput! = {}, orderBy: [AppointmentOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AppointmentWhereUniqueInput): [Appointment!]
   appointmentsCount(where: AppointmentWhereInput! = {}): Int
   bookingHold(where: BookingHoldWhereUniqueInput!): BookingHold
-  bookingHolds(where: BookingHoldWhereInput! = {}, orderBy: [BookingHoldOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BookingHoldWhereUniqueInput): [BookingHold!]
+  bookingHolds(where: BookingHoldWhereInput! = {}, orderBy: [BookingHoldOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: BookingHoldWhereUniqueInput): [BookingHold!]
   bookingHoldsCount(where: BookingHoldWhereInput! = {}): Int
   bookingRule(where: BookingRuleWhereUniqueInput!): BookingRule
-  bookingRules(where: BookingRuleWhereInput! = {}, orderBy: [BookingRuleOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BookingRuleWhereUniqueInput): [BookingRule!]
+  bookingRules(where: BookingRuleWhereInput! = {}, orderBy: [BookingRuleOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: BookingRuleWhereUniqueInput): [BookingRule!]
   bookingRulesCount(where: BookingRuleWhereInput! = {}): Int
   checkIn(where: CheckInWhereUniqueInput!): CheckIn
-  checkIns(where: CheckInWhereInput! = {}, orderBy: [CheckInOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CheckInWhereUniqueInput): [CheckIn!]
+  checkIns(where: CheckInWhereInput! = {}, orderBy: [CheckInOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CheckInWhereUniqueInput): [CheckIn!]
   checkInsCount(where: CheckInWhereInput! = {}): Int
   collisionClaimRef(where: CollisionClaimRefWhereUniqueInput!): CollisionClaimRef
-  collisionClaimRefs(where: CollisionClaimRefWhereInput! = {}, orderBy: [CollisionClaimRefOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CollisionClaimRefWhereUniqueInput): [CollisionClaimRef!]
+  collisionClaimRefs(where: CollisionClaimRefWhereInput! = {}, orderBy: [CollisionClaimRefOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CollisionClaimRefWhereUniqueInput): [CollisionClaimRef!]
   collisionClaimRefsCount(where: CollisionClaimRefWhereInput! = {}): Int
   concern(where: ConcernWhereUniqueInput!): Concern
-  concerns(where: ConcernWhereInput! = {}, orderBy: [ConcernOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ConcernWhereUniqueInput): [Concern!]
+  concerns(where: ConcernWhereInput! = {}, orderBy: [ConcernOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ConcernWhereUniqueInput): [Concern!]
   concernsCount(where: ConcernWhereInput! = {}): Int
   job(where: JobWhereUniqueInput!): Job
-  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
+  jobs(where: JobWhereInput! = {}, orderBy: [JobOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobWhereUniqueInput): [Job!]
   jobsCount(where: JobWhereInput! = {}): Int
   jobLine(where: JobLineWhereUniqueInput!): JobLine
-  jobLines(where: JobLineWhereInput! = {}, orderBy: [JobLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobLineWhereUniqueInput): [JobLine!]
+  jobLines(where: JobLineWhereInput! = {}, orderBy: [JobLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobLineWhereUniqueInput): [JobLine!]
   jobLinesCount(where: JobLineWhereInput! = {}): Int
   jobTechShare(where: JobTechShareWhereUniqueInput!): JobTechShare
-  jobTechShares(where: JobTechShareWhereInput! = {}, orderBy: [JobTechShareOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobTechShareWhereUniqueInput): [JobTechShare!]
+  jobTechShares(where: JobTechShareWhereInput! = {}, orderBy: [JobTechShareOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobTechShareWhereUniqueInput): [JobTechShare!]
   jobTechSharesCount(where: JobTechShareWhereInput! = {}): Int
   payerSplit(where: PayerSplitWhereUniqueInput!): PayerSplit
-  payerSplits(where: PayerSplitWhereInput! = {}, orderBy: [PayerSplitOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PayerSplitWhereUniqueInput): [PayerSplit!]
+  payerSplits(where: PayerSplitWhereInput! = {}, orderBy: [PayerSplitOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PayerSplitWhereUniqueInput): [PayerSplit!]
   payerSplitsCount(where: PayerSplitWhereInput! = {}): Int
   qualityCheck(where: QualityCheckWhereUniqueInput!): QualityCheck
-  qualityChecks(where: QualityCheckWhereInput! = {}, orderBy: [QualityCheckOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: QualityCheckWhereUniqueInput): [QualityCheck!]
+  qualityChecks(where: QualityCheckWhereInput! = {}, orderBy: [QualityCheckOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: QualityCheckWhereUniqueInput): [QualityCheck!]
   qualityChecksCount(where: QualityCheckWhereInput! = {}): Int
   repairOrder(where: RepairOrderWhereUniqueInput!): RepairOrder
-  repairOrders(where: RepairOrderWhereInput! = {}, orderBy: [RepairOrderOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RepairOrderWhereUniqueInput): [RepairOrder!]
+  repairOrders(where: RepairOrderWhereInput! = {}, orderBy: [RepairOrderOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: RepairOrderWhereUniqueInput): [RepairOrder!]
   repairOrdersCount(where: RepairOrderWhereInput! = {}): Int
   staffTask(where: StaffTaskWhereUniqueInput!): StaffTask
-  staffTasks(where: StaffTaskWhereInput! = {}, orderBy: [StaffTaskOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StaffTaskWhereUniqueInput): [StaffTask!]
+  staffTasks(where: StaffTaskWhereInput! = {}, orderBy: [StaffTaskOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: StaffTaskWhereUniqueInput): [StaffTask!]
   staffTasksCount(where: StaffTaskWhereInput! = {}): Int
   teardownDisclosure(where: TeardownDisclosureWhereUniqueInput!): TeardownDisclosure
-  teardownDisclosures(where: TeardownDisclosureWhereInput! = {}, orderBy: [TeardownDisclosureOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TeardownDisclosureWhereUniqueInput): [TeardownDisclosure!]
+  teardownDisclosures(where: TeardownDisclosureWhereInput! = {}, orderBy: [TeardownDisclosureOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TeardownDisclosureWhereUniqueInput): [TeardownDisclosure!]
   teardownDisclosuresCount(where: TeardownDisclosureWhereInput! = {}): Int
   cannedJob(where: CannedJobWhereUniqueInput!): CannedJob
-  cannedJobs(where: CannedJobWhereInput! = {}, orderBy: [CannedJobOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CannedJobWhereUniqueInput): [CannedJob!]
+  cannedJobs(where: CannedJobWhereInput! = {}, orderBy: [CannedJobOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CannedJobWhereUniqueInput): [CannedJob!]
   cannedJobsCount(where: CannedJobWhereInput! = {}): Int
   cannedJobVersion(where: CannedJobVersionWhereUniqueInput!): CannedJobVersion
-  cannedJobVersions(where: CannedJobVersionWhereInput! = {}, orderBy: [CannedJobVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CannedJobVersionWhereUniqueInput): [CannedJobVersion!]
+  cannedJobVersions(where: CannedJobVersionWhereInput! = {}, orderBy: [CannedJobVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CannedJobVersionWhereUniqueInput): [CannedJobVersion!]
   cannedJobVersionsCount(where: CannedJobVersionWhereInput! = {}): Int
   inspection(where: InspectionWhereUniqueInput!): Inspection
-  inspections(where: InspectionWhereInput! = {}, orderBy: [InspectionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionWhereUniqueInput): [Inspection!]
+  inspections(where: InspectionWhereInput! = {}, orderBy: [InspectionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionWhereUniqueInput): [Inspection!]
   inspectionsCount(where: InspectionWhereInput! = {}): Int
   inspectionItemResult(where: InspectionItemResultWhereUniqueInput!): InspectionItemResult
-  inspectionItemResults(where: InspectionItemResultWhereInput! = {}, orderBy: [InspectionItemResultOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionItemResultWhereUniqueInput): [InspectionItemResult!]
+  inspectionItemResults(where: InspectionItemResultWhereInput! = {}, orderBy: [InspectionItemResultOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionItemResultWhereUniqueInput): [InspectionItemResult!]
   inspectionItemResultsCount(where: InspectionItemResultWhereInput! = {}): Int
   inspectionTemplate(where: InspectionTemplateWhereUniqueInput!): InspectionTemplate
-  inspectionTemplates(where: InspectionTemplateWhereInput! = {}, orderBy: [InspectionTemplateOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateWhereUniqueInput): [InspectionTemplate!]
+  inspectionTemplates(where: InspectionTemplateWhereInput! = {}, orderBy: [InspectionTemplateOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionTemplateWhereUniqueInput): [InspectionTemplate!]
   inspectionTemplatesCount(where: InspectionTemplateWhereInput! = {}): Int
   inspectionTemplateItem(where: InspectionTemplateItemWhereUniqueInput!): InspectionTemplateItem
-  inspectionTemplateItems(where: InspectionTemplateItemWhereInput! = {}, orderBy: [InspectionTemplateItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateItemWhereUniqueInput): [InspectionTemplateItem!]
+  inspectionTemplateItems(where: InspectionTemplateItemWhereInput! = {}, orderBy: [InspectionTemplateItemOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionTemplateItemWhereUniqueInput): [InspectionTemplateItem!]
   inspectionTemplateItemsCount(where: InspectionTemplateItemWhereInput! = {}): Int
   inspectionTemplateVersion(where: InspectionTemplateVersionWhereUniqueInput!): InspectionTemplateVersion
-  inspectionTemplateVersions(where: InspectionTemplateVersionWhereInput! = {}, orderBy: [InspectionTemplateVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InspectionTemplateVersionWhereUniqueInput): [InspectionTemplateVersion!]
+  inspectionTemplateVersions(where: InspectionTemplateVersionWhereInput! = {}, orderBy: [InspectionTemplateVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InspectionTemplateVersionWhereUniqueInput): [InspectionTemplateVersion!]
   inspectionTemplateVersionsCount(where: InspectionTemplateVersionWhereInput! = {}): Int
   laborOperation(where: LaborOperationWhereUniqueInput!): LaborOperation
-  laborOperations(where: LaborOperationWhereInput! = {}, orderBy: [LaborOperationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: LaborOperationWhereUniqueInput): [LaborOperation!]
+  laborOperations(where: LaborOperationWhereInput! = {}, orderBy: [LaborOperationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: LaborOperationWhereUniqueInput): [LaborOperation!]
   laborOperationsCount(where: LaborOperationWhereInput! = {}): Int
   publishedService(where: PublishedServiceWhereUniqueInput!): PublishedService
-  publishedServices(where: PublishedServiceWhereInput! = {}, orderBy: [PublishedServiceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PublishedServiceWhereUniqueInput): [PublishedService!]
+  publishedServices(where: PublishedServiceWhereInput! = {}, orderBy: [PublishedServiceOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PublishedServiceWhereUniqueInput): [PublishedService!]
   publishedServicesCount(where: PublishedServiceWhereInput! = {}): Int
   serviceMenuItem(where: ServiceMenuItemWhereUniqueInput!): ServiceMenuItem
-  serviceMenuItems(where: ServiceMenuItemWhereInput! = {}, orderBy: [ServiceMenuItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ServiceMenuItemWhereUniqueInput): [ServiceMenuItem!]
+  serviceMenuItems(where: ServiceMenuItemWhereInput! = {}, orderBy: [ServiceMenuItemOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ServiceMenuItemWhereUniqueInput): [ServiceMenuItem!]
   serviceMenuItemsCount(where: ServiceMenuItemWhereInput! = {}): Int
   authorization(where: AuthorizationWhereUniqueInput!): Authorization
-  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
+  authorizations(where: AuthorizationWhereInput! = {}, orderBy: [AuthorizationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AuthorizationWhereUniqueInput): [Authorization!]
   authorizationsCount(where: AuthorizationWhereInput! = {}): Int
   authorizationRequest(where: AuthorizationRequestWhereUniqueInput!): AuthorizationRequest
-  authorizationRequests(where: AuthorizationRequestWhereInput! = {}, orderBy: [AuthorizationRequestOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AuthorizationRequestWhereUniqueInput): [AuthorizationRequest!]
+  authorizationRequests(where: AuthorizationRequestWhereInput! = {}, orderBy: [AuthorizationRequestOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AuthorizationRequestWhereUniqueInput): [AuthorizationRequest!]
   authorizationRequestsCount(where: AuthorizationRequestWhereInput! = {}): Int
   estimateVersion(where: EstimateVersionWhereUniqueInput!): EstimateVersion
-  estimateVersions(where: EstimateVersionWhereInput! = {}, orderBy: [EstimateVersionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: EstimateVersionWhereUniqueInput): [EstimateVersion!]
+  estimateVersions(where: EstimateVersionWhereInput! = {}, orderBy: [EstimateVersionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: EstimateVersionWhereUniqueInput): [EstimateVersion!]
   estimateVersionsCount(where: EstimateVersionWhereInput! = {}): Int
   jobDecision(where: JobDecisionWhereUniqueInput!): JobDecision
-  jobDecisions(where: JobDecisionWhereInput! = {}, orderBy: [JobDecisionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobDecisionWhereUniqueInput): [JobDecision!]
+  jobDecisions(where: JobDecisionWhereInput! = {}, orderBy: [JobDecisionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobDecisionWhereUniqueInput): [JobDecision!]
   jobDecisionsCount(where: JobDecisionWhereInput! = {}): Int
   businessDayClose(where: BusinessDayCloseWhereUniqueInput!): BusinessDayClose
-  businessDayCloses(where: BusinessDayCloseWhereInput! = {}, orderBy: [BusinessDayCloseOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BusinessDayCloseWhereUniqueInput): [BusinessDayClose!]
+  businessDayCloses(where: BusinessDayCloseWhereInput! = {}, orderBy: [BusinessDayCloseOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: BusinessDayCloseWhereUniqueInput): [BusinessDayClose!]
   businessDayClosesCount(where: BusinessDayCloseWhereInput! = {}): Int
   creditMemo(where: CreditMemoWhereUniqueInput!): CreditMemo
-  creditMemos(where: CreditMemoWhereInput! = {}, orderBy: [CreditMemoOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CreditMemoWhereUniqueInput): [CreditMemo!]
+  creditMemos(where: CreditMemoWhereInput! = {}, orderBy: [CreditMemoOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CreditMemoWhereUniqueInput): [CreditMemo!]
   creditMemosCount(where: CreditMemoWhereInput! = {}): Int
   creditMemoLine(where: CreditMemoLineWhereUniqueInput!): CreditMemoLine
-  creditMemoLines(where: CreditMemoLineWhereInput! = {}, orderBy: [CreditMemoLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CreditMemoLineWhereUniqueInput): [CreditMemoLine!]
+  creditMemoLines(where: CreditMemoLineWhereInput! = {}, orderBy: [CreditMemoLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CreditMemoLineWhereUniqueInput): [CreditMemoLine!]
   creditMemoLinesCount(where: CreditMemoLineWhereInput! = {}): Int
   financingApplication(where: FinancingApplicationWhereUniqueInput!): FinancingApplication
-  financingApplications(where: FinancingApplicationWhereInput! = {}, orderBy: [FinancingApplicationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FinancingApplicationWhereUniqueInput): [FinancingApplication!]
+  financingApplications(where: FinancingApplicationWhereInput! = {}, orderBy: [FinancingApplicationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FinancingApplicationWhereUniqueInput): [FinancingApplication!]
   financingApplicationsCount(where: FinancingApplicationWhereInput! = {}): Int
   invoice(where: InvoiceWhereUniqueInput!): Invoice
-  invoices(where: InvoiceWhereInput! = {}, orderBy: [InvoiceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InvoiceWhereUniqueInput): [Invoice!]
+  invoices(where: InvoiceWhereInput! = {}, orderBy: [InvoiceOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InvoiceWhereUniqueInput): [Invoice!]
   invoicesCount(where: InvoiceWhereInput! = {}): Int
   invoiceLine(where: InvoiceLineWhereUniqueInput!): InvoiceLine
-  invoiceLines(where: InvoiceLineWhereInput! = {}, orderBy: [InvoiceLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: InvoiceLineWhereUniqueInput): [InvoiceLine!]
+  invoiceLines(where: InvoiceLineWhereInput! = {}, orderBy: [InvoiceLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InvoiceLineWhereUniqueInput): [InvoiceLine!]
   invoiceLinesCount(where: InvoiceLineWhereInput! = {}): Int
   payment(where: PaymentWhereUniqueInput!): Payment
-  payments(where: PaymentWhereInput! = {}, orderBy: [PaymentOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentWhereUniqueInput): [Payment!]
+  payments(where: PaymentWhereInput! = {}, orderBy: [PaymentOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PaymentWhereUniqueInput): [Payment!]
   paymentsCount(where: PaymentWhereInput! = {}): Int
   paymentAllocation(where: PaymentAllocationWhereUniqueInput!): PaymentAllocation
-  paymentAllocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
+  paymentAllocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
   paymentAllocationsCount(where: PaymentAllocationWhereInput! = {}): Int
   refund(where: RefundWhereUniqueInput!): Refund
-  refunds(where: RefundWhereInput! = {}, orderBy: [RefundOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: RefundWhereUniqueInput): [Refund!]
+  refunds(where: RefundWhereInput! = {}, orderBy: [RefundOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: RefundWhereUniqueInput): [Refund!]
   refundsCount(where: RefundWhereInput! = {}): Int
   statement(where: StatementWhereUniqueInput!): Statement
-  statements(where: StatementWhereInput! = {}, orderBy: [StatementOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StatementWhereUniqueInput): [Statement!]
+  statements(where: StatementWhereInput! = {}, orderBy: [StatementOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: StatementWhereUniqueInput): [Statement!]
   statementsCount(where: StatementWhereInput! = {}): Int
   warrantyCoverage(where: WarrantyCoverageWhereUniqueInput!): WarrantyCoverage
-  warrantyCoverages(where: WarrantyCoverageWhereInput! = {}, orderBy: [WarrantyCoverageOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WarrantyCoverageWhereUniqueInput): [WarrantyCoverage!]
+  warrantyCoverages(where: WarrantyCoverageWhereInput! = {}, orderBy: [WarrantyCoverageOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WarrantyCoverageWhereUniqueInput): [WarrantyCoverage!]
   warrantyCoveragesCount(where: WarrantyCoverageWhereInput! = {}): Int
   coreObligation(where: CoreObligationWhereUniqueInput!): CoreObligation
-  coreObligations(where: CoreObligationWhereInput! = {}, orderBy: [CoreObligationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CoreObligationWhereUniqueInput): [CoreObligation!]
+  coreObligations(where: CoreObligationWhereInput! = {}, orderBy: [CoreObligationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CoreObligationWhereUniqueInput): [CoreObligation!]
   coreObligationsCount(where: CoreObligationWhereInput! = {}): Int
   cycleCount(where: CycleCountWhereUniqueInput!): CycleCount
-  cycleCounts(where: CycleCountWhereInput! = {}, orderBy: [CycleCountOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CycleCountWhereUniqueInput): [CycleCount!]
+  cycleCounts(where: CycleCountWhereInput! = {}, orderBy: [CycleCountOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CycleCountWhereUniqueInput): [CycleCount!]
   cycleCountsCount(where: CycleCountWhereInput! = {}): Int
   discrepancy(where: DiscrepancyWhereUniqueInput!): Discrepancy
-  discrepancies(where: DiscrepancyWhereInput! = {}, orderBy: [DiscrepancyOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: DiscrepancyWhereUniqueInput): [Discrepancy!]
+  discrepancies(where: DiscrepancyWhereInput! = {}, orderBy: [DiscrepancyOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DiscrepancyWhereUniqueInput): [Discrepancy!]
   discrepanciesCount(where: DiscrepancyWhereInput! = {}): Int
   jobTire(where: JobTireWhereUniqueInput!): JobTire
-  jobTires(where: JobTireWhereInput! = {}, orderBy: [JobTireOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobTireWhereUniqueInput): [JobTire!]
+  jobTires(where: JobTireWhereInput! = {}, orderBy: [JobTireOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobTireWhereUniqueInput): [JobTire!]
   jobTiresCount(where: JobTireWhereInput! = {}): Int
   partQuote(where: PartQuoteWhereUniqueInput!): PartQuote
-  partQuotes(where: PartQuoteWhereInput! = {}, orderBy: [PartQuoteOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PartQuoteWhereUniqueInput): [PartQuote!]
+  partQuotes(where: PartQuoteWhereInput! = {}, orderBy: [PartQuoteOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PartQuoteWhereUniqueInput): [PartQuote!]
   partQuotesCount(where: PartQuoteWhereInput! = {}): Int
   receipt(where: ReceiptWhereUniqueInput!): Receipt
-  receipts(where: ReceiptWhereInput! = {}, orderBy: [ReceiptOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReceiptWhereUniqueInput): [Receipt!]
+  receipts(where: ReceiptWhereInput! = {}, orderBy: [ReceiptOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ReceiptWhereUniqueInput): [Receipt!]
   receiptsCount(where: ReceiptWhereInput! = {}): Int
   receiptLine(where: ReceiptLineWhereUniqueInput!): ReceiptLine
-  receiptLines(where: ReceiptLineWhereInput! = {}, orderBy: [ReceiptLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReceiptLineWhereUniqueInput): [ReceiptLine!]
+  receiptLines(where: ReceiptLineWhereInput! = {}, orderBy: [ReceiptLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ReceiptLineWhereUniqueInput): [ReceiptLine!]
   receiptLinesCount(where: ReceiptLineWhereInput! = {}): Int
   shopItem(where: ShopItemWhereUniqueInput!): ShopItem
-  shopItems(where: ShopItemWhereInput! = {}, orderBy: [ShopItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShopItemWhereUniqueInput): [ShopItem!]
+  shopItems(where: ShopItemWhereInput! = {}, orderBy: [ShopItemOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShopItemWhereUniqueInput): [ShopItem!]
   shopItemsCount(where: ShopItemWhereInput! = {}): Int
   stockLevel(where: StockLevelWhereUniqueInput!): StockLevel
-  stockLevels(where: StockLevelWhereInput! = {}, orderBy: [StockLevelOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StockLevelWhereUniqueInput): [StockLevel!]
+  stockLevels(where: StockLevelWhereInput! = {}, orderBy: [StockLevelOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: StockLevelWhereUniqueInput): [StockLevel!]
   stockLevelsCount(where: StockLevelWhereInput! = {}): Int
   stockMovement(where: StockMovementWhereUniqueInput!): StockMovement
-  stockMovements(where: StockMovementWhereInput! = {}, orderBy: [StockMovementOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: StockMovementWhereUniqueInput): [StockMovement!]
+  stockMovements(where: StockMovementWhereInput! = {}, orderBy: [StockMovementOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: StockMovementWhereUniqueInput): [StockMovement!]
   stockMovementsCount(where: StockMovementWhereInput! = {}): Int
   supplier(where: SupplierWhereUniqueInput!): Supplier
-  suppliers(where: SupplierWhereInput! = {}, orderBy: [SupplierOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierWhereUniqueInput): [Supplier!]
+  suppliers(where: SupplierWhereInput! = {}, orderBy: [SupplierOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: SupplierWhereUniqueInput): [Supplier!]
   suppliersCount(where: SupplierWhereInput! = {}): Int
   supplierInvoice(where: SupplierInvoiceWhereUniqueInput!): SupplierInvoice
-  supplierInvoices(where: SupplierInvoiceWhereInput! = {}, orderBy: [SupplierInvoiceOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierInvoiceWhereUniqueInput): [SupplierInvoice!]
+  supplierInvoices(where: SupplierInvoiceWhereInput! = {}, orderBy: [SupplierInvoiceOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: SupplierInvoiceWhereUniqueInput): [SupplierInvoice!]
   supplierInvoicesCount(where: SupplierInvoiceWhereInput! = {}): Int
   supplierInvoiceLine(where: SupplierInvoiceLineWhereUniqueInput!): SupplierInvoiceLine
-  supplierInvoiceLines(where: SupplierInvoiceLineWhereInput! = {}, orderBy: [SupplierInvoiceLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierInvoiceLineWhereUniqueInput): [SupplierInvoiceLine!]
+  supplierInvoiceLines(where: SupplierInvoiceLineWhereInput! = {}, orderBy: [SupplierInvoiceLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: SupplierInvoiceLineWhereUniqueInput): [SupplierInvoiceLine!]
   supplierInvoiceLinesCount(where: SupplierInvoiceLineWhereInput! = {}): Int
   supplierOrder(where: SupplierOrderWhereUniqueInput!): SupplierOrder
-  supplierOrders(where: SupplierOrderWhereInput! = {}, orderBy: [SupplierOrderOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierOrderWhereUniqueInput): [SupplierOrder!]
+  supplierOrders(where: SupplierOrderWhereInput! = {}, orderBy: [SupplierOrderOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: SupplierOrderWhereUniqueInput): [SupplierOrder!]
   supplierOrdersCount(where: SupplierOrderWhereInput! = {}): Int
   supplierOrderLine(where: SupplierOrderLineWhereUniqueInput!): SupplierOrderLine
-  supplierOrderLines(where: SupplierOrderLineWhereInput! = {}, orderBy: [SupplierOrderLineOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierOrderLineWhereUniqueInput): [SupplierOrderLine!]
+  supplierOrderLines(where: SupplierOrderLineWhereInput! = {}, orderBy: [SupplierOrderLineOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: SupplierOrderLineWhereUniqueInput): [SupplierOrderLine!]
   supplierOrderLinesCount(where: SupplierOrderLineWhereInput! = {}): Int
   supplierReturn(where: SupplierReturnWhereUniqueInput!): SupplierReturn
-  supplierReturns(where: SupplierReturnWhereInput! = {}, orderBy: [SupplierReturnOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: SupplierReturnWhereUniqueInput): [SupplierReturn!]
+  supplierReturns(where: SupplierReturnWhereInput! = {}, orderBy: [SupplierReturnOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: SupplierReturnWhereUniqueInput): [SupplierReturn!]
   supplierReturnsCount(where: SupplierReturnWhereInput! = {}): Int
   tireRegistrationObligation(where: TireRegistrationObligationWhereUniqueInput!): TireRegistrationObligation
-  tireRegistrationObligations(where: TireRegistrationObligationWhereInput! = {}, orderBy: [TireRegistrationObligationOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TireRegistrationObligationWhereUniqueInput): [TireRegistrationObligation!]
+  tireRegistrationObligations(where: TireRegistrationObligationWhereInput! = {}, orderBy: [TireRegistrationObligationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TireRegistrationObligationWhereUniqueInput): [TireRegistrationObligation!]
   tireRegistrationObligationsCount(where: TireRegistrationObligationWhereInput! = {}): Int
   clockCorrection(where: ClockCorrectionWhereUniqueInput!): ClockCorrection
-  clockCorrections(where: ClockCorrectionWhereInput! = {}, orderBy: [ClockCorrectionOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ClockCorrectionWhereUniqueInput): [ClockCorrection!]
+  clockCorrections(where: ClockCorrectionWhereInput! = {}, orderBy: [ClockCorrectionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ClockCorrectionWhereUniqueInput): [ClockCorrection!]
   clockCorrectionsCount(where: ClockCorrectionWhereInput! = {}): Int
   comebackCase(where: ComebackCaseWhereUniqueInput!): ComebackCase
-  comebackCases(where: ComebackCaseWhereInput! = {}, orderBy: [ComebackCaseOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ComebackCaseWhereUniqueInput): [ComebackCase!]
+  comebackCases(where: ComebackCaseWhereInput! = {}, orderBy: [ComebackCaseOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ComebackCaseWhereUniqueInput): [ComebackCase!]
   comebackCasesCount(where: ComebackCaseWhereInput! = {}): Int
   flaggedHoursEntry(where: FlaggedHoursEntryWhereUniqueInput!): FlaggedHoursEntry
-  flaggedHoursEntries(where: FlaggedHoursEntryWhereInput! = {}, orderBy: [FlaggedHoursEntryOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FlaggedHoursEntryWhereUniqueInput): [FlaggedHoursEntry!]
+  flaggedHoursEntries(where: FlaggedHoursEntryWhereInput! = {}, orderBy: [FlaggedHoursEntryOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FlaggedHoursEntryWhereUniqueInput): [FlaggedHoursEntry!]
   flaggedHoursEntriesCount(where: FlaggedHoursEntryWhereInput! = {}): Int
   jobClock(where: JobClockWhereUniqueInput!): JobClock
-  jobClocks(where: JobClockWhereInput! = {}, orderBy: [JobClockOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: JobClockWhereUniqueInput): [JobClock!]
+  jobClocks(where: JobClockWhereInput! = {}, orderBy: [JobClockOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: JobClockWhereUniqueInput): [JobClock!]
   jobClocksCount(where: JobClockWhereInput! = {}): Int
   partWarrantyClaim(where: PartWarrantyClaimWhereUniqueInput!): PartWarrantyClaim
-  partWarrantyClaims(where: PartWarrantyClaimWhereInput! = {}, orderBy: [PartWarrantyClaimOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PartWarrantyClaimWhereUniqueInput): [PartWarrantyClaim!]
+  partWarrantyClaims(where: PartWarrantyClaimWhereInput! = {}, orderBy: [PartWarrantyClaimOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PartWarrantyClaimWhereUniqueInput): [PartWarrantyClaim!]
   partWarrantyClaimsCount(where: PartWarrantyClaimWhereInput! = {}): Int
   payPeriod(where: PayPeriodWhereUniqueInput!): PayPeriod
-  payPeriods(where: PayPeriodWhereInput! = {}, orderBy: [PayPeriodOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: PayPeriodWhereUniqueInput): [PayPeriod!]
+  payPeriods(where: PayPeriodWhereInput! = {}, orderBy: [PayPeriodOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PayPeriodWhereUniqueInput): [PayPeriod!]
   payPeriodsCount(where: PayPeriodWhereInput! = {}): Int
   shiftClock(where: ShiftClockWhereUniqueInput!): ShiftClock
-  shiftClocks(where: ShiftClockWhereInput! = {}, orderBy: [ShiftClockOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ShiftClockWhereUniqueInput): [ShiftClock!]
+  shiftClocks(where: ShiftClockWhereInput! = {}, orderBy: [ShiftClockOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ShiftClockWhereUniqueInput): [ShiftClock!]
   shiftClocksCount(where: ShiftClockWhereInput! = {}): Int
   technicianCredential(where: TechnicianCredentialWhereUniqueInput!): TechnicianCredential
-  technicianCredentials(where: TechnicianCredentialWhereInput! = {}, orderBy: [TechnicianCredentialOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TechnicianCredentialWhereUniqueInput): [TechnicianCredential!]
+  technicianCredentials(where: TechnicianCredentialWhereInput! = {}, orderBy: [TechnicianCredentialOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TechnicianCredentialWhereUniqueInput): [TechnicianCredential!]
   technicianCredentialsCount(where: TechnicianCredentialWhereInput! = {}): Int
   technicianProfile(where: TechnicianProfileWhereUniqueInput!): TechnicianProfile
-  technicianProfiles(where: TechnicianProfileWhereInput! = {}, orderBy: [TechnicianProfileOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: TechnicianProfileWhereUniqueInput): [TechnicianProfile!]
+  technicianProfiles(where: TechnicianProfileWhereInput! = {}, orderBy: [TechnicianProfileOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: TechnicianProfileWhereUniqueInput): [TechnicianProfile!]
   technicianProfilesCount(where: TechnicianProfileWhereInput! = {}): Int
   waitingInterval(where: WaitingIntervalWhereUniqueInput!): WaitingInterval
-  waitingIntervals(where: WaitingIntervalWhereInput! = {}, orderBy: [WaitingIntervalOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WaitingIntervalWhereUniqueInput): [WaitingInterval!]
+  waitingIntervals(where: WaitingIntervalWhereInput! = {}, orderBy: [WaitingIntervalOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WaitingIntervalWhereUniqueInput): [WaitingInterval!]
   waitingIntervalsCount(where: WaitingIntervalWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
