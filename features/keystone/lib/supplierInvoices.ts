@@ -190,7 +190,9 @@ export async function reverseSupplierInvoice(uow: UnitOfWork, actor: Actor, inpu
   for (const line of lines) {
     if (line.matchStatus === 'unmatched') continue
     // Give back what this line took, newest receipts first, never more than the order line was invoiced.
-    const taken = Array.isArray(line.allocations) ? (line.allocations as { orderLineId: string; quantityMilli: number }[]) : line.matchedOrderLineId ? [{ orderLineId: line.matchedOrderLineId, quantityMilli: line.quantityMilli }] : []
+    // Lines matched before allocations were recorded hold [] (the column default): those fall back to the one order line they matched.
+    const recorded = Array.isArray(line.allocations) ? (line.allocations as { orderLineId: string; quantityMilli: number }[]) : []
+    const taken = recorded.length ? recorded : line.matchedOrderLineId ? [{ orderLineId: line.matchedOrderLineId, quantityMilli: line.quantityMilli }] : []
     for (const a of taken) {
       const ol = await uow.tx.supplierOrderLine.findUnique({ where: { id: a.orderLineId }, select: { invoicedQuantityMilli: true } })
       const give = Math.min(a.quantityMilli, ol?.invoicedQuantityMilli ?? 0)

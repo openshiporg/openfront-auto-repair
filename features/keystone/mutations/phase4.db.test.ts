@@ -437,7 +437,7 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     // An invoice that got in before the check (the VW-EO299-4 shape): header 115000 against 1150 of lines.
     await orderAndReceive(valley, [{ partNumber: 'CF10285', brand: 'Fram', description: 'Cabin air filter', quantityMilli: 1000, unitCostMinor: '1150' }])
     const legacy = await prisma.supplierInvoice.create({ data: { shopId: NGA, supplierId: valley, invoiceNumber: 'VW-LEGACY-4', totalMinor: 115000n, status: 'received', invoiceDate: new Date() } })
-    await prisma.supplierInvoiceLine.create({ data: { invoiceId: legacy.id, partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: 1150n, matchStatus: 'unmatched' } })
+    const legacyLine = await prisma.supplierInvoiceLine.create({ data: { invoiceId: legacy.id, partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: 1150n, matchStatus: 'unmatched' } })
     // The database refuses to mark it matched, approved or exported while the header disagrees.
     for (const status of ['matched', 'approved', 'exported']) {
       await expect(prisma.supplierInvoice.update({ where: { id: legacy.id }, data: { status } })).rejects.toThrow(/does not match its lines/)
@@ -463,6 +463,9 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     // Reversal: a person with the permission, never an assistant or a parts clerk; append-only; frees the number.
     const filterLine = await prisma.supplierOrderLine.findFirstOrThrow({ where: { partNumber: 'CF10285', order: { supplierId: valley } }, orderBy: { createdAt: 'desc' } })
     expect(filterLine.invoicedQuantityMilli).toBe(1000)
+    // As on prod: a line matched before allocations were recorded holds the column default [] and only matchedOrderLine.
+    expect((await prisma.supplierInvoiceLine.findUniqueOrThrow({ where: { id: legacyLine.id } })).matchedOrderLineId).toBe(filterLine.id)
+    await prisma.supplierInvoiceLine.update({ where: { id: legacyLine.id }, data: { allocations: [] } })
     const managerViaMcp = { session: sessionFor('mgr', MANAGER, { mcp: { clientId: 'c', scopes: ['mcp:read', 'mcp:write'] } }), prisma }
     await expect(reverseShopSupplierInvoice(null, { invoiceId: legacy.id, reason: 'Header keyed as 1150.00', idempotencyKey: key('rv') }, managerViaMcp)).rejects.toMatchObject({ code: 'AGENT_FORBIDDEN_ACTION' })
     await expect(reverseShopSupplierInvoice(null, { invoiceId: legacy.id, reason: 'Header keyed as 1150.00', idempotencyKey: key('rv') }, parts)).rejects.toMatchObject({ code: 'NOT_AUTHORIZED' })
