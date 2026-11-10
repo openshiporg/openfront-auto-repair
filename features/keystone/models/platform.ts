@@ -5,7 +5,7 @@ import { choice, lifecycle, minor, readOnly, systemText, versionField } from './
 import { governed, immutable, managed, serverOnly, shopScoped } from './listAccess'
 import { auditedHooks } from './auditHooks'
 import { trackingFields } from './trackingFields'
-import { auditJsonWithoutCost, hashHiddenWithCost, withoutCostKeys } from '../security/costRedaction'
+import { auditJsonWithoutCost, auditReasonWithoutCost, hashHiddenWithCost, isCostAction, payloadWithoutCost, withoutCostKeys, withoutMoneyText, withoutMoneyTextWhen } from '../security/costRedaction'
 
 /*
  * Platform spine (SCHEMA §1, §2.9, §4.1-4.2, §16), ported from openfront-hedge-fund models/platform.ts.
@@ -184,7 +184,8 @@ export const AuditEvent = list({
     actorUser: relationship({ ref: 'User', ...readOnly }),
     actorAgent: relationship({ ref: 'AgentIdentity', ...readOnly }),
     approver: relationship({ ref: 'User', ...readOnly }),
-    reason: systemText(),
+    // A reversal or write-off reason on a supplier-side record can quote what was keyed or paid (review r4 R4-2).
+    reason: auditReasonWithoutCost(systemText()),
     // An auditor without canSeeCost reads the trail without cost (review r3 N3); verifyAuditChain hashes the stored rows.
     before: auditJsonWithoutCost(json({ ...readOnly })),
     after: auditJsonWithoutCost(json({ ...readOnly })),
@@ -339,13 +340,14 @@ export const ApprovalRequest = list({
   ui: { labelField: 'action', listView: { initialColumns: ['action', 'status', 'targetList', 'requestedBy', 'createdAt', 'expiresAt'] } },
   fields: {
     action: systemText({ indexed: true, required: true }),
-    summary: systemText(),
+    // A cost action's summary carries the requester's reason, which can quote money; never filterable without canSeeCost (review r4 R4-2).
+    summary: withoutMoneyTextWhen(systemText(), item => isCostAction(item.action)),
     shop: relationship({ ref: 'Shop', ...readOnly }),
     targetList: systemText({ required: true }),
     targetId: systemText({ indexed: true, required: true }),
     amountMinor: minor(),
     // Cost in a payload (a core charge, a count variance) is removed for a reader without canSeeCost, and so is the hash that would let them guess it (review r3 N3).
-    payload: withoutCostKeys(json({ ...readOnly })),
+    payload: payloadWithoutCost(json({ ...readOnly })),
     payloadHash: hashHiddenWithCost(systemText({ required: true })),
     requiredPermission: systemText({ required: true }),
     requestedBy: relationship({ ref: 'User', ...readOnly }),
@@ -365,7 +367,7 @@ export const ApprovalDecision = list({
     request: relationship({ ref: 'ApprovalRequest.decisions', ...readOnly }),
     decidedBy: relationship({ ref: 'User', ...readOnly }),
     decision: select({ type: 'string', options: ['approve', 'reject'].map(value => ({ label: value, value })), validation: { isRequired: true }, ...readOnly }),
-    reason: systemText(),
+    reason: withoutMoneyText(systemText()),
     at: timestamp({ defaultValue: { kind: 'now' }, ...readOnly }),
   },
 })

@@ -77,6 +77,11 @@ describe.skipIf(!hasTestDatabase)('parts screens load for every role, with role-
     const inv = await p.supplierInvoice.create({ data: { shopId: shop.id, supplierId: supplier.id, invoiceNumber: `SCR-${tag}`, totalMinor: 9600n, status: 'received' } })
     await p.supplierInvoiceLine.create({ data: { invoiceId: inv.id, partNumber: `SCR-${tag}`, quantityMilli: 2000, unitCostMinor: 4800n, coreCreditMinor: 0n, matchStatus: 'unmatched' } })
     await p.coreObligation.create({ data: { shopId: shop.id, shopItemId: item.id, supplierId: supplier.id, partNumber: `SCR-${tag}`, coreChargeMinor: 9000n, status: 'owed' } })
+    // Review r4 R4-2: a reversal reason written by a manager quotes the supplier amounts.
+    const user = await p.user.findFirst() ?? await p.user.create({ data: { name: 'Screen user', email: `screen-${tag.toLowerCase()}@test.local`, password: 'x'.repeat(60) } })
+    const rev = await p.supplierInvoice.create({ data: { shopId: shop.id, supplierId: supplier.id, invoiceNumber: `SCR-REV-${tag}`, totalMinor: 115000n, status: 'received' } })
+    await p.supplierInvoiceLine.create({ data: { invoiceId: rev.id, partNumber: `SCR-${tag}`, quantityMilli: 1000, unitCostMinor: 1150n, coreCreditMinor: 0n, matchStatus: 'unmatched' } })
+    await p.supplierInvoice.update({ where: { id: rev.id }, data: { status: 'reversed', reversedById: user.id, reversedAt: new Date(), reversalReason: 'Header keyed as $1,150.00; the lines total $11.50. Re-enter as billed.' } })
   }, 120_000)
 
   for (const [who, id] of [['Service Advisor', 'seed_role_advisor'], ['Lead Technician', 'seed_role_lead_tech'], ['Technician', 'seed_role_tech']] as const) {
@@ -90,6 +95,15 @@ describe.skipIf(!hasTestDatabase)('parts screens load for every role, with role-
         expect(html).not.toMatch(/Value on hand|avg \$| at \$|core credit \$/)
       })
     }
+  }
+
+  for (const id of ['seed_role_advisor', 'seed_role_lead_tech', 'seed_role_tech']) {
+    it(`Supplier invoices shows a reversal reason to ${id} without the supplier amounts (review r4 R4-2)`, { timeout: 60_000 }, async () => {
+      role = roleOf(id)
+      const html = await render(SCREENS[1][1] as never)
+      expect(html).toContain('Reversed: Header keyed as —; the lines total —. Re-enter as billed.')
+      expect(html).not.toMatch(/\$\s?\d/)
+    })
   }
 
   it('the Parts Manager (canSeeCost) still sees the cost on Stock and Supplier invoices', { timeout: 60_000 }, async () => {

@@ -925,6 +925,7 @@ function stripCost(value, allMinor = false) {
   if (value && typeof value === "object") {
     return Object.fromEntries(Object.entries(value).filter(([k]) => !COST_KEY.test(k) && !(allMinor && ANY_MINOR.test(k))).map(([k, v]) => [k, stripCost(v, allMinor)]));
   }
+  if (allMinor && typeof value === "string") return stripMoneyText(value);
   return value;
 }
 function holdsCost(value, allMinor = false) {
@@ -933,26 +934,35 @@ function holdsCost(value, allMinor = false) {
   return false;
 }
 var stripMoneyText = (text18) => typeof text18 === "string" ? text18.replace(/\$\s?-?[\d,]+(\.\d+)?|\b-?[\d,]+(\.\d{2})?\s?(USD|dollars|cents)\b/gi, "\u2014") : text18;
+var onlyWithCost = (base) => base === false ? false : async (input) => canSeeCost(input.context) && (typeof base === "function" ? await base(input) === true : true);
 function costRedacted(field, redact) {
   return (args) => {
     const f = field(args);
     const inner = f.output.resolve;
     return {
       ...f,
+      isFilterable: onlyWithCost(f.isFilterable),
+      isOrderable: onlyWithCost(f.isOrderable),
       output: {
         ...f.output,
         resolve: async (root, a, context, info) => {
           const value = inner ? await inner(root, a, context, info) : root.value;
           if (value === null || value === void 0 || canSeeCost(context)) return value;
-          return redact(value, root.item);
+          return redact(value, root.item, context);
         }
       }
     };
   };
 }
 var withoutCostKeys = (field) => costRedacted(field, (v) => stripCost(v));
+var payloadWithoutCost = (field) => costRedacted(field, (v, item) => stripCost(v, isCostAction(item.action)));
 var withoutMoneyText = (field) => costRedacted(field, (v) => stripMoneyText(v));
-var auditJsonWithoutCost = (field) => costRedacted(field, (v, item) => stripCost(v, SUPPLIER_ENTITIES.has(String(item.entityType))));
+var COST_ACTION = /^(core\.|stock\.|supplier|cycle_count)/;
+var isCostAction = (action) => COST_ACTION.test(String(action ?? ""));
+var withoutMoneyTextWhen = (field, holds) => costRedacted(field, (v, item) => holds(item) ? stripMoneyText(v) : v);
+var auditReasonWithoutCost = (field) => withoutMoneyTextWhen(field, (item) => SUPPLIER_ENTITIES.has(String(item.entityType)) || item.entityType === "ApprovalRequest");
+var withoutHash = (v) => v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== "payloadHash")) : v;
+var auditJsonWithoutCost = (field) => costRedacted(field, (v, item) => withoutHash(stripCost(v, SUPPLIER_ENTITIES.has(String(item.entityType)))));
 var hashHiddenWithCost = (field, payloadKey = "payload") => costRedacted(field, (v, item) => holdsCost(item[payloadKey]) ? null : v);
 
 // features/keystone/models/platform.ts
@@ -1116,7 +1126,8 @@ var AuditEvent = (0, import_core7.list)({
     actorUser: (0, import_fields7.relationship)({ ref: "User", ...readOnly }),
     actorAgent: (0, import_fields7.relationship)({ ref: "AgentIdentity", ...readOnly }),
     approver: (0, import_fields7.relationship)({ ref: "User", ...readOnly }),
-    reason: systemText(),
+    // A reversal or write-off reason on a supplier-side record can quote what was keyed or paid (review r4 R4-2).
+    reason: auditReasonWithoutCost(systemText()),
     // An auditor without canSeeCost reads the trail without cost (review r3 N3); verifyAuditChain hashes the stored rows.
     before: auditJsonWithoutCost((0, import_fields7.json)({ ...readOnly })),
     after: auditJsonWithoutCost((0, import_fields7.json)({ ...readOnly })),
@@ -1272,13 +1283,14 @@ var ApprovalRequest = (0, import_core7.list)({
   ui: { labelField: "action", listView: { initialColumns: ["action", "status", "targetList", "requestedBy", "createdAt", "expiresAt"] } },
   fields: {
     action: systemText({ indexed: true, required: true }),
-    summary: systemText(),
+    // A cost action's summary carries the requester's reason, which can quote money; never filterable without canSeeCost (review r4 R4-2).
+    summary: withoutMoneyTextWhen(systemText(), (item) => isCostAction(item.action)),
     shop: (0, import_fields7.relationship)({ ref: "Shop", ...readOnly }),
     targetList: systemText({ required: true }),
     targetId: systemText({ indexed: true, required: true }),
     amountMinor: minor(),
     // Cost in a payload (a core charge, a count variance) is removed for a reader without canSeeCost, and so is the hash that would let them guess it (review r3 N3).
-    payload: withoutCostKeys((0, import_fields7.json)({ ...readOnly })),
+    payload: payloadWithoutCost((0, import_fields7.json)({ ...readOnly })),
     payloadHash: hashHiddenWithCost(systemText({ required: true })),
     requiredPermission: systemText({ required: true }),
     requestedBy: (0, import_fields7.relationship)({ ref: "User", ...readOnly }),
@@ -1297,7 +1309,7 @@ var ApprovalDecision = (0, import_core7.list)({
     request: (0, import_fields7.relationship)({ ref: "ApprovalRequest.decisions", ...readOnly }),
     decidedBy: (0, import_fields7.relationship)({ ref: "User", ...readOnly }),
     decision: (0, import_fields7.select)({ type: "string", options: ["approve", "reject"].map((value) => ({ label: value, value })), validation: { isRequired: true }, ...readOnly }),
-    reason: systemText(),
+    reason: withoutMoneyText(systemText()),
     at: (0, import_fields7.timestamp)({ defaultValue: { kind: "now" }, ...readOnly })
   }
 });
@@ -3284,7 +3296,8 @@ var StockMovement = (0, import_core17.list)({
     committedDeltaMilli: milli({ defaultValue: 0 }),
     onOrderDeltaMilli: milli({ defaultValue: 0 }),
     cycleCount: (0, import_fields15.relationship)({ ref: "CycleCount", ...readOnly }),
-    reason: systemText(),
+    // Free text written by people who see cost; money in it is masked, and it is not filterable, for a reader without canSeeCost (review r4 R4-2).
+    reason: withoutMoneyText(systemText()),
     idempotencyKey: systemText({ indexed: "unique", required: true }),
     actorUser: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
     actorName: systemText(),
@@ -3349,7 +3362,7 @@ var SupplierOrder = (0, import_core17.list)({
     supplierConfirmation: systemText(),
     etaAt: (0, import_fields15.timestamp)({ ...readOnly }),
     totalMinor: minor({ defaultValue: 0n, access: cost2 }),
-    deliveryNote: systemText(),
+    deliveryNote: withoutMoneyText(systemText()),
     lines: (0, import_fields15.relationship)({ ref: "SupplierOrderLine.order", many: true, ...readOnly }),
     receipts: (0, import_fields15.relationship)({ ref: "Receipt.order", many: true, ...readOnly }),
     placedAt: (0, import_fields15.timestamp)({ ...readOnly }),
@@ -3419,10 +3432,10 @@ var CoreObligation = (0, import_core17.list)({
     owedTo: systemChoice(["supplier", "shop_from_customer"], "supplier"),
     returnedAt: (0, import_fields15.timestamp)({ ...readOnly }),
     returnDocument: (0, import_fields15.relationship)({ ref: "Document", ...readOnly }),
-    returnNote: systemText(),
+    returnNote: withoutMoneyText(systemText()),
     creditedAt: (0, import_fields15.timestamp)({ ...readOnly }),
     supplierInvoiceLine: (0, import_fields15.relationship)({ ref: "SupplierInvoiceLine", ...readOnly }),
-    writeOffReason: systemText(),
+    writeOffReason: withoutMoneyText(systemText()),
     approval: (0, import_fields15.relationship)({ ref: "ApprovalRequest", ...readOnly }),
     dueAt: (0, import_fields15.calendarDay)({ ...readOnly }),
     status: lifecycle(["owed", "returned", "credited", "customer_charged", "written_off"]),
@@ -3462,7 +3475,8 @@ var SupplierInvoice = (0, import_core17.list)({
     exportReference: systemText(),
     reversedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
     reversedAt: (0, import_fields15.timestamp)({ ...readOnly }),
-    reversalReason: systemText(),
+    // Written by a person who sees cost ("Header keyed as $1,150.00"): money masked and not filterable without canSeeCost (review r4 R4-2).
+    reversalReason: withoutMoneyText(systemText()),
     status: lifecycle(["received", "matching", "matched", "discrepancy", "approved", "exported", "reversed"]),
     version: versionField(),
     ...trackingFields
@@ -3496,7 +3510,7 @@ var Discrepancy = (0, import_core17.list)({
     detail: withoutMoneyText(systemText()),
     openedBy: (0, import_fields15.relationship)({ ref: "User", ...readOnly }),
     openedByAgent: (0, import_fields15.relationship)({ ref: "AgentIdentity", ...readOnly }),
-    resolution: systemText(),
+    resolution: withoutMoneyText(systemText()),
     status: lifecycle(["open", "disputed", "resolved", "accepted"]),
     version: versionField(),
     ...trackingFields
@@ -10858,7 +10872,8 @@ async function reverseSupplierInvoice(uow, actor, input) {
   let released = 0;
   for (const line of lines) {
     if (line.matchStatus === "unmatched") continue;
-    const taken = Array.isArray(line.allocations) ? line.allocations : line.matchedOrderLineId ? [{ orderLineId: line.matchedOrderLineId, quantityMilli: line.quantityMilli }] : [];
+    const recorded = Array.isArray(line.allocations) ? line.allocations : [];
+    const taken = recorded.length ? recorded : line.matchedOrderLineId ? [{ orderLineId: line.matchedOrderLineId, quantityMilli: line.quantityMilli }] : [];
     for (const a of taken) {
       const ol = await uow.tx.supplierOrderLine.findUnique({ where: { id: a.orderLineId }, select: { invoicedQuantityMilli: true } });
       const give = Math.min(a.quantityMilli, ol?.invoicedQuantityMilli ?? 0);

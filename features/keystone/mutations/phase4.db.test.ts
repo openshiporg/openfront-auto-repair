@@ -501,6 +501,85 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     if (tire) await expect(prisma.jobTire.update({ where: { id: tire.id }, data: { position: 'roof' } })).rejects.toThrow()
   })
 
+  it('r4 R4-1: an order line is never invoiced below zero or above what was received (CHECK)', { timeout: 60_000 }, async () => {
+    const line = await prisma.supplierOrderLine.findFirstOrThrow({ where: { receivedQuantityMilli: { gt: 0 } } })
+    await expect(prisma.supplierOrderLine.update({ where: { id: line.id }, data: { invoicedQuantityMilli: line.receivedQuantityMilli + 1000 } })).rejects.toThrow(/SupplierOrderLine_invoiced_within_received|check/i)
+    await expect(prisma.supplierOrderLine.update({ where: { id: line.id }, data: { invoicedQuantityMilli: -1000 } })).rejects.toThrow(/SupplierOrderLine_invoiced_within_received|check/i)
+    // A receipt can never be undone below what was invoiced either.
+    await expect(prisma.supplierOrderLine.update({ where: { id: line.id }, data: { invoicedQuantityMilli: line.receivedQuantityMilli, receivedQuantityMilli: 0 } })).rejects.toThrow()
+  })
+
+  it('r4 R4-1: the VW-EO299-4 repair releases exactly that line\'s 1000, once, chained in the audit log, and nothing else', { timeout: 120_000 }, async () => {
+    const { readFileSync } = await import('node:fs')
+    const sql = readFileSync(new URL('../../../migrations/20261109230000_p5_r4_order_line_release_invoice_freeze/migration.sql', import.meta.url), 'utf8')
+    const repair = sql.slice(sql.indexOf('DO $$'), sql.indexOf('END $$;') + 'END $$;'.length)
+    const ROLLBACK = new Error('rollback')
+    await expect(prisma.$transaction(async tx => {
+      // The prod rows, planted with their ids: a received order line fully invoiced by an invoice that was then reversed.
+      const order = await tx.supplierOrder.create({ data: { shopId: NGA, supplierId: valley, reference: uniqueKey('PO-R41'), kind: 'stock', status: 'received' } })
+      const other = await tx.supplierOrderLine.create({ data: { orderId: order.id, partNumber: 'CF10285', quantityMilli: 2000, receivedQuantityMilli: 2000, invoicedQuantityMilli: 2000, unitCostMinor: 1150n, status: 'received' } })
+      await tx.supplierOrderLine.create({ data: { id: 'cmw9eo2lb001uns01drr3y9a2', orderId: order.id, partNumber: 'CF10285', quantityMilli: 1000, receivedQuantityMilli: 1000, invoicedQuantityMilli: 1000, unitCostMinor: 1150n, status: 'received' } })
+      await tx.supplierInvoice.create({ data: { id: 'cmw9eo33z0027ns01f2o26i3z', shopId: NGA, supplierId: valley, invoiceNumber: 'VW-EO299-4', totalMinor: 115000n, status: 'received', invoiceDate: new Date() } })
+      await tx.supplierInvoiceLine.create({ data: { id: 'cmw9eo3440028ns012f0euply', invoiceId: 'cmw9eo33z0027ns01f2o26i3z', partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: 1150n, matchStatus: 'matched', matchedOrderLineId: 'cmw9eo2lb001uns01drr3y9a2' } })
+      await tx.supplierInvoice.update({ where: { id: 'cmw9eo33z0027ns01f2o26i3z' }, data: { status: 'reversed', reversedById: (manager.session as any).itemId, reversedAt: new Date(), reversalReason: 'Header keyed 100 times the lines' } })
+      const before = await tx.auditEvent.count()
+      await tx.$executeRawUnsafe(repair)
+      expect((await tx.supplierOrderLine.findUniqueOrThrow({ where: { id: 'cmw9eo2lb001uns01drr3y9a2' } })).invoicedQuantityMilli).toBe(0)
+      expect((await tx.supplierOrderLine.findUniqueOrThrow({ where: { id: other.id } })).invoicedQuantityMilli).toBe(2000)
+      expect(await tx.auditEvent.count()).toBe(before + 1)
+      const ev = await tx.auditEvent.findFirstOrThrow({ where: { eventType: 'supplier_order_line.invoiced_released' } })
+      expect(ev).toMatchObject({ entityId: 'cmw9eo2lb001uns01drr3y9a2', before: { invoicedQuantityMilli: 1000 }, after: { invoicedQuantityMilli: 0 } })
+      expect((await tx.commandReceipt.findUniqueOrThrow({ where: { idempotencyKey: ev.eventKey } })).responseBody).toMatchObject({ releasedQuantityMilli: 1000 })
+      expect((await verifyAuditChain(tx as never)).ok).toBe(true)
+      // Run again: the guard sees it already applied and changes nothing.
+      await tx.$executeRawUnsafe(repair)
+      expect(await tx.auditEvent.count()).toBe(before + 1)
+      // A live invoice that references the line blocks it: put the line back and plant a live copy.
+      await tx.supplierOrderLine.update({ where: { id: 'cmw9eo2lb001uns01drr3y9a2' }, data: { invoicedQuantityMilli: 1000 } })
+      await tx.$executeRawUnsafe(`ALTER TABLE "AuditEvent" DISABLE TRIGGER "AuditEvent_append_only"`)
+      await tx.auditEvent.deleteMany({ where: { id: ev.id } })
+      await tx.$executeRawUnsafe(`ALTER TABLE "AuditEvent" ENABLE TRIGGER "AuditEvent_append_only"`)
+      const live = await tx.supplierInvoice.create({ data: { shopId: NGA, supplierId: valley, invoiceNumber: 'VW-EO299-4', totalMinor: 1150n, status: 'received', invoiceDate: new Date() } })
+      await tx.supplierInvoiceLine.create({ data: { invoiceId: live.id, partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: 1150n, matchStatus: 'matched', matchedOrderLineId: 'cmw9eo2lb001uns01drr3y9a2' } })
+      await tx.$executeRawUnsafe(repair)
+      expect((await tx.supplierOrderLine.findUniqueOrThrow({ where: { id: 'cmw9eo2lb001uns01drr3y9a2' } })).invoicedQuantityMilli).toBe(1000)
+      throw ROLLBACK
+    }, { timeout: 60_000 })).rejects.toBe(ROLLBACK)
+    expect(await prisma.supplierOrderLine.findUnique({ where: { id: 'cmw9eo2lb001uns01drr3y9a2' } })).toBeNull()
+  })
+
+  it('r4 R4-3: once an invoice leaves received, its header and lines are frozen; status, approval and reversal still move', { timeout: 180_000 }, async () => {
+    const { reverseShopSupplierInvoice } = await import('./phase4')
+    await orderAndReceive(valley, [{ partNumber: 'WIX-57060', brand: 'Wix', description: 'Engine oil filter', quantityMilli: 2000, unitCostMinor: '650' }])
+    const made = await recordShopSupplierInvoice(null, { input: { shopId: NGA, supplierId: valley, invoiceNumber: 'VWD-R43', invoiceDate: today(), totalMinor: '1300', lines: [{ partNumber: 'WIX-57060', quantityMilli: 2000, unitCostMinor: '650' }] }, idempotencyKey: key('inv') }, parts) as { id: string }
+    const line = await prisma.supplierInvoiceLine.findFirstOrThrow({ where: { invoiceId: made.id } })
+    // While received (not yet matched) the entry can still be corrected by server code.
+    await prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { unitCostMinor: 650n } })
+    expect(await matchShopSupplierInvoice(null, { invoiceId: made.id, idempotencyKey: key('m') }, parts)).toMatchObject({ status: 'matched', discrepancies: 0 })
+    const frozen = /cannot change|No line can be added|append-only/
+    const probes = async () => {
+      await expect(prisma.supplierInvoice.update({ where: { id: made.id }, data: { totalMinor: 99999n } })).rejects.toThrow(frozen)
+      await expect(prisma.supplierInvoice.update({ where: { id: made.id }, data: { invoiceNumber: 'VWD-R43-X' } })).rejects.toThrow(frozen)
+      await expect(prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { unitCostMinor: 99999n } })).rejects.toThrow(frozen)
+      await expect(prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { quantityMilli: 3000 } })).rejects.toThrow(frozen)
+      await expect(prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { coreCreditMinor: 100n } })).rejects.toThrow(frozen)
+      await expect(prisma.supplierInvoiceLine.create({ data: { invoiceId: made.id, partNumber: 'WIX-57060', quantityMilli: 1000, unitCostMinor: 650n, matchStatus: 'unmatched' } })).rejects.toThrow(frozen)
+      await expect(prisma.supplierInvoiceLine.delete({ where: { id: line.id } })).rejects.toThrow(frozen)
+    }
+    await probes()
+    await approveShopSupplierInvoice(null, { invoiceId: made.id, idempotencyKey: key('ap') }, manager)
+    await probes()
+    // A line cannot be moved off a frozen invoice onto an open one either.
+    const open = await recordShopSupplierInvoice(null, { input: { shopId: NGA, supplierId: valley, invoiceNumber: 'VWD-R43-B', invoiceDate: today(), totalMinor: '650', lines: [{ partNumber: 'WIX-57060', quantityMilli: 1000, unitCostMinor: '650' }] }, idempotencyKey: key('inv') }, parts) as { id: string }
+    await expect(prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { invoiceId: open.id } })).rejects.toThrow(frozen)
+    const rev = await reverseShopSupplierInvoice(null, { invoiceId: made.id, reason: 'Supplier sent a corrected bill', idempotencyKey: key('rv') }, manager) as { status: string; releasedQuantityMilli: number }
+    expect(rev).toMatchObject({ status: 'reversed', releasedQuantityMilli: 2000 })
+    await probes()
+    const after = await prisma.supplierInvoice.findUniqueOrThrow({ where: { id: made.id }, include: { lines: true } })
+    expect(after).toMatchObject({ totalMinor: 1300n, status: 'reversed' })
+    expect(after.lines.map(l => [l.quantityMilli, l.unitCostMinor])).toEqual([[2000, 650n]])
+  })
+
   it('stays within the audit chain, and every stock level equals the sum of its ledger', { timeout: 180_000 }, async () => {
     const chain = await verifyAuditChain(prisma)
     expect(chain.ok).toBe(true)

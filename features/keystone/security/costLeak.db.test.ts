@@ -26,6 +26,9 @@ const TECH = roleOf('seed_role_tech')
 const AUDITOR = roleOf('seed_role_auditor')
 const MANAGER = roleOf('seed_role_manager')
 const COST_KEY = /cost|corecharge|variance|margin|avgcost|creditminor/i
+const PLANTED_HASH = 'ab'.repeat(32)
+const REVERSAL = 'Header keyed as $1,150.00; the lines total $11.50. Re-enter as billed.'
+const refusedFilter = (r: any) => /do not have access to perform|KS_FILTER_DENIED|KS_ACCESS_DENIED/.test(JSON.stringify(r.errors ?? []))
 const MONEY_TEXT = /\$\s?\d/
 /** An amount: a number or a digit string. A cost-named setting such as TaxRule.coreChargeRule ("refund_refunds_tax") is not one. */
 const AMOUNT = (v: unknown) => typeof v === 'number' || typeof v === 'bigint' || (typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v.trim()))
@@ -85,7 +88,13 @@ describe.skipIf(!hasTestDatabase)('cost is not readable through JSON or text by 
     planted.SupplierReturn = (await prisma.supplierReturn.create({ data: { shopId: shop.id, supplierId: supplier.id, rmaNumber: uniqueKey('RMA'), reason: 'unused', status: 'requested', creditMinor: 31200n, lines: [{ shopItemId: item.id, quantityMilli: 2000, unitCostMinor: '15600' }] } as never })).id
     const inv = await prisma.supplierInvoice.create({ data: { shopId: shop.id, supplierId: supplier.id, invoiceNumber: uniqueKey('LEAK-INV'), totalMinor: 1400n, status: 'received' } as never })
     planted.Discrepancy = (await prisma.discrepancy.create({ data: { invoiceId: inv.id, kind: 'overcharge', amountMinor: 250n, detail: 'CF10285 was ordered at $11.50 and billed at $14.00.', status: 'open' } as never })).id
-    planted.ApprovalRequest = (await prisma.approvalRequest.create({ data: { action: 'core.write_off', summary: 'Write off core on SR4170X: Supplier lost them', shopId: shop.id, targetList: 'CoreObligation', targetId: 'x', payload: { coreId: 'x', coreChargeMinor: '10500', reason: 'Supplier lost them' }, payloadHash: 'a'.repeat(64), requiredPermission: 'canApproveCoreWriteOff', requestedById: user.id, status: 'pending', expiresAt: new Date(Date.now() + 86_400_000) } as never })).id
+    planted.ApprovalRequest = (await prisma.approvalRequest.create({ data: { action: 'core.write_off', summary: 'Write off core on SR4170X: Supplier lost them', shopId: shop.id, targetList: 'CoreObligation', targetId: 'x', payload: { coreId: 'x', coreChargeMinor: '10500', reason: 'Supplier lost them' }, payloadHash: PLANTED_HASH, requiredPermission: 'canApproveCoreWriteOff', requestedById: user.id, status: 'pending', expiresAt: new Date(Date.now() + 86_400_000) } as never })).id
+    // Review r4 R4-2: free text written by a cost role that quotes supplier money, on every field the review named.
+    const reversed = await prisma.supplierInvoice.create({ data: { shopId: shop.id, supplierId: supplier.id, invoiceNumber: uniqueKey('LEAK-REV'), totalMinor: 115000n, status: 'received' } as never })
+    await prisma.supplierInvoiceLine.create({ data: { invoiceId: reversed.id, partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: 1150n, matchStatus: 'unmatched' } as never })
+    await prisma.supplierInvoice.update({ where: { id: reversed.id }, data: { status: 'reversed', reversedById: user.id, reversedAt: new Date(), reversalReason: REVERSAL } as never })
+    planted.SupplierInvoice = reversed.id
+    await prisma.discrepancy.update({ where: { id: planted.Discrepancy }, data: { resolution: 'Supplier agreed: credit $2.50 on the next statement' } as never })
   }, 120_000)
 
   afterAll(async () => { await prisma?.$disconnect() })
@@ -148,6 +157,72 @@ describe.skipIf(!hasTestDatabase)('cost is not readable through JSON or text by 
     expect(r.data.approvalRequest.payloadHash).toBeNull()
   })
 
+  // Review r4 R4-2: what the output hides must not be recoverable by filtering or sorting on the stored value.
+  for (const [name, granted] of [['Service Advisor', ADVISOR], ['Lead Technician', LEAD_TECH], ['Technician', TECH]] as const) {
+    describe(`${name}: redacted fields are neither filterable nor sortable (review r4 R4-2)`, () => {
+      const FILTERS: [string, string, string][] = [
+        ['approvalRequests', 'payloadHash', `{ equals: "${PLANTED_HASH}" }`], ['approvalRequests', 'payloadHash', `{ in: ["${PLANTED_HASH}"] }`], ['approvalRequests', 'payloadHash', '{ startsWith: "ab" }'],
+        ['approvalRequests', 'summary', '{ contains: "SR4170X" }'],
+        ['discrepancies', 'detail', '{ contains: "ordered at $11.50" }'], ['discrepancies', 'detail', '{ startsWith: "CF10285" }'], ['discrepancies', 'detail', '{ in: ["x"] }'],
+        ['discrepancies', 'resolution', '{ contains: "$2.50" }'],
+        ['supplierInvoices', 'reversalReason', '{ contains: "$1,150.00" }'], ['supplierInvoices', 'reversalReason', '{ equals: "x" }'],
+        ['coreObligations', 'writeOffReason', '{ contains: "$" }'], ['coreObligations', 'returnNote', '{ contains: "$" }'],
+        ['supplierOrders', 'deliveryNote', '{ contains: "$" }'], ['stockMovements', 'reason', '{ contains: "$" }'],
+        ['approvalDecisions', 'reason', '{ contains: "$" }'],
+      ]
+      for (const [query, field, where] of FILTERS) {
+        it(`${query}.${field} ${where}: filter refused`, async () => {
+          const r = await read(granted, `{ ${query}(where: { ${field}: ${where} }, take: 5) { id } }`)
+          expect(refusedFilter(r), JSON.stringify(r)).toBe(true)
+        })
+      }
+      it('a nested relationship filter cannot reach them either', async () => {
+        const n = await read(granted, `{ supplierInvoices(where: { discrepancies: { some: { detail: { contains: "$11.50" } } } }, take: 5) { id } }`)
+        expect(refusedFilter(n), JSON.stringify(n)).toBe(true)
+      })
+      for (const [query, field] of [['approvalRequests', 'payloadHash'], ['approvalRequests', 'summary'], ['discrepancies', 'detail'], ['discrepancies', 'resolution'], ['supplierInvoices', 'reversalReason'], ['stockMovements', 'reason']]) {
+        it(`${query}.${field}: sort refused`, async () => {
+          const r = await read(granted, `{ ${query}(orderBy: { ${field}: asc }, take: 5) { id } }`)
+          expect(refusedFilter(r), JSON.stringify(r)).toBe(true)
+        })
+      }
+      it('reversalReason, resolution and cost-action summaries read without the money', async () => {
+        const r = await read(granted, `{ supplierInvoice(where: { id: "${planted.SupplierInvoice}" }) { reversalReason totalMinor }
+          discrepancy(where: { id: "${planted.Discrepancy}" }) { resolution } }`)
+        expect(r.errors ?? []).toEqual([])
+        expect(r.data.supplierInvoice).toEqual({ reversalReason: 'Header keyed as —; the lines total —. Re-enter as billed.', totalMinor: null })
+        expect(r.data.discrepancy.resolution).toBe('Supplier agreed: credit — on the next statement')
+      })
+    })
+  }
+
+  it('the reversal reason is in the audit trail too, and an auditor without canSeeCost reads it without the money or the payload hash', async () => {
+    await prisma.$transaction(async tx => {
+      const { appendAuditEvents } = await import('../lib/audit')
+      await appendAuditEvents(tx as never, [
+        { eventType: 'supplier_invoice.reversed', entityType: 'SupplierInvoice', entityId: planted.SupplierInvoice, reason: REVERSAL, after: { status: 'reversed', reversalReason: REVERSAL } },
+        { eventType: 'approval.requested', entityType: 'ApprovalRequest', entityId: planted.ApprovalRequest, after: { action: 'core.write_off', payloadHash: PLANTED_HASH } },
+      ])
+    })
+    const r = await read(AUDITOR, `{ auditEvents(where: { entityId: { in: ["${planted.SupplierInvoice}", "${planted.ApprovalRequest}"] } }, take: 10) { reason after } }`)
+    expect(r.errors ?? []).toEqual([])
+    const text = JSON.stringify(r.data.auditEvents)
+    expect(r.data.auditEvents.length).toBe(2)
+    expect(text).not.toMatch(/\$\s?\d/)
+    expect(text).not.toContain(PLANTED_HASH)
+    const refused = await read(AUDITOR, `{ auditEvents(where: { reason: { contains: "$1,150.00" } }, take: 1) { id } }`)
+    expect(refusedFilter(refused)).toBe(true)
+  })
+
+  it('a role with canSeeCost filters on the same fields (the refusal is not a blanket one)', async () => {
+    const r = await read(MANAGER, `{ a: approvalRequests(where: { payloadHash: { equals: "${PLANTED_HASH}" } }) { id } d: discrepancies(where: { detail: { contains: "ordered at $11.50" } }) { id }
+      s: supplierInvoices(where: { reversalReason: { contains: "$1,150.00" } }) { id reversalReason } }`)
+    expect(r.errors ?? []).toEqual([])
+    expect(r.data.a.map((x: any) => x.id)).toContain(planted.ApprovalRequest)
+    expect(r.data.d.map((x: any) => x.id)).toContain(planted.Discrepancy)
+    expect(r.data.s).toEqual([{ id: planted.SupplierInvoice, reversalReason: REVERSAL }])
+  })
+
   it('a role with canSeeCost (Shop Manager) reads the same rows in full', async () => {
     const r = await read(MANAGER, `{ stockMovement(where: { id: "${planted.StockMovement}" }) { after }
       supplierReturn(where: { id: "${planted.SupplierReturn}" }) { lines }
@@ -158,6 +233,6 @@ describe.skipIf(!hasTestDatabase)('cost is not readable through JSON or text by 
     expect(r.data.supplierReturn.lines[0].unitCostMinor).toBe('15600')
     expect(r.data.discrepancy.detail).toContain('$11.50')
     expect(r.data.approvalRequest.payload.coreChargeMinor).toBe('10500')
-    expect(r.data.approvalRequest.payloadHash).toBe('a'.repeat(64))
+    expect(r.data.approvalRequest.payloadHash).toBe(PLANTED_HASH)
   })
 })
