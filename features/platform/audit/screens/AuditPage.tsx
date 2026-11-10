@@ -3,8 +3,8 @@ import { q, orgTimeZone } from '../../lib/server';
 import { when } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Stat } from '../../components/ui';
 
-type Event = { id: string; seq: number; at: string; eventType: string; entityType: string; entityId: string; reason: string; hash: string; prevHash: string; actorUser: { name: string } | null; actorAgent: { name: string } | null; approver: { name: string } | null };
-type Verify = { ok: boolean; count: number; lastSeq: number; lastHash: string; brokenAtSeq: number | null; problem: string | null };
+type Event = { id: string; seq: number; at: string; eventType: string; entityType: string; entityId: string; reason: string; hash: string | null; prevHash: string | null; actorUser: { name: string } | null; actorAgent: { name: string } | null; approver: { name: string } | null };
+type Verify = { ok: boolean; count: number; lastSeq: number; lastHash: string | null; brokenAtSeq: number | null; problem: string | null };
 
 const PAGE = 50;
 
@@ -33,7 +33,8 @@ export default async function AuditPage({ searchParams }: { searchParams?: Promi
         <Stat name="Chain" value={v.ok ? <span className="text-emerald-600">Intact</span> : <span className="text-red-600">Broken at #{v.brokenAtSeq}</span>} />
         <Stat name="Events" value={v.count.toLocaleString('en-US')} />
         <Stat name="Last event" value={v.lastSeq ? `#${v.lastSeq}` : '—'} />
-        <Stat name="Head hash" value={<span className="break-all font-mono text-xs">{v.lastHash.slice(0, 16)}</span>} />
+        {/* Hashes are withheld from a reader without canSeeCost (they would let them guess a hidden cost); the verdict above is the server's. */}
+        <Stat name="Head hash" value={v.lastHash ? <span className="break-all font-mono text-xs">{v.lastHash.slice(0, 16)}</span> : <span className="text-xs text-muted-foreground">Checked on the server</span>} />
       </div>
       {!v.ok && v.problem ? <p role="alert" className="text-sm text-red-600">{v.problem}</p> : null}
       <Section title={entity ? `Events for ${entity}` : 'Latest events'} aside={entity ? <Link href="/dashboard/platform/audit" className="inline-flex min-h-11 items-center text-xs underline md:min-h-0">Show all</Link> : null}>
@@ -48,7 +49,7 @@ export default async function AuditPage({ searchParams }: { searchParams?: Promi
             </div>
             <div className="text-right">
               <Meta>{when(e.at, tz)}</Meta>
-              <p className="font-mono text-xs text-muted-foreground">{e.hash.slice(0, 12)}</p>
+              {e.hash ? <p className="font-mono text-xs text-muted-foreground">{e.hash.slice(0, 12)}</p> : null}
             </div>
           </Row>
         )) : <Empty>No audit events yet.</Empty>}

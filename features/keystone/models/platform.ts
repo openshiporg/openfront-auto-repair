@@ -5,7 +5,7 @@ import { choice, lifecycle, minor, readOnly, systemText, versionField } from './
 import { governed, immutable, managed, serverOnly, shopScoped } from './listAccess'
 import { auditedHooks } from './auditHooks'
 import { trackingFields } from './trackingFields'
-import { auditJsonWithoutCost, auditReasonWithoutCost, hashHiddenWithCost, isCostAction, payloadWithoutCost, withoutCostKeys, withoutMoneyText, withoutMoneyTextWhen } from '../security/costRedaction'
+import { auditJsonWithoutCost, auditReasonWithoutCost, hashHiddenWithCost, hiddenWithoutCost, isCostAction, payloadWithoutCost, withoutCostKeys, withoutMoneyText, withoutMoneyTextWhen } from '../security/costRedaction'
 
 /*
  * Platform spine (SCHEMA §1, §2.9, §4.1-4.2, §16), ported from openfront-hedge-fund models/platform.ts.
@@ -177,7 +177,8 @@ export const AuditEvent = list({
   ui: { labelField: 'eventType', listView: { initialColumns: ['seq', 'at', 'eventType', 'entityType', 'entityId', 'actorUser'], initialSort: { field: 'seq', direction: 'DESC' } } },
   fields: {
     seq: integer({ isIndexed: 'unique', validation: { isRequired: true }, ...readOnly }),
-    eventKey: systemText({ indexed: 'unique', required: true }),
+    // The chain links and the key they cover are a cost oracle for a reader without canSeeCost (review r5 R5-1): null, not filterable or sortable.
+    eventKey: hiddenWithoutCost(systemText({ indexed: 'unique', required: true })),
     eventType: systemText({ indexed: true, required: true }),
     entityType: systemText({ indexed: true, required: true }),
     entityId: systemText({ indexed: true, required: true }),
@@ -191,8 +192,8 @@ export const AuditEvent = list({
     after: auditJsonWithoutCost(json({ ...readOnly })),
     metadata: auditJsonWithoutCost(json({ ...readOnly })),
     requestId: systemText(),
-    prevHash: systemText({ required: true }),
-    hash: systemText({ indexed: 'unique', required: true }),
+    prevHash: hiddenWithoutCost(systemText({ required: true })),
+    hash: hiddenWithoutCost(systemText({ indexed: 'unique', required: true })),
     at: timestamp({ validation: { isRequired: true }, defaultValue: { kind: 'now' }, ...readOnly }),
   },
 })

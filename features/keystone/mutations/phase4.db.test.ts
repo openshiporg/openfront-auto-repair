@@ -439,8 +439,9 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     const legacy = await prisma.supplierInvoice.create({ data: { shopId: NGA, supplierId: valley, invoiceNumber: 'VW-LEGACY-4', totalMinor: 115000n, status: 'received', invoiceDate: new Date() } })
     const legacyLine = await prisma.supplierInvoiceLine.create({ data: { invoiceId: legacy.id, partNumber: 'CF10285', quantityMilli: 1000, unitCostMinor: 1150n, matchStatus: 'unmatched' } })
     // The database refuses to mark it matched, approved or exported while the header disagrees.
+    // matched by the total check; approved and exported are refused first because nothing jumps past matching (r5 R5-2).
     for (const status of ['matched', 'approved', 'exported']) {
-      await expect(prisma.supplierInvoice.update({ where: { id: legacy.id }, data: { status } })).rejects.toThrow(/does not match its lines/)
+      await expect(prisma.supplierInvoice.update({ where: { id: legacy.id }, data: { status } })).rejects.toThrow(/does not match its lines|only moves forward/)
     }
     const matched = await matchShopSupplierInvoice(null, { invoiceId: legacy.id, idempotencyKey: key('m') }, parts) as { status: string; linesTotalMinor: string }
     expect(matched).toMatchObject({ status: 'discrepancy', linesTotalMinor: '1150' })
@@ -454,8 +455,11 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     await expect(approveShopSupplierInvoice(null, { invoiceId: legacy.id, idempotencyKey: key('ap') }, manager)).rejects.toMatchObject({ code: expect.stringMatching(/GUARD_FAILED|INVALID_TRANSITION/) })
     // Approval also re-checks the total, even with no discrepancy row: an approved legacy row cannot be exported.
     await prisma.$transaction(async tx => {
+      // The planted legacy shape skipped both rules that now refuse it (total check, forward-only from discrepancy).
       await tx.$executeRawUnsafe(`ALTER TABLE "SupplierInvoice" DISABLE TRIGGER "SupplierInvoice_total_matches_lines"`)
+      await tx.$executeRawUnsafe(`ALTER TABLE "SupplierInvoice" DISABLE TRIGGER "SupplierInvoice_forward_only"`)
       await tx.supplierInvoice.update({ where: { id: legacy.id }, data: { status: 'approved', approvedById: (manager.session as any).itemId, approvedAt: new Date() } })
+      await tx.$executeRawUnsafe(`ALTER TABLE "SupplierInvoice" ENABLE TRIGGER "SupplierInvoice_forward_only"`)
       await tx.$executeRawUnsafe(`ALTER TABLE "SupplierInvoice" ENABLE TRIGGER "SupplierInvoice_total_matches_lines"`)
     })
     await expect(exportShopSupplierInvoice(null, { invoiceId: legacy.id, idempotencyKey: key('ex') }, manager)).rejects.toMatchObject({ code: expect.stringMatching(/GUARD_FAILED|INTERNAL|CHECK/) })
@@ -465,7 +469,13 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     expect(filterLine.invoicedQuantityMilli).toBe(1000)
     // As on prod: a line matched before allocations were recorded holds the column default [] and only matchedOrderLine.
     expect((await prisma.supplierInvoiceLine.findUniqueOrThrow({ where: { id: legacyLine.id } })).matchedOrderLineId).toBe(filterLine.id)
-    await prisma.supplierInvoiceLine.update({ where: { id: legacyLine.id }, data: { allocations: [] } })
+    // Planting that legacy shape on an approved invoice is itself a match change, which the database now refuses (r5 R5-2).
+    await expect(prisma.supplierInvoiceLine.update({ where: { id: legacyLine.id }, data: { allocations: [{ orderLineId: 'x', quantityMilli: 1 }] } })).rejects.toThrow(/match on a supplier invoice line cannot change once the invoice is approved/)
+    await prisma.$transaction(async tx => {
+      await tx.$executeRawUnsafe(`ALTER TABLE "SupplierInvoiceLine" DISABLE TRIGGER "SupplierInvoiceLine_billed_frozen"`)
+      await tx.supplierInvoiceLine.update({ where: { id: legacyLine.id }, data: { allocations: [] } })
+      await tx.$executeRawUnsafe(`ALTER TABLE "SupplierInvoiceLine" ENABLE TRIGGER "SupplierInvoiceLine_billed_frozen"`)
+    })
     const managerViaMcp = { session: sessionFor('mgr', MANAGER, { mcp: { clientId: 'c', scopes: ['mcp:read', 'mcp:write'] } }), prisma }
     await expect(reverseShopSupplierInvoice(null, { invoiceId: legacy.id, reason: 'Header keyed as 1150.00', idempotencyKey: key('rv') }, managerViaMcp)).rejects.toMatchObject({ code: 'AGENT_FORBIDDEN_ACTION' })
     await expect(reverseShopSupplierInvoice(null, { invoiceId: legacy.id, reason: 'Header keyed as 1150.00', idempotencyKey: key('rv') }, parts)).rejects.toMatchObject({ code: 'NOT_AUTHORIZED' })
@@ -548,7 +558,7 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     expect(await prisma.supplierOrderLine.findUnique({ where: { id: 'cmw9eo2lb001uns01drr3y9a2' } })).toBeNull()
   })
 
-  it('r4 R4-3: once an invoice leaves received, its header and lines are frozen; status, approval and reversal still move', { timeout: 180_000 }, async () => {
+  it('r4 R4-3 / r5 R5-2: once an invoice leaves received, its header, lines and match are frozen and its status only moves forward; approval and reversal still move', { timeout: 180_000 }, async () => {
     const { reverseShopSupplierInvoice } = await import('./phase4')
     await orderAndReceive(valley, [{ partNumber: 'WIX-57060', brand: 'Wix', description: 'Engine oil filter', quantityMilli: 2000, unitCostMinor: '650' }])
     const made = await recordShopSupplierInvoice(null, { input: { shopId: NGA, supplierId: valley, invoiceNumber: 'VWD-R43', invoiceDate: today(), totalMinor: '1300', lines: [{ partNumber: 'WIX-57060', quantityMilli: 2000, unitCostMinor: '650' }] }, idempotencyKey: key('inv') }, parts) as { id: string }
@@ -566,15 +576,32 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
       await expect(prisma.supplierInvoiceLine.create({ data: { invoiceId: made.id, partNumber: 'WIX-57060', quantityMilli: 1000, unitCostMinor: 650n, matchStatus: 'unmatched' } })).rejects.toThrow(frozen)
       await expect(prisma.supplierInvoiceLine.delete({ where: { id: line.id } })).rejects.toThrow(frozen)
     }
+    // r5 R5-2: the status only moves forward, so the freeze cannot be lifted by setting it back to received, and the match
+    // a reversal gives back from is fixed. Each probe is one statement, refused by the database.
+    const backwards = async (from: string) => {
+      const back = /only moves forward|cannot change|final/
+      for (const status of ['received', 'matching', 'discrepancy', 'matched', 'approved'].filter(s => s !== from && !(from === 'matched' && s === 'approved'))) {
+        await expect(prisma.supplierInvoice.update({ where: { id: made.id }, data: { status } }), `${from} -> ${status}`).rejects.toThrow(back)
+      }
+      await expect(prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { allocations: [] } })).rejects.toThrow(back)
+      await expect(prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { matchedOrderLineId: null } })).rejects.toThrow(back)
+      await expect(prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { matchStatus: 'unmatched' } })).rejects.toThrow(back)
+      if (from !== 'matched') await expect(prisma.supplierInvoice.update({ where: { id: made.id }, data: { approvedAt: new Date(0) } })).rejects.toThrow(back)
+      expect((await prisma.supplierInvoice.findUniqueOrThrow({ where: { id: made.id } })).status).toBe(from)
+    }
     await probes()
+    await backwards('matched')
     await approveShopSupplierInvoice(null, { invoiceId: made.id, idempotencyKey: key('ap') }, manager)
     await probes()
+    await backwards('approved')
     // A line cannot be moved off a frozen invoice onto an open one either.
     const open = await recordShopSupplierInvoice(null, { input: { shopId: NGA, supplierId: valley, invoiceNumber: 'VWD-R43-B', invoiceDate: today(), totalMinor: '650', lines: [{ partNumber: 'WIX-57060', quantityMilli: 1000, unitCostMinor: '650' }] }, idempotencyKey: key('inv') }, parts) as { id: string }
     await expect(prisma.supplierInvoiceLine.update({ where: { id: line.id }, data: { invoiceId: open.id } })).rejects.toThrow(frozen)
     const rev = await reverseShopSupplierInvoice(null, { invoiceId: made.id, reason: 'Supplier sent a corrected bill', idempotencyKey: key('rv') }, manager) as { status: string; releasedQuantityMilli: number }
     expect(rev).toMatchObject({ status: 'reversed', releasedQuantityMilli: 2000 })
     await probes()
+    await backwards('reversed')
+    await expect(prisma.supplierInvoice.update({ where: { id: made.id }, data: { reversalReason: 'Something else entirely' } })).rejects.toThrow(/cannot change/)
     const after = await prisma.supplierInvoice.findUniqueOrThrow({ where: { id: made.id }, include: { lines: true } })
     expect(after).toMatchObject({ totalMinor: 1300n, status: 'reversed' })
     expect(after.lines.map(l => [l.quantityMilli, l.unitCostMinor])).toEqual([[2000, 650n]])

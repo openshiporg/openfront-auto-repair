@@ -214,13 +214,130 @@ describe.skipIf(!hasTestDatabase)('cost is not readable through JSON or text by 
     expect(refusedFilter(refused)).toBe(true)
   })
 
+  // Review r5 R5-1: AuditEvent.hash covers the unredacted row, so with prevHash and the row's other columns a reader without
+  // canSeeCost re-adds a guessed cost and compares (the review recovered a real unitCostMinor in 112 ms). The chain links are
+  // null for that reader, and not filterable, sortable or reachable through a relation filter; the verdict stays readable.
+  describe('the audit chain hashes are not a cost oracle (review r5 R5-1)', () => {
+    let receipt: { id: string; seq: number; eventKey: string; hash: string; prevHash: string }
+    beforeAll(async () => {
+      const { appendAuditEvents } = await import('../lib/audit')
+      const [w] = await prisma.$transaction(tx => appendAuditEvents(tx as never, [
+        { eventType: 'stock.receipt', entityType: 'StockMovement', entityId: planted.StockMovement, reason: 'Received on PO-LEAK-1', after: { sku: 'LEAK', onHand: 1000, quantityMilli: 1000, unitCostMinor: '18900' } },
+      ]))
+      receipt = (await prisma.auditEvent.findUniqueOrThrow({ where: { id: w.id } })) as never
+    })
+
+    for (const [name, granted] of [['Auditor', AUDITOR], ['Service Advisor', ADVISOR], ['Lead Technician', LEAD_TECH], ['Technician', TECH]] as const) {
+      it(`${name}: hash, prevHash and eventKey read as null, cannot be filtered, sorted, counted on or reached through a relation`, async () => {
+        expect(granted).not.toContain('canSeeCost')
+        const r = await read(granted, `{ auditEvents(where: { seq: { equals: ${receipt.seq} } }, take: 1) { seq hash prevHash eventKey after } }`)
+        expect(r.errors ?? []).toEqual([])
+        // The Auditor reads the event (with the cost stripped); roles without canReadAudit read nothing at all.
+        if (granted.includes('canReadAudit')) {
+          expect(r.data.auditEvents).toEqual([{ seq: receipt.seq, hash: null, prevHash: null, eventKey: null, after: { sku: 'LEAK', onHand: 1000, quantityMilli: 1000 } }])
+        } else expect(r.data.auditEvents).toEqual([])
+        const one = await read(granted, `{ auditEvent(where: { id: "${receipt.id}" }) { hash prevHash eventKey } }`)
+        expect(JSON.stringify(one.data ?? {})).not.toContain(receipt.hash)
+        const probes = [
+          `{ auditEvents(where: { hash: { equals: "${receipt.hash}" } }) { id } }`,
+          `{ auditEvents(where: { hash: { in: ["${receipt.hash}"] } }) { id } }`,
+          `{ auditEvents(where: { hash: { startsWith: "${receipt.hash.slice(0, 4)}" } }) { id } }`,
+          `{ auditEvents(where: { prevHash: { equals: "${receipt.prevHash}" } }) { id } }`,
+          `{ auditEvents(where: { eventKey: { equals: "${receipt.eventKey}" } }) { id } }`,
+          `{ auditEvents(where: { NOT: { hash: { equals: "${receipt.hash}" } } }) { id } }`,
+          `{ auditEvents(where: { OR: [{ seq: { equals: -1 } }, { hash: { gt: "8" } }] }) { id } }`,
+          `{ auditEventsCount(where: { hash: { equals: "${receipt.hash}" } }) }`,
+          `{ auditEvent(where: { hash: "${receipt.hash}" }) { id } }`,
+          `{ auditEvent(where: { eventKey: "${receipt.eventKey}" }) { id } }`,
+          `{ auditEvents(orderBy: { hash: asc }, take: 1) { id } }`,
+          `{ auditEvents(orderBy: { prevHash: desc }, take: 1) { id } }`,
+          `{ auditEvents(orderBy: { eventKey: asc }, take: 1) { id } }`,
+        ]
+        for (const p of probes) {
+          const x = await read(granted, p)
+          // Either refused, or (a role with no audit access at all) empty: never an answer that depends on the hash.
+          const answer = JSON.stringify(x.data ?? {})
+          expect(refusedFilter(x) || (!granted.includes('canReadAudit') && !answer.includes(receipt.id) && !/"auditEventsCount":[1-9]/.test(answer)), `${name}: ${p} -> ${JSON.stringify(x).slice(0, 200)}`).toBe(true)
+        }
+      })
+    }
+
+    it('the Auditor still sees whether the chain is intact, from the server, without the head hash', async () => {
+      const r = await read(AUDITOR, '{ verifyAuditChain }')
+      expect(r.errors ?? []).toEqual([])
+      expect(r.data.verifyAuditChain).toMatchObject({ ok: true, lastHash: null })
+      expect(r.data.verifyAuditChain.count).toBeGreaterThan(0)
+      const m = await read(MANAGER, '{ verifyAuditChain }')
+      expect(m.data.verifyAuditChain).toMatchObject({ ok: true, lastHash: expect.stringMatching(/^[0-9a-f]{64}$/) })
+    })
+
+    it('the review hashoracle, run on what Keystone serves the Auditor, recovers nothing (and does recover it from the stored row)', async () => {
+      const { createHash } = await import('node:crypto')
+      const { canonicalJson } = await import('../lib/canonical')
+      const Q = `{ auditEvents(where: { seq: { equals: ${receipt.seq} } }) { seq eventKey eventType entityType entityId actorUser { id } actorAgent { id } approver { id } reason before after metadata requestId prevHash hash at } }`
+      const body = (r: any, after: unknown) => ({ seq: r.seq, eventKey: r.eventKey, eventType: r.eventType, entityType: r.entityType, entityId: r.entityId, actorUserId: r.actorUser?.id ?? null, actorAgentId: r.actorAgent?.id ?? null, approverId: r.approver?.id ?? null, reason: r.reason || null, before: r.before ?? null, after, metadata: r.metadata ?? null, requestId: r.requestId || null, at: r.at })
+      const attack = (r: any) => { if (!r.hash || !r.prevHash) return null; for (let c = 0; c <= 20_000; c++) if (createHash('sha256').update(`${r.prevHash}\n${canonicalJson(body(r, { ...r.after, unitCostMinor: String(c) }))}`).digest('hex') === r.hash) return c; return null }
+      const mgr = (await read(MANAGER, Q)).data.auditEvents[0]
+      // Positive control: with the hash served (manager), the recipe is the real one and the attack works on a stripped copy.
+      const { unitCostMinor, ...stripped } = mgr.after
+      expect(unitCostMinor).toBe('18900')
+      expect(attack({ ...mgr, after: stripped })).toBe(18900)
+      const aud = (await read(AUDITOR, Q)).data.auditEvents[0]
+      expect(aud.after).toEqual(stripped)
+      expect(attack(aud)).toBeNull()
+    })
+
+    it('the review recipe no longer has a target: the hash it needs is not served to the Auditor', async () => {
+      const r = await read(AUDITOR, `{ auditEvents(where: { seq: { in: [${receipt.seq}, ${receipt.seq - 1}] } }, take: 2) { hash prevHash } }`)
+      expect(JSON.stringify(r.data)).not.toMatch(/[0-9a-f]{64}/)
+    })
+
+    it('the Shop Manager (canSeeCost and canReadAudit) still reads and filters the chain', async () => {
+      const r = await read(MANAGER, `{ auditEvents(where: { hash: { equals: "${receipt.hash}" } }) { id hash prevHash eventKey } }`)
+      expect(r.errors ?? []).toEqual([])
+      expect(r.data.auditEvents).toEqual([{ id: receipt.id, hash: receipt.hash, prevHash: receipt.prevHash, eventKey: receipt.eventKey }])
+    })
+  })
+
+  // Review r5 sweep: every other hash or digest in the schema either covers no cost, or is hidden like the payload it hashes.
+  describe('the other hashes in the schema (review r5 sweep)', () => {
+    it('an approval payloadHash is hidden whenever the reader gets a redacted payload, and kept when the payload has no cost', async () => {
+      const user = await prisma.user.findFirstOrThrow()
+      const base = { shopId: null, targetList: 'X', targetId: 'x', requiredPermission: 'canPublishPolicies', requestedById: user.id, status: 'pending', expiresAt: new Date(Date.now() + 86_400_000) }
+      const matrix = await prisma.approvalRequest.create({ data: { ...base, action: 'policy.publish', summary: 'Publish Parts matrix v2', payload: { kind: 'parts_matrix', versionId: 'v', contentHash: 'cd'.repeat(32), baseVersion: 1 }, payloadHash: 'ef'.repeat(32) } as never })
+      const close = await prisma.approvalRequest.create({ data: { ...base, action: 'pay_period.close', summary: 'Close the pay period', payload: { payPeriodId: 'p', startsOn: '2026-11-01', endsOn: '2026-11-07' }, payloadHash: '12'.repeat(32) } as never })
+      let seen = 0
+      for (const granted of [AUDITOR, ADVISOR, LEAD_TECH, TECH]) {
+        const r = await read(granted, `{ m: approvalRequest(where: { id: "${matrix.id}" }) { payload payloadHash } c: approvalRequest(where: { id: "${close.id}" }) { payloadHash } }`)
+        if (!r.data?.m) continue
+        seen += 1
+        expect(r.data.m).toEqual({ payload: { kind: 'parts_matrix', versionId: 'v', baseVersion: 1 }, payloadHash: null })
+        expect(r.data.c.payloadHash).toBe('12'.repeat(32))
+      }
+      expect(seen).toBeGreaterThanOrEqual(2)
+    })
+
+    it('audit snapshots of the parts matrix (cost brackets) and hashes copied into audit JSON are withheld', async () => {
+      const { appendAuditEvents } = await import('../lib/audit')
+      const pm = uniqueKey('leak-pm')
+      await prisma.$transaction(tx => appendAuditEvents(tx as never, [
+        { eventType: 'PartsMatrixVersion.updated', entityType: 'PartsMatrixVersion', entityId: pm, after: { tiers: [{ minCostMinor: 0, maxCostMinor: 5000, multiplier: '2.5' }], marginFloorPct: '0.3' } },
+        { eventType: 'policy.published', entityType: 'PartsMatrixVersion', entityId: pm, after: { versionNumber: 2, contentHash: 'cd'.repeat(32) } },
+      ]))
+      const r = await read(AUDITOR, `{ auditEvents(where: { entityId: { equals: "${pm}" } }) { after } }`)
+      expect(r.errors ?? []).toEqual([])
+      expect(r.data.auditEvents).toEqual([{ after: {} }, { after: {} }])
+    })
+  })
+
   it('a role with canSeeCost filters on the same fields (the refusal is not a blanket one)', async () => {
     const r = await read(MANAGER, `{ a: approvalRequests(where: { payloadHash: { equals: "${PLANTED_HASH}" } }) { id } d: discrepancies(where: { detail: { contains: "ordered at $11.50" } }) { id }
       s: supplierInvoices(where: { reversalReason: { contains: "$1,150.00" } }) { id reversalReason } }`)
     expect(r.errors ?? []).toEqual([])
     expect(r.data.a.map((x: any) => x.id)).toContain(planted.ApprovalRequest)
     expect(r.data.d.map((x: any) => x.id)).toContain(planted.Discrepancy)
-    expect(r.data.s).toEqual([{ id: planted.SupplierInvoice, reversalReason: REVERSAL }])
+    // Earlier runs on the same schema leave their own planted copies; this run's must be among them, in full.
+    expect(r.data.s).toContainEqual({ id: planted.SupplierInvoice, reversalReason: REVERSAL })
   })
 
   it('a role with canSeeCost (Shop Manager) reads the same rows in full', async () => {

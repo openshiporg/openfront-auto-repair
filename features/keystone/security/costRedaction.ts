@@ -68,7 +68,7 @@ export function costRedacted<F extends (args: any) => any>(field: F, redact: Red
 
 export const withoutCostKeys = <F extends (args: any) => any>(field: F) => costRedacted(field, v => stripCost(v))
 /** Approval payloads: cost keys always; on a cost action every amount and any money in its text (the requester's reason) too. */
-export const payloadWithoutCost = <F extends (args: any) => any>(field: F) => costRedacted(field, (v, item) => stripCost(v, isCostAction(item.action)))
+export const payloadWithoutCost = <F extends (args: any) => any>(field: F) => costRedacted(field, (v, item) => redactPayload(v, item))
 export const withoutMoneyText = <F extends (args: any) => any>(field: F) => costRedacted(field, v => stripMoneyText(v))
 /** Approval actions whose summary and decision reasons are about cost (a core charge, a stock or count value, a supplier bill). */
 const COST_ACTION = /^(core\.|stock\.|supplier|cycle_count)/
@@ -77,9 +77,37 @@ export const isCostAction = (action: unknown) => COST_ACTION.test(String(action 
 export const withoutMoneyTextWhen = <F extends (args: any) => any>(field: F, holds: (item: Record<string, unknown>) => boolean) => costRedacted(field, (v, item) => (holds(item) ? stripMoneyText(v) : v))
 /** Audit reasons on supplier-side records quote what was keyed or paid ("Header keyed as $1,150.00"). */
 export const auditReasonWithoutCost = <F extends (args: any) => any>(field: F) => withoutMoneyTextWhen(field, item => SUPPLIER_ENTITIES.has(String(item.entityType)) || item.entityType === 'ApprovalRequest')
-/** A payload hash copied into an audit event is the same oracle as ApprovalRequest.payloadHash (review r4 R4-2). */
-const withoutHash = (v: unknown): unknown => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k]) => k !== 'payloadHash')) : v)
+/**
+ * A hash copied into an audit event (payloadHash, a policy contentHash, a job contentHash, a file digest) is the same oracle as
+ * ApprovalRequest.payloadHash (review r4 R4-2, r5 R5-1): every hash or digest key goes, at any depth.
+ */
+const HASH_KEY = /hash|digest|sha256|fingerprint|checksum/i
+const withoutHash = (v: unknown): unknown => (Array.isArray(v) ? v.map(withoutHash) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k]) => !HASH_KEY.test(k)).map(([k, x]) => [k, withoutHash(x)])) : v)
 /** Audit before/after/metadata: cost keys and payload hashes always, and every amount and money text on a supplier-side record. */
-export const auditJsonWithoutCost = <F extends (args: any) => any>(field: F) => costRedacted(field, (v, item) => withoutHash(stripCost(v, SUPPLIER_ENTITIES.has(String(item.entityType)))))
-/** A hash of a payload that holds cost is a brute-force oracle for it (low entropy): hidden from a reader who cannot see the cost. */
-export const hashHiddenWithCost = <F extends (args: any) => any>(field: F, payloadKey = 'payload') => costRedacted(field, (v, item) => (holdsCost(item[payloadKey]) ? null : v))
+export const auditJsonWithoutCost = <F extends (args: any) => any>(field: F) => costRedacted(field, (v, item) => (COST_ONLY_ENTITIES.has(String(item.entityType)) ? {} : withoutHash(stripCost(v, SUPPLIER_ENTITIES.has(String(item.entityType))))))
+/** Lists that only canSeeCost may read at all (the parts matrix: cost brackets and markups); their audit snapshots are withheld whole. */
+const COST_ONLY_ENTITIES = new Set(['PartsMatrixVersion'])
+/**
+ * A hash of a payload that holds cost is a brute-force oracle for it (low entropy): hidden from a reader who cannot see the cost.
+ * "Holds cost" is anything the reader's copy of the payload leaves out (a cost key, an amount on a cost action, money masked in its
+ * reason, a cost policy's content hash): if the redacted payload differs from the stored one, the hash is hidden (review r5 R5-1).
+ */
+export const hashHiddenWithCost = <F extends (args: any) => any>(field: F, payloadKey = 'payload') =>
+  costRedacted(field, (v, item) => (holdsCost(item[payloadKey]) || JSON.stringify(redactPayload(item[payloadKey], item)) !== JSON.stringify(item[payloadKey]) ? null : v))
+
+/** Policies whose content is cost (the parts matrix: cost brackets and markups). Their content hash is withheld like the content. */
+const COST_POLICY_KINDS = new Set(['parts_matrix'])
+/** What a reader without canSeeCost gets of an approval payload. */
+export function redactPayload(value: unknown, item: Record<string, unknown>): unknown {
+  const stripped = stripCost(value, isCostAction(item.action))
+  if (stripped && typeof stripped === 'object' && !Array.isArray(stripped) && COST_POLICY_KINDS.has(String((stripped as Record<string, unknown>).kind))) return withoutHash(stripped)
+  return stripped
+}
+
+/**
+ * Review r5 R5-1: AuditEvent.hash covers the full, unredacted row, so with the row's other columns and its prevHash a reader
+ * without canSeeCost re-adds a guessed cost and compares. The chain links (hash, prevHash, the event key they cover) are null
+ * for that reader, and not filterable or sortable (the unique index made `where: { hash }` an oracle too). The chain is still
+ * verified on the server (verifyAuditChain), which reports intact or broken without the hashes to such a reader.
+ */
+export const hiddenWithoutCost = <F extends (args: any) => any>(field: F) => costRedacted(field, () => null)
