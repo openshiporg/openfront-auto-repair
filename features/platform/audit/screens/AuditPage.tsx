@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { q, orgTimeZone } from '../../lib/server';
+import { q, orgTimeZone, holdsAny } from '../../lib/server';
 import { when } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Stat } from '../../components/ui';
 
@@ -13,6 +13,7 @@ const eventText = (type: string) => { const [a, ...rest] = type.replaceAll('_', 
 
 /** Hash-chained audit log. Each event's hash covers the previous hash, so editing or removing one breaks every later link. */
 export default async function AuditPage({ searchParams }: { searchParams?: Promise<{ before?: string; entity?: string }> }) {
+  if (!(await holdsAny(['canReadAudit']))) return <Page title="Audit log"><Empty>Your role is not allowed to view the audit log.</Empty></Page>;
   const params = (await searchParams) ?? {};
   const before = /^\d+$/.test(params.before ?? '') ? Number.parseInt(params.before!, 10) : null;
   const entity = (params.entity ?? '').replace(/[^A-Za-z0-9_:-]/g, '').slice(0, 120);

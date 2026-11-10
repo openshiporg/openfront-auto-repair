@@ -1,4 +1,4 @@
-import { q, orgTimeZone } from '../../lib/server';
+import { q, orgTimeZone, holdsAny } from '../../lib/server';
 import { money, when, label } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Stat, Status, Tabs } from '../../components/ui';
 import { ActionButton } from '../../components/ActionButton';
@@ -13,6 +13,7 @@ const todayIn = (tz: string) => new Intl.DateTimeFormat('en-CA', { timeZone: tz,
 
 /** Day close: what came in by tender, the cash that should be in the drawer, the count, and the frozen result. */
 export default async function DayClosePage({ searchParams }: { searchParams?: Promise<{ shop?: string; date?: string }> }) {
+  if (!(await holdsAny(['canCloseDay', 'canReadFinancials']))) return <Page title="Day close"><Empty>Your role is not allowed to view day close.</Empty></Page>;
   const params = (await searchParams) ?? {};
   const tz = await orgTimeZone();
   const { shops } = await q<{ shops: Shop[] }>(`{ shops(orderBy: { code: asc }) { id code name timeZone } }`);

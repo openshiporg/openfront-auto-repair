@@ -16,3 +16,14 @@ export async function orgTimeZone(): Promise<string> {
     return 'America/Los_Angeles'
   }
 }
+
+/** Whether the signed-in role holds at least one of these permissions (for pages whose queries would otherwise be refused). */
+export async function holdsAny(names: ('canReadAudit' | 'canCloseDay' | 'canReadFinancials')[]): Promise<boolean> {
+  try {
+    const d: any = await q(`{ authenticatedItem { ... on User { role { ${names.join(' ')} } } } }`)
+    const role = d.authenticatedItem?.role
+    return names.some((n) => role?.[n] === true)
+  } catch {
+    return false
+  }
+}
