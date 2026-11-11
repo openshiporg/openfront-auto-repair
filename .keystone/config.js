@@ -36,7 +36,7 @@ module.exports = __toCommonJS(keystone_exports);
 
 // features/keystone/index.ts
 var import_auth = require("@keystone-6/auth");
-var import_core19 = require("@keystone-6/core");
+var import_core20 = require("@keystone-6/core");
 var import_config = require("dotenv/config");
 
 // features/keystone/models/User.ts
@@ -724,9 +724,9 @@ function dec(value) {
     if (!Number.isSafeInteger(value)) throw new Error(`Refusing float ${value}: pass the exact decimal as a string`);
     return new Decimal(value);
   }
-  const text18 = String(value).trim();
-  if (!DECIMAL_TEXT.test(text18)) throw new Error(`Not a decimal number: ${JSON.stringify(text18).slice(0, 40)}`);
-  return new Decimal(text18);
+  const text19 = String(value).trim();
+  if (!DECIMAL_TEXT.test(text19)) throw new Error(`Not a decimal number: ${JSON.stringify(text19).slice(0, 40)}`);
+  return new Decimal(text19);
 }
 function toScale(value, scale, rounding = Decimal.ROUND_HALF_EVEN) {
   const places = typeof scale === "number" ? scale : Scale[scale];
@@ -758,11 +758,11 @@ function canonicalize(value) {
   throw new Error(`Canonical JSON cannot hold a ${typeof value}`);
 }
 var canonicalJson = (value) => JSON.stringify(canonicalize(value));
-var sha256 = (text18) => (0, import_node_crypto2.createHash)("sha256").update(text18).digest("hex");
+var sha256 = (text19) => (0, import_node_crypto2.createHash)("sha256").update(text19).digest("hex");
 var keyedContactHash = (namespace, normalized, keyText = process.env.AUTO_SECRET_KEY) => {
-  const text18 = String(keyText || "").trim();
-  if (!text18) throw new Error("AUTO_SECRET_KEY is not set: contact values cannot be hashed.");
-  const root = /^[a-f0-9]{64}$/i.test(text18) ? Buffer.from(text18, "hex") : Buffer.from(text18, "base64");
+  const text19 = String(keyText || "").trim();
+  if (!text19) throw new Error("AUTO_SECRET_KEY is not set: contact values cannot be hashed.");
+  const root = /^[a-f0-9]{64}$/i.test(text19) ? Buffer.from(text19, "hex") : Buffer.from(text19, "base64");
   const key2 = (0, import_node_crypto2.createHmac)("sha256", root).update("auto-repair.contact-hash.v1").digest();
   return `h1:${(0, import_node_crypto2.createHmac)("sha256", key2).update(`${namespace}:${normalized}`).digest("hex")}`;
 };
@@ -933,7 +933,7 @@ function holdsCost(value, allMinor = false) {
   if (value && typeof value === "object") return Object.entries(value).some(([k, v]) => COST_KEY.test(k) || allMinor && ANY_MINOR.test(k) || holdsCost(v, allMinor));
   return false;
 }
-var stripMoneyText = (text18) => typeof text18 === "string" ? text18.replace(/\$\s?-?[\d,]+(\.\d+)?|\b-?[\d,]+(\.\d{2})?\s?(USD|dollars|cents)\b/gi, "\u2014") : text18;
+var stripMoneyText = (text19) => typeof text19 === "string" ? text19.replace(/\$\s?-?[\d,]+(\.\d+)?|\b-?[\d,]+(\.\d{2})?\s?(USD|dollars|cents)\b/gi, "\u2014") : text19;
 var onlyWithCost = (base) => base === false ? false : async (input) => canSeeCost(input.context) && (typeof base === "function" ? await base(input) === true : true);
 function costRedacted(field, redact) {
   return (args) => {
@@ -955,15 +955,24 @@ function costRedacted(field, redact) {
   };
 }
 var withoutCostKeys = (field) => costRedacted(field, (v) => stripCost(v));
-var payloadWithoutCost = (field) => costRedacted(field, (v, item) => stripCost(v, isCostAction(item.action)));
+var payloadWithoutCost = (field) => costRedacted(field, (v, item) => redactPayload(v, item));
 var withoutMoneyText = (field) => costRedacted(field, (v) => stripMoneyText(v));
 var COST_ACTION = /^(core\.|stock\.|supplier|cycle_count)/;
 var isCostAction = (action) => COST_ACTION.test(String(action ?? ""));
 var withoutMoneyTextWhen = (field, holds) => costRedacted(field, (v, item) => holds(item) ? stripMoneyText(v) : v);
 var auditReasonWithoutCost = (field) => withoutMoneyTextWhen(field, (item) => SUPPLIER_ENTITIES.has(String(item.entityType)) || item.entityType === "ApprovalRequest");
-var withoutHash = (v) => v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== "payloadHash")) : v;
-var auditJsonWithoutCost = (field) => costRedacted(field, (v, item) => withoutHash(stripCost(v, SUPPLIER_ENTITIES.has(String(item.entityType)))));
-var hashHiddenWithCost = (field, payloadKey = "payload") => costRedacted(field, (v, item) => holdsCost(item[payloadKey]) ? null : v);
+var HASH_KEY = /hash|digest|sha256|fingerprint|checksum/i;
+var withoutHash = (v) => Array.isArray(v) ? v.map(withoutHash) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).filter(([k]) => !HASH_KEY.test(k)).map(([k, x]) => [k, withoutHash(x)])) : v;
+var auditJsonWithoutCost = (field) => costRedacted(field, (v, item) => COST_ONLY_ENTITIES.has(String(item.entityType)) ? {} : withoutHash(stripCost(v, SUPPLIER_ENTITIES.has(String(item.entityType)))));
+var COST_ONLY_ENTITIES = /* @__PURE__ */ new Set(["PartsMatrixVersion"]);
+var hashHiddenWithCost = (field, payloadKey = "payload") => costRedacted(field, (v, item) => holdsCost(item[payloadKey]) || JSON.stringify(redactPayload(item[payloadKey], item)) !== JSON.stringify(item[payloadKey]) ? null : v);
+var COST_POLICY_KINDS = /* @__PURE__ */ new Set(["parts_matrix"]);
+function redactPayload(value, item) {
+  const stripped = stripCost(value, isCostAction(item.action));
+  if (stripped && typeof stripped === "object" && !Array.isArray(stripped) && COST_POLICY_KINDS.has(String(stripped.kind))) return withoutHash(stripped);
+  return stripped;
+}
+var hiddenWithoutCost = (field) => costRedacted(field, () => null);
 
 // features/keystone/models/platform.ts
 var OrganizationSettings = (0, import_core7.list)({
@@ -1119,7 +1128,8 @@ var AuditEvent = (0, import_core7.list)({
   ui: { labelField: "eventType", listView: { initialColumns: ["seq", "at", "eventType", "entityType", "entityId", "actorUser"], initialSort: { field: "seq", direction: "DESC" } } },
   fields: {
     seq: (0, import_fields7.integer)({ isIndexed: "unique", validation: { isRequired: true }, ...readOnly }),
-    eventKey: systemText({ indexed: "unique", required: true }),
+    // The chain links and the key they cover are a cost oracle for a reader without canSeeCost (review r5 R5-1): null, not filterable or sortable.
+    eventKey: hiddenWithoutCost(systemText({ indexed: "unique", required: true })),
     eventType: systemText({ indexed: true, required: true }),
     entityType: systemText({ indexed: true, required: true }),
     entityId: systemText({ indexed: true, required: true }),
@@ -1133,8 +1143,8 @@ var AuditEvent = (0, import_core7.list)({
     after: auditJsonWithoutCost((0, import_fields7.json)({ ...readOnly })),
     metadata: auditJsonWithoutCost((0, import_fields7.json)({ ...readOnly })),
     requestId: systemText(),
-    prevHash: systemText({ required: true }),
-    hash: systemText({ indexed: "unique", required: true }),
+    prevHash: hiddenWithoutCost(systemText({ required: true })),
+    hash: hiddenWithoutCost(systemText({ indexed: "unique", required: true })),
     at: (0, import_fields7.timestamp)({ validation: { isRequired: true }, defaultValue: { kind: "now" }, ...readOnly })
   }
 });
@@ -1706,13 +1716,20 @@ var BusinessAccount = (0, import_core9.list)({
     name: (0, import_fields9.text)({ validation: { isRequired: true } }),
     accountNumber: systemText({ indexed: "unique", required: true }),
     customers: (0, import_fields9.relationship)({ ref: "Customer.businessAccount", many: true }),
+    contacts: (0, import_fields9.relationship)({ ref: "BusinessAccountContact.businessAccount", many: true, ...readOnly }),
+    approvers: (0, import_fields9.relationship)({ ref: "FleetApprover.businessAccount", many: true, ...readOnly }),
+    certificates: (0, import_fields9.relationship)({ ref: "ExemptionCertificate.businessAccount", many: true, ...readOnly }),
+    units: (0, import_fields9.relationship)({ ref: "FleetUnit.businessAccount", many: true, ...readOnly }),
     termsDays: (0, import_fields9.integer)({ defaultValue: 0, validation: { isRequired: true, min: 0, max: 120 }, ui: { description: "0 = due on receipt; 30 = Net 30." } }),
-    creditLimitMinor: minor({ defaultValue: 0n }),
+    creditLimitMinor: minor({ defaultValue: 0n, access: { read: () => true, create: () => false, update: () => false } }),
     poRequired: (0, import_fields9.checkbox)({ defaultValue: false }),
     taxExempt: (0, import_fields9.checkbox)({ defaultValue: false, ...readOnly, ui: { ...readOnly.ui, description: "Set when an active exemption certificate is on file (Phase 6)." } }),
     billingMode: choice(["per_invoice", "statement_monthly"], "per_invoice"),
     holdAfterOverdueDays: (0, import_fields9.integer)({ defaultValue: 30, validation: { min: 1 } }),
-    openBalanceMinor: minor({ defaultValue: 0n }),
+    holdReason: systemText(),
+    holdSince: (0, import_fields9.timestamp)({ ...readOnly }),
+    holdWaivedUntil: (0, import_fields9.timestamp)({ ...readOnly, ui: { ...readOnly.ui, description: "After a manager releases a hold, it is not re-applied automatically until this time." } }),
+    openBalanceMinor: minor({ defaultValue: 0n, access: { read: () => true, create: () => false, update: () => false } }),
     intermediary: choice(["none", "fleet_management_company"], "none"),
     intermediaryName: (0, import_fields9.text)(),
     status: lifecycle(["active", "prospect", "credit_hold", "closed"]),
@@ -2016,6 +2033,7 @@ var RepairOrder = (0, import_core12.list)({
     customer: (0, import_fields11.relationship)({ ref: "Customer", ...readOnly }),
     businessAccount: (0, import_fields11.relationship)({ ref: "BusinessAccount", ...readOnly }),
     vehicle: (0, import_fields11.relationship)({ ref: "Vehicle", ...readOnly }),
+    fleetUnit: (0, import_fields11.relationship)({ ref: "FleetUnit", ...readOnly }),
     serviceAdvisor: (0, import_fields11.relationship)({ ref: "User", ...readOnly }),
     appointment: (0, import_fields11.relationship)({ ref: "Appointment", ...readOnly }),
     checkIn: (0, import_fields11.relationship)({ ref: "CheckIn.repairOrder", ...readOnly }),
@@ -2539,6 +2557,7 @@ var Authorization = (0, import_core14.list)({
     signature: (0, import_fields13.relationship)({ ref: "Document", ...readOnly }),
     consentTextVersion: systemText(),
     poNumber: systemText(),
+    fleetApprover: (0, import_fields13.relationship)({ ref: "FleetApprover", ...readOnly }),
     status: lifecycle(["recorded", "superseded", "revoked"]),
     ...trackingFields
   }
@@ -2629,7 +2648,8 @@ var Invoice = (0, import_core15.list)({
     creditedMinor: minor({ defaultValue: 0n }),
     balanceMinor: minor({ defaultValue: 0n }),
     disclosures: (0, import_fields14.json)({ ...readOnly, ui: { ...readOnly.ui, description: "Printed texts: registration numbers, authorization records, declined safety items, non-returnable parts, warranty terms." } }),
-    statement: (0, import_fields14.relationship)({ ref: "Statement", ...readOnly }),
+    statement: (0, import_fields14.relationship)({ ref: "Statement.invoices", ...readOnly }),
+    exemptionCertificate: (0, import_fields14.relationship)({ ref: "ExemptionCertificate", ...readOnly }),
     allocations: (0, import_fields14.relationship)({ ref: "PaymentAllocation.invoice", many: true, ...readOnly }),
     creditMemos: (0, import_fields14.relationship)({ ref: "CreditMemo.invoice", many: true, ...readOnly }),
     sentAt: (0, import_fields14.timestamp)({ ...readOnly }),
@@ -2803,6 +2823,11 @@ var Statement = (0, import_core15.list)({
     paymentsMinor: minor({ defaultValue: 0n }),
     creditsMinor: minor({ defaultValue: 0n }),
     closingMinor: minor({ defaultValue: 0n }),
+    reference: systemText({ indexed: "unique" }),
+    invoices: (0, import_fields14.relationship)({ ref: "Invoice.statement", many: true, ...readOnly }),
+    aging: (0, import_fields14.json)({ ...readOnly, ui: { ...readOnly.ui, description: "What was owed at the period end, by how late it was." } }),
+    exportedAt: (0, import_fields14.timestamp)({ ...readOnly }),
+    exportedBy: (0, import_fields14.relationship)({ ref: "User", ...readOnly }),
     sentAt: (0, import_fields14.timestamp)({ ...readOnly }),
     ...trackingFields
   }
@@ -3068,14 +3093,14 @@ function centsOf(value, field, required = true) {
     if (required) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed, in whole cents.`, { field });
     return 0n;
   }
-  const text18 = String(value).trim();
-  if (!/^\d{1,12}$/.test(text18)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
-  return BigInt(text18);
+  const text19 = String(value).trim();
+  if (!/^\d{1,12}$/.test(text19)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
+  return BigInt(text19);
 }
 function textOf(value, field, max, required = false) {
-  const text18 = String(value ?? "").trim().slice(0, max);
-  if (required && !text18) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed.`, { field });
-  return text18;
+  const text19 = String(value ?? "").trim().slice(0, max);
+  if (required && !text19) throw new DomainError(Codes.INVALID_INPUT, `${field} is needed.`, { field });
+  return text19;
 }
 function idOf(value, field) {
   if (typeof value !== "string" || !value || value.length > 64) throw new DomainError(Codes.INVALID_INPUT, `Choose ${field}.`, { field });
@@ -3752,12 +3777,79 @@ var PartWarrantyClaim = (0, import_core18.list)({
   }
 });
 
+// features/keystone/models/fleet.ts
+var fleet_exports = {};
+__export(fleet_exports, {
+  BusinessAccountContact: () => BusinessAccountContact,
+  ExemptionCertificate: () => ExemptionCertificate,
+  FleetApprover: () => FleetApprover,
+  FleetUnit: () => FleetUnit
+});
+var import_core19 = require("@keystone-6/core");
+var import_fields17 = require("@keystone-6/core/fields");
+var readFleet = governed(["canReadRepairOrders", "canManageCustomers", "canReadCustomerPII"]);
+var pii3 = { read: anyOf("canReadCustomerPII"), create: () => false, update: () => false };
+var BusinessAccountContact = (0, import_core19.list)({
+  access: readFleet,
+  ui: { labelField: "name", listView: { initialColumns: ["name", "businessAccount", "roles", "active"] } },
+  fields: {
+    businessAccount: (0, import_fields17.relationship)({ ref: "BusinessAccount.contacts", ...readOnly }),
+    name: systemText({ required: true }),
+    email: (0, import_fields17.text)({ access: pii3, ui: { createView: { fieldMode: "hidden" }, itemView: { fieldMode: "read" } } }),
+    phone: (0, import_fields17.text)({ access: pii3, ui: { createView: { fieldMode: "hidden" }, itemView: { fieldMode: "read" } } }),
+    roles: (0, import_fields17.json)({ defaultValue: [], ...readOnly, ui: { ...readOnly.ui, description: "billing, approver, driver." } }),
+    portalUser: (0, import_fields17.relationship)({ ref: "User", ...readOnly }),
+    active: (0, import_fields17.checkbox)({ defaultValue: true, ...readOnly }),
+    ...trackingFields
+  }
+});
+var FleetApprover = (0, import_core19.list)({
+  access: readFleet,
+  ui: { labelField: "id", listView: { initialColumns: ["businessAccount", "contact", "limitMinor", "order", "active"] } },
+  fields: {
+    businessAccount: (0, import_fields17.relationship)({ ref: "BusinessAccount.approvers", ...readOnly }),
+    contact: (0, import_fields17.relationship)({ ref: "BusinessAccountContact", ...readOnly }),
+    limitMinor: minor({ defaultValue: 0n, description: "The largest job this person can approve alone. Anything above goes to the next approver in order." }),
+    order: (0, import_fields17.integer)({ defaultValue: 1, validation: { isRequired: true, min: 1 }, ...readOnly }),
+    active: (0, import_fields17.checkbox)({ defaultValue: true, ...readOnly }),
+    ...trackingFields
+  }
+});
+var ExemptionCertificate = (0, import_core19.list)({
+  access: readFleet,
+  ui: { labelField: "number", listView: { initialColumns: ["businessAccount", "kind", "number", "issuingState", "effectiveFrom", "expiresAt", "status"] } },
+  fields: {
+    businessAccount: (0, import_fields17.relationship)({ ref: "BusinessAccount.certificates", ...readOnly }),
+    kind: choice(["resale", "government", "nonprofit", "other"], "government"),
+    number: systemText({ required: true }),
+    issuingState: systemText(),
+    effectiveFrom: (0, import_fields17.calendarDay)({ ...readOnly }),
+    expiresAt: (0, import_fields17.calendarDay)({ ...readOnly }),
+    document: (0, import_fields17.relationship)({ ref: "Document", ...readOnly }),
+    status: lifecycle(["active", "expired", "revoked"]),
+    version: versionField(),
+    ...trackingFields
+  }
+});
+var FleetUnit = (0, import_core19.list)({
+  access: readFleet,
+  ui: { labelField: "unitNumber", listView: { initialColumns: ["businessAccount", "unitNumber", "vehicle", "driverName", "costCenter"] } },
+  fields: {
+    businessAccount: (0, import_fields17.relationship)({ ref: "BusinessAccount.units", ...readOnly }),
+    vehicle: (0, import_fields17.relationship)({ ref: "Vehicle", ...readOnly }),
+    unitNumber: systemText({ required: true }),
+    driverName: systemText(),
+    costCenter: systemText(),
+    ...trackingFields
+  }
+});
+
 // features/keystone/security/fieldGate.ts
 function gateFilterAndOrder(models2) {
-  for (const list15 of Object.values(models2)) {
-    for (const [fieldKey, original] of Object.entries(list15.fields ?? {})) {
+  for (const list16 of Object.values(models2)) {
+    for (const [fieldKey, original] of Object.entries(list16.fields ?? {})) {
       if (typeof original !== "function" || fieldKey.startsWith("__group")) continue;
-      list15.fields[fieldKey] = (args) => {
+      list16.fields[fieldKey] = (args) => {
         const field = original(args);
         const read = typeof field.access === "function" ? field.access : field.access?.read;
         if (typeof read !== "function") return field;
@@ -3792,7 +3884,8 @@ var models = boundTake(gateFilterAndOrder({
   ...estimates_exports,
   ...billing_exports,
   ...parts_exports,
-  ...labor_exports
+  ...labor_exports,
+  ...fleet_exports
 }));
 
 // features/keystone/index.ts
@@ -4004,18 +4097,18 @@ var recallSchema = import_zod.z.object({
     Notes: nullableText
   }).passthrough())
 });
-var clip = (text18) => text18.length > MAX_TEXT ? `${text18.slice(0, MAX_TEXT)}\u2026` : text18;
+var clip = (text19) => text19.length > MAX_TEXT ? `${text19.slice(0, MAX_TEXT)}\u2026` : text19;
 var present = (value) => {
-  const text18 = value === null || value === void 0 ? "" : String(value).trim();
-  return text18 && text18 !== "Not Applicable" ? text18 : void 0;
+  const text19 = value === null || value === void 0 ? "" : String(value).trim();
+  return text19 && text19 !== "Not Applicable" ? text19 : void 0;
 };
 var int = (value) => {
-  const text18 = present(value);
-  return text18 && /^\d+$/.test(text18) ? Number(text18) : void 0;
+  const text19 = present(value);
+  return text19 && /^\d+$/.test(text19) ? Number(text19) : void 0;
 };
-function nhtsaDate(text18) {
-  const m = text18.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : text18;
+function nhtsaDate(text19) {
+  const m = text19.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : text19;
 }
 function parseDecode(vin2, body) {
   const parsed = decodeSchema.parse(body);
@@ -4228,18 +4321,18 @@ async function nextShopReference(tx, prefix, shopCode, now = /* @__PURE__ */ new
 // features/keystone/lib/customers.ts
 var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function normalizeContact(kind, value) {
-  const text18 = String(value ?? "").trim();
+  const text19 = String(value ?? "").trim();
   if (kind === "email") {
-    const email3 = text18.toLowerCase();
-    if (!EMAIL.test(email3) || email3.length > 254) throw new DomainError(Codes.INVALID_INPUT, `${text18.slice(0, 60)} is not an email address.`, { field: "value" });
+    const email3 = text19.toLowerCase();
+    if (!EMAIL.test(email3) || email3.length > 254) throw new DomainError(Codes.INVALID_INPUT, `${text19.slice(0, 60)} is not an email address.`, { field: "value" });
     return email3;
   }
-  const digits = text18.replace(/[^\d+]/g, "");
+  const digits = text19.replace(/[^\d+]/g, "");
   let e164 = "";
   if (/^\+\d{8,15}$/.test(digits)) e164 = digits;
   else if (/^\d{10}$/.test(digits)) e164 = `+1${digits}`;
   else if (/^1\d{10}$/.test(digits)) e164 = `+${digits}`;
-  if (!e164) throw new DomainError(Codes.INVALID_INPUT, `${text18.slice(0, 30)} is not a phone number. Use 10 digits or +country code.`, { field: "value" });
+  if (!e164) throw new DomainError(Codes.INVALID_INPUT, `${text19.slice(0, 30)} is not a phone number. Use 10 digits or +country code.`, { field: "value" });
   return e164;
 }
 var contactHash = (kind, normalized, key2) => keyedContactHash(kind === "email" ? "email" : "phone", normalized, key2 ?? process.env.AUTO_SECRET_KEY);
@@ -4259,9 +4352,9 @@ async function findByContacts(tx, contacts, excludeCustomerId) {
   });
 }
 var clean = (value, max = 120) => {
-  const text18 = String(value ?? "").trim();
-  if (text18.length > max) throw new DomainError(Codes.INVALID_INPUT, `Keep this under ${max} characters.`);
-  return text18;
+  const text19 = String(value ?? "").trim();
+  if (text19.length > max) throw new DomainError(Codes.INVALID_INPUT, `Keep this under ${max} characters.`);
+  return text19;
 };
 async function upsertCustomer(uow, actor, input) {
   const { tx } = uow;
@@ -4629,7 +4722,7 @@ async function markNoShow(uow, actor, input) {
 }
 
 // features/keystone/lib/vehicles.ts
-var text13 = (value, max = 80) => {
+var text14 = (value, max = 80) => {
   const t = String(value ?? "").trim();
   if (t.length > max) throw new DomainError(Codes.INVALID_INPUT, `Keep this under ${max} characters.`);
   return t;
@@ -4638,15 +4731,15 @@ var PLATE = /^[A-Z0-9 -]{1,10}$/;
 var STATE = /^[A-Z]{2}$/;
 async function upsertVehicle(uow, actor, input) {
   const { tx, now } = uow;
-  const rawVin = text13(input.vin, 40);
+  const rawVin = text14(input.vin, 40);
   const vin2 = rawVin ? normalizeVin(rawVin) : null;
   const check = checkVin(vin2);
   if (vin2 && check.validity === "invalid_format") throw new DomainError(Codes.INVALID_INPUT, check.message, { field: "vin" });
-  const noVinReason = vin2 ? "" : text13(input.noVinReason, 200);
+  const noVinReason = vin2 ? "" : text14(input.noVinReason, 200);
   if (!vin2 && !noVinReason && !input.id) throw new DomainError(Codes.INVALID_INPUT, "Enter the VIN, or say why there is none (e.g. a trailer or a pre-1981 vehicle).", { field: "vin" });
   const year = input.year ?? null;
   if (year !== null && (!Number.isInteger(year) || year < 1900 || year > now.getUTCFullYear() + 2)) throw new DomainError(Codes.INVALID_INPUT, "Enter a model year such as 2018.", { field: "year" });
-  const fields = { year, make: text13(input.make), model: text13(input.model), trim: text13(input.trim), engine: text13(input.engine, 120), color: text13(input.color, 40) };
+  const fields = { year, make: text14(input.make), model: text14(input.model), trim: text14(input.trim), engine: text14(input.engine, 120), color: text14(input.color, 40) };
   let id;
   let existing = false;
   if (vin2) await advisoryLock(tx, `vin:${vin2}`);
@@ -4713,7 +4806,7 @@ async function recordOdometer(uow, actor, input) {
   const previous = vehicle.lastOdometer;
   const comparable = previous !== null && unit === vehicle.lastOdometerUnit;
   let anomaly = "none";
-  const reason = text13(input.overrideReason, 300);
+  const reason = text14(input.overrideReason, 300);
   if (comparable && input.value < previous) {
     if (!reason) throw new DomainError(Codes.ODOMETER_REGRESSION, `The odometer reads lower than last time (${previous.toLocaleString("en-US")} ${unit}). Check it, or give a reason (cluster replaced, unit mix-up).`, { previous, field: "odometer" });
     anomaly = "lower_than_previous";
@@ -6269,7 +6362,7 @@ async function checkInVehicle(uow, actor, input) {
   if (open) throw new DomainError(Codes.DUPLICATE, `This vehicle was checked in ${open.reference} in the last 12 hours.`);
   const reference = await nextShopReference(tx, "CI", shop.code, now);
   const notices = Array.isArray(law.requiredNotices) ? law.requiredNotices : [];
-  const text18 = workOrderText({
+  const text19 = workOrderText({
     shopName: full.name,
     legalName: full.legalName,
     registrations: full.registrations ?? {},
@@ -6299,8 +6392,8 @@ async function checkInVehicle(uow, actor, input) {
       signerName: signature?.signerName ?? "",
       signature: signature ?? void 0,
       signatureHash: signature ? sha256(canonicalJson(signature)) : "",
-      workOrderText: text18,
-      workOrderHash: sha256(text18),
+      workOrderText: text19,
+      workOrderHash: sha256(text19),
       signedAt: signature ? now : null,
       valuablesNote: input.valuablesNote?.trim().slice(0, 500) ?? "",
       recallWarning: recallWarning ?? void 0,
@@ -6329,7 +6422,7 @@ async function checkInVehicle(uow, actor, input) {
       data: { customerId: input.customerId, vehicleId: input.vehicleId }
     });
   }
-  auditCreate(uow, actor, "CheckIn", row.id, "vehicle.checked_in", { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text18), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id });
+  auditCreate(uow, actor, "CheckIn", row.id, "vehicle.checked_in", { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text19), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id });
   return { id: row.id, reference, recallWarning, odometerAnomaly: odometer?.anomaly ?? null };
 }
 
@@ -7035,11 +7128,11 @@ async function assignJobTechnicians(uow, actor, input) {
   const { tx } = uow;
   const job = await tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { id: true, number: true, repairOrder: { select: { shopId: true } } } });
   if (await tx.flaggedHoursEntry.count({ where: { jobId: job.id, kind: "flag" } })) throw new DomainError(Codes.GUARD_FAILED, "This job is already flagged; record any change as an adjustment.");
-  const list15 = Array.isArray(input.shares) ? input.shares : [];
-  if (!list15.length || list15.length > 6) throw new DomainError(Codes.INVALID_INPUT, "Choose one to six technicians.", { field: "shares" });
+  const list16 = Array.isArray(input.shares) ? input.shares : [];
+  if (!list16.length || list16.length > 6) throw new DomainError(Codes.INVALID_INPUT, "Choose one to six technicians.", { field: "shares" });
   const seen = /* @__PURE__ */ new Set();
   const rows = [];
-  for (const s of list15) {
+  for (const s of list16) {
     if (seen.has(s.userId)) throw new DomainError(Codes.INVALID_INPUT, "A technician is listed twice.", { field: "shares" });
     seen.add(s.userId);
     const profile = await tx.technicianProfile.findFirst({ where: { userId: s.userId, shopId: job.repairOrder.shopId, active: true } });
@@ -7056,7 +7149,7 @@ async function assignJobTechnicians(uow, actor, input) {
 }
 
 // features/integrations/labor-guide/match.ts
-var has = (list15, value) => !Array.isArray(list15) || !list15.length || (value ? list15.some((v) => String(v).toLowerCase() === value.toLowerCase()) : false);
+var has = (list16, value) => !Array.isArray(list16) || !list16.length || (value ? list16.some((v) => String(v).toLowerCase() === value.toLowerCase()) : false);
 function fitsVehicle(filter, vehicle) {
   const f = filter && typeof filter === "object" ? filter : {};
   if (!has(f.makes, vehicle.make) || !has(f.models, vehicle.model) || !has(f.engines, vehicle.engine)) return false;
@@ -7085,8 +7178,8 @@ function fixtureLaborGuide() {
     key: "fixture",
     capabilities: () => ({ search: true, maintenance: false, fluids: false }),
     async searchOperations(vehicle, query) {
-      const text18 = query.text?.toLowerCase();
-      const rows = fits(vehicle).filter((r) => (!query.code || r.operationId === query.code) && (!text18 || r.description.toLowerCase().includes(text18)));
+      const text19 = query.text?.toLowerCase();
+      const rows = fits(vehicle).filter((r) => (!query.code || r.operationId === query.code) && (!text19 || r.description.toLowerCase().includes(text19)));
       return { kind: "ok", value: rows.slice(0, query.limit ?? 20).map(strip) };
     },
     async getOperation(vehicle, operationId) {
@@ -7120,8 +7213,8 @@ function shopLibraryGuide(load, shopName = "Shop") {
     key: "shop-library",
     capabilities: () => ({ search: true, maintenance: false, fluids: false }),
     async searchOperations(vehicle, query) {
-      const text18 = query.text?.toLowerCase();
-      const rows = (await load()).filter((r) => r.active && fitsVehicle(r.vehicleFilter, vehicle) && (!query.code || r.code === query.code) && (!text18 || r.description.toLowerCase().includes(text18) || r.code.toLowerCase().includes(text18)));
+      const text19 = query.text?.toLowerCase();
+      const rows = (await load()).filter((r) => r.active && fitsVehicle(r.vehicleFilter, vehicle) && (!query.code || r.code === query.code) && (!text19 || r.description.toLowerCase().includes(text19) || r.code.toLowerCase().includes(text19)));
       const chosen = query.code ? best(rows) : rows;
       return { kind: "ok", value: chosen.slice(0, query.limit ?? 20).map(toOp) };
     },
@@ -7188,11 +7281,11 @@ async function openRepairOrder(uow, actor, input) {
     const rules2 = law.designeeRules ?? {};
     if (rules2.allowed === false) throw new DomainError(Codes.GUARD_FAILED, "This state's rules don't allow a designee.");
     const name = String(input.designee.name ?? "").trim().slice(0, 120);
-    const relationship14 = String(input.designee.relationship ?? "").trim().slice(0, 80);
+    const relationship15 = String(input.designee.relationship ?? "").trim().slice(0, 80);
     const contact = String(input.designee.contact ?? "").trim().slice(0, 120);
-    if (!name || !relationship14 || !contact) throw new DomainError(Codes.INVALID_INPUT, "A designee needs a name, a relationship and a contact.", { field: "designee" });
-    if (/insur|adjust|shop|northgate/i.test(relationship14)) throw new DomainError(Codes.INVALID_INPUT, "A designee cannot be the shop or an insurer (16 CCR \xA73354(c)).", { field: "designee" });
-    designee = { name, relationship: relationship14, contact, namedAt: now.toISOString() };
+    if (!name || !relationship15 || !contact) throw new DomainError(Codes.INVALID_INPUT, "A designee needs a name, a relationship and a contact.", { field: "designee" });
+    if (/insur|adjust|shop|northgate/i.test(relationship15)) throw new DomainError(Codes.INVALID_INPUT, "A designee cannot be the shop or an insurer (16 CCR \xA73354(c)).", { field: "designee" });
+    designee = { name, relationship: relationship15, contact, namedAt: now.toISOString() };
   }
   const roNumber = await nextShopReference(tx, "RO", shop.code, now);
   const pins = Object.fromEntries(Object.entries(POINTERS).map(([field, pointer]) => [field, shop[pointer]]));
@@ -7272,9 +7365,9 @@ var int2 = (v, field, min = 0) => {
 };
 var cents2 = (v, field) => {
   if (v === null || v === void 0 || v === "") return null;
-  const text18 = String(v).trim();
-  if (!/^\d{1,12}$/.test(text18)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
-  return BigInt(text18);
+  const text19 = String(v).trim();
+  if (!/^\d{1,12}$/.test(text19)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
+  return BigInt(text19);
 };
 var str = (v, max) => v === null || v === void 0 ? null : String(v).trim().slice(0, max);
 function parseLines(raw) {
@@ -8693,7 +8786,8 @@ async function loadNorthgateSetup(_root, args, context) {
 async function verifyAuditChain2(_root, _args, context) {
   const actor = actorFromSession(context.session);
   requirePermission(actor, "canReadAudit");
-  return verifyAuditChain(context.prisma);
+  const result = await verifyAuditChain(context.prisma);
+  return canSeeCost(context) ? result : { ...result, lastHash: null };
 }
 
 // features/keystone/lib/orgControls.ts
@@ -8983,7 +9077,7 @@ async function checkAuthorizedCeiling(_root, args, context) {
 
 // features/keystone/lib/cannedJobs.ts
 var KINDS4 = ["repair", "maintenance", "diagnosis", "inspection", "teardown", "tire", "sublet"];
-var text14 = (v, max) => String(v ?? "").trim().slice(0, max);
+var text15 = (v, max) => String(v ?? "").trim().slice(0, max);
 async function saveCannedJobDraft(uow, actor, input) {
   const { tx } = uow;
   const lines = parseLines(input.lines);
@@ -8991,23 +9085,23 @@ async function saveCannedJobDraft(uow, actor, input) {
   const kind = input.kind ?? "repair";
   if (!KINDS4.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, "Unknown job kind.", { field: "kind" });
   const stored = lines.map((l) => Object.fromEntries(Object.entries(l).filter(([k, v]) => k !== "ref" && v !== null && v !== void 0 && v !== "" && v !== false).map(([k, v]) => [k, typeof v === "bigint" ? v.toString() : v])));
-  const content = { kind, customerDescription: text14(input.customerDescription, 1e3), notes: text14(input.notes, 1e3), lines: stored, authorId: actorUserId(actor) };
+  const content = { kind, customerDescription: text15(input.customerDescription, 1e3), notes: text15(input.notes, 1e3), lines: stored, authorId: actorUserId(actor) };
   let jobId = input.cannedJobId ?? null;
   if (!jobId) {
-    const code = text14(input.code, 40).toUpperCase().replace(/[^A-Z0-9-]/g, "-");
-    const name = text14(input.name, 120);
+    const code = text15(input.code, 40).toUpperCase().replace(/[^A-Z0-9-]/g, "-");
+    const name = text15(input.name, 120);
     if (!code || !name) throw new DomainError(Codes.INVALID_INPUT, "Give the canned job a code and a name.", { field: !code ? "code" : "name" });
     const clash = await tx.cannedJob.findFirst({ where: { code, shopId: input.shopId ?? null }, select: { id: true } });
     if (clash) throw new DomainError(Codes.DUPLICATE, `${code} already exists.`, { existingId: clash.id });
-    const head = await tx.cannedJob.create({ data: { code, name, category: text14(input.category, 40), shopId: input.shopId ?? null, active: true } });
+    const head = await tx.cannedJob.create({ data: { code, name, category: text15(input.category, 40), shopId: input.shopId ?? null, active: true } });
     jobId = head.id;
     auditCreate(uow, actor, "CannedJob", head.id, "canned_job.created", { code, name });
   } else {
     await lockRow(tx, "CannedJob", jobId);
     if (input.name !== void 0 || input.category !== void 0) {
-      const name = text14(input.name, 120);
+      const name = text15(input.name, 120);
       if (input.name !== void 0 && !name) throw new DomainError(Codes.INVALID_INPUT, "Give the canned job a name.", { field: "name" });
-      await tx.cannedJob.update({ where: { id: jobId }, data: { ...input.name !== void 0 ? { name } : {}, ...input.category !== void 0 ? { category: text14(input.category, 40) } : {} } });
+      await tx.cannedJob.update({ where: { id: jobId }, data: { ...input.name !== void 0 ? { name } : {}, ...input.category !== void 0 ? { category: text15(input.category, 40) } : {} } });
     }
   }
   const draft = await tx.cannedJobVersion.findFirst({ where: { cannedJobId: jobId, status: "draft" } });
@@ -9294,7 +9388,7 @@ function invoiceStatus(input) {
 var MANUAL_TENDERS = ["cash", "check", "ach", "card_present", "tap_to_pay", "financing", "store_credit", "gift_card", "account_credit"];
 var CARD_TENDERS = ["card_link"];
 var SETTLED_PAYMENT = ["succeeded", "partially_refunded", "refunded"];
-var text15 = (value, max) => String(value ?? "").trim().slice(0, max);
+var text16 = (value, max) => String(value ?? "").trim().slice(0, max);
 var whole2 = (value, field, { positive = true } = {}) => {
   const s = String(value ?? "").trim();
   if (!/^\d{1,12}$/.test(s)) throw new DomainError(Codes.INVALID_INPUT, "Enter an amount in whole cents.", { field });
@@ -9319,7 +9413,7 @@ async function createPayment(uow, actor, input, idempotencyKey) {
   const purpose = input.purpose === "deposit" ? "deposit" : "invoice";
   const isCard = CARD_TENDERS.includes(input.tender);
   if (!isCard && !MANUAL_TENDERS.includes(input.tender)) throw new DomainError(Codes.INVALID_INPUT, "Choose how the customer is paying.", { field: "tender" });
-  if (input.tender === "check" && !text15(input.checkNumber, 40)) throw new DomainError(Codes.INVALID_INPUT, "Enter the check number.", { field: "checkNumber" });
+  if (input.tender === "check" && !text16(input.checkNumber, 40)) throw new DomainError(Codes.INVALID_INPUT, "Enter the check number.", { field: "checkNumber" });
   let shopId, customerId2, repairOrderId;
   let invoiceIds = [];
   if (purpose === "invoice") {
@@ -9355,9 +9449,9 @@ async function createPayment(uow, actor, input, idempotencyKey) {
       amountMinor: amount,
       provider: isCard ? "stripe" : "manual",
       idempotencyKey,
-      payerName: text15(input.payerName, 120),
-      checkNumber: text15(input.checkNumber, 40),
-      cardBrand: text15(input.cardBrand, 20),
+      payerName: text16(input.payerName, 120),
+      checkNumber: text16(input.checkNumber, 40),
+      cardBrand: text16(input.cardBrand, 20),
       cardLast4: /^\d{4}$/.test(String(input.cardLast4 ?? "")) ? String(input.cardLast4) : "",
       receivedById: actorUserId(actor),
       status: settleNow ? "succeeded" : "initiated",
@@ -9447,7 +9541,7 @@ async function applyCardResult(uow, actor, input) {
     const allocated = payment.purpose === "invoice" ? await allocatePayment(uow, actor, payment.id) : 0n;
     return { status: "succeeded", allocatedMinor: allocated.toString(), already: false };
   }
-  await transition(uow, { model: "Payment", id: payment.id, from: ["initiated", "pending", "unknown"], to: "failed", actor, eventType: "payment.failed", data: { failureMessage: text15(input.message || (input.outcome === "expired" ? "The payment page expired before it was paid." : "The card was not charged."), 300) } });
+  await transition(uow, { model: "Payment", id: payment.id, from: ["initiated", "pending", "unknown"], to: "failed", actor, eventType: "payment.failed", data: { failureMessage: text16(input.message || (input.outcome === "expired" ? "The payment page expired before it was paid." : "The card was not charged."), 300) } });
   return { status: "failed", allocatedMinor: "0", already: false };
 }
 
@@ -9546,13 +9640,13 @@ async function buildInvoicePlan(tx, repairOrderId, now) {
       const prior = merged.get(s.payer.key);
       merged.set(s.payer.key, prior ? { payer: s.payer, share: { key: s.payer.key, percent: prior.share.percent.plus(s.share.percent), deductibleMinor: (prior.share.deductibleMinor ?? 0n) + (s.share.deductibleMinor ?? 0n) } } : s);
     }
-    const list15 = [...merged.values()];
-    const weights = payerWeights(BigInt(j.totalMinor), list15.map((s) => s.share));
+    const list16 = [...merged.values()];
+    const weights = payerWeights(BigInt(j.totalMinor), list16.map((s) => s.share));
     for (const line of j.lines) {
       const parts = splitLine({ kind: line.kind, extendedMinor: line.extendedMinor, taxMinor: line.taxMinor }, weights);
       parts.forEach((part, i) => {
-        if (part.extendedMinor === 0n && part.taxMinor === 0n && list15.length > 1) return;
-        const payer = list15[i].payer;
+        if (part.extendedMinor === 0n && part.taxMinor === 0n && list16.length > 1) return;
+        const payer = list16[i].payer;
         payers.set(payer.key, payer);
         const bucket = lineBuckets.get(payer.key) ?? [];
         bucket.push({
@@ -9582,14 +9676,14 @@ async function buildInvoicePlan(tx, repairOrderId, now) {
   }
   return { ro, law: { ...law, ...law2 }, plans, problems, billable };
 }
-var text16 = (value, max) => String(value ?? "").trim().slice(0, max);
+var text17 = (value, max) => String(value ?? "").trim().slice(0, max);
 async function finalizeInvoices(uow, actor, input) {
   const { tx, now } = uow;
   await lockRow(tx, "RepairOrder", input.repairOrderId);
   const built = await buildInvoicePlan(tx, input.repairOrderId, now);
   const { ro, law, plans } = built;
   const problems = [...built.problems];
-  const poNumber = text16(input.poNumber, 80);
+  const poNumber = text17(input.poNumber, 80);
   const shop = ro.shop;
   const odometer = input.odometerOut ?? null;
   if (law.requireOdometerOut && !ro.odometerOutId && odometer === null) problems.push("Record the odometer reading as the vehicle leaves; this state requires it on the invoice.");
@@ -9731,9 +9825,9 @@ async function invoicePayLink(uow, actor, input) {
 }
 
 // features/keystone/lib/settlement.ts
-var text17 = (value, max) => String(value ?? "").trim().slice(0, max);
+var text18 = (value, max) => String(value ?? "").trim().slice(0, max);
 var reasonOf = (value, what) => {
-  const r = text17(value, 300);
+  const r = text18(value, 300);
   if (r.length < 3) throw new DomainError(Codes.INVALID_INPUT, `Say why ${what}.`, { field: "reason" });
   return r;
 };
@@ -9794,7 +9888,7 @@ async function applyRefundResult(uow, actor, input) {
     return { status: input.outcome, already: false };
   }
   if (input.outcome === "failed") {
-    await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: "failed", actor, eventType: "refund.failed", data: { failureMessage: text17(input.message || "The refund did not go through.", 300) } });
+    await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: "failed", actor, eventType: "refund.failed", data: { failureMessage: text18(input.message || "The refund did not go through.", 300) } });
     return { status: "failed", already: false };
   }
   const payment = await lockRow(tx, "Payment", refund.paymentId);
@@ -9883,7 +9977,7 @@ async function closeDay(uow, actor, input) {
   const { totals, expectedCashMinor, unresolvedPayments } = await dayTotals(tx, input.shopId, input.businessDate);
   if (unresolvedPayments > 0) throw new DomainError(Codes.GUARD_FAILED, `${unresolvedPayments} card payment${unresolvedPayments === 1 ? " is" : "s are"} still waiting on the card processor. Check ${unresolvedPayments === 1 ? "it" : "them"} before closing the day.`);
   const variance = count - expectedCashMinor;
-  const reason = text17(input.varianceReason, 300);
+  const reason = text18(input.varianceReason, 300);
   if (variance !== 0n && reason.length < 3) throw new DomainError(Codes.INVALID_INPUT, `The drawer is ${variance > 0n ? "over" : "short"} by ${cents3(variance < 0n ? -variance : variance)}. Say why.`, { field: "varianceReason" });
   const businessDate = asDate(input.businessDate);
   const existing = await tx.businessDayClose.findUnique({ where: { shopId_businessDate: { shopId: input.shopId, businessDate } } });
@@ -9967,13 +10061,13 @@ function realGateway(secret2) {
     } else if (Object.keys(data).length) url += `?${form(data).toString()}`;
     if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
     const response = await fetch(url, { method, headers, body, signal: AbortSignal.timeout(2e4) });
-    const json13 = await response.json().catch(() => null);
+    const json14 = await response.json().catch(() => null);
     if (!response.ok) {
-      const message = String(json13?.error?.message ?? `Stripe returned ${response.status}`);
-      if (response.status >= 400 && response.status < 500 && response.status !== 429 && response.status !== 409) throw new StripeRejected(message, json13?.error?.code ?? null, response.status);
+      const message = String(json14?.error?.message ?? `Stripe returned ${response.status}`);
+      if (response.status >= 400 && response.status < 500 && response.status !== 429 && response.status !== 409) throw new StripeRejected(message, json14?.error?.code ?? null, response.status);
       throw new Error(`Stripe unavailable: ${response.status}`);
     }
-    return json13;
+    return json14;
   }
   const toSession = (s) => {
     const charge = s.payment_intent && typeof s.payment_intent === "object" ? s.payment_intent.latest_charge : null;
@@ -11822,6 +11916,9 @@ var COMPOUND_UNIQUES = {
   LaborRateClass: ['@@unique([setId, code], map: "LaborRateClass_set_code_key")'],
   TaxRule: ['@@unique([ruleSetId, categoryId], map: "TaxRule_set_category_key")'],
   WarrantyTerm: ['@@unique([termSetId, code], map: "WarrantyTerm_set_code_key")'],
+  // Fleet (SCHEMA §3.8, §11.8).
+  FleetUnit: ['@@unique([businessAccountId, unitNumber], map: "FleetUnit_account_unit_key")'],
+  Statement: ['@@unique([businessAccountId, periodStart], map: "Statement_account_period_key")'],
   // Customers and vehicles (SCHEMA §3, §20).
   CustomerContact: ['@@unique([customerId, kind, valueHash], map: "CustomerContact_customer_kind_hash_key")'],
   Customer: ['@@index([lastName, firstName], map: "Customer_name_idx")'],
@@ -11985,7 +12082,7 @@ var { withAuth } = (0, import_auth.createAuth)({
   `
 });
 var keystone_default = withAuth(
-  (0, import_core19.config)({
+  (0, import_core20.config)({
     db: {
       provider: "postgresql",
       url: databaseURL,

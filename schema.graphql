@@ -4086,12 +4086,23 @@ type BusinessAccount {
   accountNumber: String
   customers(where: CustomerWhereInput! = {}, orderBy: [CustomerOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CustomerWhereUniqueInput): [Customer!]
   customersCount(where: CustomerWhereInput! = {}): Int
+  contacts(where: BusinessAccountContactWhereInput! = {}, orderBy: [BusinessAccountContactOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: BusinessAccountContactWhereUniqueInput): [BusinessAccountContact!]
+  contactsCount(where: BusinessAccountContactWhereInput! = {}): Int
+  approvers(where: FleetApproverWhereInput! = {}, orderBy: [FleetApproverOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FleetApproverWhereUniqueInput): [FleetApprover!]
+  approversCount(where: FleetApproverWhereInput! = {}): Int
+  certificates(where: ExemptionCertificateWhereInput! = {}, orderBy: [ExemptionCertificateOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ExemptionCertificateWhereUniqueInput): [ExemptionCertificate!]
+  certificatesCount(where: ExemptionCertificateWhereInput! = {}): Int
+  units(where: FleetUnitWhereInput! = {}, orderBy: [FleetUnitOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FleetUnitWhereUniqueInput): [FleetUnit!]
+  unitsCount(where: FleetUnitWhereInput! = {}): Int
   termsDays: Int
   creditLimitMinor: BigInt
   poRequired: Boolean
   taxExempt: Boolean
   billingMode: String
   holdAfterOverdueDays: Int
+  holdReason: String
+  holdSince: DateTime
+  holdWaivedUntil: DateTime
   openBalanceMinor: BigInt
   intermediary: String
   intermediaryName: String
@@ -4114,12 +4125,19 @@ input BusinessAccountWhereInput {
   name: StringFilter
   accountNumber: StringFilter
   customers: CustomerManyRelationFilter
+  contacts: BusinessAccountContactManyRelationFilter
+  approvers: FleetApproverManyRelationFilter
+  certificates: ExemptionCertificateManyRelationFilter
+  units: FleetUnitManyRelationFilter
   termsDays: IntFilter
   creditLimitMinor: BigIntFilter
   poRequired: BooleanFilter
   taxExempt: BooleanFilter
   billingMode: StringFilter
   holdAfterOverdueDays: IntNullableFilter
+  holdReason: StringFilter
+  holdSince: DateTimeNullableFilter
+  holdWaivedUntil: DateTimeNullableFilter
   openBalanceMinor: BigIntFilter
   intermediary: StringFilter
   intermediaryName: StringFilter
@@ -4135,6 +4153,30 @@ input CustomerManyRelationFilter {
   none: CustomerWhereInput
 }
 
+input BusinessAccountContactManyRelationFilter {
+  every: BusinessAccountContactWhereInput
+  some: BusinessAccountContactWhereInput
+  none: BusinessAccountContactWhereInput
+}
+
+input FleetApproverManyRelationFilter {
+  every: FleetApproverWhereInput
+  some: FleetApproverWhereInput
+  none: FleetApproverWhereInput
+}
+
+input ExemptionCertificateManyRelationFilter {
+  every: ExemptionCertificateWhereInput
+  some: ExemptionCertificateWhereInput
+  none: ExemptionCertificateWhereInput
+}
+
+input FleetUnitManyRelationFilter {
+  every: FleetUnitWhereInput
+  some: FleetUnitWhereInput
+  none: FleetUnitWhereInput
+}
+
 input BusinessAccountOrderByInput {
   id: OrderDirection
   name: OrderDirection
@@ -4145,6 +4187,9 @@ input BusinessAccountOrderByInput {
   taxExempt: OrderDirection
   billingMode: OrderDirection
   holdAfterOverdueDays: OrderDirection
+  holdReason: OrderDirection
+  holdSince: OrderDirection
+  holdWaivedUntil: OrderDirection
   openBalanceMinor: OrderDirection
   intermediary: OrderDirection
   intermediaryName: OrderDirection
@@ -4158,12 +4203,19 @@ input BusinessAccountUpdateInput {
   name: String
   accountNumber: String
   customers: CustomerRelateToManyForUpdateInput
+  contacts: BusinessAccountContactRelateToManyForUpdateInput
+  approvers: FleetApproverRelateToManyForUpdateInput
+  certificates: ExemptionCertificateRelateToManyForUpdateInput
+  units: FleetUnitRelateToManyForUpdateInput
   termsDays: Int
   creditLimitMinor: BigInt
   poRequired: Boolean
   taxExempt: Boolean
   billingMode: String
   holdAfterOverdueDays: Int
+  holdReason: String
+  holdSince: DateTime
+  holdWaivedUntil: DateTime
   openBalanceMinor: BigInt
   intermediary: String
   intermediaryName: String
@@ -4180,6 +4232,34 @@ input CustomerRelateToManyForUpdateInput {
   connect: [CustomerWhereUniqueInput!]
 }
 
+input BusinessAccountContactRelateToManyForUpdateInput {
+  disconnect: [BusinessAccountContactWhereUniqueInput!]
+  set: [BusinessAccountContactWhereUniqueInput!]
+  create: [BusinessAccountContactCreateInput!]
+  connect: [BusinessAccountContactWhereUniqueInput!]
+}
+
+input FleetApproverRelateToManyForUpdateInput {
+  disconnect: [FleetApproverWhereUniqueInput!]
+  set: [FleetApproverWhereUniqueInput!]
+  create: [FleetApproverCreateInput!]
+  connect: [FleetApproverWhereUniqueInput!]
+}
+
+input ExemptionCertificateRelateToManyForUpdateInput {
+  disconnect: [ExemptionCertificateWhereUniqueInput!]
+  set: [ExemptionCertificateWhereUniqueInput!]
+  create: [ExemptionCertificateCreateInput!]
+  connect: [ExemptionCertificateWhereUniqueInput!]
+}
+
+input FleetUnitRelateToManyForUpdateInput {
+  disconnect: [FleetUnitWhereUniqueInput!]
+  set: [FleetUnitWhereUniqueInput!]
+  create: [FleetUnitCreateInput!]
+  connect: [FleetUnitWhereUniqueInput!]
+}
+
 input BusinessAccountUpdateArgs {
   where: BusinessAccountWhereUniqueInput!
   data: BusinessAccountUpdateInput!
@@ -4189,12 +4269,19 @@ input BusinessAccountCreateInput {
   name: String
   accountNumber: String
   customers: CustomerRelateToManyForCreateInput
+  contacts: BusinessAccountContactRelateToManyForCreateInput
+  approvers: FleetApproverRelateToManyForCreateInput
+  certificates: ExemptionCertificateRelateToManyForCreateInput
+  units: FleetUnitRelateToManyForCreateInput
   termsDays: Int
   creditLimitMinor: BigInt
   poRequired: Boolean
   taxExempt: Boolean
   billingMode: String
   holdAfterOverdueDays: Int
+  holdReason: String
+  holdSince: DateTime
+  holdWaivedUntil: DateTime
   openBalanceMinor: BigInt
   intermediary: String
   intermediaryName: String
@@ -4207,6 +4294,26 @@ input BusinessAccountCreateInput {
 input CustomerRelateToManyForCreateInput {
   create: [CustomerCreateInput!]
   connect: [CustomerWhereUniqueInput!]
+}
+
+input BusinessAccountContactRelateToManyForCreateInput {
+  create: [BusinessAccountContactCreateInput!]
+  connect: [BusinessAccountContactWhereUniqueInput!]
+}
+
+input FleetApproverRelateToManyForCreateInput {
+  create: [FleetApproverCreateInput!]
+  connect: [FleetApproverWhereUniqueInput!]
+}
+
+input ExemptionCertificateRelateToManyForCreateInput {
+  create: [ExemptionCertificateCreateInput!]
+  connect: [ExemptionCertificateWhereUniqueInput!]
+}
+
+input FleetUnitRelateToManyForCreateInput {
+  create: [FleetUnitCreateInput!]
+  connect: [FleetUnitWhereUniqueInput!]
 }
 
 type ContactConsent {
@@ -6861,6 +6968,7 @@ type RepairOrder {
   customer: Customer
   businessAccount: BusinessAccount
   vehicle: Vehicle
+  fleetUnit: FleetUnit
   serviceAdvisor: User
   appointment: Appointment
   checkIn: CheckIn
@@ -6931,6 +7039,7 @@ input RepairOrderWhereInput {
   customer: CustomerWhereInput
   businessAccount: BusinessAccountWhereInput
   vehicle: VehicleWhereInput
+  fleetUnit: FleetUnitWhereInput
   serviceAdvisor: UserWhereInput
   appointment: AppointmentWhereInput
   checkIn: CheckInWhereInput
@@ -7041,6 +7150,7 @@ input RepairOrderUpdateInput {
   customer: CustomerRelateToOneForUpdateInput
   businessAccount: BusinessAccountRelateToOneForUpdateInput
   vehicle: VehicleRelateToOneForUpdateInput
+  fleetUnit: FleetUnitRelateToOneForUpdateInput
   serviceAdvisor: UserRelateToOneForUpdateInput
   appointment: AppointmentRelateToOneForUpdateInput
   checkIn: CheckInRelateToOneForUpdateInput
@@ -7083,6 +7193,12 @@ input RepairOrderUpdateInput {
   version: Int
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+input FleetUnitRelateToOneForUpdateInput {
+  create: FleetUnitCreateInput
+  connect: FleetUnitWhereUniqueInput
+  disconnect: Boolean
 }
 
 input ConcernRelateToManyForUpdateInput {
@@ -7145,6 +7261,7 @@ input RepairOrderCreateInput {
   customer: CustomerRelateToOneForCreateInput
   businessAccount: BusinessAccountRelateToOneForCreateInput
   vehicle: VehicleRelateToOneForCreateInput
+  fleetUnit: FleetUnitRelateToOneForCreateInput
   serviceAdvisor: UserRelateToOneForCreateInput
   appointment: AppointmentRelateToOneForCreateInput
   checkIn: CheckInRelateToOneForCreateInput
@@ -7187,6 +7304,11 @@ input RepairOrderCreateInput {
   version: Int
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+input FleetUnitRelateToOneForCreateInput {
+  create: FleetUnitCreateInput
+  connect: FleetUnitWhereUniqueInput
 }
 
 input ConcernRelateToManyForCreateInput {
@@ -8417,6 +8539,7 @@ type Authorization {
   signature: Document
   consentTextVersion: String
   poNumber: String
+  fleetApprover: FleetApprover
   status: String
   createdAt: DateTime
   updatedAt: DateTime
@@ -8446,6 +8569,7 @@ input AuthorizationWhereInput {
   signature: DocumentWhereInput
   consentTextVersion: StringFilter
   poNumber: StringFilter
+  fleetApprover: FleetApproverWhereInput
   status: StringFilter
   createdAt: DateTimeFilter
   updatedAt: DateTimeFilter
@@ -8485,9 +8609,16 @@ input AuthorizationUpdateInput {
   signature: DocumentRelateToOneForUpdateInput
   consentTextVersion: String
   poNumber: String
+  fleetApprover: FleetApproverRelateToOneForUpdateInput
   status: String
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+input FleetApproverRelateToOneForUpdateInput {
+  create: FleetApproverCreateInput
+  connect: FleetApproverWhereUniqueInput
+  disconnect: Boolean
 }
 
 input AuthorizationUpdateArgs {
@@ -8512,9 +8643,15 @@ input AuthorizationCreateInput {
   signature: DocumentRelateToOneForCreateInput
   consentTextVersion: String
   poNumber: String
+  fleetApprover: FleetApproverRelateToOneForCreateInput
   status: String
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+input FleetApproverRelateToOneForCreateInput {
+  create: FleetApproverCreateInput
+  connect: FleetApproverWhereUniqueInput
 }
 
 type AuthorizationRequest {
@@ -9283,6 +9420,7 @@ type Invoice {
   balanceMinor: BigInt
   disclosures: JSON
   statement: Statement
+  exemptionCertificate: ExemptionCertificate
   allocations(where: PaymentAllocationWhereInput! = {}, orderBy: [PaymentAllocationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: PaymentAllocationWhereUniqueInput): [PaymentAllocation!]
   allocationsCount(where: PaymentAllocationWhereInput! = {}): Int
   creditMemos(where: CreditMemoWhereInput! = {}, orderBy: [CreditMemoOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CreditMemoWhereUniqueInput): [CreditMemo!]
@@ -9331,6 +9469,7 @@ input InvoiceWhereInput {
   creditedMinor: BigIntFilter
   balanceMinor: BigIntFilter
   statement: StatementWhereInput
+  exemptionCertificate: ExemptionCertificateWhereInput
   allocations: PaymentAllocationManyRelationFilter
   creditMemos: CreditMemoManyRelationFilter
   sentAt: DateTimeNullableFilter
@@ -9414,6 +9553,7 @@ input InvoiceUpdateInput {
   balanceMinor: BigInt
   disclosures: JSON
   statement: StatementRelateToOneForUpdateInput
+  exemptionCertificate: ExemptionCertificateRelateToOneForUpdateInput
   allocations: PaymentAllocationRelateToManyForUpdateInput
   creditMemos: CreditMemoRelateToManyForUpdateInput
   sentAt: DateTime
@@ -9436,6 +9576,12 @@ input InvoiceLineRelateToManyForUpdateInput {
 input StatementRelateToOneForUpdateInput {
   create: StatementCreateInput
   connect: StatementWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ExemptionCertificateRelateToOneForUpdateInput {
+  create: ExemptionCertificateCreateInput
+  connect: ExemptionCertificateWhereUniqueInput
   disconnect: Boolean
 }
 
@@ -9483,6 +9629,7 @@ input InvoiceCreateInput {
   balanceMinor: BigInt
   disclosures: JSON
   statement: StatementRelateToOneForCreateInput
+  exemptionCertificate: ExemptionCertificateRelateToOneForCreateInput
   allocations: PaymentAllocationRelateToManyForCreateInput
   creditMemos: CreditMemoRelateToManyForCreateInput
   sentAt: DateTime
@@ -9503,6 +9650,11 @@ input InvoiceLineRelateToManyForCreateInput {
 input StatementRelateToOneForCreateInput {
   create: StatementCreateInput
   connect: StatementWhereUniqueInput
+}
+
+input ExemptionCertificateRelateToOneForCreateInput {
+  create: ExemptionCertificateCreateInput
+  connect: ExemptionCertificateWhereUniqueInput
 }
 
 input PaymentAllocationRelateToManyForCreateInput {
@@ -10012,6 +10164,12 @@ type Statement {
   paymentsMinor: BigInt
   creditsMinor: BigInt
   closingMinor: BigInt
+  reference: String
+  invoices(where: InvoiceWhereInput! = {}, orderBy: [InvoiceOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: InvoiceWhereUniqueInput): [Invoice!]
+  invoicesCount(where: InvoiceWhereInput! = {}): Int
+  aging: JSON
+  exportedAt: DateTime
+  exportedBy: User
   sentAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
@@ -10019,6 +10177,7 @@ type Statement {
 
 input StatementWhereUniqueInput {
   id: ID
+  reference: String
 }
 
 input StatementWhereInput {
@@ -10034,9 +10193,19 @@ input StatementWhereInput {
   paymentsMinor: BigIntFilter
   creditsMinor: BigIntFilter
   closingMinor: BigIntFilter
+  reference: StringFilter
+  invoices: InvoiceManyRelationFilter
+  exportedAt: DateTimeNullableFilter
+  exportedBy: UserWhereInput
   sentAt: DateTimeNullableFilter
   createdAt: DateTimeFilter
   updatedAt: DateTimeFilter
+}
+
+input InvoiceManyRelationFilter {
+  every: InvoiceWhereInput
+  some: InvoiceWhereInput
+  none: InvoiceWhereInput
 }
 
 input StatementOrderByInput {
@@ -10048,6 +10217,8 @@ input StatementOrderByInput {
   paymentsMinor: OrderDirection
   creditsMinor: OrderDirection
   closingMinor: OrderDirection
+  reference: OrderDirection
+  exportedAt: OrderDirection
   sentAt: OrderDirection
   createdAt: OrderDirection
   updatedAt: OrderDirection
@@ -10062,9 +10233,21 @@ input StatementUpdateInput {
   paymentsMinor: BigInt
   creditsMinor: BigInt
   closingMinor: BigInt
+  reference: String
+  invoices: InvoiceRelateToManyForUpdateInput
+  aging: JSON
+  exportedAt: DateTime
+  exportedBy: UserRelateToOneForUpdateInput
   sentAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+input InvoiceRelateToManyForUpdateInput {
+  disconnect: [InvoiceWhereUniqueInput!]
+  set: [InvoiceWhereUniqueInput!]
+  create: [InvoiceCreateInput!]
+  connect: [InvoiceWhereUniqueInput!]
 }
 
 input StatementUpdateArgs {
@@ -10081,9 +10264,19 @@ input StatementCreateInput {
   paymentsMinor: BigInt
   creditsMinor: BigInt
   closingMinor: BigInt
+  reference: String
+  invoices: InvoiceRelateToManyForCreateInput
+  aging: JSON
+  exportedAt: DateTime
+  exportedBy: UserRelateToOneForCreateInput
   sentAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+input InvoiceRelateToManyForCreateInput {
+  create: [InvoiceCreateInput!]
+  connect: [InvoiceWhereUniqueInput!]
 }
 
 type WarrantyCoverage {
@@ -12940,6 +13133,297 @@ input JobClockRelateToOneForCreateInput {
   connect: JobClockWhereUniqueInput
 }
 
+type BusinessAccountContact {
+  id: ID!
+  businessAccount: BusinessAccount
+  name: String
+  email: String
+  phone: String
+  roles: JSON
+  portalUser: User
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BusinessAccountContactWhereUniqueInput {
+  id: ID
+}
+
+input BusinessAccountContactWhereInput {
+  AND: [BusinessAccountContactWhereInput!]
+  OR: [BusinessAccountContactWhereInput!]
+  NOT: [BusinessAccountContactWhereInput!]
+  id: IDFilter
+  businessAccount: BusinessAccountWhereInput
+  name: StringFilter
+  email: StringFilter
+  phone: StringFilter
+  portalUser: UserWhereInput
+  active: BooleanFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input BusinessAccountContactOrderByInput {
+  id: OrderDirection
+  name: OrderDirection
+  email: OrderDirection
+  phone: OrderDirection
+  active: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input BusinessAccountContactUpdateInput {
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  name: String
+  email: String
+  phone: String
+  roles: JSON
+  portalUser: UserRelateToOneForUpdateInput
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BusinessAccountContactUpdateArgs {
+  where: BusinessAccountContactWhereUniqueInput!
+  data: BusinessAccountContactUpdateInput!
+}
+
+input BusinessAccountContactCreateInput {
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  name: String
+  email: String
+  phone: String
+  roles: JSON
+  portalUser: UserRelateToOneForCreateInput
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ExemptionCertificate {
+  id: ID!
+  businessAccount: BusinessAccount
+  kind: String
+  number: String
+  issuingState: String
+  effectiveFrom: CalendarDay
+  expiresAt: CalendarDay
+  document: Document
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ExemptionCertificateWhereUniqueInput {
+  id: ID
+}
+
+input ExemptionCertificateWhereInput {
+  AND: [ExemptionCertificateWhereInput!]
+  OR: [ExemptionCertificateWhereInput!]
+  NOT: [ExemptionCertificateWhereInput!]
+  id: IDFilter
+  businessAccount: BusinessAccountWhereInput
+  kind: StringFilter
+  number: StringFilter
+  issuingState: StringFilter
+  effectiveFrom: CalendarDayNullableFilter
+  expiresAt: CalendarDayNullableFilter
+  document: DocumentWhereInput
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ExemptionCertificateOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  number: OrderDirection
+  issuingState: OrderDirection
+  effectiveFrom: OrderDirection
+  expiresAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ExemptionCertificateUpdateInput {
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  kind: String
+  number: String
+  issuingState: String
+  effectiveFrom: CalendarDay
+  expiresAt: CalendarDay
+  document: DocumentRelateToOneForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ExemptionCertificateUpdateArgs {
+  where: ExemptionCertificateWhereUniqueInput!
+  data: ExemptionCertificateUpdateInput!
+}
+
+input ExemptionCertificateCreateInput {
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  kind: String
+  number: String
+  issuingState: String
+  effectiveFrom: CalendarDay
+  expiresAt: CalendarDay
+  document: DocumentRelateToOneForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type FleetApprover {
+  id: ID!
+  businessAccount: BusinessAccount
+  contact: BusinessAccountContact
+  limitMinor: BigInt
+  order: Int
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FleetApproverWhereUniqueInput {
+  id: ID
+}
+
+input FleetApproverWhereInput {
+  AND: [FleetApproverWhereInput!]
+  OR: [FleetApproverWhereInput!]
+  NOT: [FleetApproverWhereInput!]
+  id: IDFilter
+  businessAccount: BusinessAccountWhereInput
+  contact: BusinessAccountContactWhereInput
+  limitMinor: BigIntFilter
+  order: IntFilter
+  active: BooleanFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input FleetApproverOrderByInput {
+  id: OrderDirection
+  limitMinor: OrderDirection
+  order: OrderDirection
+  active: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input FleetApproverUpdateInput {
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  contact: BusinessAccountContactRelateToOneForUpdateInput
+  limitMinor: BigInt
+  order: Int
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BusinessAccountContactRelateToOneForUpdateInput {
+  create: BusinessAccountContactCreateInput
+  connect: BusinessAccountContactWhereUniqueInput
+  disconnect: Boolean
+}
+
+input FleetApproverUpdateArgs {
+  where: FleetApproverWhereUniqueInput!
+  data: FleetApproverUpdateInput!
+}
+
+input FleetApproverCreateInput {
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  contact: BusinessAccountContactRelateToOneForCreateInput
+  limitMinor: BigInt
+  order: Int
+  active: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input BusinessAccountContactRelateToOneForCreateInput {
+  create: BusinessAccountContactCreateInput
+  connect: BusinessAccountContactWhereUniqueInput
+}
+
+type FleetUnit {
+  id: ID!
+  businessAccount: BusinessAccount
+  vehicle: Vehicle
+  unitNumber: String
+  driverName: String
+  costCenter: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FleetUnitWhereUniqueInput {
+  id: ID
+}
+
+input FleetUnitWhereInput {
+  AND: [FleetUnitWhereInput!]
+  OR: [FleetUnitWhereInput!]
+  NOT: [FleetUnitWhereInput!]
+  id: IDFilter
+  businessAccount: BusinessAccountWhereInput
+  vehicle: VehicleWhereInput
+  unitNumber: StringFilter
+  driverName: StringFilter
+  costCenter: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input FleetUnitOrderByInput {
+  id: OrderDirection
+  unitNumber: OrderDirection
+  driverName: OrderDirection
+  costCenter: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input FleetUnitUpdateInput {
+  businessAccount: BusinessAccountRelateToOneForUpdateInput
+  vehicle: VehicleRelateToOneForUpdateInput
+  unitNumber: String
+  driverName: String
+  costCenter: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input FleetUnitUpdateArgs {
+  where: FleetUnitWhereUniqueInput!
+  data: FleetUnitUpdateInput!
+}
+
+input FleetUnitCreateInput {
+  businessAccount: BusinessAccountRelateToOneForCreateInput
+  vehicle: VehicleRelateToOneForCreateInput
+  unitNumber: String
+  driverName: String
+  costCenter: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -13618,6 +14102,30 @@ type Mutation {
   updateWaitingIntervals(data: [WaitingIntervalUpdateArgs!]!): [WaitingInterval]
   deleteWaitingInterval(where: WaitingIntervalWhereUniqueInput!): WaitingInterval
   deleteWaitingIntervals(where: [WaitingIntervalWhereUniqueInput!]!): [WaitingInterval]
+  createBusinessAccountContact(data: BusinessAccountContactCreateInput!): BusinessAccountContact
+  createBusinessAccountContacts(data: [BusinessAccountContactCreateInput!]!): [BusinessAccountContact]
+  updateBusinessAccountContact(where: BusinessAccountContactWhereUniqueInput!, data: BusinessAccountContactUpdateInput!): BusinessAccountContact
+  updateBusinessAccountContacts(data: [BusinessAccountContactUpdateArgs!]!): [BusinessAccountContact]
+  deleteBusinessAccountContact(where: BusinessAccountContactWhereUniqueInput!): BusinessAccountContact
+  deleteBusinessAccountContacts(where: [BusinessAccountContactWhereUniqueInput!]!): [BusinessAccountContact]
+  createExemptionCertificate(data: ExemptionCertificateCreateInput!): ExemptionCertificate
+  createExemptionCertificates(data: [ExemptionCertificateCreateInput!]!): [ExemptionCertificate]
+  updateExemptionCertificate(where: ExemptionCertificateWhereUniqueInput!, data: ExemptionCertificateUpdateInput!): ExemptionCertificate
+  updateExemptionCertificates(data: [ExemptionCertificateUpdateArgs!]!): [ExemptionCertificate]
+  deleteExemptionCertificate(where: ExemptionCertificateWhereUniqueInput!): ExemptionCertificate
+  deleteExemptionCertificates(where: [ExemptionCertificateWhereUniqueInput!]!): [ExemptionCertificate]
+  createFleetApprover(data: FleetApproverCreateInput!): FleetApprover
+  createFleetApprovers(data: [FleetApproverCreateInput!]!): [FleetApprover]
+  updateFleetApprover(where: FleetApproverWhereUniqueInput!, data: FleetApproverUpdateInput!): FleetApprover
+  updateFleetApprovers(data: [FleetApproverUpdateArgs!]!): [FleetApprover]
+  deleteFleetApprover(where: FleetApproverWhereUniqueInput!): FleetApprover
+  deleteFleetApprovers(where: [FleetApproverWhereUniqueInput!]!): [FleetApprover]
+  createFleetUnit(data: FleetUnitCreateInput!): FleetUnit
+  createFleetUnits(data: [FleetUnitCreateInput!]!): [FleetUnit]
+  updateFleetUnit(where: FleetUnitWhereUniqueInput!, data: FleetUnitUpdateInput!): FleetUnit
+  updateFleetUnits(data: [FleetUnitUpdateArgs!]!): [FleetUnit]
+  deleteFleetUnit(where: FleetUnitWhereUniqueInput!): FleetUnit
+  deleteFleetUnits(where: [FleetUnitWhereUniqueInput!]!): [FleetUnit]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -14093,6 +14601,18 @@ type Query {
   waitingInterval(where: WaitingIntervalWhereUniqueInput!): WaitingInterval
   waitingIntervals(where: WaitingIntervalWhereInput! = {}, orderBy: [WaitingIntervalOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WaitingIntervalWhereUniqueInput): [WaitingInterval!]
   waitingIntervalsCount(where: WaitingIntervalWhereInput! = {}): Int
+  businessAccountContact(where: BusinessAccountContactWhereUniqueInput!): BusinessAccountContact
+  businessAccountContacts(where: BusinessAccountContactWhereInput! = {}, orderBy: [BusinessAccountContactOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: BusinessAccountContactWhereUniqueInput): [BusinessAccountContact!]
+  businessAccountContactsCount(where: BusinessAccountContactWhereInput! = {}): Int
+  exemptionCertificate(where: ExemptionCertificateWhereUniqueInput!): ExemptionCertificate
+  exemptionCertificates(where: ExemptionCertificateWhereInput! = {}, orderBy: [ExemptionCertificateOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ExemptionCertificateWhereUniqueInput): [ExemptionCertificate!]
+  exemptionCertificatesCount(where: ExemptionCertificateWhereInput! = {}): Int
+  fleetApprover(where: FleetApproverWhereUniqueInput!): FleetApprover
+  fleetApprovers(where: FleetApproverWhereInput! = {}, orderBy: [FleetApproverOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FleetApproverWhereUniqueInput): [FleetApprover!]
+  fleetApproversCount(where: FleetApproverWhereInput! = {}): Int
+  fleetUnit(where: FleetUnitWhereUniqueInput!): FleetUnit
+  fleetUnits(where: FleetUnitWhereInput! = {}, orderBy: [FleetUnitOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FleetUnitWhereUniqueInput): [FleetUnit!]
+  fleetUnitsCount(where: FleetUnitWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult

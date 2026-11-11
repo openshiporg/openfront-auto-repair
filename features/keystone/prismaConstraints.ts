@@ -21,6 +21,9 @@ export const COMPOUND_UNIQUES: Record<string, string[]> = {
   LaborRateClass: ['@@unique([setId, code], map: "LaborRateClass_set_code_key")'],
   TaxRule: ['@@unique([ruleSetId, categoryId], map: "TaxRule_set_category_key")'],
   WarrantyTerm: ['@@unique([termSetId, code], map: "WarrantyTerm_set_code_key")'],
+  // Fleet (SCHEMA §3.8, §11.8).
+  FleetUnit: ['@@unique([businessAccountId, unitNumber], map: "FleetUnit_account_unit_key")'],
+  Statement: ['@@unique([businessAccountId, periodStart], map: "Statement_account_period_key")'],
   // Customers and vehicles (SCHEMA §3, §20).
   CustomerContact: ['@@unique([customerId, kind, valueHash], map: "CustomerContact_customer_kind_hash_key")'],
   Customer: ['@@index([lastName, firstName], map: "Customer_name_idx")'],

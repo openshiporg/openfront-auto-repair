@@ -87,6 +87,7 @@ export const Authorization = list({
     signature: relationship({ ref: 'Document', ...readOnly }),
     consentTextVersion: systemText(),
     poNumber: systemText(),
+    fleetApprover: relationship({ ref: 'FleetApprover', ...readOnly }),
     status: lifecycle(['recorded', 'superseded', 'revoked']),
     ...trackingFields,
   },

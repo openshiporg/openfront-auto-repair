@@ -84,6 +84,7 @@ model User {
   from_Invoice_finalizedBy                   Invoice[]                   @relation("Invoice_finalizedBy")
   from_Payment_receivedBy                    Payment[]                   @relation("Payment_receivedBy")
   from_Refund_requestedBy                    Refund[]                    @relation("Refund_requestedBy")
+  from_Statement_exportedBy                  Statement[]                 @relation("Statement_exportedBy")
   from_CycleCount_postedBy                   CycleCount[]                @relation("CycleCount_postedBy")
   from_Discrepancy_openedBy                  Discrepancy[]               @relation("Discrepancy_openedBy")
   from_JobTire_recordedBy                    JobTire[]                   @relation("JobTire_recordedBy")
@@ -99,6 +100,7 @@ model User {
   from_PayPeriod_approvedBy                  PayPeriod[]                 @relation("PayPeriod_approvedBy")
   from_TechnicianCredential_verifiedBy       TechnicianCredential[]      @relation("TechnicianCredential_verifiedBy")
   from_TechnicianProfile_user                TechnicianProfile[]         @relation("TechnicianProfile_user")
+  from_BusinessAccountContact_portalUser     BusinessAccountContact[]    @relation("BusinessAccountContact_portalUser")
 
   @@index([roleId])
 }
@@ -398,6 +400,7 @@ model Document {
   from_CoreObligation_returnDocument        CoreObligation[]       @relation("CoreObligation_returnDocument")
   from_Receipt_packingSlip                  Receipt[]              @relation("Receipt_packingSlip")
   from_SupplierInvoice_document             SupplierInvoice[]      @relation("SupplierInvoice_document")
+  from_ExemptionCertificate_document        ExemptionCertificate[] @relation("ExemptionCertificate_document")
 
   @@index([shopId])
   @@index([supersedesId])
@@ -1044,28 +1047,35 @@ model WarrantyTermSetVersion {
 }
 
 model BusinessAccount {
-  id                                    String             @id @default(cuid())
-  name                                  String             @default("")
-  accountNumber                         String             @unique @default("")
-  customers                             Customer[]         @relation("Customer_businessAccount")
-  termsDays                             Int                @default(0)
-  creditLimitMinor                      BigInt             @default(0)
-  poRequired                            Boolean            @default(false)
-  taxExempt                             Boolean            @default(false)
-  billingMode                           String             @default("per_invoice")
-  holdAfterOverdueDays                  Int?               @default(30)
-  openBalanceMinor                      BigInt             @default(0)
-  intermediary                          String             @default("none")
-  intermediaryName                      String             @default("")
-  status                                String             @default("active")
-  version                               Int                @default(0)
-  createdAt                             DateTime           @default(now())
-  updatedAt                             DateTime           @default(now()) @updatedAt
-  from_VehicleOwnership_businessAccount VehicleOwnership[] @relation("VehicleOwnership_businessAccount")
-  from_PayerSplit_businessAccount       PayerSplit[]       @relation("PayerSplit_businessAccount")
-  from_RepairOrder_businessAccount      RepairOrder[]      @relation("RepairOrder_businessAccount")
-  from_Invoice_businessAccount          Invoice[]          @relation("Invoice_businessAccount")
-  from_Statement_businessAccount        Statement[]        @relation("Statement_businessAccount")
+  id                                    String                   @id @default(cuid())
+  name                                  String                   @default("")
+  accountNumber                         String                   @unique @default("")
+  customers                             Customer[]               @relation("Customer_businessAccount")
+  contacts                              BusinessAccountContact[] @relation("BusinessAccountContact_businessAccount")
+  approvers                             FleetApprover[]          @relation("FleetApprover_businessAccount")
+  certificates                          ExemptionCertificate[]   @relation("ExemptionCertificate_businessAccount")
+  units                                 FleetUnit[]              @relation("FleetUnit_businessAccount")
+  termsDays                             Int                      @default(0)
+  creditLimitMinor                      BigInt                   @default(0)
+  poRequired                            Boolean                  @default(false)
+  taxExempt                             Boolean                  @default(false)
+  billingMode                           String                   @default("per_invoice")
+  holdAfterOverdueDays                  Int?                     @default(30)
+  holdReason                            String                   @default("")
+  holdSince                             DateTime?
+  holdWaivedUntil                       DateTime?
+  openBalanceMinor                      BigInt                   @default(0)
+  intermediary                          String                   @default("none")
+  intermediaryName                      String                   @default("")
+  status                                String                   @default("active")
+  version                               Int                      @default(0)
+  createdAt                             DateTime                 @default(now())
+  updatedAt                             DateTime                 @default(now()) @updatedAt
+  from_VehicleOwnership_businessAccount VehicleOwnership[]       @relation("VehicleOwnership_businessAccount")
+  from_PayerSplit_businessAccount       PayerSplit[]             @relation("PayerSplit_businessAccount")
+  from_RepairOrder_businessAccount      RepairOrder[]            @relation("RepairOrder_businessAccount")
+  from_Invoice_businessAccount          Invoice[]                @relation("Invoice_businessAccount")
+  from_Statement_businessAccount        Statement[]              @relation("Statement_businessAccount")
 }
 
 model ContactConsent {
@@ -1284,6 +1294,7 @@ model Vehicle {
   from_CheckIn_vehicle          CheckIn[]           @relation("CheckIn_vehicle")
   from_RepairOrder_vehicle      RepairOrder[]       @relation("RepairOrder_vehicle")
   from_WarrantyCoverage_vehicle WarrantyCoverage[]  @relation("WarrantyCoverage_vehicle")
+  from_FleetUnit_vehicle        FleetUnit[]         @relation("FleetUnit_vehicle")
 
   @@index([vin])
   @@index([currentDecodeId])
@@ -1682,6 +1693,8 @@ model RepairOrder {
   businessAccountId                     String?                    @map("businessAccount")
   vehicle                               Vehicle?                   @relation("RepairOrder_vehicle", fields: [vehicleId], references: [id])
   vehicleId                             String?                    @map("vehicle")
+  fleetUnit                             FleetUnit?                 @relation("RepairOrder_fleetUnit", fields: [fleetUnitId], references: [id])
+  fleetUnitId                           String?                    @map("fleetUnit")
   serviceAdvisor                        User?                      @relation("RepairOrder_serviceAdvisor", fields: [serviceAdvisorId], references: [id])
   serviceAdvisorId                      String?                    @map("serviceAdvisor")
   appointment                           Appointment?               @relation("RepairOrder_appointment", fields: [appointmentId], references: [id])
@@ -1747,6 +1760,7 @@ model RepairOrder {
   @@index([customerId])
   @@index([businessAccountId])
   @@index([vehicleId])
+  @@index([fleetUnitId])
   @@index([serviceAdvisorId])
   @@index([appointmentId])
   @@index([odometerInId])
@@ -2053,6 +2067,8 @@ model Authorization {
   signatureId                   String?               @map("signature")
   consentTextVersion            String                @default("")
   poNumber                      String                @default("")
+  fleetApprover                 FleetApprover?        @relation("Authorization_fleetApprover", fields: [fleetApproverId], references: [id])
+  fleetApproverId               String?               @map("fleetApprover")
   status                        String                @default("recorded")
   createdAt                     DateTime              @default(now())
   updatedAt                     DateTime              @default(now()) @updatedAt
@@ -2063,6 +2079,7 @@ model Authorization {
   @@index([recordedByUserId])
   @@index([authorizationRequestId])
   @@index([signatureId])
+  @@index([fleetApproverId])
 }
 
 model AuthorizationRequest {
@@ -2309,6 +2326,8 @@ model Invoice {
   disclosures                             Json?
   statement                               Statement?                   @relation("Invoice_statement", fields: [statementId], references: [id])
   statementId                             String?                      @map("statement")
+  exemptionCertificate                    ExemptionCertificate?        @relation("Invoice_exemptionCertificate", fields: [exemptionCertificateId], references: [id])
+  exemptionCertificateId                  String?                      @map("exemptionCertificate")
   allocations                             PaymentAllocation[]          @relation("PaymentAllocation_invoice")
   creditMemos                             CreditMemo[]                 @relation("CreditMemo_invoice")
   sentAt                                  DateTime?
@@ -2328,6 +2347,7 @@ model Invoice {
   @@index([customerId])
   @@index([businessAccountId])
   @@index([statementId])
+  @@index([exemptionCertificateId])
   @@index([finalizedById])
   @@index([repairOrderId, payerKind], map: "Invoice_ro_payer_idx")
   @@index([shopId, status], map: "Invoice_shop_status_idx")
@@ -2455,22 +2475,29 @@ model Refund {
 }
 
 model Statement {
-  id                     String           @id @default(cuid())
-  businessAccount        BusinessAccount? @relation("Statement_businessAccount", fields: [businessAccountId], references: [id])
-  businessAccountId      String?          @map("businessAccount")
-  periodStart            DateTime?        @postgresql.Date
-  periodEnd              DateTime?        @postgresql.Date
-  openingMinor           BigInt           @default(0)
-  chargesMinor           BigInt           @default(0)
-  paymentsMinor          BigInt           @default(0)
-  creditsMinor           BigInt           @default(0)
-  closingMinor           BigInt           @default(0)
-  sentAt                 DateTime?
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @default(now()) @updatedAt
-  from_Invoice_statement Invoice[]        @relation("Invoice_statement")
+  id                String           @id @default(cuid())
+  businessAccount   BusinessAccount? @relation("Statement_businessAccount", fields: [businessAccountId], references: [id])
+  businessAccountId String?          @map("businessAccount")
+  periodStart       DateTime?        @postgresql.Date
+  periodEnd         DateTime?        @postgresql.Date
+  openingMinor      BigInt           @default(0)
+  chargesMinor      BigInt           @default(0)
+  paymentsMinor     BigInt           @default(0)
+  creditsMinor      BigInt           @default(0)
+  closingMinor      BigInt           @default(0)
+  reference         String           @unique @default("")
+  invoices          Invoice[]        @relation("Invoice_statement")
+  aging             Json?
+  exportedAt        DateTime?
+  exportedBy        User?            @relation("Statement_exportedBy", fields: [exportedById], references: [id])
+  exportedById      String?          @map("exportedBy")
+  sentAt            DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @default(now()) @updatedAt
 
+  @@unique([businessAccountId, periodStart], map: "Statement_account_period_key")
   @@index([businessAccountId])
+  @@index([exportedById])
 }
 
 model WarrantyCoverage {
@@ -3188,6 +3215,81 @@ model WaitingInterval {
   updatedAt  DateTime  @default(now()) @updatedAt
 
   @@index([jobClockId])
+}
+
+model BusinessAccountContact {
+  id                         String           @id @default(cuid())
+  businessAccount            BusinessAccount? @relation("BusinessAccountContact_businessAccount", fields: [businessAccountId], references: [id])
+  businessAccountId          String?          @map("businessAccount")
+  name                       String           @default("")
+  email                      String           @default("")
+  phone                      String           @default("")
+  roles                      Json?            @default("[]")
+  portalUser                 User?            @relation("BusinessAccountContact_portalUser", fields: [portalUserId], references: [id])
+  portalUserId               String?          @map("portalUser")
+  active                     Boolean          @default(true)
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @default(now()) @updatedAt
+  from_FleetApprover_contact FleetApprover[]  @relation("FleetApprover_contact")
+
+  @@index([businessAccountId])
+  @@index([portalUserId])
+}
+
+model ExemptionCertificate {
+  id                                String           @id @default(cuid())
+  businessAccount                   BusinessAccount? @relation("ExemptionCertificate_businessAccount", fields: [businessAccountId], references: [id])
+  businessAccountId                 String?          @map("businessAccount")
+  kind                              String           @default("government")
+  number                            String           @default("")
+  issuingState                      String           @default("")
+  effectiveFrom                     DateTime?        @postgresql.Date
+  expiresAt                         DateTime?        @postgresql.Date
+  document                          Document?        @relation("ExemptionCertificate_document", fields: [documentId], references: [id])
+  documentId                        String?          @map("document")
+  status                            String           @default("active")
+  version                           Int              @default(0)
+  createdAt                         DateTime         @default(now())
+  updatedAt                         DateTime         @default(now()) @updatedAt
+  from_Invoice_exemptionCertificate Invoice[]        @relation("Invoice_exemptionCertificate")
+
+  @@index([businessAccountId])
+  @@index([documentId])
+}
+
+model FleetApprover {
+  id                               String                  @id @default(cuid())
+  businessAccount                  BusinessAccount?        @relation("FleetApprover_businessAccount", fields: [businessAccountId], references: [id])
+  businessAccountId                String?                 @map("businessAccount")
+  contact                          BusinessAccountContact? @relation("FleetApprover_contact", fields: [contactId], references: [id])
+  contactId                        String?                 @map("contact")
+  limitMinor                       BigInt                  @default(0)
+  order                            Int                     @default(1)
+  active                           Boolean                 @default(true)
+  createdAt                        DateTime                @default(now())
+  updatedAt                        DateTime                @default(now()) @updatedAt
+  from_Authorization_fleetApprover Authorization[]         @relation("Authorization_fleetApprover")
+
+  @@index([businessAccountId])
+  @@index([contactId])
+}
+
+model FleetUnit {
+  id                         String           @id @default(cuid())
+  businessAccount            BusinessAccount? @relation("FleetUnit_businessAccount", fields: [businessAccountId], references: [id])
+  businessAccountId          String?          @map("businessAccount")
+  vehicle                    Vehicle?         @relation("FleetUnit_vehicle", fields: [vehicleId], references: [id])
+  vehicleId                  String?          @map("vehicle")
+  unitNumber                 String           @default("")
+  driverName                 String           @default("")
+  costCenter                 String           @default("")
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @default(now()) @updatedAt
+  from_RepairOrder_fleetUnit RepairOrder[]    @relation("RepairOrder_fleetUnit")
+
+  @@unique([businessAccountId, unitNumber], map: "FleetUnit_account_unit_key")
+  @@index([businessAccountId])
+  @@index([vehicleId])
 }
 
 enum UserKindType {

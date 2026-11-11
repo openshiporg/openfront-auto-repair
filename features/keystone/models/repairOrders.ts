@@ -34,6 +34,7 @@ export const RepairOrder = list({
     customer: relationship({ ref: 'Customer', ...readOnly }),
     businessAccount: relationship({ ref: 'BusinessAccount', ...readOnly }),
     vehicle: relationship({ ref: 'Vehicle', ...readOnly }),
+    fleetUnit: relationship({ ref: 'FleetUnit', ...readOnly }),
     serviceAdvisor: relationship({ ref: 'User', ...readOnly }),
     appointment: relationship({ ref: 'Appointment', ...readOnly }),
     checkIn: relationship({ ref: 'CheckIn.repairOrder', ...readOnly }),
