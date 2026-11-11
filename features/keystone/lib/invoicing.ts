@@ -15,6 +15,7 @@ import { postingDate, settleDeposits } from './payments'
 import type { Tx } from './db'
 import type { UnitOfWork } from './unitOfWork'
 import { flagJob, shopPolicy } from './flagging'
+import { activeCertificate, orgToday, readableBlock, standingOf, usd } from './fleet'
 
 /*
  * Invoicing (STATE-MACHINES §12; DOMAIN D§3.8, I-R6). Finalizing an invoice is one transaction: the
@@ -31,7 +32,7 @@ const INVOICEABLE_RO = ['in_service', 'ready_to_invoice']
 
 type Payer = { key: string; kind: string; businessAccountId: string | null; customerId: string | null; payorName: string; authorizationNumber: string; claimNumber: string }
 type PlannedLine = BillLine & { sourceJobLineId: string; jobNumber: number; jobTitle: string; description: string; partNumber: string; brand: string; condition: string; subletVendorName: string; quantityMilli: number; centiHours: number; unitPriceMinor: bigint; taxCategoryCode: string; sortOrder: number }
-export type InvoicePlan = { payer: Payer; lines: PlannedLine[]; totals: ReturnType<typeof totalsOf> }
+export type InvoicePlan = { payer: Payer; lines: PlannedLine[]; totals: ReturnType<typeof totalsOf>; exemption?: { id: string; kind: string; number: string; issuingState: string; expiresAt: string | null } | null; untaxedMinor?: bigint }
 
 const payerKeyOf = (kind: string, businessAccountId: string | null, name: string) => (kind === 'customer' ? 'customer' : `${kind}:${businessAccountId ?? name}`)
 
@@ -141,9 +142,24 @@ export async function buildInvoicePlan(tx: Tx, repairOrderId: string, now: Date)
   const plans: InvoicePlan[] = [...payers.values()].map(payer => ({ payer, lines: lineBuckets.get(payer.key) ?? [], totals: totalsOf(lineBuckets.get(payer.key) ?? []) }))
     .sort((a, b) => (a.payer.kind === 'customer' ? 1 : 0) - (b.payer.kind === 'customer' ? 1 : 0) || a.payer.key.localeCompare(b.payer.key))
 
+  const today = await orgToday(tx, now)
   for (const plan of plans) {
-    const account = plan.payer.businessAccountId ? await tx.businessAccount.findUnique({ where: { id: plan.payer.businessAccountId } }) : null
-    if (account?.status === 'on_hold' || account?.status === 'credit_hold') problems.push(`${account.name} is on credit hold. A manager must clear it before this is invoiced.`)
+    if (plan.payer.kind !== 'business_account' || !plan.payer.businessAccountId) continue
+    const standing = await standingOf(tx, plan.payer.businessAccountId, now)
+    // Credit hold and the credit limit are checked now, on the numbers as they stand, so a hold set since the work opened still stops the bill.
+    if (standing.blocked) problems.push(readableBlock(standing))
+    else if (standing.creditLimitMinor > 0n && !standing.waived && standing.openBalanceMinor + plan.totals.totalMinor > standing.creditLimitMinor) {
+      problems.push(`${standing.name} would owe ${usd(standing.openBalanceMinor + plan.totals.totalMinor)}, over its ${usd(standing.creditLimitMinor)} credit limit. A manager must raise the limit or release the hold before this is invoiced.`)
+    }
+    // A tax-exempt certificate on file that has not expired removes tax from this payer's invoice. Past its expiry date it no longer applies.
+    const cert = await activeCertificate(tx, plan.payer.businessAccountId, today)
+    if (cert && plan.totals.taxMinor > 0n) {
+      const lines = plan.lines.map(l => ({ ...l, taxMinor: 0n }))
+      plan.untaxedMinor = plan.totals.taxMinor
+      plan.lines = lines
+      plan.totals = totalsOf(lines)
+    }
+    if (cert) plan.exemption = { id: cert.id, kind: cert.kind, number: cert.number, issuingState: cert.issuingState, expiresAt: cert.expiresAt ? cert.expiresAt.toISOString().slice(0, 10) : null }
   }
   return { ro, law: { ...law, ...law2 }, plans, problems, billable }
 }
@@ -167,7 +183,7 @@ export async function finalizeInvoices(uow: UnitOfWork, actor: Actor, input: Fin
     if (account?.poRequired && !poNumber) problems.push(`${account.name} requires a purchase order number on every invoice.`)
   }
   if (problems.length) {
-    const code = problems.some(p => p.includes('purchase order')) ? Codes.PO_REQUIRED : problems.some(p => p.includes('credit hold')) ? Codes.CREDIT_HOLD : problems.some(p => p.includes('above what the customer authorized')) ? Codes.REAUTHORIZATION_REQUIRED : problems.some(p => p.includes('odometer')) ? Codes.ODOMETER_REQUIRED : problems.some(p => p.includes('DOT number')) ? Codes.TIN_REQUIRED : Codes.GUARD_FAILED
+    const code = problems.some(p => p.includes('purchase order')) ? Codes.PO_REQUIRED : problems.some(p => p.includes('credit hold') || p.includes('credit limit') || p.includes('is closed')) ? Codes.CREDIT_HOLD : problems.some(p => p.includes('above what the customer authorized')) ? Codes.REAUTHORIZATION_REQUIRED : problems.some(p => p.includes('odometer')) ? Codes.ODOMETER_REQUIRED : problems.some(p => p.includes('DOT number')) ? Codes.TIN_REQUIRED : Codes.GUARD_FAILED
     throw new DomainError(code, problems[0], { problems })
   }
 
@@ -186,10 +202,10 @@ export async function finalizeInvoices(uow: UnitOfWork, actor: Actor, input: Fin
     const status = invoiceStatus({ totalMinor: plan.totals.totalMinor, paidMinor: 0n, creditedMinor: 0n, sent: false })
     const row = await tx.invoice.create({
       data: {
-        shopId: shop.id, invoiceNumber, repairOrderId: ro.id, payerKind: plan.payer.kind, customerId: ro.customerId, businessAccountId: plan.payer.businessAccountId, poNumber,
+        shopId: shop.id, invoiceNumber, repairOrderId: ro.id, payerKind: plan.payer.kind, customerId: ro.customerId, businessAccountId: plan.payer.businessAccountId, poNumber, exemptionCertificateId: plan.exemption?.id ?? null,
         invoiceDate: dateOnly(today), dueDate: dateOnly(dueDate), retentionUntil: dateOnly(addYears(today, retentionYears)), odometerOut: odometer,
         ...plan.totals, paidMinor: 0n, creditedMinor: 0n, balanceMinor: plan.totals.totalMinor,
-        disclosures: toJsonValue({ ...disclosures, payer: { kind: plan.payer.kind, name: plan.payer.payorName, authorizationNumber: plan.payer.authorizationNumber, claimNumber: plan.payer.claimNumber } }) as never,
+        disclosures: toJsonValue({ ...disclosures, payer: { kind: plan.payer.kind, name: plan.payer.payorName, authorizationNumber: plan.payer.authorizationNumber, claimNumber: plan.payer.claimNumber }, taxExemption: plan.exemption ?? null }) as never,
         finalizedById: actorUserId(actor), finalizedAt: now, status: 'finalized', version: 0,
       },
     })

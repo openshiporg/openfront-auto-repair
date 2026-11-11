@@ -14,6 +14,7 @@ export type InvoiceDocument = {
   disclosures: {
     registrations?: Record<string, string>; notices?: { key: string; text: string }[]; replacedParts?: string | null; nonReturnableNote?: string | null; thirdPartyNotice?: string | null
     odometer?: { in: number | null; out: number | null }; declinedSafetyItems?: { job: number; title: string; urgency: string }[]; warranty?: { job: number; name?: string; text?: string }[]
+    taxExemption?: { kind: string; number: string; issuingState: string; expiresAt: string | null } | null
     payer?: { kind: string; name?: string; authorizationNumber?: string; claimNumber?: string }
   } | null
   shop: { name: string; legalName: string; phone: string; addressLine1: string; city: string; region: string; postalCode: string } | null
@@ -54,6 +55,10 @@ export function renderInvoicePdf(inv: InvoiceDocument) {
     pdf.y += 14
   }
   if (inv.poNumber) { pdf.text(`PO ${inv.poNumber}`, MARGIN, 9.5); pdf.y += 14 }
+  if (d.taxExemption) {
+    pdf.text(`Tax exempt: ${d.taxExemption.kind} certificate ${d.taxExemption.number}${d.taxExemption.issuingState ? `, ${d.taxExemption.issuingState}` : ''}${d.taxExemption.expiresAt ? `, valid until ${d.taxExemption.expiresAt}` : ''}`, MARGIN, 9.5)
+    pdf.y += 14
+  }
   if (d.payer?.authorizationNumber || d.payer?.claimNumber) {
     pdf.text([d.payer.authorizationNumber ? `Authorization ${d.payer.authorizationNumber}` : '', d.payer.claimNumber ? `Claim ${d.payer.claimNumber}` : ''].filter(Boolean).join(' · '), MARGIN, 9.5)
     pdf.y += 14

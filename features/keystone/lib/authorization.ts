@@ -1,3 +1,4 @@
+import { checkFleetAuthorization } from './fleet'
 import { auditCreate, lockRow, transition } from './cas'
 import { actorUserId, requireHuman, type Actor } from './actor'
 import { DomainError, Codes } from './errors'
@@ -190,10 +191,11 @@ export type StaffAuthorizationInput = {
   signature?: SignatureInput | null
   documentId?: string | null
   poNumber?: string | null
+  fleetApproverId?: string | null
   authorizationRequestId?: string | null
 }
 
-type Evidence = { method: string; actorKind: string; actorName: string; contactUsed: string; evidence: Record<string, unknown>; recordedByUserId: string | null; authorizationRequestId: string | null; signatureDocumentId: string | null; poNumber: string; at: Date }
+type Evidence = { method: string; actorKind: string; actorName: string; contactUsed: string; evidence: Record<string, unknown>; recordedByUserId: string | null; authorizationRequestId: string | null; signatureDocumentId: string | null; poNumber: string; at: Date; fleetApproverId?: string | null }
 
 /** Staff-recorded authorization (in person, phone, written form, fleet PO). Never an agent. */
 export async function recordAuthorization(uow: UnitOfWork, actor: Actor, input: StaffAuthorizationInput) {
@@ -239,6 +241,14 @@ export async function recordAuthorization(uow: UnitOfWork, actor: Actor, input: 
     if (!String(input.poNumber ?? '').trim()) throw new DomainError(Codes.PO_REQUIRED, 'Enter the purchase order number.', { field: 'poNumber' })
     Object.assign(evidence, { poNumber: String(input.poNumber).trim().slice(0, 60) })
   }
+  // Fleet accounts: the PO rule, and the approver's limit. Over the limit escalates to the next approver in the chain.
+  let fleetApproverId: string | null = null
+  if (ro.businessAccountId && (input.method === 'fleet_po' || actorKind === 'fleet_approver')) {
+    const approved = (input.answers ?? []).filter(a => a.decision === 'approve').map(a => a.jobId)
+    const checked = await checkFleetAuthorization(tx, ro, { approverId: input.fleetApproverId, poNumber: input.poNumber, jobIds: approved })
+    fleetApproverId = checked.approverId
+    if (checked.approverId) Object.assign(evidence, { fleetApproverId: checked.approverId, approverName: checked.approverName })
+  }
   const rules = (law.authorizationEvidenceRules ?? {}) as Record<string, string[]>
   const needed = Array.isArray(rules[input.method]) ? rules[input.method] : []
   const have: Record<string, unknown> = { ...evidence, personName: evidence.personName ?? actorName, amountMinor: 'per job', staffUserId: actorUserId(actor) }
@@ -252,7 +262,7 @@ export async function recordAuthorization(uow: UnitOfWork, actor: Actor, input: 
     requestId = request.id
   }
   const result = await applyAnswers(uow, actor, ev, ro, law, input.answers, input.replacedPartsElection ?? null, {
-    method: input.method, actorKind, actorName, contactUsed, evidence, recordedByUserId: actorUserId(actor), authorizationRequestId: requestId, signatureDocumentId, poNumber: String(input.poNumber ?? '').trim().slice(0, 60), at,
+    method: input.method, actorKind, actorName, contactUsed, evidence, recordedByUserId: actorUserId(actor), authorizationRequestId: requestId, signatureDocumentId, poNumber: String(input.poNumber ?? '').trim().slice(0, 60), at, fleetApproverId,
   })
   if (requestId) {
     const request = await tx.authorizationRequest.findUniqueOrThrow({ where: { id: requestId } })
@@ -297,7 +307,7 @@ async function applyAnswers(uow: UnitOfWork, actor: Actor, ev: any, ro: any, law
         data: {
           jobId: job.id, estimateVersionId: ev.id, jobContentHash: job.contentHash, amountMinor: job.totalMinor, subtotalMinor: job.subtotalMinor, method: e.method, actorKind: e.actorKind, actorName: e.actorName,
           contactUsed: e.contactUsed, evidence: toJsonValue({ ...e.evidence, amountMinor: job.totalMinor }) as never, authorizedAt: e.at, recordedByUserId: e.recordedByUserId, authorizationRequestId: e.authorizationRequestId,
-          signatureId: e.signatureDocumentId, consentTextVersion: e.method === 'electronic_link' ? CONSENT_TEXT_VERSION : '', poNumber: e.poNumber, status: 'recorded',
+          fleetApproverId: e.fleetApproverId ?? null, signatureId: e.signatureDocumentId, consentTextVersion: e.method === 'electronic_link' ? CONSENT_TEXT_VERSION : '', poNumber: e.poNumber, status: 'recorded',
         },
       })
       const ceiling = chargeCeilingMinor(rule, rule.includesTax ? job.totalMinor : job.subtotalMinor)

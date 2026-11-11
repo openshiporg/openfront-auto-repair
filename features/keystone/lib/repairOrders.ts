@@ -1,3 +1,4 @@
+import { accountForNewOrder } from './fleet'
 import { advisoryLock, type Tx } from './db'
 import { formatMinor } from './money'
 import { auditCreate, lockRow, transition } from './cas'
@@ -50,7 +51,7 @@ export const concernCategory = (words: string) => CONCERN_CATEGORIES.find(([re])
 
 // ── Open ──────────────────────────────────────────────────────────────────────
 
-export type OpenInput = { checkInId: string; serviceAdvisorId?: string | null; designee?: { name: string; relationship: string; contact: string } | null; kind?: 'standard' | 'comeback' | 'internal' | 'fleet' }
+export type OpenInput = { checkInId: string; serviceAdvisorId?: string | null; designee?: { name: string; relationship: string; contact: string } | null; kind?: 'standard' | 'comeback' | 'internal' | 'fleet'; businessAccountId?: string | null; billTo?: 'account' | 'customer' | null }
 
 /** Open the repair order for a check-in: draft (pins the policy) then checked_in (the check-in satisfies the guard). */
 export async function openRepairOrder(uow: UnitOfWork, actor: Actor, input: OpenInput) {
@@ -78,11 +79,13 @@ export async function openRepairOrder(uow: UnitOfWork, actor: Actor, input: Open
     designee = { name, relationship, contact, namedAt: now.toISOString() }
   }
 
+  // A non-cash order on a business account is refused, with the reason, while the account is on credit hold.
+  const billing = await accountForNewOrder(tx, { customerId: checkIn.customerId, vehicleId: checkIn.vehicleId, kind: input.kind ?? 'standard', businessAccountId: input.businessAccountId, billTo: input.billTo }, now)
   const roNumber = await nextShopReference(tx, 'RO', shop.code, now)
   const pins = Object.fromEntries(Object.entries(POINTERS).map(([field, pointer]) => [field, (shop as any)[pointer]]))
   const ro = await tx.repairOrder.create({
     data: {
-      shopId: shop.id, roNumber, kind: input.kind ?? 'standard', customerId: checkIn.customerId, vehicleId: checkIn.vehicleId,
+      shopId: shop.id, roNumber, kind: (billing.kind ?? input.kind ?? 'standard') as never, businessAccountId: billing.businessAccountId, fleetUnitId: billing.fleetUnitId, customerId: checkIn.customerId, vehicleId: checkIn.vehicleId,
       serviceAdvisorId: input.serviceAdvisorId ?? actorUserId(actor), appointmentId: (await tx.appointment.findFirst({ where: { checkIn: { id: checkIn.id } }, select: { id: true } }))?.id ?? null,
       odometerInId: checkIn.odometerInId, promisedAt: checkIn.promisedAt, waiter: checkIn.waiter, keyTag: checkIn.keyTag,
       designee: (designee ?? undefined) as never, openedAt: now, openedById: actorUserId(actor), status: 'draft', ...pins,

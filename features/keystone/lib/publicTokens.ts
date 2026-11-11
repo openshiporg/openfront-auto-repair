@@ -29,7 +29,7 @@ export const deriveToken = (purpose: TokenPurpose, id: string) => createHmac('sh
 export const newTokenId = () => randomUUID()
 export const isTokenShape = (token: unknown): token is string => typeof token === 'string' && TOKEN.test(token)
 
-export async function createAccessToken(uow: UnitOfWork, input: { purpose: TokenPurpose; subjectType: string; subjectId: string; shopId: string; ttlHours: number; maxUses?: number }) {
+export async function createAccessToken(uow: UnitOfWork, input: { purpose: TokenPurpose; subjectType: string; subjectId: string; shopId: string | null; ttlHours: number; maxUses?: number }) {
   const id = newTokenId()
   const token = deriveToken(input.purpose, id)
   const ttl = Math.min(720, Math.max(1, Math.trunc(input.ttlHours)))

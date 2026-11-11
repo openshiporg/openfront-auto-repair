@@ -219,8 +219,55 @@ export async function seedFleets(uow: UnitOfWork, actor: Actor) {
       if (mail) await recordConsent(uow, actor, { contactId: mail.id, channel: 'email', purpose: 'transactional', action: 'granted', method: 'staff_recorded', evidence: { source: 'Fleet agreement', seed: true } })
     }
     for (const [j, v] of f.vehicles.entries()) if (await seedVehicle(uow, actor, `seed_veh_${f.id.replace(/^seed_acct_/, '')}_${String(j + 1).padStart(2, '0')}`, v, { businessAccountId: f.id })) created.vehicles += 1
+    await seedFleetStanding(uow, actor, f)
   }
   return created
+}
+
+const FLEET_PEOPLE: Record<string, { contacts: { name: string; email: string; phone: string; roles: string[]; limit?: bigint }[]; driverNames: string[]; certificate?: { kind: string; number: string; issuingState: string; effectiveFrom: string; expiresAt: string } }> = {
+  seed_acct_cvp: {
+    contacts: [
+      { name: 'Dana Whitfield', email: 'dana.whitfield@capitalvalleyplumbing.com', phone: '+19165550142', roles: ['billing', 'approver'], limit: 75_000n },
+      { name: 'Raymond Okafor', email: 'raymond.okafor@capitalvalleyplumbing.com', phone: '+19165550143', roles: ['approver'], limit: 300_000n },
+      { name: 'Priya Natarajan', email: 'accounts@capitalvalleyplumbing.com', phone: '+19165550144', roles: ['billing'] },
+    ],
+    driverNames: ['Luis Herrera', 'Tamika Brooks', 'Greg Palmer', 'Sofia Ramos', 'Ed Kowalski', 'Nate Fielding'],
+  },
+  seed_acct_sacl: {
+    contacts: [
+      { name: 'Helen Marquez', email: 'helen.marquez@sacramentocountylibrary.org', phone: '+19165550192', roles: ['billing', 'approver'], limit: 150_000n },
+    ],
+    driverNames: ['Walter Chen', 'Alicia Foster'],
+    certificate: { kind: 'government', number: 'SCL-GOV-4471', issuingState: 'California', effectiveFrom: '2025-07-01', expiresAt: '2027-06-30' },
+  },
+}
+
+/** Contacts, approvers (in order), one unit per fleet vehicle, and any tax-exempt certificate. Once per account. */
+async function seedFleetStanding(uow: UnitOfWork, actor: Actor, f: { id: string }) {
+  const { tx } = uow
+  const people = FLEET_PEOPLE[f.id]
+  if (!people || (await tx.businessAccountContact.count({ where: { businessAccountId: f.id } }))) return
+  const meta = { metadata: { seed: true } }
+  for (const [i, p] of people.contacts.entries()) {
+    const contact = await tx.businessAccountContact.create({ data: { id: `seed_fc_${f.id.replace(/^seed_acct_/, '')}_${i + 1}`, businessAccountId: f.id, name: p.name, email: p.email, phone: p.phone, roles: p.roles as never } })
+    auditCreate(uow, actor, 'BusinessAccountContact', contact.id, 'account_contact.added', { businessAccountId: f.id, name: p.name }, meta)
+    if (p.limit) {
+      const approver = await tx.fleetApprover.create({ data: { businessAccountId: f.id, contactId: contact.id, limitMinor: p.limit, order: people.contacts.slice(0, i).filter(c => c.limit).length + 1 } })
+      auditCreate(uow, actor, 'FleetApprover', approver.id, 'fleet_approver.added', { businessAccountId: f.id, contact: p.name, limitMinor: p.limit }, meta)
+    }
+  }
+  const vehicles = await tx.vehicleOwnership.findMany({ where: { businessAccountId: f.id, endedAt: null }, orderBy: { createdAt: 'asc' }, select: { vehicleId: true } })
+  const prefix = f.id === 'seed_acct_cvp' ? 'CVP' : 'SCL'
+  for (const [i, v] of vehicles.entries()) {
+    const unit = await tx.fleetUnit.create({ data: { businessAccountId: f.id, vehicleId: v.vehicleId, unitNumber: `${prefix}${String(i + 1).padStart(3, '0')}`, driverName: people.driverNames[i % people.driverNames.length], costCenter: f.id === 'seed_acct_cvp' ? (i % 2 ? 'Service calls' : 'Installations') : 'Outreach' } })
+    auditCreate(uow, actor, 'FleetUnit', unit.id, 'fleet_unit.added', { businessAccountId: f.id, unitNumber: unit.unitNumber }, meta)
+  }
+  if (people.certificate) {
+    const c = people.certificate
+    const cert = await tx.exemptionCertificate.create({ data: { businessAccountId: f.id, kind: c.kind, number: c.number, issuingState: c.issuingState, effectiveFrom: new Date(`${c.effectiveFrom}T00:00:00Z`), expiresAt: new Date(`${c.expiresAt}T00:00:00Z`), status: 'active' } })
+    auditCreate(uow, actor, 'ExemptionCertificate', cert.id, 'certificate.added', { businessAccountId: f.id, number: c.number }, meta)
+    await tx.businessAccount.update({ where: { id: f.id }, data: { taxExempt: true } })
+  }
 }
 
 /**
