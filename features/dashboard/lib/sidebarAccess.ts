@@ -11,6 +11,7 @@ type SidebarUser = { role?: { canAccessDashboard?: boolean | null; canReadAudit?
 const PLATFORM_PAGE_PERMISSIONS: Record<string, ('canReadAudit' | 'canCloseDay' | 'canReadFinancials')[]> = {
   audit: ['canReadAudit'],
   'day-close': ['canCloseDay', 'canReadFinancials'],
+  statements: ['canReadFinancials'],
 }
 
 /** Only an explicit false hides navigation; an unknown user is left to the middleware. */

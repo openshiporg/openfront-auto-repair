@@ -1,5 +1,5 @@
 import {
-  BookOpenCheck, CalendarDays, Car, ClipboardCheck, ClipboardList, Columns3, FileText, ListChecks, LucideIcon, Scale, Settings, Store, Users, Wrench, BookTemplate, Receipt, Landmark, Package, Timer,
+  BookOpenCheck, CalendarDays, Car, ClipboardCheck, ClipboardList, Columns3, FileText, ListChecks, LucideIcon, Scale, Settings, Store, Users, Wrench, BookTemplate, Receipt, Landmark, Package, Timer, Building2, FileSpreadsheet,
 } from 'lucide-react'
 
 export interface PlatformNavItem {
@@ -32,6 +32,8 @@ export const platformNavItems: PlatformNavItem[] = [
   { title: 'Customers', href: '/platform/customers', color: 'violet', description: 'Customers, contacts and consent history.', icon: Users, group: 'standalone' },
   { title: 'Vehicles', href: '/platform/vehicles', color: 'cyan', description: 'VIN decode, recalls, ownership and odometer history.', icon: Car, group: 'standalone' },
   { title: 'Receivables', href: '/platform/receivables', color: 'green', description: 'Invoices still owing, with the overdue ones first.', icon: Receipt, group: 'standalone' },
+  { title: 'Accounts', href: '/platform/accounts', color: 'violet', description: 'Fleet and business accounts: terms, credit, approvers, tax certificates and units.', icon: Building2, group: 'standalone' },
+  { title: 'Statements', href: '/platform/statements', color: 'green', description: 'Monthly account statements, exported as files.', icon: FileSpreadsheet, group: 'standalone' },
   { title: 'Day close', href: '/platform/day-close', color: 'green', description: 'Takings by tender, the drawer count and the frozen day.', icon: Landmark, group: 'standalone' },
   { title: 'Parts', href: '/platform/parts', color: 'blue', description: 'Quotes, supplier orders, stock, cores, supplier invoices and tire registrations.', icon: Package, group: 'standalone' },
   { title: 'Labor', href: '/platform/time', color: 'orange', description: 'Time clock, technicians and certificates, flagged hours, pay periods and comebacks.', icon: Timer, group: 'standalone' },
@@ -44,7 +46,7 @@ export const platformNavItems: PlatformNavItem[] = [
 ]
 
 /** Routes that exist in this build. Others stay out of the menu until their phase ships. */
-export const SHIPPED_ROUTES = new Set<string>(['/platform/time', '/platform/technicians', '/platform/pay-periods', '/platform/comebacks', '/platform/parts', '/platform/purchase-orders', '/platform/stock', '/platform/cores', '/platform/supplier-invoices', '/platform/tires', '/platform/board', '/platform/repair-orders', '/platform/inspections', '/platform/canned-jobs', '/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/receivables', '/platform/day-close', '/platform/shops', '/platform/policies', '/platform/audit'])
+export const SHIPPED_ROUTES = new Set<string>(['/platform/accounts', '/platform/statements', '/platform/time', '/platform/technicians', '/platform/pay-periods', '/platform/comebacks', '/platform/parts', '/platform/purchase-orders', '/platform/stock', '/platform/cores', '/platform/supplier-invoices', '/platform/tires', '/platform/board', '/platform/repair-orders', '/platform/inspections', '/platform/canned-jobs', '/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/receivables', '/platform/day-close', '/platform/shops', '/platform/policies', '/platform/audit'])
 
 const shipped = platformNavItems.filter(item => SHIPPED_ROUTES.has(item.href))
 

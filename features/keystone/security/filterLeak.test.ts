@@ -89,6 +89,24 @@ describe('other role-hidden fields are neither filterable nor sortable (r2 F1 / 
     const o = await run(ADVISOR, '{ customerContacts(orderBy: { value: asc }, take: 1) { id } }')
     expect(refused(o), JSON.stringify(o.errors)).toBe(true)
   })
+  it('account contact email and phone need canReadCustomerPII (Phase 6)', async () => {
+    const noPii = ['canAccessDashboard', 'canReadRepairOrders']
+    for (const source of [
+      '{ businessAccountContactsCount(where: { email: { contains: "@" } }) }',
+      '{ businessAccountContactsCount(where: { phone: { contains: "555" } }) }',
+      '{ businessAccountContacts(orderBy: { email: asc }, take: 1) { id } }',
+      '{ businessAccountContacts(orderBy: { phone: asc }, take: 1) { id } }',
+    ]) {
+      const r = await run(noPii, source)
+      expect(refused(r), source + JSON.stringify(r.errors)).toBe(true)
+    }
+    const ok = await run([...noPii, 'canReadCustomerPII'], '{ businessAccountContactsCount(where: { email: { contains: "@" } }) }')
+    expect(refused(ok)).toBe(false)
+  })
+  it('credit limit and balance on an account cannot be written through the API (Phase 6)', async () => {
+    const r = await run(permissionNames as unknown as string[], 'mutation { updateBusinessAccount(where: { id: "x" }, data: { creditLimitMinor: "1" }) { id } }')
+    expect(JSON.stringify(r.errors ?? [])).toMatch(/access|denied|permission/i)
+  })
   it('the contact valueHash is not in the API at all, for any role', async () => {
     const all = [...permissionNames]
     for (const source of [

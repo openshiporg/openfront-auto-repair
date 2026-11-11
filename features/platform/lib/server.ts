@@ -18,7 +18,7 @@ export async function orgTimeZone(): Promise<string> {
 }
 
 /** Whether the signed-in role holds at least one of these permissions (for pages whose queries would otherwise be refused). */
-export async function holdsAny(names: ('canReadAudit' | 'canCloseDay' | 'canReadFinancials')[]): Promise<boolean> {
+export async function holdsAny(names: ('canReadAudit' | 'canCloseDay' | 'canReadFinancials' | 'canReadRepairOrders' | 'canManageCustomers')[]): Promise<boolean> {
   try {
     const d: any = await q(`{ authenticatedItem { ... on User { role { ${names.join(' ')} } } } }`)
     const role = d.authenticatedItem?.role
