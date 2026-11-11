@@ -14225,6 +14225,20 @@ type Mutation {
   adjustTechFlaggedHours(technicianId: ID!, jobId: ID!, centiHours: Int!, reason: String!, idempotencyKey: String!): JSON
   closeShopPayPeriod(payPeriodId: ID!, approvalRequestId: ID, idempotencyKey: String!): JSON
   exportShopPayPeriod(payPeriodId: ID!, idempotencyKey: String!): JSON
+  saveAccountTerms(input: JSON!, idempotencyKey: String!): JSON
+  refreshAccountStanding(businessAccountId: ID, idempotencyKey: String!): JSON
+  holdAccountCredit(businessAccountId: ID!, reason: String!, idempotencyKey: String!): JSON
+  releaseAccountHold(businessAccountId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+  addAccountContact(input: JSON!, idempotencyKey: String!): JSON
+  addAccountApprover(input: JSON!, idempotencyKey: String!): JSON
+  removeAccountApprover(approverId: ID!, idempotencyKey: String!): JSON
+  addAccountCertificate(input: JSON!, idempotencyKey: String!): JSON
+  revokeAccountCertificate(certificateId: ID!, reason: String!, idempotencyKey: String!): JSON
+  saveAccountUnit(input: JSON!, idempotencyKey: String!): JSON
+  createAccountLink(contactId: ID!, idempotencyKey: String!): JSON
+  makeAccountStatement(businessAccountId: ID!, periodStart: String!, periodEnd: String!, idempotencyKey: String!): JSON
+  exportAccountStatement(statementId: ID!, idempotencyKey: String!): JSON
+  exportAllAccountStatements(periodStart: String!, periodEnd: String!, idempotencyKey: String!): JSON
   openShopComeback(originalJobId: ID!, concern: String!, odometer: Int, idempotencyKey: String!): JSON
   diagnoseShopComeback(comebackId: ID!, cause: String!, diagnosis: String!, expectedVersion: Int, idempotencyKey: String!): JSON
   requestComebackGoodwill(comebackId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON

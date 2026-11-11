@@ -145,12 +145,6 @@ export async function buildInvoicePlan(tx: Tx, repairOrderId: string, now: Date)
   const today = await orgToday(tx, now)
   for (const plan of plans) {
     if (plan.payer.kind !== 'business_account' || !plan.payer.businessAccountId) continue
-    const standing = await standingOf(tx, plan.payer.businessAccountId, now)
-    // Credit hold and the credit limit are checked now, on the numbers as they stand, so a hold set since the work opened still stops the bill.
-    if (standing.blocked) problems.push(readableBlock(standing))
-    else if (standing.creditLimitMinor > 0n && !standing.waived && standing.openBalanceMinor + plan.totals.totalMinor > standing.creditLimitMinor) {
-      problems.push(`${standing.name} would owe ${usd(standing.openBalanceMinor + plan.totals.totalMinor)}, over its ${usd(standing.creditLimitMinor)} credit limit. A manager must raise the limit or release the hold before this is invoiced.`)
-    }
     // A tax-exempt certificate on file that has not expired removes tax from this payer's invoice. Past its expiry date it no longer applies.
     const cert = await activeCertificate(tx, plan.payer.businessAccountId, today)
     if (cert && plan.totals.taxMinor > 0n) {
@@ -160,6 +154,12 @@ export async function buildInvoicePlan(tx: Tx, repairOrderId: string, now: Date)
       plan.totals = totalsOf(lines)
     }
     if (cert) plan.exemption = { id: cert.id, kind: cert.kind, number: cert.number, issuingState: cert.issuingState, expiresAt: cert.expiresAt ? cert.expiresAt.toISOString().slice(0, 10) : null }
+    const standing = await standingOf(tx, plan.payer.businessAccountId, now)
+    // Credit hold and the credit limit are checked now, on the numbers as they stand (after any exemption), so a hold set since the work opened still stops the bill.
+    if (standing.blocked) problems.push(readableBlock(standing))
+    else if (standing.creditLimitMinor > 0n && !standing.waived && standing.openBalanceMinor + plan.totals.totalMinor > standing.creditLimitMinor) {
+      problems.push(`${standing.name} would owe ${usd(standing.openBalanceMinor + plan.totals.totalMinor)}, over its ${usd(standing.creditLimitMinor)} credit limit. A manager must raise the limit or release the hold before this is invoiced.`)
+    }
   }
   return { ro, law: { ...law, ...law2 }, plans, problems, billable }
 }
@@ -192,7 +192,7 @@ export async function finalizeInvoices(uow: UnitOfWork, actor: Actor, input: Fin
 
   const today = zonedDate(shop.timeZone, now)
   const retentionYears = Math.max(1, law.recordRetentionYears ?? 4)
-  const disclosures = await disclosuresFor(tx, ro, law, odometer, plans.some(p => p.payer.kind !== 'customer'))
+  const disclosures = await disclosuresFor(tx, ro, law, odometer, plans.some(p => p.payer.kind !== 'customer' && p.payer.kind !== 'business_account'))
   const invoices: { id: string; invoiceNumber: string; payerKind: string; totalMinor: string }[] = []
 
   for (const plan of plans) {

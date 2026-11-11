@@ -209,7 +209,8 @@ export async function recordAuthorization(uow: UnitOfWork, actor: Actor, input: 
   if (!(STAFF_METHODS as readonly string[]).includes(input.method) || !allowed.includes(input.method)) throw new DomainError(Codes.METHOD_NOT_ALLOWED, `${String(input.method).replaceAll('_', ' ')} is not an allowed way to authorize here.`, { field: 'method' })
   const actorName = String(input.actorName ?? '').trim().slice(0, 120)
   if (!actorName) throw new DomainError(Codes.EVIDENCE_MISSING, 'Enter the name of the person who authorized.', { field: 'actorName' })
-  const actorKind = input.actorKind ?? 'customer'
+  // Work billed to a business account is authorized by one of its approvers, whatever the method (phone, tablet, written form or PO).
+  const actorKind = ro.businessAccountId ? 'fleet_approver' : input.actorKind ?? 'customer'
   if (actorKind === 'designee') {
     const designee = (ro.designee ?? null) as { name?: string } | null
     if (!designee?.name || designee.name.trim().toLowerCase() !== actorName.toLowerCase()) throw new DomainError(Codes.EVIDENCE_MISSING, 'Only the designee named on the signed work order can authorize for the customer (16 CCR §3354(c)).', { field: 'actorName' })
@@ -243,11 +244,16 @@ export async function recordAuthorization(uow: UnitOfWork, actor: Actor, input: 
   }
   // Fleet accounts: the PO rule, and the approver's limit. Over the limit escalates to the next approver in the chain.
   let fleetApproverId: string | null = null
-  if (ro.businessAccountId && (input.method === 'fleet_po' || actorKind === 'fleet_approver')) {
-    const approved = (input.answers ?? []).filter(a => a.decision === 'approve').map(a => a.jobId)
+  let recordedName = actorName
+  const approvedIds = (input.answers ?? []).filter(a => a?.decision === 'approve').map(a => a.jobId)
+  if (ro.businessAccountId && approvedIds.length) {
+    const approved = approvedIds
     const checked = await checkFleetAuthorization(tx, ro, { approverId: input.fleetApproverId, poNumber: input.poNumber, jobIds: approved })
     fleetApproverId = checked.approverId
-    if (checked.approverId) Object.assign(evidence, { fleetApproverId: checked.approverId, approverName: checked.approverName })
+    if (checked.approverId) {
+      Object.assign(evidence, { fleetApproverId: checked.approverId, approverName: checked.approverName })
+      recordedName = checked.approverName || actorName
+    }
   }
   const rules = (law.authorizationEvidenceRules ?? {}) as Record<string, string[]>
   const needed = Array.isArray(rules[input.method]) ? rules[input.method] : []
@@ -262,7 +268,7 @@ export async function recordAuthorization(uow: UnitOfWork, actor: Actor, input: 
     requestId = request.id
   }
   const result = await applyAnswers(uow, actor, ev, ro, law, input.answers, input.replacedPartsElection ?? null, {
-    method: input.method, actorKind, actorName, contactUsed, evidence, recordedByUserId: actorUserId(actor), authorizationRequestId: requestId, signatureDocumentId, poNumber: String(input.poNumber ?? '').trim().slice(0, 60), at, fleetApproverId,
+    method: input.method, actorKind, actorName: recordedName, contactUsed, evidence, recordedByUserId: actorUserId(actor), authorizationRequestId: requestId, signatureDocumentId, poNumber: String(input.poNumber ?? '').trim().slice(0, 60), at, fleetApproverId,
   })
   if (requestId) {
     const request = await tx.authorizationRequest.findUniqueOrThrow({ where: { id: requestId } })
@@ -412,6 +418,8 @@ export async function answerAuthorizationRequest(uow: UnitOfWork, actor: Actor, 
   const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId } })
   const allowed = Array.isArray(law.allowedAuthorizationMethods) ? (law.allowedAuthorizationMethods as string[]) : []
   if (!allowed.includes('electronic_link')) throw new DomainError(Codes.METHOD_NOT_ALLOWED, 'This shop takes approvals in person or by phone. Use "Call me".')
+  // Work billed to a business account is approved by the account's approvers (their limits and the PO rule), not on the customer link.
+  if (ro.businessAccountId && (input.answers ?? []).some(a => a?.decision === 'approve')) throw new DomainError(Codes.NOT_AUTHORIZED, 'This work is billed to a business account. One of its approvers approves it on the fleet link, or by phone with the shop.')
   const signerName = String(input.signerName ?? '').trim().slice(0, 120)
   if (!signerName) throw new DomainError(Codes.EVIDENCE_MISSING, 'Type your full name to sign.', { field: 'signerName' })
   if (input.consent !== true) throw new DomainError(Codes.EVIDENCE_MISSING, 'Tick the box to agree to the authorization wording.', { field: 'consent' })

@@ -5073,8 +5073,52 @@ async function seedFleets(uow, actor) {
       if (mail) await recordConsent(uow, actor, { contactId: mail.id, channel: "email", purpose: "transactional", action: "granted", method: "staff_recorded", evidence: { source: "Fleet agreement", seed: true } });
     }
     for (const [j, v] of f.vehicles.entries()) if (await seedVehicle(uow, actor, `seed_veh_${f.id.replace(/^seed_acct_/, "")}_${String(j + 1).padStart(2, "0")}`, v, { businessAccountId: f.id })) created.vehicles += 1;
+    await seedFleetStanding(uow, actor, f);
   }
   return created;
+}
+var FLEET_PEOPLE = {
+  seed_acct_cvp: {
+    contacts: [
+      { name: "Dana Whitfield", email: "dana.whitfield@capitalvalleyplumbing.com", phone: "+19165550142", roles: ["billing", "approver"], limit: 75000n },
+      { name: "Raymond Okafor", email: "raymond.okafor@capitalvalleyplumbing.com", phone: "+19165550143", roles: ["approver"], limit: 300000n },
+      { name: "Priya Natarajan", email: "accounts@capitalvalleyplumbing.com", phone: "+19165550144", roles: ["billing"] }
+    ],
+    driverNames: ["Luis Herrera", "Tamika Brooks", "Greg Palmer", "Sofia Ramos", "Ed Kowalski", "Nate Fielding"]
+  },
+  seed_acct_sacl: {
+    contacts: [
+      { name: "Helen Marquez", email: "helen.marquez@sacramentocountylibrary.org", phone: "+19165550192", roles: ["billing", "approver"], limit: 150000n }
+    ],
+    driverNames: ["Walter Chen", "Alicia Foster"],
+    certificate: { kind: "government", number: "SCL-GOV-4471", issuingState: "California", effectiveFrom: "2025-07-01", expiresAt: "2027-06-30" }
+  }
+};
+async function seedFleetStanding(uow, actor, f) {
+  const { tx } = uow;
+  const people = FLEET_PEOPLE[f.id];
+  if (!people || await tx.businessAccountContact.count({ where: { businessAccountId: f.id } })) return;
+  const meta = { metadata: { seed: true } };
+  for (const [i, p] of people.contacts.entries()) {
+    const contact = await tx.businessAccountContact.create({ data: { id: `seed_fc_${f.id.replace(/^seed_acct_/, "")}_${i + 1}`, businessAccountId: f.id, name: p.name, email: p.email, phone: p.phone, roles: p.roles } });
+    auditCreate(uow, actor, "BusinessAccountContact", contact.id, "account_contact.added", { businessAccountId: f.id, name: p.name }, meta);
+    if (p.limit) {
+      const approver = await tx.fleetApprover.create({ data: { businessAccountId: f.id, contactId: contact.id, limitMinor: p.limit, order: people.contacts.slice(0, i).filter((c) => c.limit).length + 1 } });
+      auditCreate(uow, actor, "FleetApprover", approver.id, "fleet_approver.added", { businessAccountId: f.id, contact: p.name, limitMinor: p.limit }, meta);
+    }
+  }
+  const vehicles = await tx.vehicleOwnership.findMany({ where: { businessAccountId: f.id, endedAt: null }, orderBy: { createdAt: "asc" }, select: { vehicleId: true } });
+  const prefix = f.id === "seed_acct_cvp" ? "CVP" : "SCL";
+  for (const [i, v] of vehicles.entries()) {
+    const unit = await tx.fleetUnit.create({ data: { businessAccountId: f.id, vehicleId: v.vehicleId, unitNumber: `${prefix}${String(i + 1).padStart(3, "0")}`, driverName: people.driverNames[i % people.driverNames.length], costCenter: f.id === "seed_acct_cvp" ? i % 2 ? "Service calls" : "Installations" : "Outreach" } });
+    auditCreate(uow, actor, "FleetUnit", unit.id, "fleet_unit.added", { businessAccountId: f.id, unitNumber: unit.unitNumber }, meta);
+  }
+  if (people.certificate) {
+    const c = people.certificate;
+    const cert = await tx.exemptionCertificate.create({ data: { businessAccountId: f.id, kind: c.kind, number: c.number, issuingState: c.issuingState, effectiveFrom: /* @__PURE__ */ new Date(`${c.effectiveFrom}T00:00:00Z`), expiresAt: /* @__PURE__ */ new Date(`${c.expiresAt}T00:00:00Z`), status: "active" } });
+    auditCreate(uow, actor, "ExemptionCertificate", cert.id, "certificate.added", { businessAccountId: f.id, number: c.number }, meta);
+    await tx.businessAccount.update({ where: { id: f.id }, data: { taxExempt: true } });
+  }
 }
 async function seedAppointments(uow, actor) {
   const { tx, now } = uow;
@@ -6461,9 +6505,873 @@ function allocateMinor(total, weights) {
   return negative ? shares2.map((x) => -x) : shares2;
 }
 
+// features/keystone/lib/invoiceMath.ts
+var PART_KINDS = ["part", "tire", "core", "refrigerant"];
+function totalsOf(lines) {
+  const of = (kinds) => sumMinor(lines.filter((l) => kinds.includes(l.kind)).map((l) => l.extendedMinor));
+  const laborSubtotalMinor = of(["labor"]);
+  const partsSubtotalMinor = of(PART_KINDS);
+  const feesSubtotalMinor = of(["fee"]);
+  const subletSubtotalMinor = of(["sublet"]);
+  const discountMinor = of(["discount"]);
+  const taxMinor = sumMinor(lines.map((l) => l.taxMinor));
+  return { laborSubtotalMinor, partsSubtotalMinor, feesSubtotalMinor, subletSubtotalMinor, discountMinor, taxMinor, totalMinor: laborSubtotalMinor + partsSubtotalMinor + feesSubtotalMinor + subletSubtotalMinor + discountMinor + taxMinor };
+}
+function payerWeights(jobTotalMinor, shares2) {
+  if (!shares2.length) throw new Error("payerWeights needs at least one payer");
+  const percentSum = shares2.reduce((a, s) => a.plus(s.percent), new Decimal(0));
+  if (percentSum.isZero()) throw new Error("payer percentages must not all be zero");
+  const deductible = shares2.reduce((a, s) => a + (s.deductibleMinor ?? 0n), 0n);
+  if (jobTotalMinor <= 0n || deductible <= 0n) return shares2.map((s) => s.percent);
+  const capped = deductible > jobTotalMinor ? jobTotalMinor : deductible;
+  const rest = dec(jobTotalMinor - capped);
+  return shares2.map((s) => {
+    const own = s.deductibleMinor && deductible > 0n ? dec(capped).times(dec(s.deductibleMinor)).div(dec(deductible)) : new Decimal(0);
+    return own.plus(rest.times(s.percent).div(percentSum));
+  });
+}
+function splitLine(line, weights) {
+  const ext = allocateMinor(line.extendedMinor, weights);
+  const tax = allocateMinor(line.taxMinor, weights);
+  return weights.map((_, i) => ({ kind: line.kind, extendedMinor: ext[i], taxMinor: tax[i] }));
+}
+function spreadPayment(amountMinor, balances) {
+  const owed = sumMinor(balances);
+  if (amountMinor < 0n) throw new Error("A payment cannot be negative");
+  if (amountMinor > owed) throw new Error("A payment cannot exceed what is owed");
+  if (amountMinor === 0n || owed === 0n) return balances.map(() => 0n);
+  if (balances.length === 1) return [amountMinor];
+  const shares2 = allocateMinor(amountMinor, balances.map((b) => b.toString()));
+  return shares2.map((s, i) => s > balances[i] ? balances[i] : s);
+}
+function addDays2(date2, days) {
+  const d2 = /* @__PURE__ */ new Date(`${date2}T00:00:00Z`);
+  d2.setUTCDate(d2.getUTCDate() + days);
+  return d2.toISOString().slice(0, 10);
+}
+function addMonths(date2, months) {
+  const [y, m, day3] = date2.split("-").map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day3, last));
+  return target.toISOString().slice(0, 10);
+}
+var addYears = (date2, years) => addMonths(date2, years * 12);
+function invoiceStatus(input) {
+  const balance = input.totalMinor - input.paidMinor - input.creditedMinor;
+  if (balance <= 0n) return input.paidMinor > 0n ? "paid" : input.creditedMinor > 0n ? "credited" : "paid";
+  if (input.paidMinor > 0n) return "partially_paid";
+  return input.sent ? "sent" : "finalized";
+}
+
+// features/keystone/lib/payments.ts
+var MANUAL_TENDERS = ["cash", "check", "ach", "card_present", "tap_to_pay", "financing", "store_credit", "gift_card", "account_credit"];
+var CARD_TENDERS = ["card_link"];
+var SETTLED_PAYMENT = ["succeeded", "partially_refunded", "refunded"];
+var text15 = (value, max) => String(value ?? "").trim().slice(0, max);
+var whole2 = (value, field, { positive = true } = {}) => {
+  const s = String(value ?? "").trim();
+  if (!/^\d{1,12}$/.test(s)) throw new DomainError(Codes.INVALID_INPUT, "Enter an amount in whole cents.", { field });
+  const n = BigInt(s);
+  if (positive && n <= 0n) throw new DomainError(Codes.INVALID_INPUT, "The amount must be above zero.", { field });
+  return n;
+};
+async function postingDate(tx, shopId, now) {
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { timeZone: true } });
+  let date2 = zonedDate(shop.timeZone, now);
+  for (let i = 0; i < 366; i += 1) {
+    const closed = await tx.businessDayClose.findFirst({ where: { shopId, businessDate: /* @__PURE__ */ new Date(`${date2}T00:00:00.000Z`), status: "closed" }, select: { id: true } });
+    if (!closed) return date2;
+    date2 = addDays2(date2, 1);
+  }
+  return date2;
+}
+var asDate = (iso2) => /* @__PURE__ */ new Date(`${iso2}T00:00:00.000Z`);
+async function createPayment(uow, actor, input, idempotencyKey) {
+  const { tx, now } = uow;
+  const amount = whole2(input.amountMinor, "amountMinor");
+  const purpose = input.purpose === "deposit" ? "deposit" : "invoice";
+  const isCard = CARD_TENDERS.includes(input.tender);
+  if (!isCard && !MANUAL_TENDERS.includes(input.tender)) throw new DomainError(Codes.INVALID_INPUT, "Choose how the customer is paying.", { field: "tender" });
+  if (input.tender === "check" && !text15(input.checkNumber, 40)) throw new DomainError(Codes.INVALID_INPUT, "Enter the check number.", { field: "checkNumber" });
+  let shopId, customerId2, repairOrderId;
+  let invoiceIds = [];
+  if (purpose === "invoice") {
+    invoiceIds = [...new Set((input.invoiceIds ?? []).filter((x) => typeof x === "string"))].sort();
+    if (!invoiceIds.length) throw new DomainError(Codes.INVALID_INPUT, "Choose the invoice this pays.", { field: "invoiceIds" });
+    const invoices = [];
+    for (const id of invoiceIds) invoices.push(await lockRow(tx, "Invoice", id));
+    if (new Set(invoices.map((i) => i.shopId)).size !== 1) throw new DomainError(Codes.INVALID_INPUT, "One payment cannot span shops.");
+    const owed = sumMinor(invoices.map((i) => BigInt(i.balanceMinor)));
+    if (owed <= 0n) throw new DomainError(Codes.GUARD_FAILED, "That invoice is already paid.");
+    if (amount > owed) throw new DomainError(Codes.GUARD_FAILED, `That is more than the ${owed.toString().padStart(3, "0").slice(0, -2)}.${owed.toString().padStart(3, "0").slice(-2)} owed. Take only what is due.`, { field: "amountMinor" });
+    shopId = invoices[0].shopId;
+    customerId2 = invoices[0].customerId ?? null;
+    repairOrderId = invoices[0].repairOrderId ?? null;
+  } else {
+    if (!input.repairOrderId) throw new DomainError(Codes.INVALID_INPUT, "Choose the repair order the deposit is for.", { field: "repairOrderId" });
+    const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
+    if (["void", "invoiced", "closed"].includes(ro.status)) throw new DomainError(Codes.GUARD_FAILED, `${ro.roNumber} is ${String(ro.status).replaceAll("_", " ")}; take the payment on its invoice.`);
+    await assertDepositPolicy(tx, ro, amount);
+    shopId = ro.shopId;
+    customerId2 = ro.customerId ?? null;
+    repairOrderId = ro.id;
+  }
+  const settleNow = !isCard;
+  const row = await tx.payment.create({
+    data: {
+      shopId,
+      purpose,
+      repairOrderId,
+      customerId: customerId2,
+      targetInvoiceIds: invoiceIds,
+      tender: input.tender,
+      amountMinor: amount,
+      provider: isCard ? "stripe" : "manual",
+      idempotencyKey,
+      payerName: text15(input.payerName, 120),
+      checkNumber: text15(input.checkNumber, 40),
+      cardBrand: text15(input.cardBrand, 20),
+      cardLast4: /^\d{4}$/.test(String(input.cardLast4 ?? "")) ? String(input.cardLast4) : "",
+      receivedById: actorUserId(actor),
+      status: settleNow ? "succeeded" : "initiated",
+      settledAt: settleNow ? now : null,
+      businessDate: settleNow ? asDate(await postingDate(tx, shopId, now)) : null
+    }
+  });
+  auditCreate(uow, actor, "Payment", row.id, settleNow ? "payment.received" : "payment.started", { purpose, tender: input.tender, amountMinor: amount, invoiceIds, repairOrderId });
+  let allocated = 0n;
+  if (settleNow && purpose === "invoice") allocated = await allocatePayment(uow, actor, row.id);
+  return { id: row.id, status: row.status, allocatedMinor: allocated.toString(), amountMinor: amount.toString() };
+}
+async function assertDepositPolicy(tx, ro, amount) {
+  const policy = ro.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: ro.shopPolicyVersionId }, select: { depositPolicy: true } }) : null;
+  const rule2 = policy?.depositPolicy ?? {};
+  if (rule2.enabled === false) throw new DomainError(Codes.GUARD_FAILED, "This shop does not take deposits.");
+  if (rule2.maxMinor && amount > BigInt(rule2.maxMinor)) throw new DomainError(Codes.GUARD_FAILED, "That deposit is above the shop limit.", { field: "amountMinor" });
+  if (rule2.maxPercentOfEstimate && BigInt(ro.currentTotalMinor) > 0n) {
+    const cap = BigInt(ro.currentTotalMinor) * BigInt(Math.round(rule2.maxPercentOfEstimate * 100)) / 10000n;
+    if (amount > cap) throw new DomainError(Codes.GUARD_FAILED, "That deposit is above the share of the estimate the shop allows.", { field: "amountMinor" });
+  }
+}
+async function allocatePayment(uow, actor, paymentId) {
+  const { tx, now } = uow;
+  const payment = await lockRow(tx, "Payment", paymentId);
+  if (!SETTLED_PAYMENT.includes(payment.status)) return 0n;
+  const available = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - BigInt(payment.allocatedMinor);
+  const targets = (payment.targetInvoiceIds ?? []).slice().sort();
+  if (available <= 0n || !targets.length) return 0n;
+  const invoices = [];
+  for (const id of targets) invoices.push(await lockRow(tx, "Invoice", id));
+  const balances = invoices.map((i) => BigInt(i.balanceMinor));
+  const owed = sumMinor(balances);
+  const apply = available > owed ? owed : available;
+  if (apply <= 0n) return 0n;
+  const shares2 = spreadPayment(apply, balances);
+  for (let i = 0; i < invoices.length; i += 1) {
+    if (shares2[i] <= 0n) continue;
+    await tx.paymentAllocation.create({ data: { paymentId, invoiceId: invoices[i].id, amountMinor: shares2[i], at: now } });
+    await settleInvoice(uow, actor, invoices[i], shares2[i], 0n);
+  }
+  await tx.payment.update({ where: { id: paymentId }, data: { allocatedMinor: { increment: apply }, version: { increment: 1 } } });
+  auditCreate(uow, actor, "Payment", paymentId, "payment.allocated", { amountMinor: apply, invoices: invoices.map((inv, i) => ({ id: inv.id, amountMinor: shares2[i] })) });
+  return apply;
+}
+async function settleInvoice(uow, actor, invoice, paidDelta, creditedDelta) {
+  const { tx } = uow;
+  const paid = BigInt(invoice.paidMinor) + paidDelta;
+  const credited = BigInt(invoice.creditedMinor) + creditedDelta;
+  const total = BigInt(invoice.totalMinor);
+  const status = invoiceStatus({ totalMinor: total, paidMinor: paid, creditedMinor: credited, sent: !!invoice.sentAt });
+  await tx.invoice.update({ where: { id: invoice.id }, data: { paidMinor: paid, creditedMinor: credited, balanceMinor: total - paid - credited, status, version: { increment: 1 } } });
+  if (invoice.businessAccountId) {
+    await tx.businessAccount.update({ where: { id: invoice.businessAccountId }, data: { openBalanceMinor: { decrement: paidDelta + creditedDelta }, version: { increment: 1 } } });
+  }
+  uow.audit({ eventType: "invoice.balance_changed", entityType: "Invoice", entityId: invoice.id, actorUserId: actorUserId(actor), before: { paidMinor: BigInt(invoice.paidMinor), creditedMinor: BigInt(invoice.creditedMinor), status: invoice.status }, after: { paidMinor: paid, creditedMinor: credited, balanceMinor: total - paid - credited, status } });
+}
+async function settleDeposits(uow, actor, repairOrderId, invoiceIds) {
+  const { tx } = uow;
+  const deposits = await tx.payment.findMany({ where: { repairOrderId, purpose: "deposit", status: { in: ["succeeded", "partially_refunded"] } }, orderBy: { createdAt: "asc" } });
+  if (!deposits.length) return 0n;
+  const invoices = await tx.invoice.findMany({ where: { id: { in: invoiceIds }, payerKind: "customer" }, select: { id: true } });
+  if (!invoices.length) return 0n;
+  let total = 0n;
+  for (const d2 of deposits) {
+    await advisoryLock(tx, `payment:${d2.id}`);
+    await tx.payment.update({ where: { id: d2.id }, data: { targetInvoiceIds: invoices.map((i) => i.id) } });
+    total += await allocatePayment(uow, actor, d2.id);
+  }
+  return total;
+}
+async function applyCardResult(uow, actor, input) {
+  const { tx, now } = uow;
+  const payment = await lockRow(tx, "Payment", input.paymentId);
+  if (SETTLED_PAYMENT.includes(payment.status) || payment.status === "failed") return { status: payment.status, allocatedMinor: "0", already: true };
+  if (input.outcome === "paid") {
+    const businessDate = asDate(await postingDate(tx, payment.shopId, now));
+    await transition(uow, {
+      model: "Payment",
+      id: payment.id,
+      from: ["initiated", "pending", "unknown"],
+      to: "succeeded",
+      actor,
+      eventType: "payment.succeeded",
+      data: { providerPaymentId: input.paymentIntentId ?? "", cardBrand: input.cardBrand ?? "", cardLast4: input.cardLast4 ?? "", settledAt: now, businessDate, failureMessage: "" }
+    });
+    const allocated = payment.purpose === "invoice" ? await allocatePayment(uow, actor, payment.id) : 0n;
+    return { status: "succeeded", allocatedMinor: allocated.toString(), already: false };
+  }
+  await transition(uow, { model: "Payment", id: payment.id, from: ["initiated", "pending", "unknown"], to: "failed", actor, eventType: "payment.failed", data: { failureMessage: text15(input.message || (input.outcome === "expired" ? "The payment page expired before it was paid." : "The card was not charged."), 300) } });
+  return { status: "failed", allocatedMinor: "0", already: false };
+}
+
+// features/keystone/lib/settlement.ts
+var text16 = (value, max) => String(value ?? "").trim().slice(0, max);
+var reasonOf = (value, what) => {
+  const r = text16(value, 300);
+  if (r.length < 3) throw new DomainError(Codes.INVALID_INPUT, `Say why ${what}.`, { field: "reason" });
+  return r;
+};
+async function needApproval(uow, actor, a) {
+  if (a.approvalRequestId) {
+    await consumeApproval(uow, { requestId: a.approvalRequestId, action: a.action, targetList: a.targetList, targetId: a.targetId, payload: a.payload });
+    return { approved: true, approvalRequestId: a.approvalRequestId };
+  }
+  const request = await requestApproval(uow, actor, { action: a.action, targetList: a.targetList, targetId: a.targetId, payload: a.payload, requiredPermission: a.permission, summary: a.summary });
+  return { approved: false, approvalRequestId: request.id };
+}
+var cents2 = (minor2) => {
+  const t = (minor2 < 0n ? -minor2 : minor2).toString().padStart(3, "0");
+  return `${t.slice(0, -2)}.${t.slice(-2)}`;
+};
+var waiting = (id) => ({ approvalRequired: true, approvalRequestId: id });
+async function policyOf(tx, shopId) {
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { shopPolicyId: true } });
+  return shop.shopPolicyId ? tx.shopPolicyVersion.findUnique({ where: { id: shop.shopPolicyId }, select: { refundApprovalMinor: true, creditMemoApprovalMinor: true } }) : null;
+}
+async function openRefund(uow, actor, input) {
+  const { tx } = uow;
+  const amount = whole2(input.amountMinor, "amountMinor");
+  const reason = reasonOf(input.reason, "the money is going back");
+  const payment = await lockRow(tx, "Payment", input.paymentId);
+  if (!["succeeded", "partially_refunded"].includes(payment.status)) throw new DomainError(Codes.GUARD_FAILED, "Only a payment that went through can be refunded.");
+  const inFlight = await tx.refund.aggregate({ where: { paymentId: payment.id, status: { in: ["requested", "pending", "unknown"] } }, _sum: { amountMinor: true } });
+  const left = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - (inFlight._sum.amountMinor ?? 0n);
+  if (amount > left) throw new DomainError(Codes.GUARD_FAILED, `Only ${cents2(left)} of this payment is left to refund.`, { field: "amountMinor" });
+  const policy = await policyOf(tx, payment.shopId);
+  const threshold = policy?.refundApprovalMinor ?? 0n;
+  let approvalId = null;
+  if (threshold > 0n && amount >= threshold) {
+    const gate2 = await needApproval(uow, actor, {
+      action: "refund.issue",
+      targetList: "Payment",
+      targetId: payment.id,
+      permission: "canApproveRefund",
+      approvalRequestId: input.approvalRequestId,
+      payload: { paymentId: payment.id, amountMinor: amount.toString(), reason },
+      summary: `Refund ${cents2(amount)}: ${reason}`
+    });
+    if (!gate2.approved) return waiting(gate2.approvalRequestId);
+    approvalId = gate2.approvalRequestId;
+  }
+  const row = await tx.refund.create({
+    data: { paymentId: payment.id, amountMinor: amount, reason, provider: payment.provider, approvalId, requestedById: actorUserId(actor), status: "requested" }
+  });
+  auditCreate(uow, actor, "Refund", row.id, "refund.requested", { paymentId: payment.id, amountMinor: amount, provider: payment.provider, approvalId }, { reason });
+  return { refundId: row.id, provider: payment.provider, tender: payment.tender, providerPaymentId: payment.providerPaymentId || "", amountMinor: amount.toString() };
+}
+async function applyRefundResult(uow, actor, input) {
+  const { tx, now } = uow;
+  const refund = await lockRow(tx, "Refund", input.refundId);
+  if (["succeeded", "failed"].includes(refund.status)) return { status: refund.status, already: true };
+  if (input.outcome === "pending" || input.outcome === "unknown") {
+    if (refund.status !== input.outcome) await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: input.outcome, actor, eventType: `refund.${input.outcome}`, data: { providerRefundId: input.providerRefundId ?? refund.providerRefundId } });
+    return { status: input.outcome, already: false };
+  }
+  if (input.outcome === "failed") {
+    await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: "failed", actor, eventType: "refund.failed", data: { failureMessage: text16(input.message || "The refund did not go through.", 300) } });
+    return { status: "failed", already: false };
+  }
+  const payment = await lockRow(tx, "Payment", refund.paymentId);
+  const amount = BigInt(refund.amountMinor);
+  const unallocated = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - BigInt(payment.allocatedMinor);
+  const fromFree = unallocated > 0n ? amount < unallocated ? amount : unallocated : 0n;
+  let fromInvoices = amount - fromFree;
+  if (fromInvoices > 0n) {
+    const rows = await tx.paymentAllocation.groupBy({ by: ["invoiceId"], where: { paymentId: payment.id }, _sum: { amountMinor: true } });
+    const net = rows.map((r) => ({ invoiceId: r.invoiceId, net: r._sum.amountMinor ?? 0n })).filter((r) => r.net > 0n).sort((a, b) => a.invoiceId.localeCompare(b.invoiceId));
+    const available = sumMinor(net.map((n) => n.net));
+    if (fromInvoices > available) fromInvoices = available;
+    const shares2 = net.length ? allocateMinor(fromInvoices, net.map((n) => n.net.toString())) : [];
+    for (let i = 0; i < net.length; i += 1) {
+      const take = shares2[i] > net[i].net ? net[i].net : shares2[i];
+      if (take <= 0n) continue;
+      const invoice = await lockRow(tx, "Invoice", net[i].invoiceId);
+      await tx.paymentAllocation.create({ data: { paymentId: payment.id, invoiceId: invoice.id, refundId: refund.id, amountMinor: -take, at: now } });
+      await settleInvoice(uow, actor, invoice, -take, 0n);
+    }
+  }
+  const refunded = BigInt(payment.refundedMinor) + amount;
+  await tx.payment.update({ where: { id: payment.id }, data: { refundedMinor: refunded, allocatedMinor: { decrement: fromInvoices }, status: refunded >= BigInt(payment.amountMinor) ? "refunded" : "partially_refunded", version: { increment: 1 } } });
+  const businessDate = asDate(await postingDate(tx, payment.shopId, now));
+  await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: "succeeded", actor, eventType: "refund.succeeded", data: { providerRefundId: input.providerRefundId ?? refund.providerRefundId, settledAt: now, businessDate, failureMessage: "" } });
+  return { status: "succeeded", already: false, amountMinor: amount.toString() };
+}
+async function issueCreditMemo(uow, actor, input) {
+  const { tx, now } = uow;
+  const reason = reasonOf(input.reason, "the invoice is being credited");
+  const invoice = await lockRow(tx, "Invoice", input.invoiceId);
+  if (!Array.isArray(input.lines) || !input.lines.length) throw new DomainError(Codes.INVALID_INPUT, "Choose what to credit.", { field: "lines" });
+  const prior = await tx.creditMemoLine.findMany({ where: { creditMemo: { invoiceId: invoice.id, status: "issued" } }, select: { invoiceLineId: true, amountMinor: true } });
+  const lines = [];
+  for (const l of input.lines) {
+    const source = await tx.invoiceLine.findUnique({ where: { id: String(l.invoiceLineId) } });
+    if (!source || source.invoiceId !== invoice.id) throw new DomainError(Codes.INVALID_INPUT, "That line is not on this invoice.", { field: "lines" });
+    const amount = whole2(l.amountMinor, "amountMinor");
+    const credited = sumMinor(prior.filter((p) => p.invoiceLineId === source.id).map((p) => p.amountMinor));
+    if (amount > source.extendedMinor - credited) throw new DomainError(Codes.GUARD_FAILED, `${source.description}: only ${cents2(source.extendedMinor - credited)} is left to credit.`, { field: "amountMinor" });
+    const taxMinor = source.extendedMinor > 0n ? BigInt(dec(source.taxMinor).times(dec(amount)).div(dec(source.extendedMinor)).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN).toString()) : 0n;
+    lines.push({ invoiceLineId: source.id, description: source.description, amountMinor: amount, taxMinor });
+  }
+  const subtotal = sumMinor(lines.map((l) => l.amountMinor));
+  const tax = sumMinor(lines.map((l) => l.taxMinor));
+  const total = subtotal + tax;
+  if (total > BigInt(invoice.balanceMinor)) throw new DomainError(Codes.GUARD_FAILED, "A credit cannot be more than what is still owed. Refund the payment for money already received.", { field: "lines" });
+  const policy = await policyOf(tx, invoice.shopId);
+  const threshold = policy?.creditMemoApprovalMinor ?? 0n;
+  let approvalId = null;
+  if (threshold > 0n && total >= threshold) {
+    const gate2 = await needApproval(uow, actor, {
+      action: "credit_memo.issue",
+      targetList: "Invoice",
+      targetId: invoice.id,
+      permission: "canApproveCreditMemo",
+      approvalRequestId: input.approvalRequestId,
+      payload: { invoiceId: invoice.id, reason, lines: lines.map((l) => ({ invoiceLineId: l.invoiceLineId, amountMinor: l.amountMinor.toString() })) },
+      summary: `Credit ${cents2(total)} on ${invoice.invoiceNumber}: ${reason}`
+    });
+    if (!gate2.approved) return waiting(gate2.approvalRequestId);
+    approvalId = gate2.approvalRequestId;
+  }
+  const shop = await tx.shop.findUniqueOrThrow({ where: { id: invoice.shopId }, select: { code: true } });
+  const reference = await nextShopReference(tx, "CRM", shop.code, now);
+  const memo = await tx.creditMemo.create({ data: { shopId: invoice.shopId, reference, invoiceId: invoice.id, reason, subtotalMinor: subtotal, taxMinor: tax, totalMinor: total, approvalId, createdById: actorUserId(actor), issuedById: actorUserId(actor), issuedAt: now, status: "issued" } });
+  await tx.creditMemoLine.createMany({ data: lines.map((l) => ({ creditMemoId: memo.id, invoiceLineId: l.invoiceLineId, description: l.description, amountMinor: l.amountMinor, taxMinor: l.taxMinor })) });
+  await settleInvoice(uow, actor, invoice, 0n, total);
+  auditCreate(uow, actor, "CreditMemo", memo.id, "credit_memo.issued", { reference, invoice: invoice.invoiceNumber, totalMinor: total, approvalId }, { reason });
+  return { id: memo.id, reference, totalMinor: total.toString() };
+}
+async function dayTotals(tx, shopId, date2) {
+  const businessDate = asDate(date2);
+  const payments = await tx.payment.findMany({ where: { shopId, businessDate, status: { in: ["succeeded", "partially_refunded", "refunded"] } }, select: { tender: true, amountMinor: true } });
+  const refunds = await tx.refund.findMany({ where: { businessDate, status: "succeeded", payment: { shopId } }, select: { amountMinor: true, payment: { select: { tender: true } } } });
+  const totals = {};
+  for (const p of payments) totals[p.tender] = (totals[p.tender] ?? 0n) + p.amountMinor;
+  for (const r of refunds) totals[r.payment.tender] = (totals[r.payment.tender] ?? 0n) - r.amountMinor;
+  const open = await tx.payment.count({ where: { shopId, status: { in: ["initiated", "pending", "unknown"] }, createdAt: { gte: new Date(businessDate.getTime() - 864e5), lt: new Date(businessDate.getTime() + 2 * 864e5) } } });
+  return { totals, expectedCashMinor: totals.cash ?? 0n, unresolvedPayments: open };
+}
+async function closeDay(uow, actor, input) {
+  const { tx, now } = uow;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.businessDate)) throw new DomainError(Codes.INVALID_INPUT, "Choose the day to close.", { field: "businessDate" });
+  const count = whole2(input.drawerCountMinor, "drawerCountMinor", { positive: false });
+  const { totals, expectedCashMinor, unresolvedPayments } = await dayTotals(tx, input.shopId, input.businessDate);
+  if (unresolvedPayments > 0) throw new DomainError(Codes.GUARD_FAILED, `${unresolvedPayments} card payment${unresolvedPayments === 1 ? " is" : "s are"} still waiting on the card processor. Check ${unresolvedPayments === 1 ? "it" : "them"} before closing the day.`);
+  const variance = count - expectedCashMinor;
+  const reason = text16(input.varianceReason, 300);
+  if (variance !== 0n && reason.length < 3) throw new DomainError(Codes.INVALID_INPUT, `The drawer is ${variance > 0n ? "over" : "short"} by ${cents2(variance < 0n ? -variance : variance)}. Say why.`, { field: "varianceReason" });
+  const businessDate = asDate(input.businessDate);
+  const existing = await tx.businessDayClose.findUnique({ where: { shopId_businessDate: { shopId: input.shopId, businessDate } } });
+  const data = { tenderTotals: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, v.toString()])), expectedCashMinor, drawerCountMinor: count, varianceMinor: variance, varianceReason: reason, closedById: actorUserId(actor), closedAt: now, status: "closed" };
+  if (existing?.status === "closed") throw new DomainError(Codes.GUARD_FAILED, "This day is already closed.");
+  let id;
+  if (existing) {
+    await tx.businessDayClose.update({ where: { id: existing.id }, data: { ...data, version: { increment: 1 } } });
+    id = existing.id;
+  } else {
+    id = (await tx.businessDayClose.create({ data: { shopId: input.shopId, businessDate, ...data } })).id;
+  }
+  auditCreate(uow, actor, "BusinessDayClose", id, "day.closed", { shopId: input.shopId, date: input.businessDate, expectedCashMinor, drawerCountMinor: count, varianceMinor: variance, tenders: data.tenderTotals }, { reason });
+  return { id, businessDate: input.businessDate, expectedCashMinor: expectedCashMinor.toString(), varianceMinor: variance.toString() };
+}
+async function reopenDay(uow, actor, input) {
+  const reason = reasonOf(input.reason, "the day is being reopened");
+  const day3 = await lockRow(uow.tx, "BusinessDayClose", input.dayCloseId);
+  if (day3.status !== "closed") throw new DomainError(Codes.GUARD_FAILED, "Only a closed day can be reopened.");
+  const gate2 = await needApproval(uow, actor, { action: "day.reopen", targetList: "BusinessDayClose", targetId: day3.id, permission: "canApproveReopen", approvalRequestId: input.approvalRequestId, payload: { dayCloseId: day3.id, reason }, summary: `Reopen the day ${new Date(day3.businessDate).toISOString().slice(0, 10)}: ${reason}` });
+  if (!gate2.approved) return waiting(gate2.approvalRequestId);
+  await uow.tx.businessDayClose.update({ where: { id: day3.id }, data: { status: "reopened", reopenApprovalId: gate2.approvalRequestId, version: { increment: 1 } } });
+  uow.audit({ eventType: "day.reopened", entityType: "BusinessDayClose", entityId: day3.id, actorUserId: actorUserId(actor), approverId: null, reason, after: { status: "reopened" } });
+  return { id: day3.id, status: "reopened" };
+}
+async function releaseVehicle(uow, actor, input) {
+  const { tx, now } = uow;
+  const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
+  if (ro.status !== "invoiced") throw new DomainError(Codes.GUARD_FAILED, `${ro.roNumber} has to be invoiced before the vehicle is released.`);
+  if (ro.releasedAt) throw new DomainError(Codes.GUARD_FAILED, "This vehicle was already released.");
+  const invoices = await tx.invoice.findMany({ where: { repairOrderId: ro.id }, select: { balanceMinor: true } });
+  const owed = sumMinor(invoices.map((i) => i.balanceMinor));
+  let approvalId = null;
+  if (owed > 0n) {
+    const reason = reasonOf(input.reason, "the vehicle is leaving with a balance");
+    const gate2 = await needApproval(uow, actor, { action: "vehicle.release_with_balance", targetList: "RepairOrder", targetId: ro.id, permission: "canApproveRelease", approvalRequestId: input.approvalRequestId, payload: { repairOrderId: ro.id, owedMinor: owed.toString(), reason }, summary: `Release ${ro.roNumber} owing ${cents2(owed)}: ${reason}` });
+    if (!gate2.approved) return waiting(gate2.approvalRequestId);
+    approvalId = gate2.approvalRequestId;
+  }
+  await tx.repairOrder.update({ where: { id: ro.id }, data: { releasedAt: now, releasedById: actorUserId(actor), version: { increment: 1 } } });
+  auditCreate(uow, actor, "RepairOrder", ro.id, "vehicle.released", { owedMinor: owed, approvalId });
+  const closed = owed === 0n;
+  if (closed) await transition(uow, { model: "RepairOrder", id: ro.id, from: ["invoiced"], to: "closed", actor, eventType: "repair_order.closed" });
+  return { repairOrderId: ro.id, released: true, closed, owedMinor: owed.toString() };
+}
+async function closeIfSettled(uow, actor, repairOrderId) {
+  if (!repairOrderId) return;
+  const ro = await uow.tx.repairOrder.findUnique({ where: { id: repairOrderId }, select: { status: true, releasedAt: true } });
+  if (!ro || ro.status !== "invoiced" || !ro.releasedAt) return;
+  const owing = await uow.tx.invoice.count({ where: { repairOrderId, balanceMinor: { gt: 0n } } });
+  if (!owing) await transition(uow, { model: "RepairOrder", id: repairOrderId, from: ["invoiced"], to: "closed", actor, eventType: "repair_order.closed" });
+}
+
+// features/keystone/lib/publicTokens.ts
+var import_node_crypto6 = require("node:crypto");
+var DEV_KEY = "openfront-auto-repair-development-public-token-key";
+function key() {
+  const configured = process.env.PUBLIC_TOKEN_SECRET || process.env.SESSION_SECRET;
+  if (configured && configured.length >= 32) return configured;
+  if (process.env.NODE_ENV === "production") throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "Customer links are not configured on this server.");
+  return DEV_KEY;
+}
+var hashToken = (purpose, token) => (0, import_node_crypto6.createHmac)("sha256", key()).update(`${purpose}\0${token}`, "utf8").digest("hex");
+var deriveToken = (purpose, id) => (0, import_node_crypto6.createHmac)("sha256", key()).update(`token\0${purpose}\0${id}`, "utf8").digest("base64url");
+var newTokenId = () => (0, import_node_crypto6.randomUUID)();
+async function createAccessToken(uow, input) {
+  const id = newTokenId();
+  const token = deriveToken(input.purpose, id);
+  const ttl = Math.min(720, Math.max(1, Math.trunc(input.ttlHours)));
+  const expiresAt = new Date(uow.now.getTime() + ttl * 36e5);
+  const tokenHash = hashToken(input.purpose, token);
+  await uow.tx.publicAccessToken.create({ data: { id, purpose: input.purpose, subjectType: input.subjectType, subjectId: input.subjectId, shopId: input.shopId, tokenHash, expiresAt, maxUses: input.maxUses ?? 50 } });
+  return { id, token, tokenHash, expiresAt };
+}
+async function revokeTokensFor(tx, subjectType, subjectId, now) {
+  await tx.publicAccessToken.updateMany({ where: { subjectType, subjectId, revokedAt: null }, data: { revokedAt: now } });
+}
+
+// features/keystone/lib/fleet.ts
+var DAY = 864e5;
+var dateOnly2 = (iso2) => /* @__PURE__ */ new Date(`${iso2}T00:00:00.000Z`);
+var iso = (d2) => d2 ? d2.toISOString().slice(0, 10) : null;
+var clean2 = (value, max) => String(value ?? "").trim().slice(0, max);
+var DAY_TEXT = /^\d{4}-\d{2}-\d{2}$/;
+var daysBetween = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY);
+var waiting2 = (id) => ({ approvalRequired: true, approvalRequestId: id });
+var usd = (minor2) => {
+  const v = BigInt(minor2);
+  const t = (v < 0n ? -v : v).toString().padStart(3, "0");
+  const whole3 = t.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${v < 0n ? "-" : ""}$${whole3}.${t.slice(-2)}`;
+};
+async function orgToday(tx, now) {
+  const org = await tx.organizationSettings.findUnique({ where: { id: 1 }, select: { defaultTimeZone: true } });
+  return zonedDate(org?.defaultTimeZone || "America/Los_Angeles", now);
+}
+async function orgZone(tx) {
+  return (await tx.organizationSettings.findUnique({ where: { id: 1 }, select: { defaultTimeZone: true } }))?.defaultTimeZone || "America/Los_Angeles";
+}
+async function activeCertificate(tx, accountId, today) {
+  const rows = await tx.exemptionCertificate.findMany({ where: { businessAccountId: accountId, status: "active" }, orderBy: { createdAt: "desc" } });
+  return rows.find((c) => (!c.effectiveFrom || iso(c.effectiveFrom) <= today) && (!c.expiresAt || iso(c.expiresAt) > today)) ?? null;
+}
+async function syncCertificates(uow, accountId, actor = systemActor("fleet-standing")) {
+  const { tx, now } = uow;
+  const today = await orgToday(tx, now);
+  const lapsed = await tx.exemptionCertificate.findMany({ where: { businessAccountId: accountId, status: "active", expiresAt: { lte: dateOnly2(today) } }, select: { id: true } });
+  for (const c of lapsed) await transition(uow, { model: "ExemptionCertificate", id: c.id, from: ["active"], to: "expired", actor, eventType: "certificate.expired", metadata: { today } });
+  const active = await activeCertificate(tx, accountId, today);
+  const account = await tx.businessAccount.findUniqueOrThrow({ where: { id: accountId }, select: { taxExempt: true } });
+  if (account.taxExempt !== (active !== null)) {
+    await tx.businessAccount.update({ where: { id: accountId }, data: { taxExempt: active !== null, version: { increment: 1 } } });
+    uow.audit({ eventType: "account.tax_exempt_changed", entityType: "BusinessAccount", entityId: accountId, after: { taxExempt: active !== null, certificateId: active?.id ?? null } });
+  }
+  return active;
+}
+var AGING = ["current", "days1to30", "days31to60", "days61to90", "days90plus"];
+var bucketOf = (daysLate) => daysLate <= 0 ? "current" : daysLate <= 30 ? "days1to30" : daysLate <= 60 ? "days31to60" : daysLate <= 90 ? "days61to90" : "days90plus";
+async function standingOf(tx, accountId, now) {
+  const account = await tx.businessAccount.findUnique({ where: { id: accountId } });
+  if (!account) throw new DomainError(Codes.NOT_FOUND, "Account not found.");
+  const today = await orgToday(tx, now);
+  const open = await tx.invoice.findMany({ where: { businessAccountId: accountId, balanceMinor: { gt: 0n } }, select: { id: true, invoiceNumber: true, invoiceDate: true, dueDate: true, balanceMinor: true } });
+  const aging = { current: 0n, days1to30: 0n, days31to60: 0n, days61to90: 0n, days90plus: 0n };
+  let worst = null;
+  for (const inv of open) {
+    const due = iso(inv.dueDate) ?? iso(inv.invoiceDate) ?? today;
+    const late = daysBetween(due, today);
+    aging[bucketOf(late)] += inv.balanceMinor;
+    if (late > 0 && (!worst || late > worst.days)) worst = { invoiceNumber: inv.invoiceNumber, days: late };
+  }
+  const limit = account.creditLimitMinor;
+  const openBalance = account.openBalanceMinor;
+  const overLimit = limit > 0n && openBalance > limit;
+  const overdue = account.holdAfterOverdueDays !== null && worst !== null && worst.days > account.holdAfterOverdueDays;
+  const waived = account.holdWaivedUntil !== null && account.holdWaivedUntil.getTime() > now.getTime();
+  const reasons = [];
+  if (overLimit) reasons.push(`the open balance ${usd(openBalance)} is over the ${usd(limit)} credit limit`);
+  if (overdue) reasons.push(`invoice ${worst.invoiceNumber} is ${worst.days} days overdue (the account is held after ${account.holdAfterOverdueDays})`);
+  const shouldHold = (overLimit || overdue) && !waived;
+  const held = account.status === "credit_hold" || account.status === "on_hold";
+  const reason = held ? account.holdReason || (reasons.length ? `${reasons.join(" and ")}.` : "A manager placed it on hold.") : shouldHold ? `${reasons.join(" and ")}.` : "";
+  const blocked = held || shouldHold || account.status === "closed";
+  return {
+    accountId,
+    name: account.name,
+    status: account.status,
+    creditLimitMinor: limit,
+    openBalanceMinor: openBalance,
+    availableMinor: limit > 0n ? limit - openBalance : null,
+    overLimit,
+    overdue,
+    waived,
+    shouldHold,
+    blocked,
+    reason: account.status === "closed" ? "The account is closed." : reason,
+    maxDaysOverdue: worst?.days ?? 0,
+    aging,
+    today
+  };
+}
+var readableBlock = (s) => s.status === "closed" ? `${s.name} is closed. Reopen the account or bill the customer directly.` : `${s.name} is on credit hold: ${s.reason} A manager with credit approval must release it before new work is billed to the account, or take payment in cash.`;
+async function refreshStanding(uow, actor, accountId) {
+  await lockRow(uow.tx, "BusinessAccount", accountId);
+  await syncCertificates(uow, accountId, actor);
+  const s = await standingOf(uow.tx, accountId, uow.now);
+  if (s.status === "active" && s.shouldHold) {
+    await transition(uow, { model: "BusinessAccount", id: accountId, from: ["active"], to: "credit_hold", actor, eventType: "account.credit_hold_set", reason: s.reason, data: { holdReason: s.reason, holdSince: uow.now }, metadata: { automatic: true } });
+    return { ...await standingOf(uow.tx, accountId, uow.now), changed: true };
+  }
+  return { ...s, changed: false };
+}
+async function refreshAllStandings(uow, actor) {
+  const accounts = await uow.tx.businessAccount.findMany({ where: { status: { in: ["active", "credit_hold"] } }, select: { id: true }, orderBy: { name: "asc" } });
+  let held = 0;
+  for (const a of accounts) if ((await refreshStanding(uow, actor, a.id)).changed) held += 1;
+  return { checked: accounts.length, newlyHeld: held };
+}
+async function placeCreditHold(uow, actor, input) {
+  const reason = clean2(input.reason, 300);
+  if (!reason) throw new DomainError(Codes.INVALID_INPUT, "Say why the account is going on hold.", { field: "reason" });
+  const row = await transition(uow, { model: "BusinessAccount", id: input.businessAccountId, from: ["active"], to: "credit_hold", actor, eventType: "account.credit_hold_set", reason, data: { holdReason: reason, holdSince: uow.now, holdWaivedUntil: null } });
+  return { id: row.id, status: "credit_hold" };
+}
+var WAIVER_DAYS = 7;
+async function releaseCreditHold(uow, actor, input) {
+  const reason = clean2(input.reason, 300);
+  if (!reason) throw new DomainError(Codes.INVALID_INPUT, "Say why the hold is being released.", { field: "reason" });
+  const account = await lockRow(uow.tx, "BusinessAccount", input.businessAccountId);
+  if (account.status !== "credit_hold" && account.status !== "on_hold") throw new DomainError(Codes.GUARD_FAILED, `${account.name} is not on credit hold.`);
+  const gate2 = await needApproval(uow, actor, {
+    action: "account.credit_hold_release",
+    targetList: "BusinessAccount",
+    targetId: account.id,
+    permission: "canApproveCredit",
+    approvalRequestId: input.approvalRequestId,
+    payload: { businessAccountId: account.id, reason },
+    summary: `Release ${account.name} from credit hold: ${reason}`
+  });
+  if (!gate2.approved) return waiting2(gate2.approvalRequestId);
+  await transition(uow, { model: "BusinessAccount", id: account.id, from: ["credit_hold", "on_hold"], to: "active", actor, eventType: "account.credit_hold_released", reason, data: { holdReason: "", holdSince: null, holdWaivedUntil: new Date(uow.now.getTime() + WAIVER_DAYS * DAY) }, metadata: { approvalRequestId: gate2.approvalRequestId } });
+  return { id: account.id, status: "active", waivedDays: WAIVER_DAYS };
+}
+async function updateAccountTerms(uow, actor, input) {
+  const account = await lockRow(uow.tx, "BusinessAccount", input.businessAccountId);
+  const data = {};
+  if (input.name !== void 0) {
+    const name = clean2(input.name, 200);
+    if (!name) throw new DomainError(Codes.INVALID_INPUT, "Enter the account name.", { field: "name" });
+    data.name = name;
+  }
+  if (input.termsDays !== void 0) {
+    if (!Number.isInteger(input.termsDays) || input.termsDays < 0 || input.termsDays > 120) throw new DomainError(Codes.INVALID_INPUT, "Terms must be 0 to 120 days.", { field: "termsDays" });
+    data.termsDays = input.termsDays;
+  }
+  if (input.poRequired !== void 0) data.poRequired = input.poRequired === true;
+  if (input.billingMode !== void 0) {
+    if (!["per_invoice", "statement_monthly"].includes(input.billingMode)) throw new DomainError(Codes.INVALID_INPUT, "Choose how the account is billed.", { field: "billingMode" });
+    data.billingMode = input.billingMode;
+  }
+  if (input.holdAfterOverdueDays !== void 0) {
+    if (input.holdAfterOverdueDays !== null && (!Number.isInteger(input.holdAfterOverdueDays) || input.holdAfterOverdueDays < 1 || input.holdAfterOverdueDays > 365)) throw new DomainError(Codes.INVALID_INPUT, "Hold after 1 to 365 days overdue, or leave it blank for never.", { field: "holdAfterOverdueDays" });
+    data.holdAfterOverdueDays = input.holdAfterOverdueDays;
+  }
+  let approvalRequestId = null;
+  if (input.creditLimitMinor !== void 0) {
+    if (!/^\d{1,12}$/.test(String(input.creditLimitMinor))) throw new DomainError(Codes.INVALID_INPUT, "Enter the credit limit in dollars.", { field: "creditLimitMinor" });
+    const limit = BigInt(input.creditLimitMinor);
+    if (limit > account.creditLimitMinor) {
+      const gate2 = await needApproval(uow, actor, {
+        action: "account.credit_hold_release",
+        targetList: "BusinessAccount",
+        targetId: account.id,
+        permission: "canApproveCredit",
+        approvalRequestId: input.approvalRequestId,
+        payload: { businessAccountId: account.id, creditLimitMinor: limit.toString() },
+        summary: `Raise ${account.name}'s credit limit from ${usd(account.creditLimitMinor)} to ${usd(limit)}`
+      });
+      if (!gate2.approved) return waiting2(gate2.approvalRequestId);
+      approvalRequestId = gate2.approvalRequestId;
+    }
+    if (limit !== account.creditLimitMinor) data.creditLimitMinor = limit;
+    if (limit < account.creditLimitMinor && account.holdWaivedUntil) data.holdWaivedUntil = null;
+  }
+  if (input.status !== void 0 && input.status !== account.status) {
+    if (input.status === "closed") {
+      if (account.openBalanceMinor !== 0n) throw new DomainError(Codes.GUARD_FAILED, `${account.name} still owes ${usd(account.openBalanceMinor)}. Collect it before closing the account.`);
+      data.status = "closed";
+    } else if (input.status === "active" && (account.status === "prospect" || account.status === "closed")) data.status = "active";
+    else throw new DomainError(Codes.INVALID_TRANSITION, `${account.name} can't move from ${account.status.replaceAll("_", " ")} to ${input.status}.`);
+  }
+  if (!Object.keys(data).length) return { id: account.id, changed: false };
+  await uow.tx.businessAccount.update({ where: { id: account.id }, data: { ...data, version: { increment: 1 } } });
+  uow.audit({ eventType: "account.terms_changed", entityType: "BusinessAccount", entityId: account.id, actorUserId: actorUserId(actor), before: Object.fromEntries(Object.keys(data).map((k) => [k, account[k]])), after: data, metadata: approvalRequestId ? { approvalRequestId } : {} });
+  return { id: account.id, changed: true };
+}
+var EMAIL2 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+var ROLES2 = ["billing", "approver", "driver"];
+async function addFleetContact(uow, actor, input) {
+  const { tx } = uow;
+  await lockRow(tx, "BusinessAccount", input.businessAccountId);
+  const name = clean2(input.name, 120);
+  if (!name) throw new DomainError(Codes.INVALID_INPUT, "Enter the contact name.", { field: "name" });
+  const email3 = clean2(input.email, 160).toLowerCase();
+  if (email3 && !EMAIL2.test(email3)) throw new DomainError(Codes.INVALID_INPUT, "That email address does not look right.", { field: "email" });
+  const roles = [...new Set((input.roles ?? ["billing"]).filter((r) => ROLES2.includes(r)))];
+  const dup = await tx.businessAccountContact.findFirst({ where: { businessAccountId: input.businessAccountId, active: true, name: { equals: name, mode: "insensitive" } }, select: { id: true } });
+  if (dup) throw new DomainError(Codes.DUPLICATE, `${name} is already a contact on this account.`, { existingId: dup.id });
+  const row = await tx.businessAccountContact.create({ data: { businessAccountId: input.businessAccountId, name, email: email3, phone: clean2(input.phone, 40), roles } });
+  auditCreate(uow, actor, "BusinessAccountContact", row.id, "account_contact.added", { businessAccountId: input.businessAccountId, name, roles });
+  return { id: row.id };
+}
+async function addFleetApprover(uow, actor, input) {
+  const { tx } = uow;
+  await lockRow(tx, "BusinessAccount", input.businessAccountId);
+  const contact = await tx.businessAccountContact.findUnique({ where: { id: String(input.contactId ?? "") } });
+  if (!contact || contact.businessAccountId !== input.businessAccountId || !contact.active) throw new DomainError(Codes.INVALID_INPUT, "Choose a contact on this account.", { field: "contactId" });
+  if (!/^\d{1,12}$/.test(String(input.limitMinor ?? ""))) throw new DomainError(Codes.INVALID_INPUT, "Enter the most this person can approve, in dollars.", { field: "limitMinor" });
+  if (await tx.fleetApprover.findFirst({ where: { businessAccountId: input.businessAccountId, contactId: contact.id, active: true } })) throw new DomainError(Codes.DUPLICATE, `${contact.name} is already an approver.`);
+  const last = await tx.fleetApprover.aggregate({ where: { businessAccountId: input.businessAccountId, active: true }, _max: { order: true } });
+  const row = await tx.fleetApprover.create({ data: { businessAccountId: input.businessAccountId, contactId: contact.id, limitMinor: BigInt(input.limitMinor), order: (last._max.order ?? 0) + 1 } });
+  const roles = Array.isArray(contact.roles) ? contact.roles : [];
+  if (!roles.includes("approver")) await tx.businessAccountContact.update({ where: { id: contact.id }, data: { roles: [...roles, "approver"] } });
+  auditCreate(uow, actor, "FleetApprover", row.id, "fleet_approver.added", { businessAccountId: input.businessAccountId, contact: contact.name, limitMinor: input.limitMinor, order: row.order });
+  return { id: row.id, order: row.order };
+}
+async function removeFleetApprover(uow, actor, input) {
+  const row = await lockRow(uow.tx, "FleetApprover", input.approverId);
+  if (!row.active) return { id: row.id, already: true };
+  await uow.tx.fleetApprover.update({ where: { id: row.id }, data: { active: false } });
+  uow.audit({ eventType: "fleet_approver.removed", entityType: "FleetApprover", entityId: row.id, actorUserId: actorUserId(actor), before: { active: true }, after: { active: false } });
+  return { id: row.id };
+}
+var CERT_KINDS = ["resale", "government", "nonprofit", "other"];
+async function addExemptionCertificate(uow, actor, input) {
+  const { tx, now } = uow;
+  await lockRow(tx, "BusinessAccount", input.businessAccountId);
+  if (!CERT_KINDS.includes(input.kind)) throw new DomainError(Codes.INVALID_INPUT, "Choose the kind of certificate.", { field: "kind" });
+  const number = clean2(input.number, 60);
+  if (!number) throw new DomainError(Codes.INVALID_INPUT, "Enter the certificate number.", { field: "number" });
+  const from = input.effectiveFrom ? String(input.effectiveFrom) : null;
+  const to = input.expiresAt ? String(input.expiresAt) : null;
+  if (from && !DAY_TEXT.test(from) || to && !DAY_TEXT.test(to)) throw new DomainError(Codes.INVALID_INPUT, "Use a date like 2027-12-31.", { field: "expiresAt" });
+  if (from && to && to < from) throw new DomainError(Codes.INVALID_INPUT, "The certificate cannot expire before it starts.", { field: "expiresAt" });
+  if (await tx.exemptionCertificate.findFirst({ where: { businessAccountId: input.businessAccountId, number, status: { not: "revoked" } } })) throw new DomainError(Codes.DUPLICATE, `Certificate ${number} is already on file.`);
+  const row = await tx.exemptionCertificate.create({ data: { businessAccountId: input.businessAccountId, kind: input.kind, number, issuingState: clean2(input.issuingState, 40), effectiveFrom: from ? dateOnly2(from) : null, expiresAt: to ? dateOnly2(to) : null, status: "active" } });
+  auditCreate(uow, actor, "ExemptionCertificate", row.id, "certificate.added", { businessAccountId: input.businessAccountId, kind: input.kind, number, expiresAt: to });
+  await syncCertificates(uow, input.businessAccountId, actor);
+  const status = (await tx.exemptionCertificate.findUniqueOrThrow({ where: { id: row.id } })).status;
+  return { id: row.id, status };
+}
+async function revokeExemptionCertificate(uow, actor, input) {
+  const reason = clean2(input.reason, 300);
+  if (!reason) throw new DomainError(Codes.INVALID_INPUT, "Say why the certificate is being revoked.", { field: "reason" });
+  const row = await transition(uow, { model: "ExemptionCertificate", id: input.certificateId, from: ["active", "expired"], to: "revoked", actor, eventType: "certificate.revoked", reason });
+  await syncCertificates(uow, row.businessAccountId, actor);
+  return { id: row.id };
+}
+async function saveFleetUnit(uow, actor, input) {
+  const { tx } = uow;
+  await lockRow(tx, "BusinessAccount", input.businessAccountId);
+  const unitNumber = clean2(input.unitNumber, 30);
+  if (!unitNumber) throw new DomainError(Codes.INVALID_INPUT, "Enter the unit number.", { field: "unitNumber" });
+  const vehicle = await tx.vehicle.findUnique({ where: { id: String(input.vehicleId ?? "") }, select: { id: true } });
+  if (!vehicle) throw new DomainError(Codes.INVALID_INPUT, "Choose a vehicle.", { field: "vehicleId" });
+  const owned = await tx.vehicleOwnership.findFirst({ where: { vehicleId: vehicle.id, businessAccountId: input.businessAccountId, endedAt: null } });
+  if (!owned) throw new DomainError(Codes.GUARD_FAILED, "That vehicle is not owned by this account. Link it to the account under Vehicles first.");
+  const patch = { vehicleId: vehicle.id, driverName: clean2(input.driverName, 120), costCenter: clean2(input.costCenter, 60) };
+  const same = await tx.fleetUnit.findFirst({ where: { businessAccountId: input.businessAccountId, unitNumber } });
+  const taken = await tx.fleetUnit.findFirst({ where: { businessAccountId: input.businessAccountId, vehicleId: vehicle.id, NOT: { unitNumber } } });
+  if (taken) throw new DomainError(Codes.DUPLICATE, `That vehicle is already unit ${taken.unitNumber}.`);
+  if (same) {
+    await tx.fleetUnit.update({ where: { id: same.id }, data: patch });
+    uow.audit({ eventType: "fleet_unit.updated", entityType: "FleetUnit", entityId: same.id, actorUserId: actorUserId(actor), before: { driverName: same.driverName, costCenter: same.costCenter, vehicleId: same.vehicleId }, after: patch });
+    return { id: same.id, created: false };
+  }
+  const row = await tx.fleetUnit.create({ data: { businessAccountId: input.businessAccountId, unitNumber, ...patch } });
+  auditCreate(uow, actor, "FleetUnit", row.id, "fleet_unit.added", { businessAccountId: input.businessAccountId, unitNumber, vehicleId: vehicle.id });
+  return { id: row.id, created: true };
+}
+async function createFleetLink(uow, actor, input) {
+  const { tx } = uow;
+  const contact = await lockRow(tx, "BusinessAccountContact", input.contactId);
+  if (!contact.active) throw new DomainError(Codes.GUARD_FAILED, `${contact.name} is no longer an active contact.`);
+  await revokeTokensFor(tx, "BusinessAccountContact", contact.id, uow.now);
+  const made = await createAccessToken(uow, { purpose: "fleet_magic_link", subjectType: "BusinessAccountContact", subjectId: contact.id, shopId: null, ttlHours: 720, maxUses: 2e3 });
+  auditCreate(uow, actor, "BusinessAccountContact", contact.id, "fleet_link.created", { expiresAt: made.expiresAt.toISOString() });
+  return { apiPath: `/api/public/fleet/${made.token}`, expiresAt: made.expiresAt.toISOString() };
+}
+async function accountForNewOrder(tx, input, now) {
+  if (input.billTo === "customer" || input.kind === "comeback" || input.kind === "internal") return { businessAccountId: null, fleetUnitId: null, kind: input.kind };
+  const customer = input.customerId ? await tx.customer.findUnique({ where: { id: input.customerId }, select: { businessAccountId: true } }) : null;
+  const accountId = input.businessAccountId || customer?.businessAccountId || null;
+  if (!accountId) {
+    if (input.kind === "fleet") throw new DomainError(Codes.INVALID_INPUT, "Choose the fleet account this work is billed to.", { field: "businessAccountId" });
+    return { businessAccountId: null, fleetUnitId: null, kind: input.kind };
+  }
+  const standing = await standingOf(tx, accountId, now);
+  if (standing.blocked) throw new DomainError(Codes.CREDIT_HOLD, readableBlock(standing), { businessAccountId: accountId, reason: standing.reason });
+  const unit = input.vehicleId ? await tx.fleetUnit.findFirst({ where: { businessAccountId: accountId, vehicleId: input.vehicleId }, select: { id: true } }) : null;
+  return { businessAccountId: accountId, fleetUnitId: unit?.id ?? null, kind: "fleet" };
+}
+async function checkFleetAuthorization(tx, ro, input) {
+  if (!ro.businessAccountId) throw new DomainError(Codes.GUARD_FAILED, "This repair order is not on a fleet account.");
+  const account = await tx.businessAccount.findUniqueOrThrow({ where: { id: ro.businessAccountId } });
+  if (account.poRequired && !clean2(input.poNumber, 60)) throw new DomainError(Codes.PO_REQUIRED, `${account.name} requires a purchase order number. Enter it before approving.`, { field: "poNumber" });
+  const chain = await tx.fleetApprover.findMany({ where: { businessAccountId: account.id, active: true }, orderBy: { order: "asc" }, include: { contact: { select: { name: true } } } });
+  if (!chain.length) return { approverId: null, approverName: "" };
+  const approver = chain.find((a) => a.id === input.approverId);
+  if (!approver) throw new DomainError(Codes.INVALID_INPUT, "Choose which approver on the account authorized this.", { field: "fleetApproverId" });
+  const jobs = await tx.job.findMany({ where: { id: { in: input.jobIds }, repairOrderId: ro.id }, select: { number: true, title: true, totalMinor: true } });
+  const over = jobs.filter((j) => j.totalMinor > approver.limitMinor);
+  if (over.length) {
+    const biggest = over.reduce((a, j) => j.totalMinor > a.totalMinor ? j : a);
+    const next = chain.find((a) => a.order > approver.order && a.limitMinor >= biggest.totalMinor);
+    const who = approver.contact?.name ?? "This approver";
+    const message = next ? `Job ${biggest.number}, ${biggest.title}, is ${usd(biggest.totalMinor)}, above ${who}'s ${usd(approver.limitMinor)} limit. It goes to ${next.contact?.name} (limit ${usd(next.limitMinor)}).` : `Job ${biggest.number}, ${biggest.title}, is ${usd(biggest.totalMinor)}, above every approver's limit on ${account.name}. The account owner must authorize it with the shop.`;
+    throw new DomainError(Codes.GUARD_FAILED, message, { jobNumber: biggest.number, amountMinor: biggest.totalMinor.toString(), limitMinor: approver.limitMinor.toString(), escalateTo: next ? { approverId: next.id, name: next.contact?.name ?? "", limitMinor: next.limitMinor.toString() } : null });
+  }
+  return { approverId: approver.id, approverName: approver.contact?.name ?? "" };
+}
+var csvCell = (value) => {
+  const s = String(value ?? "");
+  const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  return /[",\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
+};
+var csvRow = (cells) => cells.map(csvCell).join(",");
+var dollars = (minor2) => `${minor2 < 0n ? "-" : ""}${(minor2 < 0n ? -minor2 : minor2) / 100n}.${((minor2 < 0n ? -minor2 : minor2) % 100n).toString().padStart(2, "0")}`;
+async function generateStatement(uow, actor, input, options = {}) {
+  const { tx, now } = uow;
+  const start = String(input.periodStart ?? ""), end = String(input.periodEnd ?? "");
+  if (!DAY_TEXT.test(start) || !DAY_TEXT.test(end)) throw new DomainError(Codes.INVALID_INPUT, "Use dates like 2026-10-31.", { field: "periodStart" });
+  if (end < start) throw new DomainError(Codes.INVALID_INPUT, "The period cannot end before it starts.", { field: "periodEnd" });
+  const today = await orgToday(tx, now);
+  if (end > today) throw new DomainError(Codes.GUARD_FAILED, "The period has not ended yet. Pick an end date up to today.", { field: "periodEnd" });
+  const account = await lockRow(tx, "BusinessAccount", input.businessAccountId);
+  const same = await tx.statement.findFirst({ where: { businessAccountId: account.id, periodStart: dateOnly2(start) } });
+  if (same) return { id: same.id, reference: same.reference, closingMinor: same.closingMinor.toString(), already: true, empty: false };
+  const clash = await tx.statement.findFirst({ where: { businessAccountId: account.id, periodStart: { lte: dateOnly2(end) }, periodEnd: { gte: dateOnly2(start) } } });
+  if (clash) throw new DomainError(Codes.GUARD_FAILED, `${clash.reference} already covers part of that period.`, { existingId: clash.id });
+  const zone = await orgZone(tx);
+  const invoices = await tx.invoice.findMany({ where: { businessAccountId: account.id }, select: { id: true, invoiceDate: true, dueDate: true, totalMinor: true } });
+  const allocations = await tx.paymentAllocation.findMany({ where: { invoice: { businessAccountId: account.id } }, select: { invoiceId: true, amountMinor: true, at: true } });
+  const credits = await tx.creditMemo.findMany({ where: { invoice: { businessAccountId: account.id }, status: "issued" }, select: { invoiceId: true, totalMinor: true, issuedAt: true } });
+  const day3 = (d2) => d2 ? zonedDate(zone, d2) : "0000-00-00";
+  const invDay = (d2) => iso(d2) ?? "9999-12-31";
+  const sum = (xs) => xs.reduce((a, b) => a + b, 0n);
+  const before = (d2) => d2 < start;
+  const within = (d2) => d2 >= start && d2 <= end;
+  const opening = sum(invoices.filter((i) => before(invDay(i.invoiceDate))).map((i) => i.totalMinor)) - sum(allocations.filter((a) => before(day3(a.at))).map((a) => a.amountMinor)) - sum(credits.filter((c) => before(day3(c.issuedAt))).map((c) => c.totalMinor));
+  const inPeriod = invoices.filter((i) => within(invDay(i.invoiceDate)));
+  const charges = sum(inPeriod.map((i) => i.totalMinor));
+  const payments = sum(allocations.filter((a) => within(day3(a.at))).map((a) => a.amountMinor));
+  const creditsTotal = sum(credits.filter((c) => within(day3(c.issuedAt))).map((c) => c.totalMinor));
+  if (options.skipEmpty && opening === 0n && charges === 0n && payments === 0n && creditsTotal === 0n) return { id: null, reference: "", closingMinor: "0", already: false, empty: true };
+  const aging = Object.fromEntries(AGING.map((k) => [k, 0n]));
+  for (const inv of invoices.filter((i) => invDay(i.invoiceDate) <= end)) {
+    const paid = sum(allocations.filter((a) => a.invoiceId === inv.id && day3(a.at) <= end).map((a) => a.amountMinor));
+    const credited = sum(credits.filter((c) => c.invoiceId === inv.id && day3(c.issuedAt) <= end).map((c) => c.totalMinor));
+    const balance = inv.totalMinor - paid - credited;
+    if (balance > 0n) aging[bucketOf(daysBetween(iso(inv.dueDate) ?? invDay(inv.invoiceDate), end))] += balance;
+  }
+  const reference = await nextReference(tx, "STM", now, 5);
+  const row = await tx.statement.create({
+    data: {
+      businessAccountId: account.id,
+      periodStart: dateOnly2(start),
+      periodEnd: dateOnly2(end),
+      reference,
+      openingMinor: opening,
+      chargesMinor: charges,
+      paymentsMinor: payments,
+      creditsMinor: creditsTotal,
+      closingMinor: opening + charges - payments - creditsTotal,
+      aging: Object.fromEntries(Object.entries(aging).map(([k, v]) => [k, v.toString()]))
+    }
+  });
+  await tx.invoice.updateMany({ where: { id: { in: inPeriod.map((i) => i.id) }, statementId: null }, data: { statementId: row.id } });
+  auditCreate(uow, actor, "Statement", row.id, "statement.generated", { reference, businessAccountId: account.id, periodStart: start, periodEnd: end, openingMinor: opening, chargesMinor: charges, paymentsMinor: payments, creditsMinor: creditsTotal, closingMinor: row.closingMinor, invoices: inPeriod.length });
+  return { id: row.id, reference, closingMinor: row.closingMinor.toString(), already: false, empty: false };
+}
+var AGING_LABEL = { current: "Current", days1to30: "1 to 30 days late", days31to60: "31 to 60 days late", days61to90: "61 to 90 days late", days90plus: "Over 90 days late" };
+async function statementCsvLines(tx, statementId) {
+  const s = await tx.statement.findUniqueOrThrow({ where: { id: statementId }, include: { businessAccount: { select: { name: true, accountNumber: true, termsDays: true } } } });
+  const invoices = await tx.invoice.findMany({ where: { statementId }, orderBy: { invoiceDate: "asc" }, select: { invoiceNumber: true, invoiceDate: true, dueDate: true, poNumber: true, totalMinor: true, paidMinor: true, creditedMinor: true, balanceMinor: true, repairOrder: { select: { roNumber: true } } } });
+  const aging = s.aging ?? {};
+  const lines = [
+    csvRow(["Statement", s.reference]),
+    csvRow(["Account", `${s.businessAccount?.name ?? ""} (${s.businessAccount?.accountNumber ?? ""})`]),
+    csvRow(["Period", `${iso(s.periodStart)} to ${iso(s.periodEnd)}`]),
+    csvRow(["Terms", s.businessAccount?.termsDays ? `Net ${s.businessAccount.termsDays}` : "Due on receipt"]),
+    csvRow(["Opening balance", dollars(s.openingMinor)]),
+    csvRow(["Charges", dollars(s.chargesMinor)]),
+    csvRow(["Payments", dollars(-s.paymentsMinor)]),
+    csvRow(["Credits", dollars(-s.creditsMinor)]),
+    csvRow(["Closing balance", dollars(s.closingMinor)]),
+    "",
+    csvRow(["Owed at period end"]),
+    ...AGING.map((k) => csvRow([AGING_LABEL[k], dollars(BigInt(aging[k] ?? "0"))])),
+    "",
+    csvRow(["Invoice", "Repair order", "Invoice date", "Due", "PO", "Total", "Paid", "Credited", "Balance today"]),
+    ...invoices.map((i) => csvRow([i.invoiceNumber, i.repairOrder?.roNumber ?? "", iso(i.invoiceDate), iso(i.dueDate), i.poNumber, dollars(i.totalMinor), dollars(i.paidMinor), dollars(i.creditedMinor), dollars(i.balanceMinor)]))
+  ];
+  return { lines, reference: s.reference };
+}
+async function exportStatement(uow, actor, input) {
+  const { tx, now } = uow;
+  const s = await lockRow(tx, "Statement", input.statementId);
+  const { lines, reference } = await statementCsvLines(tx, s.id);
+  if (!s.exportedAt) {
+    await tx.statement.update({ where: { id: s.id }, data: { exportedAt: now, exportedById: actorUserId(actor) } });
+    uow.audit({ eventType: "statement.exported", entityType: "Statement", entityId: s.id, actorUserId: actorUserId(actor), after: { reference } });
+  }
+  return { id: s.id, filename: `statement-${reference}.csv`, csv: `${lines.join("\n")}
+` };
+}
+async function exportAllStatements(uow, actor, input) {
+  const accounts = await uow.tx.businessAccount.findMany({ where: { billingMode: "statement_monthly", status: { in: ["active", "credit_hold"] } }, select: { id: true }, orderBy: { name: "asc" } });
+  const blocks = [];
+  let made = 0;
+  for (const a of accounts) {
+    const gen = await generateStatement(uow, actor, { businessAccountId: a.id, periodStart: input.periodStart, periodEnd: input.periodEnd }, { skipEmpty: true });
+    if (gen.empty || !gen.id) continue;
+    if (!gen.already) made += 1;
+    blocks.push((await exportStatement(uow, actor, { statementId: gen.id })).csv);
+  }
+  if (!blocks.length) throw new DomainError(Codes.GUARD_FAILED, "No monthly account has activity in that period.");
+  return { filename: `statements-${input.periodStart}-to-${input.periodEnd}.csv`, csv: blocks.join("\n"), statements: blocks.length, created: made };
+}
+
 // features/keystone/lib/pricing.ts
 var PART_CONDITIONS2 = ["new", "used", "rebuilt", "reconditioned", "oem_crash", "non_oem_aftermarket_crash"];
-var PART_KINDS = ["part", "tire", "core", "refrigerant"];
+var PART_KINDS2 = ["part", "tire", "core", "refrigerant"];
 var roundMinor = (value) => BigInt(toScale(value, 0));
 var qty = (milli2) => dec(milli2).div(1e3);
 function partsMultiplier(matrix, unitCostMinor, category) {
@@ -6489,7 +7397,7 @@ var FEE_TAX_CATEGORY = { ca_tire_fee: "fee_tire", ca_battery_fee: "fee_battery",
 function unitsOf(lines, itemCategory) {
   const matching = lines.filter((l) => {
     if (itemCategory === "tire_new") return l.kind === "tire" && l.isNewTire && (l.condition ?? "new") === "new";
-    return PART_KINDS.includes(l.kind) && l.kind !== "core" && l.partCategory === itemCategory;
+    return PART_KINDS2.includes(l.kind) && l.kind !== "core" && l.partCategory === itemCategory;
   });
   return matching.reduce((n, l) => n + Math.floor(l.quantityMilli / 1e3), 0);
 }
@@ -6613,7 +7521,7 @@ function priceJob(inputs, policy) {
       units = unitsOf(lines, rule2.itemCategory);
       if (units > 0) amount = rule2.perUnitMinor * BigInt(units);
     } else if (rule2.kind === "percent_of_base" && rule2.percent) {
-      const baseMinor = sumMinor(lines.filter((l) => rule2.base === "labor" ? l.kind === "labor" : rule2.base === "parts" ? PART_KINDS.includes(l.kind) : l.kind === "labor" || PART_KINDS.includes(l.kind)).map((l) => l.extendedMinor));
+      const baseMinor = sumMinor(lines.filter((l) => rule2.base === "labor" ? l.kind === "labor" : rule2.base === "parts" ? PART_KINDS2.includes(l.kind) : l.kind === "labor" || PART_KINDS2.includes(l.kind)).map((l) => l.extendedMinor));
       if (baseMinor > 0n) {
         amount = roundMinor(dec(baseMinor).times(dec(rule2.percent)));
         if (rule2.minMinor !== null && amount < rule2.minMinor) amount = rule2.minMinor;
@@ -6656,7 +7564,7 @@ function priceJob(inputs, policy) {
   const sumKind = (kinds) => sumMinor(lines.filter((l) => kinds.includes(l.kind)).map((l) => l.extendedMinor));
   const subtotalMinor = sumMinor(lines.map((l) => l.extendedMinor));
   const taxMinor = sumMinor(lines.map((l) => l.taxMinor));
-  const costMinor = sumMinor(lines.filter((l) => PART_KINDS.includes(l.kind)).map((l) => roundMinor(dec(l.unitCostMinor).times(qty(l.quantityMilli))))) + sumMinor(lines.filter((l) => l.kind === "sublet").map((l) => l.subletCostMinor));
+  const costMinor = sumMinor(lines.filter((l) => PART_KINDS2.includes(l.kind)).map((l) => roundMinor(dec(l.unitCostMinor).times(qty(l.quantityMilli))))) + sumMinor(lines.filter((l) => l.kind === "sublet").map((l) => l.subletCostMinor));
   const result = {
     lines,
     laborMinor: sumKind(["labor"]),
@@ -6704,7 +7612,7 @@ function jobContentHash(price) {
 var identityHash = (lines) => sha256(canonicalJson(lines.map((l) => [l.kind, l.description, l.partNumber, l.condition, l.rateClassCode, l.subletVendorName]).sort((a, b) => canonicalJson(a).localeCompare(canonicalJson(b)))));
 
 // features/keystone/lib/flagging.ts
-var DAY = 864e5;
+var DAY2 = 864e5;
 var ANCHOR = Date.UTC(2026, 0, 5);
 var PERIOD_DAYS = 14;
 function shopDay(at, timeZone = "America/Los_Angeles") {
@@ -6712,9 +7620,9 @@ function shopDay(at, timeZone = "America/Los_Angeles") {
   return new Date(Date.UTC(y, m - 1, d2));
 }
 function periodWindow(day3) {
-  const index = Math.floor((day3.getTime() - ANCHOR) / (PERIOD_DAYS * DAY));
-  const startsOn = new Date(ANCHOR + index * PERIOD_DAYS * DAY);
-  return { startsOn, endsOn: new Date(startsOn.getTime() + (PERIOD_DAYS - 1) * DAY) };
+  const index = Math.floor((day3.getTime() - ANCHOR) / (PERIOD_DAYS * DAY2));
+  const startsOn = new Date(ANCHOR + index * PERIOD_DAYS * DAY2);
+  return { startsOn, endsOn: new Date(startsOn.getTime() + (PERIOD_DAYS - 1) * DAY2) };
 }
 async function openPeriodFor(tx, shopId, day3) {
   let window = periodWindow(day3);
@@ -6722,7 +7630,7 @@ async function openPeriodFor(tx, shopId, day3) {
     const found = await tx.payPeriod.findFirst({ where: { shopId, startsOn: window.startsOn } });
     if (!found) return tx.payPeriod.create({ data: { shopId, startsOn: window.startsOn, endsOn: window.endsOn, status: "open" } });
     if (found.status === "open") return found;
-    window = periodWindow(new Date(window.endsOn.getTime() + DAY));
+    window = periodWindow(new Date(window.endsOn.getTime() + DAY2));
   }
   throw new Error("No open pay period found");
 }
@@ -7083,12 +7991,12 @@ async function closePayPeriod(uow, actor, input) {
   const next = await openPeriodFor(tx, period.shopId, new Date(new Date(period.endsOn).getTime() + 864e5));
   return { id: period.id, status: "closed", nextPeriodId: next.id };
 }
-var csvCell = (value) => {
+var csvCell2 = (value) => {
   let s = String(value ?? "");
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
 };
-var dollars = (minor2) => `${minor2 < 0n ? "-" : ""}${((minor2 < 0n ? -minor2 : minor2) / 100n).toString()}.${((minor2 < 0n ? -minor2 : minor2) % 100n).toString().padStart(2, "0")}`;
+var dollars2 = (minor2) => `${minor2 < 0n ? "-" : ""}${((minor2 < 0n ? -minor2 : minor2) / 100n).toString()}.${((minor2 < 0n ? -minor2 : minor2) % 100n).toString().padStart(2, "0")}`;
 var hoursText = (centi) => `${centi < 0 ? "-" : ""}${Math.floor(Math.abs(centi) / 100)}.${String(Math.abs(centi) % 100).padStart(2, "0")}`;
 async function exportPayPeriod(uow, actor, payPeriodId) {
   const { tx, now } = uow;
@@ -7099,7 +8007,7 @@ async function exportPayPeriod(uow, actor, payPeriodId) {
   const head = ["Technician", "Pay plan", "Period start", "Period end", "Flagged hours", "Hours on the clock", "Rate", "Gross pay"];
   const lines = [head.join(",")];
   for (const r of rows.filter((x) => x.entries || x.clockedCentiHours)) {
-    lines.push([r.name, r.payPlan.replaceAll("_", " "), dateText(period.startsOn), dateText(period.endsOn), hoursText(r.flaggedCentiHours), hoursText(r.clockedCentiHours), dollars(r.rateMinor), dollars(r.grossMinor)].map(csvCell).join(","));
+    lines.push([r.name, r.payPlan.replaceAll("_", " "), dateText(period.startsOn), dateText(period.endsOn), hoursText(r.flaggedCentiHours), hoursText(r.clockedCentiHours), dollars2(r.rateMinor), dollars2(r.grossMinor)].map(csvCell2).join(","));
   }
   const csv = `${lines.join("\n")}
 `;
@@ -7287,13 +8195,16 @@ async function openRepairOrder(uow, actor, input) {
     if (/insur|adjust|shop|northgate/i.test(relationship15)) throw new DomainError(Codes.INVALID_INPUT, "A designee cannot be the shop or an insurer (16 CCR \xA73354(c)).", { field: "designee" });
     designee = { name, relationship: relationship15, contact, namedAt: now.toISOString() };
   }
+  const billing = await accountForNewOrder(tx, { customerId: checkIn.customerId, vehicleId: checkIn.vehicleId, kind: input.kind ?? "standard", businessAccountId: input.businessAccountId, billTo: input.billTo }, now);
   const roNumber = await nextShopReference(tx, "RO", shop.code, now);
   const pins = Object.fromEntries(Object.entries(POINTERS).map(([field, pointer]) => [field, shop[pointer]]));
   const ro = await tx.repairOrder.create({
     data: {
       shopId: shop.id,
       roNumber,
-      kind: input.kind ?? "standard",
+      kind: billing.kind ?? input.kind ?? "standard",
+      businessAccountId: billing.businessAccountId,
+      fleetUnitId: billing.fleetUnitId,
       customerId: checkIn.customerId,
       vehicleId: checkIn.vehicleId,
       serviceAdvisorId: input.serviceAdvisorId ?? actorUserId(actor),
@@ -7363,7 +8274,7 @@ var int2 = (v, field, min = 0) => {
   if (!Number.isSafeInteger(n) || n < min) throw new DomainError(Codes.INVALID_INPUT, `${field} must be a whole number of at least ${min}.`, { field });
   return n;
 };
-var cents2 = (v, field) => {
+var cents3 = (v, field) => {
   if (v === null || v === void 0 || v === "") return null;
   const text19 = String(v).trim();
   if (!/^\d{1,12}$/.test(text19)) throw new DomainError(Codes.INVALID_INPUT, `${field} must be whole cents.`, { field });
@@ -7391,13 +8302,13 @@ function parseLines(raw) {
       partCategory: str(r.partCategory, 40),
       condition: str(r.condition, 40) || null,
       quantityMilli: int2(r.quantityMilli, "quantityMilli", 1),
-      unitCostMinor: cents2(r.unitCostMinor, "unitCostMinor"),
-      unitPriceOverrideMinor: cents2(r.unitPriceOverrideMinor, "unitPriceOverrideMinor"),
+      unitCostMinor: cents3(r.unitCostMinor, "unitCostMinor"),
+      unitPriceOverrideMinor: cents3(r.unitPriceOverrideMinor, "unitPriceOverrideMinor"),
       isNewTire: Boolean(r.isNewTire),
       subletVendorName: str(r.subletVendorName, 120),
-      subletCostMinor: cents2(r.subletCostMinor, "subletCostMinor"),
-      subletPriceMinor: cents2(r.subletPriceMinor, "subletPriceMinor"),
-      discountMinor: cents2(r.discountMinor, "discountMinor"),
+      subletCostMinor: cents3(r.subletCostMinor, "subletCostMinor"),
+      subletPriceMinor: cents3(r.subletPriceMinor, "subletPriceMinor"),
+      discountMinor: cents3(r.discountMinor, "discountMinor"),
       discountTargetRef: str(r.discountTargetRef, 10),
       ...r.variant ? { variant: str(r.variant, 120) } : {}
     };
@@ -7487,7 +8398,8 @@ async function addJob(uow, actor, input) {
       status: "draft"
     }
   });
-  await tx.payerSplit.create({ data: { jobId: job.id, payerKind: "customer", percent: "1.000000" } });
+  const account = ro.businessAccountId ? await tx.businessAccount.findUnique({ where: { id: ro.businessAccountId }, select: { id: true, name: true } }) : null;
+  await tx.payerSplit.create({ data: account ? { jobId: job.id, payerKind: "business_account", businessAccountId: account.id, payorName: account.name, percent: "100.000000" } : { jobId: job.id, payerKind: "customer", percent: "1.000000" } });
   if (kind === "teardown") await saveTeardown(uow, job.id, ro.jurisdictionPolicyVersionId, input.teardown);
   auditCreate(uow, actor, "Job", job.id, "job.created", { repairOrderId: ro.id, number: job.number, title, kind, cannedJobVersionId, source: job.source });
   await markInService(uow, actor, ro.id, "job");
@@ -7508,8 +8420,8 @@ async function saveTeardown(uow, jobId, lawId, input) {
   if (!input) throw new DomainError(Codes.DISCLOSURE_MISSING, "A teardown job needs its disclosure: teardown cost, reassembly cost and the area to be torn down (16 CCR \xA73353(c)).", { field: "teardown", missing: ["teardown"] });
   const row = await uow.tx.teardownDisclosure.create({
     data: {
-      teardownCostMinor: cents2(input.teardownCostMinor, "teardownCostMinor") ?? 0n,
-      reassemblyCostMinor: cents2(input.reassemblyCostMinor, "reassemblyCostMinor") ?? 0n,
+      teardownCostMinor: cents3(input.teardownCostMinor, "teardownCostMinor") ?? 0n,
+      reassemblyCostMinor: cents3(input.reassemblyCostMinor, "reassemblyCostMinor") ?? 0n,
       areaDescription: String(input.areaDescription ?? "").slice(0, 300),
       maxReassemblyDays: int2(input.maxReassemblyDays, "maxReassemblyDays", 1) ?? rules2.maxReassemblyDaysDefault ?? 3,
       restorationWarning: Boolean(input.restorationWarning),
@@ -7630,7 +8542,7 @@ async function writeAndPrice(uow, actor, jobId, inputs) {
   const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId }, select: { toleranceRule: true } });
   const rule2 = parseToleranceRule(law.toleranceRule);
   const identity = identityHash(price.lines.filter((l) => !l.auto));
-  const snapshot = toJsonValue({ at: now, problems, belowFloor: price.belowFloor, floorApprovedBy, policy: pinsOf(ro), totals: totalsOf(price), identityHash: identity });
+  const snapshot = toJsonValue({ at: now, problems, belowFloor: price.belowFloor, floorApprovedBy, policy: pinsOf(ro), totals: totalsOf2(price), identityHash: identity });
   const amounts = { subtotalMinor: price.subtotalMinor, taxMinor: price.taxMinor, totalMinor: price.totalMinor, laborMinor: price.laborMinor, partsMinor: price.partsMinor, feesMinor: price.feesMinor, costMinor: price.costMinor, marginMinor: price.marginMinor };
   let to = job.status;
   let reason = null;
@@ -7662,7 +8574,7 @@ async function writeAndPrice(uow, actor, jobId, inputs) {
   return { id: jobId, status: to, problems, contentHash: data.contentHash, totalMinor: price.totalMinor.toString(), subtotalMinor: price.subtotalMinor.toString(), taxMinor: price.taxMinor.toString(), reason };
 }
 var pinsOf = (ro) => Object.fromEntries(Object.keys(POINTERS).map((k) => [k, ro[k]]));
-var totalsOf = (p) => ({ labor: p.laborMinor, parts: p.partsMinor, sublet: p.subletMinor, fees: p.feesMinor, discount: p.discountMinor, subtotal: p.subtotalMinor, tax: p.taxMinor, total: p.totalMinor });
+var totalsOf2 = (p) => ({ labor: p.laborMinor, parts: p.partsMinor, sublet: p.subletMinor, fees: p.feesMinor, discount: p.discountMinor, subtotal: p.subtotalMinor, tax: p.taxMinor, total: p.totalMinor });
 async function refreshRoTotals(tx, repairOrderId) {
   const jobs = await tx.job.findMany({ where: { repairOrderId, status: { notIn: ["declined", "deferred", "voided"] } }, select: { totalMinor: true, authorizedAmountMinor: true, status: true } });
   const current = jobs.reduce((n, j) => n + j.totalMinor, 0n);
@@ -7735,31 +8647,6 @@ async function voidJob(uow, actor, input) {
   const job = await uow.tx.job.findUniqueOrThrow({ where: { id: input.jobId }, select: { repairOrderId: true } });
   await refreshRoTotals(uow.tx, job.repairOrderId);
   return { id: input.jobId, status: "voided" };
-}
-
-// features/keystone/lib/publicTokens.ts
-var import_node_crypto6 = require("node:crypto");
-var DEV_KEY = "openfront-auto-repair-development-public-token-key";
-function key() {
-  const configured = process.env.PUBLIC_TOKEN_SECRET || process.env.SESSION_SECRET;
-  if (configured && configured.length >= 32) return configured;
-  if (process.env.NODE_ENV === "production") throw new DomainError(Codes.PROVIDER_UNAVAILABLE, "Customer links are not configured on this server.");
-  return DEV_KEY;
-}
-var hashToken = (purpose, token) => (0, import_node_crypto6.createHmac)("sha256", key()).update(`${purpose}\0${token}`, "utf8").digest("hex");
-var deriveToken = (purpose, id) => (0, import_node_crypto6.createHmac)("sha256", key()).update(`token\0${purpose}\0${id}`, "utf8").digest("base64url");
-var newTokenId = () => (0, import_node_crypto6.randomUUID)();
-async function createAccessToken(uow, input) {
-  const id = newTokenId();
-  const token = deriveToken(input.purpose, id);
-  const ttl = Math.min(720, Math.max(1, Math.trunc(input.ttlHours)));
-  const expiresAt = new Date(uow.now.getTime() + ttl * 36e5);
-  const tokenHash = hashToken(input.purpose, token);
-  await uow.tx.publicAccessToken.create({ data: { id, purpose: input.purpose, subjectType: input.subjectType, subjectId: input.subjectId, shopId: input.shopId, tokenHash, expiresAt, maxUses: input.maxUses ?? 50 } });
-  return { id, token, tokenHash, expiresAt };
-}
-async function revokeTokensFor(tx, subjectType, subjectId, now) {
-  await tx.publicAccessToken.updateMany({ where: { subjectType, subjectId, revokedAt: null }, data: { revokedAt: now } });
 }
 
 // features/keystone/lib/inspections.ts
@@ -8067,7 +8954,7 @@ async function recordAuthorization(uow, actor, input) {
   if (!STAFF_METHODS.includes(input.method) || !allowed.includes(input.method)) throw new DomainError(Codes.METHOD_NOT_ALLOWED, `${String(input.method).replaceAll("_", " ")} is not an allowed way to authorize here.`, { field: "method" });
   const actorName = String(input.actorName ?? "").trim().slice(0, 120);
   if (!actorName) throw new DomainError(Codes.EVIDENCE_MISSING, "Enter the name of the person who authorized.", { field: "actorName" });
-  const actorKind = input.actorKind ?? "customer";
+  const actorKind = ro.businessAccountId ? "fleet_approver" : input.actorKind ?? "customer";
   if (actorKind === "designee") {
     const designee = ro.designee ?? null;
     if (!designee?.name || designee.name.trim().toLowerCase() !== actorName.toLowerCase()) throw new DomainError(Codes.EVIDENCE_MISSING, "Only the designee named on the signed work order can authorize for the customer (16 CCR \xA73354(c)).", { field: "actorName" });
@@ -8098,6 +8985,18 @@ async function recordAuthorization(uow, actor, input) {
     if (!String(input.poNumber ?? "").trim()) throw new DomainError(Codes.PO_REQUIRED, "Enter the purchase order number.", { field: "poNumber" });
     Object.assign(evidence, { poNumber: String(input.poNumber).trim().slice(0, 60) });
   }
+  let fleetApproverId = null;
+  let recordedName = actorName;
+  const approvedIds = (input.answers ?? []).filter((a) => a?.decision === "approve").map((a) => a.jobId);
+  if (ro.businessAccountId && approvedIds.length) {
+    const approved = approvedIds;
+    const checked = await checkFleetAuthorization(tx, ro, { approverId: input.fleetApproverId, poNumber: input.poNumber, jobIds: approved });
+    fleetApproverId = checked.approverId;
+    if (checked.approverId) {
+      Object.assign(evidence, { fleetApproverId: checked.approverId, approverName: checked.approverName });
+      recordedName = checked.approverName || actorName;
+    }
+  }
   const rules2 = law.authorizationEvidenceRules ?? {};
   const needed = Array.isArray(rules2[input.method]) ? rules2[input.method] : [];
   const have = { ...evidence, personName: evidence.personName ?? actorName, amountMinor: "per job", staffUserId: actorUserId(actor) };
@@ -8112,14 +9011,15 @@ async function recordAuthorization(uow, actor, input) {
   const result = await applyAnswers(uow, actor, ev, ro, law, input.answers, input.replacedPartsElection ?? null, {
     method: input.method,
     actorKind,
-    actorName,
+    actorName: recordedName,
     contactUsed,
     evidence,
     recordedByUserId: actorUserId(actor),
     authorizationRequestId: requestId,
     signatureDocumentId,
     poNumber: String(input.poNumber ?? "").trim().slice(0, 60),
-    at
+    at,
+    fleetApproverId
   });
   if (requestId) {
     const request = await tx.authorizationRequest.findUniqueOrThrow({ where: { id: requestId } });
@@ -8172,6 +9072,7 @@ async function applyAnswers(uow, actor, ev, ro, law, answers, election, e) {
           authorizedAt: e.at,
           recordedByUserId: e.recordedByUserId,
           authorizationRequestId: e.authorizationRequestId,
+          fleetApproverId: e.fleetApproverId ?? null,
           signatureId: e.signatureDocumentId,
           consentTextVersion: e.method === "electronic_link" ? CONSENT_TEXT_VERSION : "",
           poNumber: e.poNumber,
@@ -9077,7 +9978,7 @@ async function checkAuthorizedCeiling(_root, args, context) {
 
 // features/keystone/lib/cannedJobs.ts
 var KINDS4 = ["repair", "maintenance", "diagnosis", "inspection", "teardown", "tire", "sublet"];
-var text15 = (v, max) => String(v ?? "").trim().slice(0, max);
+var text17 = (v, max) => String(v ?? "").trim().slice(0, max);
 async function saveCannedJobDraft(uow, actor, input) {
   const { tx } = uow;
   const lines = parseLines(input.lines);
@@ -9085,23 +9986,23 @@ async function saveCannedJobDraft(uow, actor, input) {
   const kind = input.kind ?? "repair";
   if (!KINDS4.includes(kind)) throw new DomainError(Codes.INVALID_INPUT, "Unknown job kind.", { field: "kind" });
   const stored = lines.map((l) => Object.fromEntries(Object.entries(l).filter(([k, v]) => k !== "ref" && v !== null && v !== void 0 && v !== "" && v !== false).map(([k, v]) => [k, typeof v === "bigint" ? v.toString() : v])));
-  const content = { kind, customerDescription: text15(input.customerDescription, 1e3), notes: text15(input.notes, 1e3), lines: stored, authorId: actorUserId(actor) };
+  const content = { kind, customerDescription: text17(input.customerDescription, 1e3), notes: text17(input.notes, 1e3), lines: stored, authorId: actorUserId(actor) };
   let jobId = input.cannedJobId ?? null;
   if (!jobId) {
-    const code = text15(input.code, 40).toUpperCase().replace(/[^A-Z0-9-]/g, "-");
-    const name = text15(input.name, 120);
+    const code = text17(input.code, 40).toUpperCase().replace(/[^A-Z0-9-]/g, "-");
+    const name = text17(input.name, 120);
     if (!code || !name) throw new DomainError(Codes.INVALID_INPUT, "Give the canned job a code and a name.", { field: !code ? "code" : "name" });
     const clash = await tx.cannedJob.findFirst({ where: { code, shopId: input.shopId ?? null }, select: { id: true } });
     if (clash) throw new DomainError(Codes.DUPLICATE, `${code} already exists.`, { existingId: clash.id });
-    const head = await tx.cannedJob.create({ data: { code, name, category: text15(input.category, 40), shopId: input.shopId ?? null, active: true } });
+    const head = await tx.cannedJob.create({ data: { code, name, category: text17(input.category, 40), shopId: input.shopId ?? null, active: true } });
     jobId = head.id;
     auditCreate(uow, actor, "CannedJob", head.id, "canned_job.created", { code, name });
   } else {
     await lockRow(tx, "CannedJob", jobId);
     if (input.name !== void 0 || input.category !== void 0) {
-      const name = text15(input.name, 120);
+      const name = text17(input.name, 120);
       if (input.name !== void 0 && !name) throw new DomainError(Codes.INVALID_INPUT, "Give the canned job a name.", { field: "name" });
-      await tx.cannedJob.update({ where: { id: jobId }, data: { ...input.name !== void 0 ? { name } : {}, ...input.category !== void 0 ? { category: text15(input.category, 40) } : {} } });
+      await tx.cannedJob.update({ where: { id: jobId }, data: { ...input.name !== void 0 ? { name } : {}, ...input.category !== void 0 ? { category: text17(input.category, 40) } : {} } });
     }
   }
   const draft = await tx.cannedJobVersion.findFirst({ where: { cannedJobId: jobId, status: "draft" } });
@@ -9325,228 +10226,8 @@ async function setCannedJobStatus(_root, args, context) {
   return run2(context, actor, args.active ? "canned_job.activate" : "canned_job.deactivate", args.idempotencyKey, args, (uow) => setCannedJobActive(uow, actor, args));
 }
 
-// features/keystone/lib/invoiceMath.ts
-var PART_KINDS2 = ["part", "tire", "core", "refrigerant"];
-function totalsOf2(lines) {
-  const of = (kinds) => sumMinor(lines.filter((l) => kinds.includes(l.kind)).map((l) => l.extendedMinor));
-  const laborSubtotalMinor = of(["labor"]);
-  const partsSubtotalMinor = of(PART_KINDS2);
-  const feesSubtotalMinor = of(["fee"]);
-  const subletSubtotalMinor = of(["sublet"]);
-  const discountMinor = of(["discount"]);
-  const taxMinor = sumMinor(lines.map((l) => l.taxMinor));
-  return { laborSubtotalMinor, partsSubtotalMinor, feesSubtotalMinor, subletSubtotalMinor, discountMinor, taxMinor, totalMinor: laborSubtotalMinor + partsSubtotalMinor + feesSubtotalMinor + subletSubtotalMinor + discountMinor + taxMinor };
-}
-function payerWeights(jobTotalMinor, shares2) {
-  if (!shares2.length) throw new Error("payerWeights needs at least one payer");
-  const percentSum = shares2.reduce((a, s) => a.plus(s.percent), new Decimal(0));
-  if (percentSum.isZero()) throw new Error("payer percentages must not all be zero");
-  const deductible = shares2.reduce((a, s) => a + (s.deductibleMinor ?? 0n), 0n);
-  if (jobTotalMinor <= 0n || deductible <= 0n) return shares2.map((s) => s.percent);
-  const capped = deductible > jobTotalMinor ? jobTotalMinor : deductible;
-  const rest = dec(jobTotalMinor - capped);
-  return shares2.map((s) => {
-    const own = s.deductibleMinor && deductible > 0n ? dec(capped).times(dec(s.deductibleMinor)).div(dec(deductible)) : new Decimal(0);
-    return own.plus(rest.times(s.percent).div(percentSum));
-  });
-}
-function splitLine(line, weights) {
-  const ext = allocateMinor(line.extendedMinor, weights);
-  const tax = allocateMinor(line.taxMinor, weights);
-  return weights.map((_, i) => ({ kind: line.kind, extendedMinor: ext[i], taxMinor: tax[i] }));
-}
-function spreadPayment(amountMinor, balances) {
-  const owed = sumMinor(balances);
-  if (amountMinor < 0n) throw new Error("A payment cannot be negative");
-  if (amountMinor > owed) throw new Error("A payment cannot exceed what is owed");
-  if (amountMinor === 0n || owed === 0n) return balances.map(() => 0n);
-  if (balances.length === 1) return [amountMinor];
-  const shares2 = allocateMinor(amountMinor, balances.map((b) => b.toString()));
-  return shares2.map((s, i) => s > balances[i] ? balances[i] : s);
-}
-function addDays2(date2, days) {
-  const d2 = /* @__PURE__ */ new Date(`${date2}T00:00:00Z`);
-  d2.setUTCDate(d2.getUTCDate() + days);
-  return d2.toISOString().slice(0, 10);
-}
-function addMonths(date2, months) {
-  const [y, m, day3] = date2.split("-").map(Number);
-  const target = new Date(Date.UTC(y, m - 1 + months, 1));
-  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
-  target.setUTCDate(Math.min(day3, last));
-  return target.toISOString().slice(0, 10);
-}
-var addYears = (date2, years) => addMonths(date2, years * 12);
-function invoiceStatus(input) {
-  const balance = input.totalMinor - input.paidMinor - input.creditedMinor;
-  if (balance <= 0n) return input.paidMinor > 0n ? "paid" : input.creditedMinor > 0n ? "credited" : "paid";
-  if (input.paidMinor > 0n) return "partially_paid";
-  return input.sent ? "sent" : "finalized";
-}
-
-// features/keystone/lib/payments.ts
-var MANUAL_TENDERS = ["cash", "check", "ach", "card_present", "tap_to_pay", "financing", "store_credit", "gift_card", "account_credit"];
-var CARD_TENDERS = ["card_link"];
-var SETTLED_PAYMENT = ["succeeded", "partially_refunded", "refunded"];
-var text16 = (value, max) => String(value ?? "").trim().slice(0, max);
-var whole2 = (value, field, { positive = true } = {}) => {
-  const s = String(value ?? "").trim();
-  if (!/^\d{1,12}$/.test(s)) throw new DomainError(Codes.INVALID_INPUT, "Enter an amount in whole cents.", { field });
-  const n = BigInt(s);
-  if (positive && n <= 0n) throw new DomainError(Codes.INVALID_INPUT, "The amount must be above zero.", { field });
-  return n;
-};
-async function postingDate(tx, shopId, now) {
-  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { timeZone: true } });
-  let date2 = zonedDate(shop.timeZone, now);
-  for (let i = 0; i < 366; i += 1) {
-    const closed = await tx.businessDayClose.findFirst({ where: { shopId, businessDate: /* @__PURE__ */ new Date(`${date2}T00:00:00.000Z`), status: "closed" }, select: { id: true } });
-    if (!closed) return date2;
-    date2 = addDays2(date2, 1);
-  }
-  return date2;
-}
-var asDate = (iso) => /* @__PURE__ */ new Date(`${iso}T00:00:00.000Z`);
-async function createPayment(uow, actor, input, idempotencyKey) {
-  const { tx, now } = uow;
-  const amount = whole2(input.amountMinor, "amountMinor");
-  const purpose = input.purpose === "deposit" ? "deposit" : "invoice";
-  const isCard = CARD_TENDERS.includes(input.tender);
-  if (!isCard && !MANUAL_TENDERS.includes(input.tender)) throw new DomainError(Codes.INVALID_INPUT, "Choose how the customer is paying.", { field: "tender" });
-  if (input.tender === "check" && !text16(input.checkNumber, 40)) throw new DomainError(Codes.INVALID_INPUT, "Enter the check number.", { field: "checkNumber" });
-  let shopId, customerId2, repairOrderId;
-  let invoiceIds = [];
-  if (purpose === "invoice") {
-    invoiceIds = [...new Set((input.invoiceIds ?? []).filter((x) => typeof x === "string"))].sort();
-    if (!invoiceIds.length) throw new DomainError(Codes.INVALID_INPUT, "Choose the invoice this pays.", { field: "invoiceIds" });
-    const invoices = [];
-    for (const id of invoiceIds) invoices.push(await lockRow(tx, "Invoice", id));
-    if (new Set(invoices.map((i) => i.shopId)).size !== 1) throw new DomainError(Codes.INVALID_INPUT, "One payment cannot span shops.");
-    const owed = sumMinor(invoices.map((i) => BigInt(i.balanceMinor)));
-    if (owed <= 0n) throw new DomainError(Codes.GUARD_FAILED, "That invoice is already paid.");
-    if (amount > owed) throw new DomainError(Codes.GUARD_FAILED, `That is more than the ${owed.toString().padStart(3, "0").slice(0, -2)}.${owed.toString().padStart(3, "0").slice(-2)} owed. Take only what is due.`, { field: "amountMinor" });
-    shopId = invoices[0].shopId;
-    customerId2 = invoices[0].customerId ?? null;
-    repairOrderId = invoices[0].repairOrderId ?? null;
-  } else {
-    if (!input.repairOrderId) throw new DomainError(Codes.INVALID_INPUT, "Choose the repair order the deposit is for.", { field: "repairOrderId" });
-    const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
-    if (["void", "invoiced", "closed"].includes(ro.status)) throw new DomainError(Codes.GUARD_FAILED, `${ro.roNumber} is ${String(ro.status).replaceAll("_", " ")}; take the payment on its invoice.`);
-    await assertDepositPolicy(tx, ro, amount);
-    shopId = ro.shopId;
-    customerId2 = ro.customerId ?? null;
-    repairOrderId = ro.id;
-  }
-  const settleNow = !isCard;
-  const row = await tx.payment.create({
-    data: {
-      shopId,
-      purpose,
-      repairOrderId,
-      customerId: customerId2,
-      targetInvoiceIds: invoiceIds,
-      tender: input.tender,
-      amountMinor: amount,
-      provider: isCard ? "stripe" : "manual",
-      idempotencyKey,
-      payerName: text16(input.payerName, 120),
-      checkNumber: text16(input.checkNumber, 40),
-      cardBrand: text16(input.cardBrand, 20),
-      cardLast4: /^\d{4}$/.test(String(input.cardLast4 ?? "")) ? String(input.cardLast4) : "",
-      receivedById: actorUserId(actor),
-      status: settleNow ? "succeeded" : "initiated",
-      settledAt: settleNow ? now : null,
-      businessDate: settleNow ? asDate(await postingDate(tx, shopId, now)) : null
-    }
-  });
-  auditCreate(uow, actor, "Payment", row.id, settleNow ? "payment.received" : "payment.started", { purpose, tender: input.tender, amountMinor: amount, invoiceIds, repairOrderId });
-  let allocated = 0n;
-  if (settleNow && purpose === "invoice") allocated = await allocatePayment(uow, actor, row.id);
-  return { id: row.id, status: row.status, allocatedMinor: allocated.toString(), amountMinor: amount.toString() };
-}
-async function assertDepositPolicy(tx, ro, amount) {
-  const policy = ro.shopPolicyVersionId ? await tx.shopPolicyVersion.findUnique({ where: { id: ro.shopPolicyVersionId }, select: { depositPolicy: true } }) : null;
-  const rule2 = policy?.depositPolicy ?? {};
-  if (rule2.enabled === false) throw new DomainError(Codes.GUARD_FAILED, "This shop does not take deposits.");
-  if (rule2.maxMinor && amount > BigInt(rule2.maxMinor)) throw new DomainError(Codes.GUARD_FAILED, "That deposit is above the shop limit.", { field: "amountMinor" });
-  if (rule2.maxPercentOfEstimate && BigInt(ro.currentTotalMinor) > 0n) {
-    const cap = BigInt(ro.currentTotalMinor) * BigInt(Math.round(rule2.maxPercentOfEstimate * 100)) / 10000n;
-    if (amount > cap) throw new DomainError(Codes.GUARD_FAILED, "That deposit is above the share of the estimate the shop allows.", { field: "amountMinor" });
-  }
-}
-async function allocatePayment(uow, actor, paymentId) {
-  const { tx, now } = uow;
-  const payment = await lockRow(tx, "Payment", paymentId);
-  if (!SETTLED_PAYMENT.includes(payment.status)) return 0n;
-  const available = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - BigInt(payment.allocatedMinor);
-  const targets = (payment.targetInvoiceIds ?? []).slice().sort();
-  if (available <= 0n || !targets.length) return 0n;
-  const invoices = [];
-  for (const id of targets) invoices.push(await lockRow(tx, "Invoice", id));
-  const balances = invoices.map((i) => BigInt(i.balanceMinor));
-  const owed = sumMinor(balances);
-  const apply = available > owed ? owed : available;
-  if (apply <= 0n) return 0n;
-  const shares2 = spreadPayment(apply, balances);
-  for (let i = 0; i < invoices.length; i += 1) {
-    if (shares2[i] <= 0n) continue;
-    await tx.paymentAllocation.create({ data: { paymentId, invoiceId: invoices[i].id, amountMinor: shares2[i], at: now } });
-    await settleInvoice(uow, actor, invoices[i], shares2[i], 0n);
-  }
-  await tx.payment.update({ where: { id: paymentId }, data: { allocatedMinor: { increment: apply }, version: { increment: 1 } } });
-  auditCreate(uow, actor, "Payment", paymentId, "payment.allocated", { amountMinor: apply, invoices: invoices.map((inv, i) => ({ id: inv.id, amountMinor: shares2[i] })) });
-  return apply;
-}
-async function settleInvoice(uow, actor, invoice, paidDelta, creditedDelta) {
-  const { tx } = uow;
-  const paid = BigInt(invoice.paidMinor) + paidDelta;
-  const credited = BigInt(invoice.creditedMinor) + creditedDelta;
-  const total = BigInt(invoice.totalMinor);
-  const status = invoiceStatus({ totalMinor: total, paidMinor: paid, creditedMinor: credited, sent: !!invoice.sentAt });
-  await tx.invoice.update({ where: { id: invoice.id }, data: { paidMinor: paid, creditedMinor: credited, balanceMinor: total - paid - credited, status, version: { increment: 1 } } });
-  if (invoice.businessAccountId) {
-    await tx.businessAccount.update({ where: { id: invoice.businessAccountId }, data: { openBalanceMinor: { decrement: paidDelta + creditedDelta }, version: { increment: 1 } } });
-  }
-  uow.audit({ eventType: "invoice.balance_changed", entityType: "Invoice", entityId: invoice.id, actorUserId: actorUserId(actor), before: { paidMinor: BigInt(invoice.paidMinor), creditedMinor: BigInt(invoice.creditedMinor), status: invoice.status }, after: { paidMinor: paid, creditedMinor: credited, balanceMinor: total - paid - credited, status } });
-}
-async function settleDeposits(uow, actor, repairOrderId, invoiceIds) {
-  const { tx } = uow;
-  const deposits = await tx.payment.findMany({ where: { repairOrderId, purpose: "deposit", status: { in: ["succeeded", "partially_refunded"] } }, orderBy: { createdAt: "asc" } });
-  if (!deposits.length) return 0n;
-  const invoices = await tx.invoice.findMany({ where: { id: { in: invoiceIds }, payerKind: "customer" }, select: { id: true } });
-  if (!invoices.length) return 0n;
-  let total = 0n;
-  for (const d2 of deposits) {
-    await advisoryLock(tx, `payment:${d2.id}`);
-    await tx.payment.update({ where: { id: d2.id }, data: { targetInvoiceIds: invoices.map((i) => i.id) } });
-    total += await allocatePayment(uow, actor, d2.id);
-  }
-  return total;
-}
-async function applyCardResult(uow, actor, input) {
-  const { tx, now } = uow;
-  const payment = await lockRow(tx, "Payment", input.paymentId);
-  if (SETTLED_PAYMENT.includes(payment.status) || payment.status === "failed") return { status: payment.status, allocatedMinor: "0", already: true };
-  if (input.outcome === "paid") {
-    const businessDate = asDate(await postingDate(tx, payment.shopId, now));
-    await transition(uow, {
-      model: "Payment",
-      id: payment.id,
-      from: ["initiated", "pending", "unknown"],
-      to: "succeeded",
-      actor,
-      eventType: "payment.succeeded",
-      data: { providerPaymentId: input.paymentIntentId ?? "", cardBrand: input.cardBrand ?? "", cardLast4: input.cardLast4 ?? "", settledAt: now, businessDate, failureMessage: "" }
-    });
-    const allocated = payment.purpose === "invoice" ? await allocatePayment(uow, actor, payment.id) : 0n;
-    return { status: "succeeded", allocatedMinor: allocated.toString(), already: false };
-  }
-  await transition(uow, { model: "Payment", id: payment.id, from: ["initiated", "pending", "unknown"], to: "failed", actor, eventType: "payment.failed", data: { failureMessage: text16(input.message || (input.outcome === "expired" ? "The payment page expired before it was paid." : "The card was not charged."), 300) } });
-  return { status: "failed", allocatedMinor: "0", already: false };
-}
-
 // features/keystone/lib/invoicing.ts
-var dateOnly2 = (iso) => /* @__PURE__ */ new Date(`${iso}T00:00:00.000Z`);
+var dateOnly3 = (iso2) => /* @__PURE__ */ new Date(`${iso2}T00:00:00.000Z`);
 var BILLABLE_SKIPPED = ["declined", "deferred", "voided"];
 var INVOICEABLE_RO = ["in_service", "ready_to_invoice"];
 var payerKeyOf = (kind, businessAccountId, name) => kind === "customer" ? "customer" : `${kind}:${businessAccountId ?? name}`;
@@ -9669,21 +10350,34 @@ async function buildInvoicePlan(tx, repairOrderId, now) {
       });
     }
   }
-  const plans = [...payers.values()].map((payer) => ({ payer, lines: lineBuckets.get(payer.key) ?? [], totals: totalsOf2(lineBuckets.get(payer.key) ?? []) })).sort((a, b) => (a.payer.kind === "customer" ? 1 : 0) - (b.payer.kind === "customer" ? 1 : 0) || a.payer.key.localeCompare(b.payer.key));
+  const plans = [...payers.values()].map((payer) => ({ payer, lines: lineBuckets.get(payer.key) ?? [], totals: totalsOf(lineBuckets.get(payer.key) ?? []) })).sort((a, b) => (a.payer.kind === "customer" ? 1 : 0) - (b.payer.kind === "customer" ? 1 : 0) || a.payer.key.localeCompare(b.payer.key));
+  const today = await orgToday(tx, now);
   for (const plan of plans) {
-    const account = plan.payer.businessAccountId ? await tx.businessAccount.findUnique({ where: { id: plan.payer.businessAccountId } }) : null;
-    if (account?.status === "on_hold" || account?.status === "credit_hold") problems.push(`${account.name} is on credit hold. A manager must clear it before this is invoiced.`);
+    if (plan.payer.kind !== "business_account" || !plan.payer.businessAccountId) continue;
+    const cert = await activeCertificate(tx, plan.payer.businessAccountId, today);
+    if (cert && plan.totals.taxMinor > 0n) {
+      const lines = plan.lines.map((l) => ({ ...l, taxMinor: 0n }));
+      plan.untaxedMinor = plan.totals.taxMinor;
+      plan.lines = lines;
+      plan.totals = totalsOf(lines);
+    }
+    if (cert) plan.exemption = { id: cert.id, kind: cert.kind, number: cert.number, issuingState: cert.issuingState, expiresAt: cert.expiresAt ? cert.expiresAt.toISOString().slice(0, 10) : null };
+    const standing = await standingOf(tx, plan.payer.businessAccountId, now);
+    if (standing.blocked) problems.push(readableBlock(standing));
+    else if (standing.creditLimitMinor > 0n && !standing.waived && standing.openBalanceMinor + plan.totals.totalMinor > standing.creditLimitMinor) {
+      problems.push(`${standing.name} would owe ${usd(standing.openBalanceMinor + plan.totals.totalMinor)}, over its ${usd(standing.creditLimitMinor)} credit limit. A manager must raise the limit or release the hold before this is invoiced.`);
+    }
   }
   return { ro, law: { ...law, ...law2 }, plans, problems, billable };
 }
-var text17 = (value, max) => String(value ?? "").trim().slice(0, max);
+var text18 = (value, max) => String(value ?? "").trim().slice(0, max);
 async function finalizeInvoices(uow, actor, input) {
   const { tx, now } = uow;
   await lockRow(tx, "RepairOrder", input.repairOrderId);
   const built = await buildInvoicePlan(tx, input.repairOrderId, now);
   const { ro, law, plans } = built;
   const problems = [...built.problems];
-  const poNumber = text17(input.poNumber, 80);
+  const poNumber = text18(input.poNumber, 80);
   const shop = ro.shop;
   const odometer = input.odometerOut ?? null;
   if (law.requireOdometerOut && !ro.odometerOutId && odometer === null) problems.push("Record the odometer reading as the vehicle leaves; this state requires it on the invoice.");
@@ -9692,14 +10386,14 @@ async function finalizeInvoices(uow, actor, input) {
     if (account?.poRequired && !poNumber) problems.push(`${account.name} requires a purchase order number on every invoice.`);
   }
   if (problems.length) {
-    const code = problems.some((p) => p.includes("purchase order")) ? Codes.PO_REQUIRED : problems.some((p) => p.includes("credit hold")) ? Codes.CREDIT_HOLD : problems.some((p) => p.includes("above what the customer authorized")) ? Codes.REAUTHORIZATION_REQUIRED : problems.some((p) => p.includes("odometer")) ? Codes.ODOMETER_REQUIRED : problems.some((p) => p.includes("DOT number")) ? Codes.TIN_REQUIRED : Codes.GUARD_FAILED;
+    const code = problems.some((p) => p.includes("purchase order")) ? Codes.PO_REQUIRED : problems.some((p) => p.includes("credit hold") || p.includes("credit limit") || p.includes("is closed")) ? Codes.CREDIT_HOLD : problems.some((p) => p.includes("above what the customer authorized")) ? Codes.REAUTHORIZATION_REQUIRED : problems.some((p) => p.includes("odometer")) ? Codes.ODOMETER_REQUIRED : problems.some((p) => p.includes("DOT number")) ? Codes.TIN_REQUIRED : Codes.GUARD_FAILED;
     throw new DomainError(code, problems[0], { problems });
   }
   let odometerOutId = ro.odometerOutId;
   if (odometer !== null && ro.vehicleId) odometerOutId = (await recordOdometer(uow, actor, { vehicleId: ro.vehicleId, value: odometer, source: "ro_out" })).id;
   const today = zonedDate(shop.timeZone, now);
   const retentionYears = Math.max(1, law.recordRetentionYears ?? 4);
-  const disclosures = await disclosuresFor(tx, ro, law, odometer, plans.some((p) => p.payer.kind !== "customer"));
+  const disclosures = await disclosuresFor(tx, ro, law, odometer, plans.some((p) => p.payer.kind !== "customer" && p.payer.kind !== "business_account"));
   const invoices = [];
   for (const plan of plans) {
     const account = plan.payer.businessAccountId ? await tx.businessAccount.findUnique({ where: { id: plan.payer.businessAccountId } }) : null;
@@ -9715,15 +10409,16 @@ async function finalizeInvoices(uow, actor, input) {
         customerId: ro.customerId,
         businessAccountId: plan.payer.businessAccountId,
         poNumber,
-        invoiceDate: dateOnly2(today),
-        dueDate: dateOnly2(dueDate),
-        retentionUntil: dateOnly2(addYears(today, retentionYears)),
+        exemptionCertificateId: plan.exemption?.id ?? null,
+        invoiceDate: dateOnly3(today),
+        dueDate: dateOnly3(dueDate),
+        retentionUntil: dateOnly3(addYears(today, retentionYears)),
         odometerOut: odometer,
         ...plan.totals,
         paidMinor: 0n,
         creditedMinor: 0n,
         balanceMinor: plan.totals.totalMinor,
-        disclosures: toJsonValue({ ...disclosures, payer: { kind: plan.payer.kind, name: plan.payer.payorName, authorizationNumber: plan.payer.authorizationNumber, claimNumber: plan.payer.claimNumber } }),
+        disclosures: toJsonValue({ ...disclosures, payer: { kind: plan.payer.kind, name: plan.payer.payorName, authorizationNumber: plan.payer.authorizationNumber, claimNumber: plan.payer.claimNumber }, taxExemption: plan.exemption ?? null }),
         finalizedById: actorUserId(actor),
         finalizedAt: now,
         status: "finalized",
@@ -9770,8 +10465,8 @@ async function finalizeInvoices(uow, actor, input) {
         termCode: term.code,
         termName: term.name,
         invoiceText: term.invoiceText,
-        startsOn: dateOnly2(today),
-        endsOn: dateOnly2(addMonths(today, term.months)),
+        startsOn: dateOnly3(today),
+        endsOn: dateOnly3(addMonths(today, term.months)),
         startMiles,
         endsAtMiles: startMiles === null ? null : startMiles + term.miles,
         status: "active"
@@ -9822,213 +10517,6 @@ async function invoicePayLink(uow, actor, input) {
   await tx.invoice.update({ where: { id: invoice.id }, data: { sentAt: invoice.sentAt ?? uow.now, sentChannel: invoice.sentChannel || "link", status: invoice.status === "finalized" ? "sent" : invoice.status, version: { increment: 1 } } });
   auditCreate(uow, actor, "Invoice", invoice.id, "invoice.pay_link_created", { expiresAt: made.expiresAt.toISOString() });
   return { path: `/pay/${made.token}`, apiPath: `/api/public/invoices/${made.token}`, expiresAt: made.expiresAt.toISOString() };
-}
-
-// features/keystone/lib/settlement.ts
-var text18 = (value, max) => String(value ?? "").trim().slice(0, max);
-var reasonOf = (value, what) => {
-  const r = text18(value, 300);
-  if (r.length < 3) throw new DomainError(Codes.INVALID_INPUT, `Say why ${what}.`, { field: "reason" });
-  return r;
-};
-async function needApproval(uow, actor, a) {
-  if (a.approvalRequestId) {
-    await consumeApproval(uow, { requestId: a.approvalRequestId, action: a.action, targetList: a.targetList, targetId: a.targetId, payload: a.payload });
-    return { approved: true, approvalRequestId: a.approvalRequestId };
-  }
-  const request = await requestApproval(uow, actor, { action: a.action, targetList: a.targetList, targetId: a.targetId, payload: a.payload, requiredPermission: a.permission, summary: a.summary });
-  return { approved: false, approvalRequestId: request.id };
-}
-var cents3 = (minor2) => {
-  const t = (minor2 < 0n ? -minor2 : minor2).toString().padStart(3, "0");
-  return `${t.slice(0, -2)}.${t.slice(-2)}`;
-};
-var waiting = (id) => ({ approvalRequired: true, approvalRequestId: id });
-async function policyOf(tx, shopId) {
-  const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { shopPolicyId: true } });
-  return shop.shopPolicyId ? tx.shopPolicyVersion.findUnique({ where: { id: shop.shopPolicyId }, select: { refundApprovalMinor: true, creditMemoApprovalMinor: true } }) : null;
-}
-async function openRefund(uow, actor, input) {
-  const { tx } = uow;
-  const amount = whole2(input.amountMinor, "amountMinor");
-  const reason = reasonOf(input.reason, "the money is going back");
-  const payment = await lockRow(tx, "Payment", input.paymentId);
-  if (!["succeeded", "partially_refunded"].includes(payment.status)) throw new DomainError(Codes.GUARD_FAILED, "Only a payment that went through can be refunded.");
-  const inFlight = await tx.refund.aggregate({ where: { paymentId: payment.id, status: { in: ["requested", "pending", "unknown"] } }, _sum: { amountMinor: true } });
-  const left = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - (inFlight._sum.amountMinor ?? 0n);
-  if (amount > left) throw new DomainError(Codes.GUARD_FAILED, `Only ${cents3(left)} of this payment is left to refund.`, { field: "amountMinor" });
-  const policy = await policyOf(tx, payment.shopId);
-  const threshold = policy?.refundApprovalMinor ?? 0n;
-  let approvalId = null;
-  if (threshold > 0n && amount >= threshold) {
-    const gate2 = await needApproval(uow, actor, {
-      action: "refund.issue",
-      targetList: "Payment",
-      targetId: payment.id,
-      permission: "canApproveRefund",
-      approvalRequestId: input.approvalRequestId,
-      payload: { paymentId: payment.id, amountMinor: amount.toString(), reason },
-      summary: `Refund ${cents3(amount)}: ${reason}`
-    });
-    if (!gate2.approved) return waiting(gate2.approvalRequestId);
-    approvalId = gate2.approvalRequestId;
-  }
-  const row = await tx.refund.create({
-    data: { paymentId: payment.id, amountMinor: amount, reason, provider: payment.provider, approvalId, requestedById: actorUserId(actor), status: "requested" }
-  });
-  auditCreate(uow, actor, "Refund", row.id, "refund.requested", { paymentId: payment.id, amountMinor: amount, provider: payment.provider, approvalId }, { reason });
-  return { refundId: row.id, provider: payment.provider, tender: payment.tender, providerPaymentId: payment.providerPaymentId || "", amountMinor: amount.toString() };
-}
-async function applyRefundResult(uow, actor, input) {
-  const { tx, now } = uow;
-  const refund = await lockRow(tx, "Refund", input.refundId);
-  if (["succeeded", "failed"].includes(refund.status)) return { status: refund.status, already: true };
-  if (input.outcome === "pending" || input.outcome === "unknown") {
-    if (refund.status !== input.outcome) await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: input.outcome, actor, eventType: `refund.${input.outcome}`, data: { providerRefundId: input.providerRefundId ?? refund.providerRefundId } });
-    return { status: input.outcome, already: false };
-  }
-  if (input.outcome === "failed") {
-    await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: "failed", actor, eventType: "refund.failed", data: { failureMessage: text18(input.message || "The refund did not go through.", 300) } });
-    return { status: "failed", already: false };
-  }
-  const payment = await lockRow(tx, "Payment", refund.paymentId);
-  const amount = BigInt(refund.amountMinor);
-  const unallocated = BigInt(payment.amountMinor) - BigInt(payment.refundedMinor) - BigInt(payment.allocatedMinor);
-  const fromFree = unallocated > 0n ? amount < unallocated ? amount : unallocated : 0n;
-  let fromInvoices = amount - fromFree;
-  if (fromInvoices > 0n) {
-    const rows = await tx.paymentAllocation.groupBy({ by: ["invoiceId"], where: { paymentId: payment.id }, _sum: { amountMinor: true } });
-    const net = rows.map((r) => ({ invoiceId: r.invoiceId, net: r._sum.amountMinor ?? 0n })).filter((r) => r.net > 0n).sort((a, b) => a.invoiceId.localeCompare(b.invoiceId));
-    const available = sumMinor(net.map((n) => n.net));
-    if (fromInvoices > available) fromInvoices = available;
-    const shares2 = net.length ? allocateMinor(fromInvoices, net.map((n) => n.net.toString())) : [];
-    for (let i = 0; i < net.length; i += 1) {
-      const take = shares2[i] > net[i].net ? net[i].net : shares2[i];
-      if (take <= 0n) continue;
-      const invoice = await lockRow(tx, "Invoice", net[i].invoiceId);
-      await tx.paymentAllocation.create({ data: { paymentId: payment.id, invoiceId: invoice.id, refundId: refund.id, amountMinor: -take, at: now } });
-      await settleInvoice(uow, actor, invoice, -take, 0n);
-    }
-  }
-  const refunded = BigInt(payment.refundedMinor) + amount;
-  await tx.payment.update({ where: { id: payment.id }, data: { refundedMinor: refunded, allocatedMinor: { decrement: fromInvoices }, status: refunded >= BigInt(payment.amountMinor) ? "refunded" : "partially_refunded", version: { increment: 1 } } });
-  const businessDate = asDate(await postingDate(tx, payment.shopId, now));
-  await transition(uow, { model: "Refund", id: refund.id, from: ["requested", "pending", "unknown"], to: "succeeded", actor, eventType: "refund.succeeded", data: { providerRefundId: input.providerRefundId ?? refund.providerRefundId, settledAt: now, businessDate, failureMessage: "" } });
-  return { status: "succeeded", already: false, amountMinor: amount.toString() };
-}
-async function issueCreditMemo(uow, actor, input) {
-  const { tx, now } = uow;
-  const reason = reasonOf(input.reason, "the invoice is being credited");
-  const invoice = await lockRow(tx, "Invoice", input.invoiceId);
-  if (!Array.isArray(input.lines) || !input.lines.length) throw new DomainError(Codes.INVALID_INPUT, "Choose what to credit.", { field: "lines" });
-  const prior = await tx.creditMemoLine.findMany({ where: { creditMemo: { invoiceId: invoice.id, status: "issued" } }, select: { invoiceLineId: true, amountMinor: true } });
-  const lines = [];
-  for (const l of input.lines) {
-    const source = await tx.invoiceLine.findUnique({ where: { id: String(l.invoiceLineId) } });
-    if (!source || source.invoiceId !== invoice.id) throw new DomainError(Codes.INVALID_INPUT, "That line is not on this invoice.", { field: "lines" });
-    const amount = whole2(l.amountMinor, "amountMinor");
-    const credited = sumMinor(prior.filter((p) => p.invoiceLineId === source.id).map((p) => p.amountMinor));
-    if (amount > source.extendedMinor - credited) throw new DomainError(Codes.GUARD_FAILED, `${source.description}: only ${cents3(source.extendedMinor - credited)} is left to credit.`, { field: "amountMinor" });
-    const taxMinor = source.extendedMinor > 0n ? BigInt(dec(source.taxMinor).times(dec(amount)).div(dec(source.extendedMinor)).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN).toString()) : 0n;
-    lines.push({ invoiceLineId: source.id, description: source.description, amountMinor: amount, taxMinor });
-  }
-  const subtotal = sumMinor(lines.map((l) => l.amountMinor));
-  const tax = sumMinor(lines.map((l) => l.taxMinor));
-  const total = subtotal + tax;
-  if (total > BigInt(invoice.balanceMinor)) throw new DomainError(Codes.GUARD_FAILED, "A credit cannot be more than what is still owed. Refund the payment for money already received.", { field: "lines" });
-  const policy = await policyOf(tx, invoice.shopId);
-  const threshold = policy?.creditMemoApprovalMinor ?? 0n;
-  let approvalId = null;
-  if (threshold > 0n && total >= threshold) {
-    const gate2 = await needApproval(uow, actor, {
-      action: "credit_memo.issue",
-      targetList: "Invoice",
-      targetId: invoice.id,
-      permission: "canApproveCreditMemo",
-      approvalRequestId: input.approvalRequestId,
-      payload: { invoiceId: invoice.id, reason, lines: lines.map((l) => ({ invoiceLineId: l.invoiceLineId, amountMinor: l.amountMinor.toString() })) },
-      summary: `Credit ${cents3(total)} on ${invoice.invoiceNumber}: ${reason}`
-    });
-    if (!gate2.approved) return waiting(gate2.approvalRequestId);
-    approvalId = gate2.approvalRequestId;
-  }
-  const shop = await tx.shop.findUniqueOrThrow({ where: { id: invoice.shopId }, select: { code: true } });
-  const reference = await nextShopReference(tx, "CRM", shop.code, now);
-  const memo = await tx.creditMemo.create({ data: { shopId: invoice.shopId, reference, invoiceId: invoice.id, reason, subtotalMinor: subtotal, taxMinor: tax, totalMinor: total, approvalId, createdById: actorUserId(actor), issuedById: actorUserId(actor), issuedAt: now, status: "issued" } });
-  await tx.creditMemoLine.createMany({ data: lines.map((l) => ({ creditMemoId: memo.id, invoiceLineId: l.invoiceLineId, description: l.description, amountMinor: l.amountMinor, taxMinor: l.taxMinor })) });
-  await settleInvoice(uow, actor, invoice, 0n, total);
-  auditCreate(uow, actor, "CreditMemo", memo.id, "credit_memo.issued", { reference, invoice: invoice.invoiceNumber, totalMinor: total, approvalId }, { reason });
-  return { id: memo.id, reference, totalMinor: total.toString() };
-}
-async function dayTotals(tx, shopId, date2) {
-  const businessDate = asDate(date2);
-  const payments = await tx.payment.findMany({ where: { shopId, businessDate, status: { in: ["succeeded", "partially_refunded", "refunded"] } }, select: { tender: true, amountMinor: true } });
-  const refunds = await tx.refund.findMany({ where: { businessDate, status: "succeeded", payment: { shopId } }, select: { amountMinor: true, payment: { select: { tender: true } } } });
-  const totals = {};
-  for (const p of payments) totals[p.tender] = (totals[p.tender] ?? 0n) + p.amountMinor;
-  for (const r of refunds) totals[r.payment.tender] = (totals[r.payment.tender] ?? 0n) - r.amountMinor;
-  const open = await tx.payment.count({ where: { shopId, status: { in: ["initiated", "pending", "unknown"] }, createdAt: { gte: new Date(businessDate.getTime() - 864e5), lt: new Date(businessDate.getTime() + 2 * 864e5) } } });
-  return { totals, expectedCashMinor: totals.cash ?? 0n, unresolvedPayments: open };
-}
-async function closeDay(uow, actor, input) {
-  const { tx, now } = uow;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.businessDate)) throw new DomainError(Codes.INVALID_INPUT, "Choose the day to close.", { field: "businessDate" });
-  const count = whole2(input.drawerCountMinor, "drawerCountMinor", { positive: false });
-  const { totals, expectedCashMinor, unresolvedPayments } = await dayTotals(tx, input.shopId, input.businessDate);
-  if (unresolvedPayments > 0) throw new DomainError(Codes.GUARD_FAILED, `${unresolvedPayments} card payment${unresolvedPayments === 1 ? " is" : "s are"} still waiting on the card processor. Check ${unresolvedPayments === 1 ? "it" : "them"} before closing the day.`);
-  const variance = count - expectedCashMinor;
-  const reason = text18(input.varianceReason, 300);
-  if (variance !== 0n && reason.length < 3) throw new DomainError(Codes.INVALID_INPUT, `The drawer is ${variance > 0n ? "over" : "short"} by ${cents3(variance < 0n ? -variance : variance)}. Say why.`, { field: "varianceReason" });
-  const businessDate = asDate(input.businessDate);
-  const existing = await tx.businessDayClose.findUnique({ where: { shopId_businessDate: { shopId: input.shopId, businessDate } } });
-  const data = { tenderTotals: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, v.toString()])), expectedCashMinor, drawerCountMinor: count, varianceMinor: variance, varianceReason: reason, closedById: actorUserId(actor), closedAt: now, status: "closed" };
-  if (existing?.status === "closed") throw new DomainError(Codes.GUARD_FAILED, "This day is already closed.");
-  let id;
-  if (existing) {
-    await tx.businessDayClose.update({ where: { id: existing.id }, data: { ...data, version: { increment: 1 } } });
-    id = existing.id;
-  } else {
-    id = (await tx.businessDayClose.create({ data: { shopId: input.shopId, businessDate, ...data } })).id;
-  }
-  auditCreate(uow, actor, "BusinessDayClose", id, "day.closed", { shopId: input.shopId, date: input.businessDate, expectedCashMinor, drawerCountMinor: count, varianceMinor: variance, tenders: data.tenderTotals }, { reason });
-  return { id, businessDate: input.businessDate, expectedCashMinor: expectedCashMinor.toString(), varianceMinor: variance.toString() };
-}
-async function reopenDay(uow, actor, input) {
-  const reason = reasonOf(input.reason, "the day is being reopened");
-  const day3 = await lockRow(uow.tx, "BusinessDayClose", input.dayCloseId);
-  if (day3.status !== "closed") throw new DomainError(Codes.GUARD_FAILED, "Only a closed day can be reopened.");
-  const gate2 = await needApproval(uow, actor, { action: "day.reopen", targetList: "BusinessDayClose", targetId: day3.id, permission: "canApproveReopen", approvalRequestId: input.approvalRequestId, payload: { dayCloseId: day3.id, reason }, summary: `Reopen the day ${new Date(day3.businessDate).toISOString().slice(0, 10)}: ${reason}` });
-  if (!gate2.approved) return waiting(gate2.approvalRequestId);
-  await uow.tx.businessDayClose.update({ where: { id: day3.id }, data: { status: "reopened", reopenApprovalId: gate2.approvalRequestId, version: { increment: 1 } } });
-  uow.audit({ eventType: "day.reopened", entityType: "BusinessDayClose", entityId: day3.id, actorUserId: actorUserId(actor), approverId: null, reason, after: { status: "reopened" } });
-  return { id: day3.id, status: "reopened" };
-}
-async function releaseVehicle(uow, actor, input) {
-  const { tx, now } = uow;
-  const ro = await lockRow(tx, "RepairOrder", input.repairOrderId);
-  if (ro.status !== "invoiced") throw new DomainError(Codes.GUARD_FAILED, `${ro.roNumber} has to be invoiced before the vehicle is released.`);
-  if (ro.releasedAt) throw new DomainError(Codes.GUARD_FAILED, "This vehicle was already released.");
-  const invoices = await tx.invoice.findMany({ where: { repairOrderId: ro.id }, select: { balanceMinor: true } });
-  const owed = sumMinor(invoices.map((i) => i.balanceMinor));
-  let approvalId = null;
-  if (owed > 0n) {
-    const reason = reasonOf(input.reason, "the vehicle is leaving with a balance");
-    const gate2 = await needApproval(uow, actor, { action: "vehicle.release_with_balance", targetList: "RepairOrder", targetId: ro.id, permission: "canApproveRelease", approvalRequestId: input.approvalRequestId, payload: { repairOrderId: ro.id, owedMinor: owed.toString(), reason }, summary: `Release ${ro.roNumber} owing ${cents3(owed)}: ${reason}` });
-    if (!gate2.approved) return waiting(gate2.approvalRequestId);
-    approvalId = gate2.approvalRequestId;
-  }
-  await tx.repairOrder.update({ where: { id: ro.id }, data: { releasedAt: now, releasedById: actorUserId(actor), version: { increment: 1 } } });
-  auditCreate(uow, actor, "RepairOrder", ro.id, "vehicle.released", { owedMinor: owed, approvalId });
-  const closed = owed === 0n;
-  if (closed) await transition(uow, { model: "RepairOrder", id: ro.id, from: ["invoiced"], to: "closed", actor, eventType: "repair_order.closed" });
-  return { repairOrderId: ro.id, released: true, closed, owedMinor: owed.toString() };
-}
-async function closeIfSettled(uow, actor, repairOrderId) {
-  if (!repairOrderId) return;
-  const ro = await uow.tx.repairOrder.findUnique({ where: { id: repairOrderId }, select: { status: true, releasedAt: true } });
-  if (!ro || ro.status !== "invoiced" || !ro.releasedAt) return;
-  const owing = await uow.tx.invoice.count({ where: { repairOrderId, balanceMinor: { gt: 0n } } });
-  if (!owing) await transition(uow, { model: "RepairOrder", id: repairOrderId, from: ["invoiced"], to: "closed", actor, eventType: "repair_order.closed" });
 }
 
 // features/keystone/lib/stripeGateway.ts
@@ -11592,6 +12080,98 @@ async function attachShopComebackJob(_root, args, context) {
   return run5(context, actor, "comeback.attach_job", args.idempotencyKey, args, (uow) => attachComebackJob(uow, actor, args));
 }
 
+// features/keystone/mutations/phase6.ts
+var run6 = async (context, actor, name, idempotencyKey, params, work) => {
+  const result = await command(context.prisma, { name, actor, idempotencyKey, params }, work);
+  return { replay: result.replay, ...result.value };
+};
+var MANAGE = ["canManageCustomers"];
+var MONEY = ["canReadFinancials", "canFinalizeInvoices"];
+async function saveAccountTerms(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE);
+  requireHuman(actor, "change an account");
+  return run6(context, actor, "account.terms", args.idempotencyKey, args.input, (uow) => updateAccountTerms(uow, actor, args.input ?? {}));
+}
+async function refreshAccountStanding(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE, ...MONEY);
+  requireHuman(actor, "recheck credit");
+  return run6(context, actor, "account.standing", args.idempotencyKey, args, (uow) => args.businessAccountId ? refreshStanding(uow, actor, args.businessAccountId).then((s) => ({ status: s.status, changed: s.changed })) : refreshAllStandings(uow, actor));
+}
+async function holdAccountCredit(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canApproveCredit");
+  requireHuman(actor, "hold an account");
+  return run6(context, actor, "account.credit_hold", args.idempotencyKey, args, (uow) => placeCreditHold(uow, actor, args));
+}
+async function releaseAccountHold(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, "canApproveCredit");
+  requireHuman(actor, "release a credit hold");
+  return run6(context, actor, "account.credit_release", args.idempotencyKey, args, (uow) => releaseCreditHold(uow, actor, args));
+}
+async function addAccountContact(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE);
+  requireHuman(actor, "add a contact");
+  return run6(context, actor, "account.contact", args.idempotencyKey, args.input, (uow) => addFleetContact(uow, actor, args.input));
+}
+async function addAccountApprover(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE);
+  requireHuman(actor, "add an approver");
+  return run6(context, actor, "account.approver", args.idempotencyKey, args.input, (uow) => addFleetApprover(uow, actor, args.input));
+}
+async function removeAccountApprover(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE);
+  requireHuman(actor, "remove an approver");
+  return run6(context, actor, "account.approver_remove", args.idempotencyKey, args, (uow) => removeFleetApprover(uow, actor, args));
+}
+async function addAccountCertificate(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE);
+  requireHuman(actor, "record a tax certificate");
+  return run6(context, actor, "account.certificate", args.idempotencyKey, args.input, (uow) => addExemptionCertificate(uow, actor, args.input));
+}
+async function revokeAccountCertificate(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE);
+  requireHuman(actor, "revoke a tax certificate");
+  return run6(context, actor, "account.certificate_revoke", args.idempotencyKey, args, (uow) => revokeExemptionCertificate(uow, actor, args));
+}
+async function saveAccountUnit(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE);
+  requireHuman(actor, "save a unit");
+  return run6(context, actor, "account.unit", args.idempotencyKey, args.input, (uow) => saveFleetUnit(uow, actor, args.input));
+}
+async function createAccountLink(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MANAGE);
+  requireHuman(actor, "make an account link");
+  return run6(context, actor, "account.link", args.idempotencyKey, args, (uow) => createFleetLink(uow, actor, args));
+}
+async function makeAccountStatement(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MONEY);
+  requireHuman(actor, "make a statement");
+  return run6(context, actor, "statement.generate", args.idempotencyKey, args, (uow) => generateStatement(uow, actor, args));
+}
+async function exportAccountStatement(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MONEY);
+  requireHuman(actor, "export a statement");
+  return run6(context, actor, "statement.export", args.idempotencyKey, args, (uow) => exportStatement(uow, actor, args));
+}
+async function exportAllAccountStatements(_root, args, context) {
+  const actor = actorFromSession(context.session);
+  requirePermission(actor, ...MONEY);
+  requireHuman(actor, "export statements");
+  return run6(context, actor, "statement.export_all", args.idempotencyKey, args, (uow) => exportAllStatements(uow, actor, args));
+}
+
 // features/keystone/mutations/index.ts
 var graphql5 = String.raw;
 function extendGraphqlSchema(baseSchema) {
@@ -11702,6 +12282,20 @@ function extendGraphqlSchema(baseSchema) {
         adjustTechFlaggedHours(technicianId: ID!, jobId: ID!, centiHours: Int!, reason: String!, idempotencyKey: String!): JSON
         closeShopPayPeriod(payPeriodId: ID!, approvalRequestId: ID, idempotencyKey: String!): JSON
         exportShopPayPeriod(payPeriodId: ID!, idempotencyKey: String!): JSON
+        saveAccountTerms(input: JSON!, idempotencyKey: String!): JSON
+        refreshAccountStanding(businessAccountId: ID, idempotencyKey: String!): JSON
+        holdAccountCredit(businessAccountId: ID!, reason: String!, idempotencyKey: String!): JSON
+        releaseAccountHold(businessAccountId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        addAccountContact(input: JSON!, idempotencyKey: String!): JSON
+        addAccountApprover(input: JSON!, idempotencyKey: String!): JSON
+        removeAccountApprover(approverId: ID!, idempotencyKey: String!): JSON
+        addAccountCertificate(input: JSON!, idempotencyKey: String!): JSON
+        revokeAccountCertificate(certificateId: ID!, reason: String!, idempotencyKey: String!): JSON
+        saveAccountUnit(input: JSON!, idempotencyKey: String!): JSON
+        createAccountLink(contactId: ID!, idempotencyKey: String!): JSON
+        makeAccountStatement(businessAccountId: ID!, periodStart: String!, periodEnd: String!, idempotencyKey: String!): JSON
+        exportAccountStatement(statementId: ID!, idempotencyKey: String!): JSON
+        exportAllAccountStatements(periodStart: String!, periodEnd: String!, idempotencyKey: String!): JSON
         openShopComeback(originalJobId: ID!, concern: String!, odometer: Int, idempotencyKey: String!): JSON
         diagnoseShopComeback(comebackId: ID!, cause: String!, diagnosis: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         requestComebackGoodwill(comebackId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
@@ -11810,6 +12404,20 @@ function extendGraphqlSchema(baseSchema) {
         adjustTechFlaggedHours: op(adjustTechFlaggedHours),
         closeShopPayPeriod: op(closeShopPayPeriod),
         exportShopPayPeriod: op(exportShopPayPeriod),
+        saveAccountTerms: op(saveAccountTerms),
+        refreshAccountStanding: op(refreshAccountStanding),
+        holdAccountCredit: op(holdAccountCredit),
+        releaseAccountHold: op(releaseAccountHold),
+        addAccountContact: op(addAccountContact),
+        addAccountApprover: op(addAccountApprover),
+        removeAccountApprover: op(removeAccountApprover),
+        addAccountCertificate: op(addAccountCertificate),
+        revokeAccountCertificate: op(revokeAccountCertificate),
+        saveAccountUnit: op(saveAccountUnit),
+        createAccountLink: op(createAccountLink),
+        makeAccountStatement: op(makeAccountStatement),
+        exportAccountStatement: op(exportAccountStatement),
+        exportAllAccountStatements: op(exportAllAccountStatements),
         openShopComeback: op(openShopComeback),
         diagnoseShopComeback: op(diagnoseShopComeback),
         requestComebackGoodwill: op(requestComebackGoodwill),

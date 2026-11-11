@@ -165,24 +165,63 @@ export function DecisionPicker({ jobs, value, onChange }: { jobs: { id: string; 
   );
 }
 
-/** The advisor's record of a phone authorization (16 CCR §3353.1(c): name, number, time, amount). */
-export function PhoneAuthorizationForm({ estimateVersionId, jobs, customerName, replacedParts }: { estimateVersionId: string; jobs: { id: string; number: number; title: string; totalMinor: string }[]; customerName: string; replacedParts: string }) {
+export type FleetAccount = { name: string; poRequired: boolean; approvers: { id: string; order: number; limitMinor: string; active: boolean; contact: { name: string } | null }[] };
+
+/** Work billed to a business account: which of its approvers said yes, and the PO. The server checks the approver's limit and the PO rule. */
+export function FleetApproverFields({ fleet, approverId, onApprover, po, onPo, poNeeded }: { fleet: FleetAccount; approverId: string; onApprover: (v: string) => void; po: string; onPo: (v: string) => void; poNeeded: boolean }) {
+  const chain = fleet.approvers.filter(a => a.active);
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <label className={labelClass}>Approver at {fleet.name}
+        <select className={inputClass} value={approverId} onChange={e => onApprover(e.target.value)} required>
+          <option value="">Choose the approver</option>
+          {chain.map(a => <option key={a.id} value={a.id}>{a.contact?.name ?? 'Approver'} (up to {money(a.limitMinor)})</option>)}
+        </select>
+      </label>
+      <label className={labelClass}>Purchase order{poNeeded ? '' : ' (optional)'}<input className={inputClass} value={po} onChange={e => onPo(e.target.value)} required={poNeeded} placeholder="PO-7731" /></label>
+    </div>
+  );
+}
+
+/** The advisor's record of a phone authorization (16 CCR §3353.1(c): name, number, time, amount). On a business account it is the approver's, with their limit and the PO rule. */
+export function PhoneAuthorizationForm({ estimateVersionId, jobs, customerName, replacedParts, fleet = null, allowFleetPo = false, allowPhone = true }: { estimateVersionId: string; jobs: { id: string; number: number; title: string; totalMinor: string }[]; customerName: string; replacedParts: string; fleet?: FleetAccount | null; allowFleetPo?: boolean; allowPhone?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState(customerName);
   const [phone, setPhone] = React.useState('');
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [parts, setParts] = React.useState('');
+  const [method, setMethod] = React.useState<'oral_phone' | 'fleet_po'>(allowPhone || !fleet ? 'oral_phone' : 'fleet_po');
+  const [approverId, setApprover] = React.useState('');
+  const [po, setPo] = React.useState('');
   const save = useCommand('recordCustomerAuthorization', PATHS);
-  const ready = jobs.every(j => answers[j.id]) && name.trim() && phone.replace(/\D/g, '').length >= 10 && (!replacedParts || parts);
+  const approver = fleet?.approvers.find(a => a.id === approverId);
+  const byPo = Boolean(fleet) && method === 'fleet_po';
+  const poNeeded = Boolean(fleet) && (fleet!.poRequired || byPo);
+  const approving = jobs.some(j => answers[j.id] === 'approve');
+  const ready = jobs.every(j => answers[j.id]) && (fleet ? (!approving || (approver && (!poNeeded || po.trim()))) : name.trim()) && (byPo || phone.replace(/\D/g, '').length >= 10) && (!replacedParts || parts);
+  const who = fleet ? approver?.contact?.name ?? name.trim() : name.trim();
   return (
-    <Disclosure label="Record a phone authorization" open={open} onOpen={setOpen}>
+    <Disclosure label={fleet ? 'Record a fleet approval' : 'Record a phone authorization'} open={open} onOpen={setOpen}>
       <form className="space-y-3" onSubmit={e => {
         e.preventDefault();
-        save.run({ input: { estimateVersionId, method: 'oral_phone', actorName: name.trim(), phoneNumber: phone.trim(), answers: jobs.map(j => ({ jobId: j.id, decision: answers[j.id] })), ...(parts ? { replacedPartsElection: parts } : {}) } }, () => setOpen(false));
+        save.run({ input: {
+          estimateVersionId, method: byPo ? 'fleet_po' : 'oral_phone', actorName: who, answers: jobs.map(j => ({ jobId: j.id, decision: answers[j.id] })),
+          ...(byPo ? {} : { phoneNumber: phone.trim() }),
+          ...(fleet ? { actorKind: 'fleet_approver', fleetApproverId: approverId || null, poNumber: po.trim() || null } : {}),
+          ...(parts ? { replacedPartsElection: parts } : {}),
+        } }, () => setOpen(false));
       }}>
+        {fleet && allowFleetPo && allowPhone ? (
+          <label className={labelClass}>How they approved
+            <select className={inputClass} value={method} onChange={e => setMethod(e.target.value as 'oral_phone' | 'fleet_po')}>
+              <option value="oral_phone">By phone</option><option value="fleet_po">Purchase order (fleet PO)</option>
+            </select>
+          </label>
+        ) : null}
+        {fleet ? <FleetApproverFields fleet={fleet} approverId={approverId} onApprover={setApprover} po={po} onPo={setPo} poNeeded={poNeeded} /> : null}
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className={labelClass}>Who said yes<input className={inputClass} value={name} onChange={e => setName(e.target.value)} /></label>
-          <label className={labelClass}>Number you called<input className={inputClass} inputMode="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(916) 555-0100" /></label>
+          {fleet ? null : <label className={labelClass}>Who said yes<input className={inputClass} value={name} onChange={e => setName(e.target.value)} /></label>}
+          {byPo ? null : <label className={labelClass}>Number you called<input className={inputClass} inputMode="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(916) 555-0100" /></label>}
         </div>
         <DecisionPicker jobs={jobs} value={answers} onChange={setAnswers} />
         {replacedParts ? (
@@ -192,7 +231,7 @@ export function PhoneAuthorizationForm({ estimateVersionId, jobs, customerName, 
             </select>
           </label>
         ) : null}
-        <p className="text-xs text-muted-foreground">Recorded with your name and the time. The amount for each approved job is the estimate total; the shop can&apos;t charge more without asking again.</p>
+        <p className="text-xs text-muted-foreground">{fleet ? 'A job above the approver\'s limit is refused and goes to the next approver in order. ' : ''}Recorded with your name and the time. The amount for each approved job is the estimate total; the shop can&apos;t charge more without asking again.</p>
         <div className="flex flex-wrap items-center gap-2">
           <button className={primary} disabled={!ready || save.pending}>{save.pending ? 'Recording' : 'Record authorization'}</button>
           <button type="button" className={cn(pillClass, 'bg-transparent shadow-none')} onClick={() => setOpen(false)}>Cancel</button>

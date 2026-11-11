@@ -179,6 +179,8 @@ export async function updateAccountTerms(uow: UnitOfWork, actor: Actor, input: T
       approvalRequestId = gate.approvalRequestId
     }
     if (limit !== account.creditLimitMinor) data.creditLimitMinor = limit
+    // Tightening the limit ends any waiver from a hold release: the new limit applies to the next invoice.
+    if (limit < account.creditLimitMinor && account.holdWaivedUntil) data.holdWaivedUntil = null
   }
   if (input.status !== undefined && input.status !== account.status) {
     if (input.status === 'closed') {
@@ -304,7 +306,9 @@ export async function createFleetLink(uow: UnitOfWork, actor: Actor, input: { co
 export async function accountForNewOrder(tx: Tx, input: { customerId: string | null; vehicleId: string | null; kind: string; businessAccountId?: string | null; billTo?: string | null }, now: Date) {
   if (input.billTo === 'customer' || input.kind === 'comeback' || input.kind === 'internal') return { businessAccountId: null as string | null, fleetUnitId: null as string | null, kind: input.kind }
   const customer = input.customerId ? await tx.customer.findUnique({ where: { id: input.customerId }, select: { businessAccountId: true } }) : null
-  const accountId = input.businessAccountId || customer?.businessAccountId || null
+  // The vehicle counts too: a unit on an account's fleet is the account's work unless the driver pays (billTo customer).
+  const fleetVehicle = !input.businessAccountId && !customer?.businessAccountId && input.vehicleId ? await tx.fleetUnit.findFirst({ where: { vehicleId: input.vehicleId, businessAccount: { status: { not: 'closed' } } }, select: { businessAccountId: true } }) : null
+  const accountId = input.businessAccountId || customer?.businessAccountId || fleetVehicle?.businessAccountId || null
   if (!accountId) {
     if (input.kind === 'fleet') throw new DomainError(Codes.INVALID_INPUT, 'Choose the fleet account this work is billed to.', { field: 'businessAccountId' })
     return { businessAccountId: null, fleetUnitId: null, kind: input.kind }

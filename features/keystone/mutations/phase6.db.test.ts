@@ -59,7 +59,8 @@ describe.skipIf(!hasTestDatabase)('Phase 6 fleet and business accounts (database
   async function toInvoice(accountId: string, lines: unknown[], poNumber = 'PO-7731') {
     const ro = await open(accountId)
     const e = await estimate(ro, lines)
-    const approver = accountId === CVP ? (await prisma.fleetApprover.findFirstOrThrow({ where: { businessAccountId: accountId, order: 2 } })).id : null
+    // Capital Valley's operations manager (limit $3,000); Sac County's only approver.
+    const approver = (await prisma.fleetApprover.findFirstOrThrow({ where: { businessAccountId: accountId, active: true }, orderBy: { order: 'desc' } })).id
     await authorize(e, { poNumber, fleetApproverId: approver })
     await step(e.jobId, 'in_progress'); await step(e.jobId, 'completed')
     const r = await prisma.repairOrder.findUniqueOrThrow({ where: { id: ro }, include: { vehicle: true } })

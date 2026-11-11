@@ -57,6 +57,7 @@ export default async function AuthorizePage({ params }: { params: Promise<{ id: 
             jobs={jobs.map(j => ({ id: j.id, number: j.number, title: j.title, totalMinor: j.totalMinor }))}
             consentText={sent.snapshot?.disclosures?.consentText ?? ''}
             replacedPartsText={law?.replacedPartsOfferRequired ? law.replacedPartsOfferText : ''}
+            fleet={ro.businessAccount}
           />
         </>
       )}

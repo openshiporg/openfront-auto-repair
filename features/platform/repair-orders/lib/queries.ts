@@ -31,6 +31,7 @@ export async function openRepairOrders(shopId?: string) {
 
 export const RO_DETAIL = `${RO_BASE}
   replacedPartsElection designee holdNote version
+  businessAccount { id name poRequired approvers(orderBy: { order: asc }) { id order limitMinor active contact { name } } }
   checkIn { id reference signerName signedAt workOrderHash }
   odometerIn { value unit }
   jurisdictionPolicyVersion { id versionNumber pack { code name verified } toleranceRule allowedAuthorizationMethods requirePartCondition replacedPartsOfferRequired replacedPartsOfferText }
@@ -68,6 +69,7 @@ export type JobDetail = {
 }
 export type RoDetail = RoBase & {
   replacedPartsElection: string; designee: { name?: string; relationship?: string } | null; holdNote: string; version: number
+  businessAccount: { id: string; name: string; poRequired: boolean; approvers: { id: string; order: number; limitMinor: string; active: boolean; contact: { name: string } | null }[] } | null
   checkIn: { id: string; reference: string; signerName: string; signedAt: string | null; workOrderHash: string } | null
   odometerIn: { value: number; unit: string } | null
   jurisdictionPolicyVersion: { id: string; versionNumber: number; pack: { code: string; name: string; verified: boolean } | null; toleranceRule: unknown; allowedAuthorizationMethods: string[] | null; requirePartCondition: boolean; replacedPartsOfferRequired: boolean; replacedPartsOfferText: string } | null

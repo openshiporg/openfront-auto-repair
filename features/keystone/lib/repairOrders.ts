@@ -264,7 +264,10 @@ export async function addJob(uow: UnitOfWork, actor: Actor, input: JobInput) {
       inspectionItemResultId: input.inspectionItemResultId ?? null, source: input.source ?? (cannedJobVersionId ? 'canned_job' : isMachine(actor) ? 'agent' : 'manual'), urgency: input.urgency ?? 'none', status: 'draft',
     },
   })
-  await tx.payerSplit.create({ data: { jobId: job.id, payerKind: 'customer', percent: '1.000000' } })
+  // Work on a business account's repair order is billed to the account (its hold, limit, certificate, PO rule and terms then apply at invoicing).
+  // The repair order carries no account only when the driver pays (bill to customer), and then the customer pays it all.
+  const account = ro.businessAccountId ? await tx.businessAccount.findUnique({ where: { id: ro.businessAccountId }, select: { id: true, name: true } }) : null
+  await tx.payerSplit.create({ data: account ? { jobId: job.id, payerKind: 'business_account', businessAccountId: account.id, payorName: account.name, percent: '100.000000' } : { jobId: job.id, payerKind: 'customer', percent: '1.000000' } })
   if (kind === 'teardown') await saveTeardown(uow, job.id, ro.jurisdictionPolicyVersionId, input.teardown)
   auditCreate(uow, actor, 'Job', job.id, 'job.created', { repairOrderId: ro.id, number: job.number, title, kind, cannedJobVersionId, source: job.source })
   await markInService(uow, actor, ro.id, 'job')

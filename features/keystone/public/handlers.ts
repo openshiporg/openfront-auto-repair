@@ -231,7 +231,7 @@ export async function getFleet(db: Db, request: Request, token: string) {
   try { return respond(await fleetView(db, token, true)) } catch (error) { return fail(error) }
 }
 
-/** POST { action: 'approve', estimateVersionId, jobIds, poNumber? } authorizes within the caller's limit. POST { action: 'pay', invoiceId } opens a card page for one invoice. */
+/** POST { action: 'approve', estimateVersionId, jobIds, poNumber?, replacedPartsElection? } authorizes within the caller's limit. POST { action: 'pay', invoiceId } opens a card page for one invoice. */
 export async function postFleet(db: Db, request: Request, token: string) {
   if (limited(request, 'fleet-post', 20)) return tooMany()
   try {
@@ -248,6 +248,7 @@ export async function postFleet(db: Db, request: Request, token: string) {
         const { recordAuthorization } = await import('../lib/authorization')
         return recordAuthorization(uow, CUSTOMER, {
           estimateVersionId: ev.id, method: 'fleet_po', actorKind: 'fleet_approver', actorName: contact.name, fleetApproverId: approver.id, poNumber: typeof input.poNumber === 'string' ? input.poNumber : null,
+          replacedPartsElection: (typeof input.replacedPartsElection === 'string' ? input.replacedPartsElection : null) as 'return' | 'do_not_return' | 'show_only' | null,
           answers: jobIds.map(jobId => ({ jobId, decision: 'approve' as const })),
         })
       }, { actorKind: 'system' })
