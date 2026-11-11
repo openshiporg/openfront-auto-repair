@@ -20,7 +20,7 @@ import type { Db } from '../lib/db'
 const CUSTOMER = systemActor('customer-link')
 const STATUS: Record<string, number> = {
   TOKEN_INVALID: 404, TOKEN_EXPIRED: 410, ESTIMATE_SUPERSEDED: 409, CONTENT_CHANGED: 409, METHOD_NOT_ALLOWED: 403,
-  EVIDENCE_MISSING: 422, PROVIDER_UNAVAILABLE: 503, GUARD_FAILED: 409, INVALID_INPUT: 422, DISCLOSURE_MISSING: 422, INVALID_TRANSITION: 409, STALE_STATE: 409, RATE_LIMITED: 429,
+  EVIDENCE_MISSING: 422, PROVIDER_UNAVAILABLE: 503, GUARD_FAILED: 409, NOT_FOUND: 404, NOT_AUTHORIZED: 403, CREDIT_HOLD: 409, PO_REQUIRED: 422, INVALID_INPUT: 422, DISCLOSURE_MISSING: 422, INVALID_TRANSITION: 409, STALE_STATE: 409, RATE_LIMITED: 429,
 }
 
 const respond = (body: unknown, status = 200) => new Response(JSON.stringify(toJsonValue(body)), {
@@ -186,3 +186,104 @@ export async function postInvoicePayment(db: Db, request: Request, token: string
   }
 }
 export { closeIfSettled }
+
+// ── Fleet accounts by link (SCHEMA §17: /api/public/fleet/*) ──────────────────
+
+async function fleetContext(uow: import('../lib/unitOfWork').UnitOfWork, token: string, consume: boolean) {
+  const access = await resolveAccessToken(uow.tx, 'fleet_magic_link', token, uow.now, { consume })
+  const contact = await uow.tx.businessAccountContact.findUnique({ where: { id: access.subjectId } })
+  if (!contact || !contact.active || !contact.businessAccountId) throw new (await import('../lib/errors')).DomainError('TOKEN_INVALID', 'This link is not valid.')
+  const account = await uow.tx.businessAccount.findUniqueOrThrow({ where: { id: contact.businessAccountId } })
+  const approver = await uow.tx.fleetApprover.findFirst({ where: { businessAccountId: account.id, contactId: contact.id, active: true } })
+  return { contact, account, approver }
+}
+
+async function fleetView(db: Db, token: string, consume: boolean) {
+  return runInTransaction(db, async uow => {
+    const { tx } = uow
+    const { contact, account, approver } = await fleetContext(uow, token, consume)
+    const { standingOf } = await import('../lib/fleet')
+    const standing = await standingOf(tx, account.id, uow.now)
+    const units = await tx.fleetUnit.findMany({ where: { businessAccountId: account.id }, orderBy: { unitNumber: 'asc' }, include: { vehicle: { select: { year: true, make: true, model: true } } } })
+    const invoices = await tx.invoice.findMany({ where: { businessAccountId: account.id }, orderBy: { invoiceDate: 'desc' }, take: 50, select: { id: true, invoiceNumber: true, invoiceDate: true, dueDate: true, totalMinor: true, balanceMinor: true, poNumber: true, status: true } })
+    const statements = await tx.statement.findMany({ where: { businessAccountId: account.id }, orderBy: { periodStart: 'desc' }, take: 24, select: { id: true, reference: true, periodStart: true, periodEnd: true, closingMinor: true } })
+    const estimates = await tx.estimateVersion.findMany({ where: { status: 'sent', repairOrder: { businessAccountId: account.id } }, orderBy: { sentAt: 'desc' }, take: 25, select: { id: true, reference: true, totalMinor: true, includedJobIds: true, repairOrder: { select: { roNumber: true, fleetUnit: { select: { unitNumber: true } } } } } })
+    const waiting = []
+    for (const e of estimates) {
+      const jobs = await tx.job.findMany({ where: { id: { in: (e.includedJobIds as string[]) ?? [] }, status: 'offered' }, orderBy: { number: 'asc' }, select: { id: true, number: true, title: true, totalMinor: true } })
+      if (jobs.length) waiting.push({ estimateVersionId: e.id, estimate: e.reference, repairOrder: e.repairOrder?.roNumber, unit: e.repairOrder?.fleetUnit?.unitNumber ?? '', jobs: jobs.map(j => ({ jobId: j.id, number: j.number, title: j.title, totalMinor: j.totalMinor, withinYourLimit: approver ? j.totalMinor <= approver.limitMinor : false })) })
+    }
+    return {
+      account: { name: account.name, termsDays: account.termsDays, poRequired: account.poRequired, creditLimitMinor: account.creditLimitMinor, openBalanceMinor: account.openBalanceMinor, onHold: standing.blocked, holdReason: standing.blocked ? standing.reason : '' },
+      you: { name: contact.name, canApprove: Boolean(approver), approvalLimitMinor: approver?.limitMinor ?? null },
+      aging: standing.aging,
+      units: units.map(u => ({ unitNumber: u.unitNumber, driverName: u.driverName, costCenter: u.costCenter, vehicle: [u.vehicle?.year, u.vehicle?.make, u.vehicle?.model].filter(Boolean).join(' ') })),
+      waitingForApproval: waiting,
+      invoices: invoices.map(i => ({ id: i.id, invoiceNumber: i.invoiceNumber, invoiceDate: i.invoiceDate?.toISOString().slice(0, 10), dueDate: i.dueDate?.toISOString().slice(0, 10), totalMinor: i.totalMinor, balanceMinor: i.balanceMinor, poNumber: i.poNumber, status: i.status })),
+      statements: statements.map(s => ({ id: s.id, reference: s.reference, periodStart: s.periodStart?.toISOString().slice(0, 10), periodEnd: s.periodEnd?.toISOString().slice(0, 10), closingMinor: s.closingMinor })),
+      canPayByCard: cardPaymentsConfigured(),
+    }
+  }, { actorKind: 'system' })
+}
+
+export async function getFleet(db: Db, request: Request, token: string) {
+  if (limited(request, 'fleet-get', 60)) return tooMany()
+  try { return respond(await fleetView(db, token, true)) } catch (error) { return fail(error) }
+}
+
+/** POST { action: 'approve', estimateVersionId, jobIds, poNumber? } authorizes within the caller's limit. POST { action: 'pay', invoiceId } opens a card page for one invoice. */
+export async function postFleet(db: Db, request: Request, token: string) {
+  if (limited(request, 'fleet-post', 20)) return tooMany()
+  try {
+    const input = await body(request)
+    const { DomainError } = await import('../lib/errors')
+    if (input.action === 'approve') {
+      const result = await runInTransaction(db, async uow => {
+        const { contact, approver } = await fleetContext(uow, token, false)
+        if (!approver) throw new DomainError('NOT_AUTHORIZED', 'You are not an approver on this account.')
+        const ev = await uow.tx.estimateVersion.findUnique({ where: { id: String(input.estimateVersionId ?? '') }, include: { repairOrder: { select: { businessAccountId: true } } } })
+        if (!ev || ev.repairOrder?.businessAccountId !== approver.businessAccountId) throw new DomainError('NOT_FOUND', 'That estimate was not found.')
+        const jobIds = (Array.isArray(input.jobIds) ? input.jobIds : []).filter((x): x is string => typeof x === 'string').slice(0, 40)
+        if (!jobIds.length) throw new DomainError('INVALID_INPUT', 'Choose the jobs to approve.', { field: 'jobIds' })
+        const { recordAuthorization } = await import('../lib/authorization')
+        return recordAuthorization(uow, CUSTOMER, {
+          estimateVersionId: ev.id, method: 'fleet_po', actorKind: 'fleet_approver', actorName: contact.name, fleetApproverId: approver.id, poNumber: typeof input.poNumber === 'string' ? input.poNumber : null,
+          answers: jobIds.map(jobId => ({ jobId, decision: 'approve' as const })),
+        })
+      }, { actorKind: 'system' })
+      return respond({ ok: true, result, ...(await fleetView(db, token, false)) }, 201)
+    }
+    if (input.action === 'pay') {
+      if (!cardPaymentsConfigured()) throw new DomainError('PROVIDER_UNAVAILABLE', 'Card payments are not available right now. Please call the shop.')
+      const made = await runInTransaction(db, async uow => {
+        const { account } = await fleetContext(uow, token, false)
+        const invoice = await uow.tx.invoice.findUnique({ where: { id: String(input.invoiceId ?? '') }, select: { id: true, businessAccountId: true, balanceMinor: true, invoiceNumber: true } })
+        if (!invoice || invoice.businessAccountId !== account.id) throw new DomainError('NOT_FOUND', 'That invoice was not found.')
+        const payment = await createPayment(uow, CUSTOMER, { purpose: 'invoice', invoiceIds: [invoice.id], tender: 'card_link', amountMinor: invoice.balanceMinor.toString(), payerName: account.name }, `fleet-${randomUUID()}`)
+        return { paymentId: payment.id, invoiceNumber: invoice.invoiceNumber }
+      }, { actorKind: 'system' })
+      const page = await openCardPage(db, made.paymentId, { description: `Invoice ${made.invoiceNumber}`, returnPath: `/fleet/${token}` })
+      return respond({ status: 'pending', paymentId: made.paymentId, checkoutUrl: page.url }, 201)
+    }
+    throw new DomainError('INVALID_INPUT', 'Say what you want to do: approve or pay.', { field: 'action' })
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+/** A statement as a spreadsheet file. */
+export async function getFleetStatement(db: Db, request: Request, token: string, statementId: string) {
+  if (limited(request, 'fleet-statement', 30)) return tooMany()
+  try {
+    const out = await runInTransaction(db, async uow => {
+      const { account } = await fleetContext(uow, token, false)
+      const statement = await uow.tx.statement.findUnique({ where: { id: statementId }, select: { id: true, businessAccountId: true } })
+      if (!statement || statement.businessAccountId !== account.id) throw new (await import('../lib/errors')).DomainError('NOT_FOUND', 'That statement was not found.')
+      const { exportStatement } = await import('../lib/fleet')
+      return exportStatement(uow, CUSTOMER, { statementId: statement.id })
+    }, { actorKind: 'system' })
+    return new Response(out.csv, { status: 200, headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${out.filename}"`, 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } })
+  } catch (error) {
+    return fail(error)
+  }
+}

@@ -11,6 +11,7 @@ import * as p2 from './phase2'
 import * as p3 from './phase3'
 import * as p4 from './phase4'
 import * as p5 from './phase5'
+import * as p6 from './phase6'
 import '../lib/orgControls'
 import '../lib/policy'
 
@@ -126,6 +127,20 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         adjustTechFlaggedHours(technicianId: ID!, jobId: ID!, centiHours: Int!, reason: String!, idempotencyKey: String!): JSON
         closeShopPayPeriod(payPeriodId: ID!, approvalRequestId: ID, idempotencyKey: String!): JSON
         exportShopPayPeriod(payPeriodId: ID!, idempotencyKey: String!): JSON
+        saveAccountTerms(input: JSON!, idempotencyKey: String!): JSON
+        refreshAccountStanding(businessAccountId: ID, idempotencyKey: String!): JSON
+        holdAccountCredit(businessAccountId: ID!, reason: String!, idempotencyKey: String!): JSON
+        releaseAccountHold(businessAccountId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
+        addAccountContact(input: JSON!, idempotencyKey: String!): JSON
+        addAccountApprover(input: JSON!, idempotencyKey: String!): JSON
+        removeAccountApprover(approverId: ID!, idempotencyKey: String!): JSON
+        addAccountCertificate(input: JSON!, idempotencyKey: String!): JSON
+        revokeAccountCertificate(certificateId: ID!, reason: String!, idempotencyKey: String!): JSON
+        saveAccountUnit(input: JSON!, idempotencyKey: String!): JSON
+        createAccountLink(contactId: ID!, idempotencyKey: String!): JSON
+        makeAccountStatement(businessAccountId: ID!, periodStart: String!, periodEnd: String!, idempotencyKey: String!): JSON
+        exportAccountStatement(statementId: ID!, idempotencyKey: String!): JSON
+        exportAllAccountStatements(periodStart: String!, periodEnd: String!, idempotencyKey: String!): JSON
         openShopComeback(originalJobId: ID!, concern: String!, odometer: Int, idempotencyKey: String!): JSON
         diagnoseShopComeback(comebackId: ID!, cause: String!, diagnosis: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         requestComebackGoodwill(comebackId: ID!, reason: String!, approvalRequestId: ID, idempotencyKey: String!): JSON
@@ -234,6 +249,20 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         adjustTechFlaggedHours: op(p5.adjustTechFlaggedHours),
         closeShopPayPeriod: op(p5.closeShopPayPeriod),
         exportShopPayPeriod: op(p5.exportShopPayPeriod),
+        saveAccountTerms: op(p6.saveAccountTerms),
+        refreshAccountStanding: op(p6.refreshAccountStanding),
+        holdAccountCredit: op(p6.holdAccountCredit),
+        releaseAccountHold: op(p6.releaseAccountHold),
+        addAccountContact: op(p6.addAccountContact),
+        addAccountApprover: op(p6.addAccountApprover),
+        removeAccountApprover: op(p6.removeAccountApprover),
+        addAccountCertificate: op(p6.addAccountCertificate),
+        revokeAccountCertificate: op(p6.revokeAccountCertificate),
+        saveAccountUnit: op(p6.saveAccountUnit),
+        createAccountLink: op(p6.createAccountLink),
+        makeAccountStatement: op(p6.makeAccountStatement),
+        exportAccountStatement: op(p6.exportAccountStatement),
+        exportAllAccountStatements: op(p6.exportAllAccountStatements),
         openShopComeback: op(p5.openShopComeback),
         diagnoseShopComeback: op(p5.diagnoseShopComeback),
         requestComebackGoodwill: op(p5.requestComebackGoodwill),
