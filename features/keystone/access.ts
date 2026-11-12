@@ -1,6 +1,8 @@
 // Role permissions (SCHEMA §1.5). Operate and approve permissions come in pairs so one person never
 // needs both halves of a control; the separation-of-duties check still blocks self-approval when a
 // user happens to hold both.
+import { SCOPE_PERMISSIONS } from './agents/constants'
+
 export const permissionNames = [
   // NKS and fleet-mandatory
   'canSeeOtherPeople', 'canEditOtherPeople', 'canManagePeople', 'canManageRoles', 'canAccessDashboard',
@@ -67,8 +69,15 @@ export const isSignedIn = ({ session }: AccessArgs) => {
   return !expires || Date.parse(expires) > Date.now()
 }
 
+/** An assistant's token reaches only what the person it acts for holds AND its active grants cover (I-A1). */
+const agentCovers = (session: Session | null | undefined, permission: Permission) => {
+  const scopes = (session as { mcp?: { agentId?: string; agentScopes?: string[] } } | null | undefined)?.mcp
+  if (!scopes?.agentId) return true
+  return (scopes.agentScopes ?? []).some(scope => (SCOPE_PERMISSIONS as Record<string, readonly string[]>)[scope]?.includes(permission))
+}
+
 export const hasPermission = (session: Session | null | undefined, permission: Permission) =>
-  isSignedIn({ session }) && session?.data.role?.[permission] === true
+  isSignedIn({ session }) && session?.data.role?.[permission] === true && agentCovers(session, permission)
 
 export const permissions = Object.fromEntries(
   permissionNames.map(name => [name, ({ session }: AccessArgs) => hasPermission(session, name)])

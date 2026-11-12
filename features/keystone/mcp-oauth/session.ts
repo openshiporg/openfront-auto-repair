@@ -15,6 +15,9 @@ export type McpSessionMarker = {
   clientId: string
   scopes: McpScope[]
   tokenId: string
+  /** Set when the app is bound to an assistant: it acts as that assistant, limited to its active grants. */
+  agentId?: string
+  agentScopes?: string[]
 }
 
 type Strategy = { get: (args: { context: any }) => Promise<any> }
@@ -44,7 +47,15 @@ export async function resolveMcpAccessToken(context: any, token: string, listKey
     }
     // An app that is bound to an agent never acts as the person who approved it (a token with no matching binding gets no access).
     const bound = await sudo.db.AgentIdentity.findMany({ where: { oauthApp: { id: { equals: app.id } } }, take: 1 })
-    if (bound[0]) return undefined
+    if (bound[0]) {
+      // Phase 8: the token acts as the assistant, for the person who approved it, with only what both allow (I-A1).
+      // A paused or retired assistant gets nothing at all, reads included.
+      const agent = bound[0]
+      if (agent.paused === true || agent.status !== 'active') return undefined
+      const grants = await sudo.db.AgentToolGrant.findMany({ where: { agent: { id: { equals: agent.id } }, status: { equals: 'active' } }, take: 50 })
+      mcp.agentId = String(agent.id)
+      mcp.agentScopes = (grants ?? []).map((g: { scope: string }) => String(g.scope))
+    }
     return { itemId: String(record.userId), listKey, mcp }
   } catch {
     return undefined

@@ -116,6 +116,7 @@ export const Job = list({
     customerDescription: systemText(),
     kind: systemChoice(['repair', 'maintenance', 'diagnosis', 'inspection', 'teardown', 'reassembly', 'tire', 'sublet', 'comeback', 'internal']),
     concern: relationship({ ref: 'Concern.jobs', ...readOnly }),
+    addressesHypothesis: relationship({ ref: 'DiagnosisHypothesis', ...readOnly }),
     source: systemChoice(['manual', 'canned_job', 'service_menu', 'inspection_finding', 'diagnosis', 'comeback', 'recommendation', 'agent']),
     cannedJobVersion: relationship({ ref: 'CannedJobVersion', ...readOnly }),
     inspectionItemResult: relationship({ ref: 'InspectionItemResult.recommendedJobs', ...readOnly }),

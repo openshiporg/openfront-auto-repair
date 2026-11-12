@@ -13,6 +13,7 @@ import * as p4 from './phase4'
 import * as p5 from './phase5'
 import * as p6 from './phase6'
 import * as p7 from './phase7'
+import * as p8 from './phase8'
 import '../lib/orgControls'
 import '../lib/policy'
 
@@ -32,10 +33,33 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         previewShopInvoice(repairOrderId: ID!): JSON
         shopDaySummary(shopId: ID!, businessDate: String!): JSON
         followUpBoard(soonDays: Int): JSON
+        aiProviderStatus: JSON
+        diagnosisGate(sessionId: ID!, jobId: ID): JSON
+        supplierDisputeEmail(invoiceId: ID!): JSON
         campaignPreview(campaignId: ID!): JSON
       }
       input UserUpdateProfileInput { name: String, email: String, password: String, onboardingStatus: String }
       type Mutation {
+        createAssistant(input: JSON!, idempotencyKey: String!): JSON
+        grantAssistantScope(agentId: ID!, scope: String!, limits: JSON, idempotencyKey: String!): JSON
+        revokeAssistantScope(grantId: ID!, idempotencyKey: String!): JSON
+        pauseAssistant(agentId: ID!, paused: Boolean!, idempotencyKey: String!): JSON
+        retireAssistant(agentId: ID!, idempotencyKey: String!): JSON
+        saveAiProvider(input: JSON!, idempotencyKey: String!): JSON
+        removeAiProvider(idempotencyKey: String!): JSON
+        askAssistant(agentId: ID!, shopId: ID, repairOrderId: ID, message: String, title: String, steps: JSON, idempotencyKey: String!): JSON
+        draftAgentProposal(agentId: ID!, shopId: ID, repairOrderId: ID, message: String, title: String, steps: JSON, tool: String, args: JSON, idempotencyKey: String!): JSON
+        suggestEstimate(agentId: ID!, repairOrderId: ID!, words: String!, concernId: ID, cannedJobId: ID, idempotencyKey: String!): JSON
+        confirmAgentProposal(proposalId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+        rejectAgentProposal(proposalId: ID!, expectedVersion: Int!, reason: String, idempotencyKey: String!): JSON
+        startDiagnosisSession(input: JSON!, idempotencyKey: String!): JSON
+        addDiagnosisHypothesis(input: JSON!, idempotencyKey: String!): JSON
+        recordDiagnosisTest(input: JSON!, idempotencyKey: String!): JSON
+        markDiagnosisQuoteReady(input: JSON!, idempotencyKey: String!): JSON
+        markDiagnosisInconclusive(sessionId: ID!, expectedVersion: Int!, note: String, idempotencyKey: String!): JSON
+        closeDiagnosisSession(sessionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+        queueVoiceTask(input: JSON!, idempotencyKey: String!): JSON
+        logVoiceCall(input: JSON!, idempotencyKey: String!): JSON
         updateActiveUser(data: UserUpdateProfileInput!): User
         loadNorthgateSetup(idempotencyKey: String!, scope: String): JSON
         decideApprovalRequest(requestId: ID!, decision: String!, reason: String, expectedVersion: Int!, idempotencyKey: String!): JSON
@@ -175,6 +199,9 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         previewShopInvoice: op(p3.previewShopInvoice),
         shopDaySummary: op(p3.shopDaySummary),
         followUpBoard: op(p7.followUpBoard),
+        aiProviderStatus: op(p8.aiProviderStatus),
+        diagnosisGate: op(p8.diagnosisGate),
+        supplierDisputeEmail: op(p8.supplierDisputeEmail),
         campaignPreview: op(p7.campaignPreview),
       },
       Mutation: {
@@ -280,6 +307,26 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         makeAccountStatement: op(p6.makeAccountStatement),
         exportAccountStatement: op(p6.exportAccountStatement),
         exportAllAccountStatements: op(p6.exportAllAccountStatements),
+        createAssistant: op(p8.createAssistant),
+        grantAssistantScope: op(p8.grantAssistantScope),
+        revokeAssistantScope: op(p8.revokeAssistantScope),
+        pauseAssistant: op(p8.pauseAssistant),
+        retireAssistant: op(p8.retireAssistant),
+        saveAiProvider: op(p8.saveAiProvider),
+        removeAiProvider: op(p8.removeAiProvider),
+        askAssistant: op(p8.askAssistant),
+        draftAgentProposal: op(p8.draftAgentProposal),
+        suggestEstimate: op(p8.suggestEstimate),
+        confirmAgentProposal: op(p8.confirmAgentProposal),
+        rejectAgentProposal: op(p8.rejectAgentProposal),
+        startDiagnosisSession: op(p8.startDiagnosisSession),
+        addDiagnosisHypothesis: op(p8.addDiagnosisHypothesis),
+        recordDiagnosisTest: op(p8.recordDiagnosisTest),
+        markDiagnosisQuoteReady: op(p8.markDiagnosisQuoteReady),
+        markDiagnosisInconclusive: op(p8.markDiagnosisInconclusive),
+        closeDiagnosisSession: op(p8.closeDiagnosisSession),
+        queueVoiceTask: op(p8.queueVoiceTask),
+        logVoiceCall: op(p8.logVoiceCall),
         logCustomerMessage: op(p7.logCustomerMessage),
         logCustomerCall: op(p7.logCustomerCall),
         readMessageThread: op(p7.readMessageThread),

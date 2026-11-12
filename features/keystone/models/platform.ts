@@ -154,7 +154,7 @@ export const MachineCredential = list({
   },
 })
 
-/** Ported from hedge-fund; the grant, run and proposal lists arrive with Phase 8 (SCHEMA §14). */
+/** Ported from hedge-fund. Grants, runs and proposals are in models/agents.ts (SCHEMA §14). */
 export const AgentIdentity = list({
   access: governed('canAccessDashboard'),
   ui: { labelField: 'name' },
@@ -167,6 +167,7 @@ export const AgentIdentity = list({
     paused: checkbox({ defaultValue: false, ...readOnly, ui: { ...readOnly.ui, description: 'Kill switch: a paused agent can read nothing and propose nothing.' } }),
     status: lifecycle(['active', 'paused', 'retired']),
     oauthApp: relationship({ ref: 'OAuthApp', ...readOnly }),
+    grants: relationship({ ref: 'AgentToolGrant.agent', many: true, ...readOnly }),
     version: versionField(),
     ...trackingFields,
   },

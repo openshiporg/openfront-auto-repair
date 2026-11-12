@@ -109,6 +109,15 @@ model User {
   from_MessageTemplate_updatedBy             MessageTemplate[]           @relation("MessageTemplate_updatedBy")
   from_ReviewRequest_askedBy                 ReviewRequest[]             @relation("ReviewRequest_askedBy")
   from_ServiceReminder_contactedBy           ServiceReminder[]           @relation("ServiceReminder_contactedBy")
+  from_AgentProposal_invokedBy               AgentProposal[]             @relation("AgentProposal_invokedBy")
+  from_AgentProposal_confirmedBy             AgentProposal[]             @relation("AgentProposal_confirmedBy")
+  from_AgentRun_invokedBy                    AgentRun[]                  @relation("AgentRun_invokedBy")
+  from_AgentToolGrant_grantedBy              AgentToolGrant[]            @relation("AgentToolGrant_grantedBy")
+  from_VoiceTask_createdBy                   VoiceTask[]                 @relation("VoiceTask_createdBy")
+  from_VoiceTask_completedBy                 VoiceTask[]                 @relation("VoiceTask_completedBy")
+  from_DiagnosisHypothesis_enteredBy         DiagnosisHypothesis[]       @relation("DiagnosisHypothesis_enteredBy")
+  from_DiagnosisSession_openedBy             DiagnosisSession[]          @relation("DiagnosisSession_openedBy")
+  from_DiagnosisTest_performedBy             DiagnosisTest[]             @relation("DiagnosisTest_performedBy")
 
   @@index([roleId])
 }
@@ -244,6 +253,7 @@ model AgentIdentity {
   status                                   String                 @default("active")
   oauthApp                                 OAuthApp?              @relation("AgentIdentity_oauthApp", fields: [oauthAppId], references: [id])
   oauthAppId                               String?                @map("oauthApp")
+  grants                                   AgentToolGrant[]       @relation("AgentToolGrant_agent")
   version                                  Int                    @default(0)
   createdAt                                DateTime               @default(now())
   updatedAt                                DateTime               @default(now()) @updatedAt
@@ -253,6 +263,9 @@ model AgentIdentity {
   from_StaffTask_createdByAgent            StaffTask[]            @relation("StaffTask_createdByAgent")
   from_AuthorizationRequest_createdByAgent AuthorizationRequest[] @relation("AuthorizationRequest_createdByAgent")
   from_Discrepancy_openedByAgent           Discrepancy[]          @relation("Discrepancy_openedByAgent")
+  from_AgentProposal_agent                 AgentProposal[]        @relation("AgentProposal_agent")
+  from_AgentRun_agent                      AgentRun[]             @relation("AgentRun_agent")
+  from_VoiceTask_agent                     VoiceTask[]            @relation("VoiceTask_agent")
 
   @@index([ownerId])
   @@index([oauthAppId])
@@ -313,6 +326,7 @@ model ApprovalRequest {
   from_CoreObligation_approval         CoreObligation[]   @relation("CoreObligation_approval")
   from_ClockCorrection_approval        ClockCorrection[]  @relation("ClockCorrection_approval")
   from_ComebackCase_goodwillApproval   ComebackCase[]     @relation("ComebackCase_goodwillApproval")
+  from_AgentToolGrant_approval         AgentToolGrant[]   @relation("AgentToolGrant_approval")
 
   @@index([action])
   @@index([shopId])
@@ -610,6 +624,10 @@ model Shop {
   from_Recommendation_shop             Recommendation[]             @relation("Recommendation_shop")
   from_ReviewRequest_shop              ReviewRequest[]              @relation("ReviewRequest_shop")
   from_ServiceReminder_shop            ServiceReminder[]            @relation("ServiceReminder_shop")
+  from_AgentProposal_shop              AgentProposal[]              @relation("AgentProposal_shop")
+  from_AgentRun_shop                   AgentRun[]                   @relation("AgentRun_shop")
+  from_VoiceTask_shop                  VoiceTask[]                  @relation("VoiceTask_shop")
+  from_DiagnosisSession_shop           DiagnosisSession[]           @relation("DiagnosisSession_shop")
 
   @@index([jurisdictionPackId])
   @@index([jurisdictionPolicyId])
@@ -910,46 +928,47 @@ model PartsMatrixVersion {
 }
 
 model ShopPolicyVersion {
-  id                                 String        @id @default(cuid())
-  shop                               Shop?         @relation("ShopPolicyVersion_shop", fields: [shopId], references: [id])
-  shopId                             String?       @map("shop")
-  flagHoursAt                        String        @default("job_completed")
-  comebackPayRule                    String        @default("reverse")
-  allowConcurrentJobClocks           Boolean       @default(false)
-  tinPendingAllowed                  Boolean       @default(false)
-  requireQualityCheck                Boolean       @default(true)
-  diagnosisTrustThreshold            Decimal       @default("0.7000") @postgresql.Decimal(5, 4)
-  authorizationLinkTtlHours          Int           @default(72)
-  promisedTimeRequired               Boolean       @default(true)
-  noShowGraceMinutes                 Int           @default(30)
-  discountLimitPctByRole             Json?         @default("{\"seed_role_advisor\":\"0.10\"}")
-  refundApprovalMinor                BigInt        @default(0)
-  creditMemoApprovalMinor            BigInt        @default(5000)
-  agentOrderLimitMinor               BigInt        @default(0)
-  agentAutonomy                      Json?         @default("{}")
-  proposalConfirmGranularity         String        @default("per_step")
-  declinedSafetyFollowUpPurpose      String        @default("marketing")
-  followUpCadenceDays                Json?         @default("[3,30,90]")
-  depositPolicy                      Json?         @default("{}")
-  surchargePolicy                    Json?         @default("{\"enabled\":false}")
-  inspectionClockMode                String        @default("job")
-  markupFactorDefault                Decimal       @default("1.000000") @postgresql.Decimal(12, 6)
-  versionNumber                      Int
-  status                             String        @default("draft")
-  notes                              String        @default("")
-  basedOnId                          String        @default("")
-  author                             User?         @relation("ShopPolicyVersion_author", fields: [authorId], references: [id])
-  authorId                           String?       @map("author")
-  publishedBy                        User?         @relation("ShopPolicyVersion_publishedBy", fields: [publishedById], references: [id])
-  publishedById                      String?       @map("publishedBy")
-  publishedAt                        DateTime?
-  effectiveFrom                      DateTime?
-  retiredAt                          DateTime?
-  version                            Int           @default(0)
-  createdAt                          DateTime      @default(now())
-  updatedAt                          DateTime      @default(now()) @updatedAt
-  from_Shop_shopPolicy               Shop[]        @relation("Shop_shopPolicy")
-  from_RepairOrder_shopPolicyVersion RepairOrder[] @relation("RepairOrder_shopPolicyVersion")
+  id                                       String          @id @default(cuid())
+  shop                                     Shop?           @relation("ShopPolicyVersion_shop", fields: [shopId], references: [id])
+  shopId                                   String?         @map("shop")
+  flagHoursAt                              String          @default("job_completed")
+  comebackPayRule                          String          @default("reverse")
+  allowConcurrentJobClocks                 Boolean         @default(false)
+  tinPendingAllowed                        Boolean         @default(false)
+  requireQualityCheck                      Boolean         @default(true)
+  diagnosisTrustThreshold                  Decimal         @default("0.7000") @postgresql.Decimal(5, 4)
+  authorizationLinkTtlHours                Int             @default(72)
+  promisedTimeRequired                     Boolean         @default(true)
+  noShowGraceMinutes                       Int             @default(30)
+  discountLimitPctByRole                   Json?           @default("{\"seed_role_advisor\":\"0.10\"}")
+  refundApprovalMinor                      BigInt          @default(0)
+  creditMemoApprovalMinor                  BigInt          @default(5000)
+  agentOrderLimitMinor                     BigInt          @default(0)
+  agentAutonomy                            Json?           @default("{}")
+  proposalConfirmGranularity               String          @default("per_step")
+  declinedSafetyFollowUpPurpose            String          @default("marketing")
+  followUpCadenceDays                      Json?           @default("[3,30,90]")
+  depositPolicy                            Json?           @default("{}")
+  surchargePolicy                          Json?           @default("{\"enabled\":false}")
+  inspectionClockMode                      String          @default("job")
+  markupFactorDefault                      Decimal         @default("1.000000") @postgresql.Decimal(12, 6)
+  versionNumber                            Int
+  status                                   String          @default("draft")
+  notes                                    String          @default("")
+  basedOnId                                String          @default("")
+  author                                   User?           @relation("ShopPolicyVersion_author", fields: [authorId], references: [id])
+  authorId                                 String?         @map("author")
+  publishedBy                              User?           @relation("ShopPolicyVersion_publishedBy", fields: [publishedById], references: [id])
+  publishedById                            String?         @map("publishedBy")
+  publishedAt                              DateTime?
+  effectiveFrom                            DateTime?
+  retiredAt                                DateTime?
+  version                                  Int             @default(0)
+  createdAt                                DateTime        @default(now())
+  updatedAt                                DateTime        @default(now()) @updatedAt
+  from_Shop_shopPolicy                     Shop[]          @relation("Shop_shopPolicy")
+  from_RepairOrder_shopPolicyVersion       RepairOrder[]   @relation("RepairOrder_shopPolicyVersion")
+  from_AgentProposal_autoConfirmedByPolicy AgentProposal[] @relation("AgentProposal_autoConfirmedByPolicy")
 
   @@unique([shopId, versionNumber], map: "ShopPolicyVersion_shop_number_key")
   @@index([shopId])
@@ -1513,18 +1532,19 @@ model CollisionClaimRef {
 }
 
 model Concern {
-  id            String       @id @default(cuid())
-  repairOrder   RepairOrder? @relation("Concern_repairOrder", fields: [repairOrderId], references: [id])
-  repairOrderId String?      @map("repairOrder")
-  customerWords String       @default("")
-  category      String       @default("other")
-  diagnosis     String       @default("")
-  cause         String       @default("")
-  correction    String       @default("")
-  jobs          Job[]        @relation("Job_concern")
-  sortOrder     Int?         @default(0)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @default(now()) @updatedAt
+  id                            String             @id @default(cuid())
+  repairOrder                   RepairOrder?       @relation("Concern_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId                 String?            @map("repairOrder")
+  customerWords                 String             @default("")
+  category                      String             @default("other")
+  diagnosis                     String             @default("")
+  cause                         String             @default("")
+  correction                    String             @default("")
+  jobs                          Job[]              @relation("Job_concern")
+  sortOrder                     Int?               @default(0)
+  createdAt                     DateTime           @default(now())
+  updatedAt                     DateTime           @default(now()) @updatedAt
+  from_DiagnosisSession_concern DiagnosisSession[] @relation("DiagnosisSession_concern")
 
   @@index([repairOrderId])
 }
@@ -1539,6 +1559,8 @@ model Job {
   kind                                String                @default("repair")
   concern                             Concern?              @relation("Job_concern", fields: [concernId], references: [id])
   concernId                           String?               @map("concern")
+  addressesHypothesis                 DiagnosisHypothesis?  @relation("Job_addressesHypothesis", fields: [addressesHypothesisId], references: [id])
+  addressesHypothesisId               String?               @map("addressesHypothesis")
   source                              String                @default("manual")
   cannedJobVersion                    CannedJobVersion?     @relation("Job_cannedJobVersion", fields: [cannedJobVersionId], references: [id])
   cannedJobVersionId                  String?               @map("cannedJobVersion")
@@ -1595,10 +1617,12 @@ model Job {
   from_Recommendation_sourceJob       Recommendation[]      @relation("Recommendation_sourceJob")
   from_Recommendation_convertedJob    Recommendation[]      @relation("Recommendation_convertedJob")
   from_ServiceReminder_lastServiceJob ServiceReminder[]     @relation("ServiceReminder_lastServiceJob")
+  from_DiagnosisSession_diagnosisJob  DiagnosisSession[]    @relation("DiagnosisSession_diagnosisJob")
 
   @@unique([repairOrderId, number], map: "Job_ro_number_key")
   @@index([repairOrderId])
   @@index([concernId])
+  @@index([addressesHypothesisId])
   @@index([cannedJobVersionId])
   @@index([inspectionItemResultId])
   @@index([warrantyTermId])
@@ -1794,6 +1818,8 @@ model RepairOrder {
   from_MessageThread_repairOrder        MessageThread[]            @relation("MessageThread_repairOrder")
   from_Recommendation_repairOrder       Recommendation[]           @relation("Recommendation_repairOrder")
   from_ReviewRequest_repairOrder        ReviewRequest[]            @relation("ReviewRequest_repairOrder")
+  from_AgentProposal_repairOrder        AgentProposal[]            @relation("AgentProposal_repairOrder")
+  from_DiagnosisSession_repairOrder     DiagnosisSession[]         @relation("DiagnosisSession_repairOrder")
 
   @@index([shopId])
   @@index([customerId])
@@ -3332,24 +3358,25 @@ model FleetUnit {
 }
 
 model CallRecord {
-  id            String           @id @default(cuid())
-  thread        MessageThread?   @relation("CallRecord_thread", fields: [threadId], references: [id])
-  threadId      String?          @map("thread")
-  shop          Shop?            @relation("CallRecord_shop", fields: [shopId], references: [id])
-  shopId        String?          @map("shop")
-  customer      Customer?        @relation("CallRecord_customer", fields: [customerId], references: [id])
-  customerId    String?          @map("customer")
-  contact       CustomerContact? @relation("CallRecord_contact", fields: [contactId], references: [id])
-  contactId     String?          @map("contact")
-  repairOrder   RepairOrder?     @relation("CallRecord_repairOrder", fields: [repairOrderId], references: [id])
-  repairOrderId String?          @map("repairOrder")
-  direction     String
-  outcome       String
-  note          String           @default("")
-  minutes       Int?
-  recordedBy    User?            @relation("CallRecord_recordedBy", fields: [recordedById], references: [id])
-  recordedById  String?          @map("recordedBy")
-  at            DateTime         @default(now())
+  id                  String           @id @default(cuid())
+  thread              MessageThread?   @relation("CallRecord_thread", fields: [threadId], references: [id])
+  threadId            String?          @map("thread")
+  shop                Shop?            @relation("CallRecord_shop", fields: [shopId], references: [id])
+  shopId              String?          @map("shop")
+  customer            Customer?        @relation("CallRecord_customer", fields: [customerId], references: [id])
+  customerId          String?          @map("customer")
+  contact             CustomerContact? @relation("CallRecord_contact", fields: [contactId], references: [id])
+  contactId           String?          @map("contact")
+  repairOrder         RepairOrder?     @relation("CallRecord_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId       String?          @map("repairOrder")
+  direction           String
+  outcome             String
+  note                String           @default("")
+  minutes             Int?
+  recordedBy          User?            @relation("CallRecord_recordedBy", fields: [recordedById], references: [id])
+  recordedById        String?          @map("recordedBy")
+  at                  DateTime         @default(now())
+  from_VoiceTask_call VoiceTask[]      @relation("VoiceTask_call")
 
   @@index([threadId])
   @@index([shopId])
@@ -3592,6 +3619,206 @@ model ServiceReminder {
   @@index([customerId])
   @@index([lastServiceJobId])
   @@index([contactedById])
+}
+
+model AgentProposal {
+  id                      String             @id @default(cuid())
+  title                   String             @default("")
+  run                     AgentRun?          @relation("AgentProposal_run", fields: [runId], references: [id])
+  runId                   String?            @map("run")
+  agent                   AgentIdentity?     @relation("AgentProposal_agent", fields: [agentId], references: [id])
+  agentId                 String?            @map("agent")
+  shop                    Shop?              @relation("AgentProposal_shop", fields: [shopId], references: [id])
+  shopId                  String?            @map("shop")
+  repairOrder             RepairOrder?       @relation("AgentProposal_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId           String?            @map("repairOrder")
+  invokedBy               User?              @relation("AgentProposal_invokedBy", fields: [invokedById], references: [id])
+  invokedById             String?            @map("invokedBy")
+  actionClass             String             @default("")
+  plan                    Json?              @default("[]")
+  readSet                 Json?              @default("[]")
+  stepIndex               Int?               @default(0)
+  confirmedBy             User?              @relation("AgentProposal_confirmedBy", fields: [confirmedById], references: [id])
+  confirmedById           String?            @map("confirmedBy")
+  confirmedAt             DateTime?
+  autoConfirmedByPolicy   ShopPolicyVersion? @relation("AgentProposal_autoConfirmedByPolicy", fields: [autoConfirmedByPolicyId], references: [id])
+  autoConfirmedByPolicyId String?            @map("autoConfirmedByPolicy")
+  result                  Json?
+  failure                 String             @default("")
+  status                  String             @default("drafted")
+  version                 Int                @default(0)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @default(now()) @updatedAt
+  from_VoiceTask_proposal VoiceTask[]        @relation("VoiceTask_proposal")
+
+  @@index([runId])
+  @@index([agentId])
+  @@index([shopId])
+  @@index([repairOrderId])
+  @@index([invokedById])
+  @@index([actionClass])
+  @@index([confirmedById])
+  @@index([autoConfirmedByPolicyId])
+}
+
+model AgentRun {
+  id                                String                @id @default(cuid())
+  agent                             AgentIdentity?        @relation("AgentRun_agent", fields: [agentId], references: [id])
+  agentId                           String?               @map("agent")
+  shop                              Shop?                 @relation("AgentRun_shop", fields: [shopId], references: [id])
+  shopId                            String?               @map("shop")
+  invokedBy                         User?                 @relation("AgentRun_invokedBy", fields: [invokedById], references: [id])
+  invokedById                       String?               @map("invokedBy")
+  channel                           String                @default("dashboard_chat")
+  adapter                           String                @default("manual")
+  inputSummary                      String                @default("")
+  toolCalls                         Json?                 @default("[]")
+  tokens                            Int?                  @default(0)
+  startedAt                         DateTime?             @default(now())
+  endedAt                           DateTime?
+  status                            String                @default("running")
+  createdAt                         DateTime              @default(now())
+  updatedAt                         DateTime              @default(now()) @updatedAt
+  from_AgentProposal_run            AgentProposal[]       @relation("AgentProposal_run")
+  from_DiagnosisHypothesis_agentRun DiagnosisHypothesis[] @relation("DiagnosisHypothesis_agentRun")
+
+  @@index([agentId])
+  @@index([shopId])
+  @@index([invokedById])
+}
+
+model AgentToolGrant {
+  id          String           @id @default(cuid())
+  agent       AgentIdentity?   @relation("AgentToolGrant_agent", fields: [agentId], references: [id])
+  agentId     String?          @map("agent")
+  scope       String
+  limits      Json?            @default("{}")
+  grantedBy   User?            @relation("AgentToolGrant_grantedBy", fields: [grantedById], references: [id])
+  grantedById String?          @map("grantedBy")
+  approval    ApprovalRequest? @relation("AgentToolGrant_approval", fields: [approvalId], references: [id])
+  approvalId  String?          @map("approval")
+  status      String           @default("active")
+  version     Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
+
+  @@index([agentId])
+  @@index([grantedById])
+  @@index([approvalId])
+}
+
+model VoiceTask {
+  id            String         @id @default(cuid())
+  shop          Shop?          @relation("VoiceTask_shop", fields: [shopId], references: [id])
+  shopId        String?        @map("shop")
+  agent         AgentIdentity? @relation("VoiceTask_agent", fields: [agentId], references: [id])
+  agentId       String?        @map("agent")
+  kind          String
+  summary       String         @default("")
+  target        Json?          @default("{}")
+  script        String         @default("")
+  call          CallRecord?    @relation("VoiceTask_call", fields: [callId], references: [id])
+  callId        String?        @map("call")
+  extracted     Json?
+  proposal      AgentProposal? @relation("VoiceTask_proposal", fields: [proposalId], references: [id])
+  proposalId    String?        @map("proposal")
+  createdBy     User?          @relation("VoiceTask_createdBy", fields: [createdById], references: [id])
+  createdById   String?        @map("createdBy")
+  completedBy   User?          @relation("VoiceTask_completedBy", fields: [completedById], references: [id])
+  completedById String?        @map("completedBy")
+  completedAt   DateTime?
+  status        String         @default("queued")
+  version       Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([agentId])
+  @@index([callId])
+  @@index([proposalId])
+  @@index([createdById])
+  @@index([completedById])
+}
+
+model DiagnosisHypothesis {
+  id                                  String             @id @default(cuid())
+  session                             DiagnosisSession?  @relation("DiagnosisHypothesis_session", fields: [sessionId], references: [id])
+  sessionId                           String?            @map("session")
+  cause                               String             @default("")
+  confidence                          Decimal            @default("0.0000") @postgresql.Decimal(5, 4)
+  rank                                Int?               @default(0)
+  evidence                            Json?              @default("[]")
+  sources                             Json?              @default("[]")
+  agentRun                            AgentRun?          @relation("DiagnosisHypothesis_agentRun", fields: [agentRunId], references: [id])
+  agentRunId                          String?            @map("agentRun")
+  enteredBy                           User?              @relation("DiagnosisHypothesis_enteredBy", fields: [enteredById], references: [id])
+  enteredById                         String?            @map("enteredBy")
+  origin                              String             @default("staff")
+  status                              String             @default("active")
+  createdAt                           DateTime           @default(now())
+  updatedAt                           DateTime           @default(now()) @updatedAt
+  from_Job_addressesHypothesis        Job[]              @relation("Job_addressesHypothesis")
+  from_DiagnosisSession_topHypothesis DiagnosisSession[] @relation("DiagnosisSession_topHypothesis")
+  from_DiagnosisTest_hypothesis       DiagnosisTest[]    @relation("DiagnosisTest_hypothesis")
+
+  @@index([sessionId])
+  @@index([agentRunId])
+  @@index([enteredById])
+}
+
+model DiagnosisSession {
+  id              String                @id @default(cuid())
+  shop            Shop?                 @relation("DiagnosisSession_shop", fields: [shopId], references: [id])
+  shopId          String?               @map("shop")
+  repairOrder     RepairOrder?          @relation("DiagnosisSession_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId   String?               @map("repairOrder")
+  concern         Concern?              @relation("DiagnosisSession_concern", fields: [concernId], references: [id])
+  concernId       String?               @map("concern")
+  diagnosisJob    Job?                  @relation("DiagnosisSession_diagnosisJob", fields: [diagnosisJobId], references: [id])
+  diagnosisJobId  String?               @map("diagnosisJob")
+  summary         String                @default("")
+  symptoms        Json?                 @default("[]")
+  dtcs            Json?                 @default("[]")
+  hypotheses      DiagnosisHypothesis[] @relation("DiagnosisHypothesis_session")
+  tests           DiagnosisTest[]       @relation("DiagnosisTest_session")
+  topHypothesis   DiagnosisHypothesis?  @relation("DiagnosisSession_topHypothesis", fields: [topHypothesisId], references: [id])
+  topHypothesisId String?               @map("topHypothesis")
+  confidence      Decimal               @default("0.0000") @postgresql.Decimal(5, 4)
+  override        Json?
+  openedBy        User?                 @relation("DiagnosisSession_openedBy", fields: [openedById], references: [id])
+  openedById      String?               @map("openedBy")
+  status          String                @default("open")
+  version         Int                   @default(0)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([repairOrderId])
+  @@index([concernId])
+  @@index([diagnosisJobId])
+  @@index([topHypothesisId])
+  @@index([openedById])
+}
+
+model DiagnosisTest {
+  id            String               @id @default(cuid())
+  session       DiagnosisSession?    @relation("DiagnosisTest_session", fields: [sessionId], references: [id])
+  sessionId     String?              @map("session")
+  hypothesis    DiagnosisHypothesis? @relation("DiagnosisTest_hypothesis", fields: [hypothesisId], references: [id])
+  hypothesisId  String?              @map("hypothesis")
+  procedure     String               @default("")
+  expected      String               @default("")
+  result        String               @default("")
+  outcome       String
+  performedBy   User?                @relation("DiagnosisTest_performedBy", fields: [performedById], references: [id])
+  performedById String?              @map("performedBy")
+  at            DateTime?            @default(now())
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @default(now()) @updatedAt
+
+  @@index([sessionId])
+  @@index([hypothesisId])
+  @@index([performedById])
 }
 
 enum UserKindType {

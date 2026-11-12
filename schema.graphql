@@ -874,6 +874,8 @@ type AgentIdentity {
   paused: Boolean
   status: String
   oauthApp: OAuthApp
+  grants(where: AgentToolGrantWhereInput! = {}, orderBy: [AgentToolGrantOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AgentToolGrantWhereUniqueInput): [AgentToolGrant!]
+  grantsCount(where: AgentToolGrantWhereInput! = {}): Int
   version: Int
   createdAt: DateTime
   updatedAt: DateTime
@@ -897,6 +899,7 @@ input AgentIdentityWhereInput {
   paused: BooleanFilter
   status: StringFilter
   oauthApp: OAuthAppWhereInput
+  grants: AgentToolGrantManyRelationFilter
   version: IntFilter
   createdAt: DateTimeFilter
   updatedAt: DateTimeFilter
@@ -906,6 +909,12 @@ input ShopManyRelationFilter {
   every: ShopWhereInput
   some: ShopWhereInput
   none: ShopWhereInput
+}
+
+input AgentToolGrantManyRelationFilter {
+  every: AgentToolGrantWhereInput
+  some: AgentToolGrantWhereInput
+  none: AgentToolGrantWhereInput
 }
 
 input IntFilter {
@@ -940,6 +949,7 @@ input AgentIdentityUpdateInput {
   paused: Boolean
   status: String
   oauthApp: OAuthAppRelateToOneForUpdateInput
+  grants: AgentToolGrantRelateToManyForUpdateInput
   version: Int
   createdAt: DateTime
   updatedAt: DateTime
@@ -958,6 +968,13 @@ input OAuthAppRelateToOneForUpdateInput {
   disconnect: Boolean
 }
 
+input AgentToolGrantRelateToManyForUpdateInput {
+  disconnect: [AgentToolGrantWhereUniqueInput!]
+  set: [AgentToolGrantWhereUniqueInput!]
+  create: [AgentToolGrantCreateInput!]
+  connect: [AgentToolGrantWhereUniqueInput!]
+}
+
 input AgentIdentityUpdateArgs {
   where: AgentIdentityWhereUniqueInput!
   data: AgentIdentityUpdateInput!
@@ -972,6 +989,7 @@ input AgentIdentityCreateInput {
   paused: Boolean
   status: String
   oauthApp: OAuthAppRelateToOneForCreateInput
+  grants: AgentToolGrantRelateToManyForCreateInput
   version: Int
   createdAt: DateTime
   updatedAt: DateTime
@@ -985,6 +1003,11 @@ input ShopRelateToManyForCreateInput {
 input OAuthAppRelateToOneForCreateInput {
   create: OAuthAppCreateInput
   connect: OAuthAppWhereUniqueInput
+}
+
+input AgentToolGrantRelateToManyForCreateInput {
+  create: [AgentToolGrantCreateInput!]
+  connect: [AgentToolGrantWhereUniqueInput!]
 }
 
 type ApprovalDecision {
@@ -6115,6 +6138,7 @@ type Job {
   customerDescription: String
   kind: String
   concern: Concern
+  addressesHypothesis: DiagnosisHypothesis
   source: String
   cannedJobVersion: CannedJobVersion
   inspectionItemResult: InspectionItemResult
@@ -6175,6 +6199,7 @@ input JobWhereInput {
   customerDescription: StringFilter
   kind: StringFilter
   concern: ConcernWhereInput
+  addressesHypothesis: DiagnosisHypothesisWhereInput
   source: StringFilter
   cannedJobVersion: CannedJobVersionWhereInput
   inspectionItemResult: InspectionItemResultWhereInput
@@ -6283,6 +6308,7 @@ input JobUpdateInput {
   customerDescription: String
   kind: String
   concern: ConcernRelateToOneForUpdateInput
+  addressesHypothesis: DiagnosisHypothesisRelateToOneForUpdateInput
   source: String
   cannedJobVersion: CannedJobVersionRelateToOneForUpdateInput
   inspectionItemResult: InspectionItemResultRelateToOneForUpdateInput
@@ -6325,6 +6351,12 @@ input JobUpdateInput {
 input ConcernRelateToOneForUpdateInput {
   create: ConcernCreateInput
   connect: ConcernWhereUniqueInput
+  disconnect: Boolean
+}
+
+input DiagnosisHypothesisRelateToOneForUpdateInput {
+  create: DiagnosisHypothesisCreateInput
+  connect: DiagnosisHypothesisWhereUniqueInput
   disconnect: Boolean
 }
 
@@ -6411,6 +6443,7 @@ input JobCreateInput {
   customerDescription: String
   kind: String
   concern: ConcernRelateToOneForCreateInput
+  addressesHypothesis: DiagnosisHypothesisRelateToOneForCreateInput
   source: String
   cannedJobVersion: CannedJobVersionRelateToOneForCreateInput
   inspectionItemResult: InspectionItemResultRelateToOneForCreateInput
@@ -6453,6 +6486,11 @@ input JobCreateInput {
 input ConcernRelateToOneForCreateInput {
   create: ConcernCreateInput
   connect: ConcernWhereUniqueInput
+}
+
+input DiagnosisHypothesisRelateToOneForCreateInput {
+  create: DiagnosisHypothesisCreateInput
+  connect: DiagnosisHypothesisWhereUniqueInput
 }
 
 input CannedJobVersionRelateToOneForCreateInput {
@@ -14416,6 +14454,721 @@ input ServiceReminderCreateInput {
   updatedAt: DateTime
 }
 
+type AgentProposal {
+  id: ID!
+  title: String
+  run: AgentRun
+  agent: AgentIdentity
+  shop: Shop
+  repairOrder: RepairOrder
+  invokedBy: User
+  actionClass: String
+  plan: JSON
+  readSet: JSON
+  stepIndex: Int
+  confirmedBy: User
+  confirmedAt: DateTime
+  autoConfirmedByPolicy: ShopPolicyVersion
+  result: JSON
+  failure: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AgentProposalWhereUniqueInput {
+  id: ID
+}
+
+input AgentProposalWhereInput {
+  AND: [AgentProposalWhereInput!]
+  OR: [AgentProposalWhereInput!]
+  NOT: [AgentProposalWhereInput!]
+  id: IDFilter
+  title: StringFilter
+  run: AgentRunWhereInput
+  agent: AgentIdentityWhereInput
+  shop: ShopWhereInput
+  repairOrder: RepairOrderWhereInput
+  invokedBy: UserWhereInput
+  actionClass: StringFilter
+  stepIndex: IntNullableFilter
+  confirmedBy: UserWhereInput
+  confirmedAt: DateTimeNullableFilter
+  autoConfirmedByPolicy: ShopPolicyVersionWhereInput
+  failure: StringFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AgentProposalOrderByInput {
+  id: OrderDirection
+  title: OrderDirection
+  actionClass: OrderDirection
+  stepIndex: OrderDirection
+  confirmedAt: OrderDirection
+  failure: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AgentProposalUpdateInput {
+  title: String
+  run: AgentRunRelateToOneForUpdateInput
+  agent: AgentIdentityRelateToOneForUpdateInput
+  shop: ShopRelateToOneForUpdateInput
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  invokedBy: UserRelateToOneForUpdateInput
+  actionClass: String
+  plan: JSON
+  readSet: JSON
+  stepIndex: Int
+  confirmedBy: UserRelateToOneForUpdateInput
+  confirmedAt: DateTime
+  autoConfirmedByPolicy: ShopPolicyVersionRelateToOneForUpdateInput
+  result: JSON
+  failure: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AgentRunRelateToOneForUpdateInput {
+  create: AgentRunCreateInput
+  connect: AgentRunWhereUniqueInput
+  disconnect: Boolean
+}
+
+input AgentProposalUpdateArgs {
+  where: AgentProposalWhereUniqueInput!
+  data: AgentProposalUpdateInput!
+}
+
+input AgentProposalCreateInput {
+  title: String
+  run: AgentRunRelateToOneForCreateInput
+  agent: AgentIdentityRelateToOneForCreateInput
+  shop: ShopRelateToOneForCreateInput
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  invokedBy: UserRelateToOneForCreateInput
+  actionClass: String
+  plan: JSON
+  readSet: JSON
+  stepIndex: Int
+  confirmedBy: UserRelateToOneForCreateInput
+  confirmedAt: DateTime
+  autoConfirmedByPolicy: ShopPolicyVersionRelateToOneForCreateInput
+  result: JSON
+  failure: String
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AgentRunRelateToOneForCreateInput {
+  create: AgentRunCreateInput
+  connect: AgentRunWhereUniqueInput
+}
+
+type AgentRun {
+  id: ID!
+  agent: AgentIdentity
+  shop: Shop
+  invokedBy: User
+  channel: String
+  adapter: String
+  inputSummary: String
+  toolCalls: JSON
+  tokens: Int
+  startedAt: DateTime
+  endedAt: DateTime
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AgentRunWhereUniqueInput {
+  id: ID
+}
+
+input AgentRunWhereInput {
+  AND: [AgentRunWhereInput!]
+  OR: [AgentRunWhereInput!]
+  NOT: [AgentRunWhereInput!]
+  id: IDFilter
+  agent: AgentIdentityWhereInput
+  shop: ShopWhereInput
+  invokedBy: UserWhereInput
+  channel: StringFilter
+  adapter: StringFilter
+  inputSummary: StringFilter
+  tokens: IntNullableFilter
+  startedAt: DateTimeNullableFilter
+  endedAt: DateTimeNullableFilter
+  status: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AgentRunOrderByInput {
+  id: OrderDirection
+  channel: OrderDirection
+  adapter: OrderDirection
+  inputSummary: OrderDirection
+  tokens: OrderDirection
+  startedAt: OrderDirection
+  endedAt: OrderDirection
+  status: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AgentRunUpdateInput {
+  agent: AgentIdentityRelateToOneForUpdateInput
+  shop: ShopRelateToOneForUpdateInput
+  invokedBy: UserRelateToOneForUpdateInput
+  channel: String
+  adapter: String
+  inputSummary: String
+  toolCalls: JSON
+  tokens: Int
+  startedAt: DateTime
+  endedAt: DateTime
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AgentRunUpdateArgs {
+  where: AgentRunWhereUniqueInput!
+  data: AgentRunUpdateInput!
+}
+
+input AgentRunCreateInput {
+  agent: AgentIdentityRelateToOneForCreateInput
+  shop: ShopRelateToOneForCreateInput
+  invokedBy: UserRelateToOneForCreateInput
+  channel: String
+  adapter: String
+  inputSummary: String
+  toolCalls: JSON
+  tokens: Int
+  startedAt: DateTime
+  endedAt: DateTime
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type AgentToolGrant {
+  id: ID!
+  agent: AgentIdentity
+  scope: String
+  limits: JSON
+  grantedBy: User
+  approval: ApprovalRequest
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AgentToolGrantWhereUniqueInput {
+  id: ID
+}
+
+input AgentToolGrantWhereInput {
+  AND: [AgentToolGrantWhereInput!]
+  OR: [AgentToolGrantWhereInput!]
+  NOT: [AgentToolGrantWhereInput!]
+  id: IDFilter
+  agent: AgentIdentityWhereInput
+  scope: StringFilter
+  grantedBy: UserWhereInput
+  approval: ApprovalRequestWhereInput
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AgentToolGrantOrderByInput {
+  id: OrderDirection
+  scope: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AgentToolGrantUpdateInput {
+  agent: AgentIdentityRelateToOneForUpdateInput
+  scope: String
+  limits: JSON
+  grantedBy: UserRelateToOneForUpdateInput
+  approval: ApprovalRequestRelateToOneForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AgentToolGrantUpdateArgs {
+  where: AgentToolGrantWhereUniqueInput!
+  data: AgentToolGrantUpdateInput!
+}
+
+input AgentToolGrantCreateInput {
+  agent: AgentIdentityRelateToOneForCreateInput
+  scope: String
+  limits: JSON
+  grantedBy: UserRelateToOneForCreateInput
+  approval: ApprovalRequestRelateToOneForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type VoiceTask {
+  id: ID!
+  shop: Shop
+  agent: AgentIdentity
+  kind: String
+  summary: String
+  target: JSON
+  script: String
+  call: CallRecord
+  extracted: JSON
+  proposal: AgentProposal
+  createdBy: User
+  completedBy: User
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input VoiceTaskWhereUniqueInput {
+  id: ID
+}
+
+input VoiceTaskWhereInput {
+  AND: [VoiceTaskWhereInput!]
+  OR: [VoiceTaskWhereInput!]
+  NOT: [VoiceTaskWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  agent: AgentIdentityWhereInput
+  kind: StringFilter
+  summary: StringFilter
+  script: StringFilter
+  call: CallRecordWhereInput
+  proposal: AgentProposalWhereInput
+  createdBy: UserWhereInput
+  completedBy: UserWhereInput
+  completedAt: DateTimeNullableFilter
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input VoiceTaskOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  summary: OrderDirection
+  script: OrderDirection
+  completedAt: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input VoiceTaskUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  agent: AgentIdentityRelateToOneForUpdateInput
+  kind: String
+  summary: String
+  target: JSON
+  script: String
+  call: CallRecordRelateToOneForUpdateInput
+  extracted: JSON
+  proposal: AgentProposalRelateToOneForUpdateInput
+  createdBy: UserRelateToOneForUpdateInput
+  completedBy: UserRelateToOneForUpdateInput
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CallRecordRelateToOneForUpdateInput {
+  create: CallRecordCreateInput
+  connect: CallRecordWhereUniqueInput
+  disconnect: Boolean
+}
+
+input AgentProposalRelateToOneForUpdateInput {
+  create: AgentProposalCreateInput
+  connect: AgentProposalWhereUniqueInput
+  disconnect: Boolean
+}
+
+input VoiceTaskUpdateArgs {
+  where: VoiceTaskWhereUniqueInput!
+  data: VoiceTaskUpdateInput!
+}
+
+input VoiceTaskCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  agent: AgentIdentityRelateToOneForCreateInput
+  kind: String
+  summary: String
+  target: JSON
+  script: String
+  call: CallRecordRelateToOneForCreateInput
+  extracted: JSON
+  proposal: AgentProposalRelateToOneForCreateInput
+  createdBy: UserRelateToOneForCreateInput
+  completedBy: UserRelateToOneForCreateInput
+  completedAt: DateTime
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CallRecordRelateToOneForCreateInput {
+  create: CallRecordCreateInput
+  connect: CallRecordWhereUniqueInput
+}
+
+input AgentProposalRelateToOneForCreateInput {
+  create: AgentProposalCreateInput
+  connect: AgentProposalWhereUniqueInput
+}
+
+type DiagnosisHypothesis {
+  id: ID!
+  session: DiagnosisSession
+  cause: String
+  confidence: Decimal
+  rank: Int
+  evidence: JSON
+  sources: JSON
+  agentRun: AgentRun
+  enteredBy: User
+  origin: String
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiagnosisHypothesisWhereUniqueInput {
+  id: ID
+}
+
+input DiagnosisHypothesisWhereInput {
+  AND: [DiagnosisHypothesisWhereInput!]
+  OR: [DiagnosisHypothesisWhereInput!]
+  NOT: [DiagnosisHypothesisWhereInput!]
+  id: IDFilter
+  session: DiagnosisSessionWhereInput
+  cause: StringFilter
+  confidence: DecimalFilter
+  rank: IntNullableFilter
+  agentRun: AgentRunWhereInput
+  enteredBy: UserWhereInput
+  origin: StringFilter
+  status: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input DiagnosisHypothesisOrderByInput {
+  id: OrderDirection
+  cause: OrderDirection
+  confidence: OrderDirection
+  rank: OrderDirection
+  origin: OrderDirection
+  status: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input DiagnosisHypothesisUpdateInput {
+  session: DiagnosisSessionRelateToOneForUpdateInput
+  cause: String
+  confidence: Decimal
+  rank: Int
+  evidence: JSON
+  sources: JSON
+  agentRun: AgentRunRelateToOneForUpdateInput
+  enteredBy: UserRelateToOneForUpdateInput
+  origin: String
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiagnosisSessionRelateToOneForUpdateInput {
+  create: DiagnosisSessionCreateInput
+  connect: DiagnosisSessionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input DiagnosisHypothesisUpdateArgs {
+  where: DiagnosisHypothesisWhereUniqueInput!
+  data: DiagnosisHypothesisUpdateInput!
+}
+
+input DiagnosisHypothesisCreateInput {
+  session: DiagnosisSessionRelateToOneForCreateInput
+  cause: String
+  confidence: Decimal
+  rank: Int
+  evidence: JSON
+  sources: JSON
+  agentRun: AgentRunRelateToOneForCreateInput
+  enteredBy: UserRelateToOneForCreateInput
+  origin: String
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiagnosisSessionRelateToOneForCreateInput {
+  create: DiagnosisSessionCreateInput
+  connect: DiagnosisSessionWhereUniqueInput
+}
+
+type DiagnosisSession {
+  id: ID!
+  shop: Shop
+  repairOrder: RepairOrder
+  concern: Concern
+  diagnosisJob: Job
+  summary: String
+  symptoms: JSON
+  dtcs: JSON
+  hypotheses(where: DiagnosisHypothesisWhereInput! = {}, orderBy: [DiagnosisHypothesisOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DiagnosisHypothesisWhereUniqueInput): [DiagnosisHypothesis!]
+  hypothesesCount(where: DiagnosisHypothesisWhereInput! = {}): Int
+  tests(where: DiagnosisTestWhereInput! = {}, orderBy: [DiagnosisTestOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DiagnosisTestWhereUniqueInput): [DiagnosisTest!]
+  testsCount(where: DiagnosisTestWhereInput! = {}): Int
+  topHypothesis: DiagnosisHypothesis
+  confidence: Decimal
+  override: JSON
+  openedBy: User
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiagnosisSessionWhereUniqueInput {
+  id: ID
+}
+
+input DiagnosisSessionWhereInput {
+  AND: [DiagnosisSessionWhereInput!]
+  OR: [DiagnosisSessionWhereInput!]
+  NOT: [DiagnosisSessionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  repairOrder: RepairOrderWhereInput
+  concern: ConcernWhereInput
+  diagnosisJob: JobWhereInput
+  summary: StringFilter
+  hypotheses: DiagnosisHypothesisManyRelationFilter
+  tests: DiagnosisTestManyRelationFilter
+  topHypothesis: DiagnosisHypothesisWhereInput
+  confidence: DecimalFilter
+  openedBy: UserWhereInput
+  status: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input DiagnosisHypothesisManyRelationFilter {
+  every: DiagnosisHypothesisWhereInput
+  some: DiagnosisHypothesisWhereInput
+  none: DiagnosisHypothesisWhereInput
+}
+
+input DiagnosisTestManyRelationFilter {
+  every: DiagnosisTestWhereInput
+  some: DiagnosisTestWhereInput
+  none: DiagnosisTestWhereInput
+}
+
+input DiagnosisSessionOrderByInput {
+  id: OrderDirection
+  summary: OrderDirection
+  confidence: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input DiagnosisSessionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  concern: ConcernRelateToOneForUpdateInput
+  diagnosisJob: JobRelateToOneForUpdateInput
+  summary: String
+  symptoms: JSON
+  dtcs: JSON
+  hypotheses: DiagnosisHypothesisRelateToManyForUpdateInput
+  tests: DiagnosisTestRelateToManyForUpdateInput
+  topHypothesis: DiagnosisHypothesisRelateToOneForUpdateInput
+  confidence: Decimal
+  override: JSON
+  openedBy: UserRelateToOneForUpdateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiagnosisHypothesisRelateToManyForUpdateInput {
+  disconnect: [DiagnosisHypothesisWhereUniqueInput!]
+  set: [DiagnosisHypothesisWhereUniqueInput!]
+  create: [DiagnosisHypothesisCreateInput!]
+  connect: [DiagnosisHypothesisWhereUniqueInput!]
+}
+
+input DiagnosisTestRelateToManyForUpdateInput {
+  disconnect: [DiagnosisTestWhereUniqueInput!]
+  set: [DiagnosisTestWhereUniqueInput!]
+  create: [DiagnosisTestCreateInput!]
+  connect: [DiagnosisTestWhereUniqueInput!]
+}
+
+input DiagnosisSessionUpdateArgs {
+  where: DiagnosisSessionWhereUniqueInput!
+  data: DiagnosisSessionUpdateInput!
+}
+
+input DiagnosisSessionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  concern: ConcernRelateToOneForCreateInput
+  diagnosisJob: JobRelateToOneForCreateInput
+  summary: String
+  symptoms: JSON
+  dtcs: JSON
+  hypotheses: DiagnosisHypothesisRelateToManyForCreateInput
+  tests: DiagnosisTestRelateToManyForCreateInput
+  topHypothesis: DiagnosisHypothesisRelateToOneForCreateInput
+  confidence: Decimal
+  override: JSON
+  openedBy: UserRelateToOneForCreateInput
+  status: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiagnosisHypothesisRelateToManyForCreateInput {
+  create: [DiagnosisHypothesisCreateInput!]
+  connect: [DiagnosisHypothesisWhereUniqueInput!]
+}
+
+input DiagnosisTestRelateToManyForCreateInput {
+  create: [DiagnosisTestCreateInput!]
+  connect: [DiagnosisTestWhereUniqueInput!]
+}
+
+type DiagnosisTest {
+  id: ID!
+  session: DiagnosisSession
+  hypothesis: DiagnosisHypothesis
+  procedure: String
+  expected: String
+  result: String
+  outcome: String
+  performedBy: User
+  at: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiagnosisTestWhereUniqueInput {
+  id: ID
+}
+
+input DiagnosisTestWhereInput {
+  AND: [DiagnosisTestWhereInput!]
+  OR: [DiagnosisTestWhereInput!]
+  NOT: [DiagnosisTestWhereInput!]
+  id: IDFilter
+  session: DiagnosisSessionWhereInput
+  hypothesis: DiagnosisHypothesisWhereInput
+  procedure: StringFilter
+  expected: StringFilter
+  result: StringFilter
+  outcome: StringFilter
+  performedBy: UserWhereInput
+  at: DateTimeNullableFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input DiagnosisTestOrderByInput {
+  id: OrderDirection
+  procedure: OrderDirection
+  expected: OrderDirection
+  result: OrderDirection
+  outcome: OrderDirection
+  at: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input DiagnosisTestUpdateInput {
+  session: DiagnosisSessionRelateToOneForUpdateInput
+  hypothesis: DiagnosisHypothesisRelateToOneForUpdateInput
+  procedure: String
+  expected: String
+  result: String
+  outcome: String
+  performedBy: UserRelateToOneForUpdateInput
+  at: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input DiagnosisTestUpdateArgs {
+  where: DiagnosisTestWhereUniqueInput!
+  data: DiagnosisTestUpdateInput!
+}
+
+input DiagnosisTestCreateInput {
+  session: DiagnosisSessionRelateToOneForCreateInput
+  hypothesis: DiagnosisHypothesisRelateToOneForCreateInput
+  procedure: String
+  expected: String
+  result: String
+  outcome: String
+  performedBy: UserRelateToOneForCreateInput
+  at: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -15178,11 +15931,73 @@ type Mutation {
   updateServiceReminders(data: [ServiceReminderUpdateArgs!]!): [ServiceReminder]
   deleteServiceReminder(where: ServiceReminderWhereUniqueInput!): ServiceReminder
   deleteServiceReminders(where: [ServiceReminderWhereUniqueInput!]!): [ServiceReminder]
+  createAgentProposal(data: AgentProposalCreateInput!): AgentProposal
+  createAgentProposals(data: [AgentProposalCreateInput!]!): [AgentProposal]
+  updateAgentProposal(where: AgentProposalWhereUniqueInput!, data: AgentProposalUpdateInput!): AgentProposal
+  updateAgentProposals(data: [AgentProposalUpdateArgs!]!): [AgentProposal]
+  deleteAgentProposal(where: AgentProposalWhereUniqueInput!): AgentProposal
+  deleteAgentProposals(where: [AgentProposalWhereUniqueInput!]!): [AgentProposal]
+  createAgentRun(data: AgentRunCreateInput!): AgentRun
+  createAgentRuns(data: [AgentRunCreateInput!]!): [AgentRun]
+  updateAgentRun(where: AgentRunWhereUniqueInput!, data: AgentRunUpdateInput!): AgentRun
+  updateAgentRuns(data: [AgentRunUpdateArgs!]!): [AgentRun]
+  deleteAgentRun(where: AgentRunWhereUniqueInput!): AgentRun
+  deleteAgentRuns(where: [AgentRunWhereUniqueInput!]!): [AgentRun]
+  createAgentToolGrant(data: AgentToolGrantCreateInput!): AgentToolGrant
+  createAgentToolGrants(data: [AgentToolGrantCreateInput!]!): [AgentToolGrant]
+  updateAgentToolGrant(where: AgentToolGrantWhereUniqueInput!, data: AgentToolGrantUpdateInput!): AgentToolGrant
+  updateAgentToolGrants(data: [AgentToolGrantUpdateArgs!]!): [AgentToolGrant]
+  deleteAgentToolGrant(where: AgentToolGrantWhereUniqueInput!): AgentToolGrant
+  deleteAgentToolGrants(where: [AgentToolGrantWhereUniqueInput!]!): [AgentToolGrant]
+  createVoiceTask(data: VoiceTaskCreateInput!): VoiceTask
+  createVoiceTasks(data: [VoiceTaskCreateInput!]!): [VoiceTask]
+  updateVoiceTask(where: VoiceTaskWhereUniqueInput!, data: VoiceTaskUpdateInput!): VoiceTask
+  updateVoiceTasks(data: [VoiceTaskUpdateArgs!]!): [VoiceTask]
+  deleteVoiceTask(where: VoiceTaskWhereUniqueInput!): VoiceTask
+  deleteVoiceTasks(where: [VoiceTaskWhereUniqueInput!]!): [VoiceTask]
+  createDiagnosisHypothesis(data: DiagnosisHypothesisCreateInput!): DiagnosisHypothesis
+  createDiagnosisHypotheses(data: [DiagnosisHypothesisCreateInput!]!): [DiagnosisHypothesis]
+  updateDiagnosisHypothesis(where: DiagnosisHypothesisWhereUniqueInput!, data: DiagnosisHypothesisUpdateInput!): DiagnosisHypothesis
+  updateDiagnosisHypotheses(data: [DiagnosisHypothesisUpdateArgs!]!): [DiagnosisHypothesis]
+  deleteDiagnosisHypothesis(where: DiagnosisHypothesisWhereUniqueInput!): DiagnosisHypothesis
+  deleteDiagnosisHypotheses(where: [DiagnosisHypothesisWhereUniqueInput!]!): [DiagnosisHypothesis]
+  createDiagnosisSession(data: DiagnosisSessionCreateInput!): DiagnosisSession
+  createDiagnosisSessions(data: [DiagnosisSessionCreateInput!]!): [DiagnosisSession]
+  updateDiagnosisSession(where: DiagnosisSessionWhereUniqueInput!, data: DiagnosisSessionUpdateInput!): DiagnosisSession
+  updateDiagnosisSessions(data: [DiagnosisSessionUpdateArgs!]!): [DiagnosisSession]
+  deleteDiagnosisSession(where: DiagnosisSessionWhereUniqueInput!): DiagnosisSession
+  deleteDiagnosisSessions(where: [DiagnosisSessionWhereUniqueInput!]!): [DiagnosisSession]
+  createDiagnosisTest(data: DiagnosisTestCreateInput!): DiagnosisTest
+  createDiagnosisTests(data: [DiagnosisTestCreateInput!]!): [DiagnosisTest]
+  updateDiagnosisTest(where: DiagnosisTestWhereUniqueInput!, data: DiagnosisTestUpdateInput!): DiagnosisTest
+  updateDiagnosisTests(data: [DiagnosisTestUpdateArgs!]!): [DiagnosisTest]
+  deleteDiagnosisTest(where: DiagnosisTestWhereUniqueInput!): DiagnosisTest
+  deleteDiagnosisTests(where: [DiagnosisTestWhereUniqueInput!]!): [DiagnosisTest]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
   sendUserPasswordResetLink(email: String!): Boolean!
   redeemUserPasswordResetToken(email: String!, token: String!, password: String!): RedeemUserPasswordResetTokenResult
+  createAssistant(input: JSON!, idempotencyKey: String!): JSON
+  grantAssistantScope(agentId: ID!, scope: String!, limits: JSON, idempotencyKey: String!): JSON
+  revokeAssistantScope(grantId: ID!, idempotencyKey: String!): JSON
+  pauseAssistant(agentId: ID!, paused: Boolean!, idempotencyKey: String!): JSON
+  retireAssistant(agentId: ID!, idempotencyKey: String!): JSON
+  saveAiProvider(input: JSON!, idempotencyKey: String!): JSON
+  removeAiProvider(idempotencyKey: String!): JSON
+  askAssistant(agentId: ID!, shopId: ID, repairOrderId: ID, message: String, title: String, steps: JSON, idempotencyKey: String!): JSON
+  draftAgentProposal(agentId: ID!, shopId: ID, repairOrderId: ID, message: String, title: String, steps: JSON, tool: String, args: JSON, idempotencyKey: String!): JSON
+  suggestEstimate(agentId: ID!, repairOrderId: ID!, words: String!, concernId: ID, cannedJobId: ID, idempotencyKey: String!): JSON
+  confirmAgentProposal(proposalId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+  rejectAgentProposal(proposalId: ID!, expectedVersion: Int!, reason: String, idempotencyKey: String!): JSON
+  startDiagnosisSession(input: JSON!, idempotencyKey: String!): JSON
+  addDiagnosisHypothesis(input: JSON!, idempotencyKey: String!): JSON
+  recordDiagnosisTest(input: JSON!, idempotencyKey: String!): JSON
+  markDiagnosisQuoteReady(input: JSON!, idempotencyKey: String!): JSON
+  markDiagnosisInconclusive(sessionId: ID!, expectedVersion: Int!, note: String, idempotencyKey: String!): JSON
+  closeDiagnosisSession(sessionId: ID!, expectedVersion: Int!, idempotencyKey: String!): JSON
+  queueVoiceTask(input: JSON!, idempotencyKey: String!): JSON
+  logVoiceCall(input: JSON!, idempotencyKey: String!): JSON
   updateActiveUser(data: UserUpdateProfileInput!): User
   loadNorthgateSetup(idempotencyKey: String!, scope: String): JSON
   decideApprovalRequest(requestId: ID!, decision: String!, reason: String, expectedVersion: Int!, idempotencyKey: String!): JSON
@@ -15300,6 +16115,18 @@ type Mutation {
   cancelShopComeback(comebackId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
   withdrawShopPartWarrantyClaim(claimId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
   releaseShopJobReservations(jobId: ID!, reason: String!, idempotencyKey: String!): JSON
+  logCustomerMessage(input: JSON!, idempotencyKey: String!): JSON
+  logCustomerCall(input: JSON!, idempotencyKey: String!): JSON
+  readMessageThread(threadId: ID!, idempotencyKey: String!): JSON
+  saveMessageTemplate(input: JSON!, idempotencyKey: String!): JSON
+  markFollowUpContacted(recommendationId: ID!, channel: String!, note: String, expectedContactedCount: Int!, idempotencyKey: String!): JSON
+  closeRecommendation(recommendationId: ID!, reason: String!, idempotencyKey: String!): JSON
+  markServiceReminderContacted(cycleKey: String!, channel: String!, note: String, idempotencyKey: String!): JSON
+  saveMarketingCampaign(input: JSON!, idempotencyKey: String!): JSON
+  exportMarketingCampaign(campaignId: ID!, idempotencyKey: String!): JSON
+  copyMarketingMessage(campaignId: ID!, customerId: ID!, channel: String, idempotencyKey: String!): JSON
+  recordReviewRequest(repairOrderId: ID!, channel: String!, note: String, idempotencyKey: String!): JSON
+  createCustomerPortalLink(customerId: ID!, idempotencyKey: String!): JSON
 }
 
 union UserAuthenticationWithPasswordResult = UserAuthenticationWithPasswordSuccess | UserAuthenticationWithPasswordFailure
@@ -15709,6 +16536,27 @@ type Query {
   serviceReminder(where: ServiceReminderWhereUniqueInput!): ServiceReminder
   serviceReminders(where: ServiceReminderWhereInput! = {}, orderBy: [ServiceReminderOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ServiceReminderWhereUniqueInput): [ServiceReminder!]
   serviceRemindersCount(where: ServiceReminderWhereInput! = {}): Int
+  agentProposal(where: AgentProposalWhereUniqueInput!): AgentProposal
+  agentProposals(where: AgentProposalWhereInput! = {}, orderBy: [AgentProposalOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AgentProposalWhereUniqueInput): [AgentProposal!]
+  agentProposalsCount(where: AgentProposalWhereInput! = {}): Int
+  agentRun(where: AgentRunWhereUniqueInput!): AgentRun
+  agentRuns(where: AgentRunWhereInput! = {}, orderBy: [AgentRunOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AgentRunWhereUniqueInput): [AgentRun!]
+  agentRunsCount(where: AgentRunWhereInput! = {}): Int
+  agentToolGrant(where: AgentToolGrantWhereUniqueInput!): AgentToolGrant
+  agentToolGrants(where: AgentToolGrantWhereInput! = {}, orderBy: [AgentToolGrantOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AgentToolGrantWhereUniqueInput): [AgentToolGrant!]
+  agentToolGrantsCount(where: AgentToolGrantWhereInput! = {}): Int
+  voiceTask(where: VoiceTaskWhereUniqueInput!): VoiceTask
+  voiceTasks(where: VoiceTaskWhereInput! = {}, orderBy: [VoiceTaskOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: VoiceTaskWhereUniqueInput): [VoiceTask!]
+  voiceTasksCount(where: VoiceTaskWhereInput! = {}): Int
+  diagnosisHypothesis(where: DiagnosisHypothesisWhereUniqueInput!): DiagnosisHypothesis
+  diagnosisHypotheses(where: DiagnosisHypothesisWhereInput! = {}, orderBy: [DiagnosisHypothesisOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DiagnosisHypothesisWhereUniqueInput): [DiagnosisHypothesis!]
+  diagnosisHypothesesCount(where: DiagnosisHypothesisWhereInput! = {}): Int
+  diagnosisSession(where: DiagnosisSessionWhereUniqueInput!): DiagnosisSession
+  diagnosisSessions(where: DiagnosisSessionWhereInput! = {}, orderBy: [DiagnosisSessionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DiagnosisSessionWhereUniqueInput): [DiagnosisSession!]
+  diagnosisSessionsCount(where: DiagnosisSessionWhereInput! = {}): Int
+  diagnosisTest(where: DiagnosisTestWhereUniqueInput!): DiagnosisTest
+  diagnosisTests(where: DiagnosisTestWhereInput! = {}, orderBy: [DiagnosisTestOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DiagnosisTestWhereUniqueInput): [DiagnosisTest!]
+  diagnosisTestsCount(where: DiagnosisTestWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult
@@ -15717,6 +16565,11 @@ type Query {
   checkAuthorizedCeiling(shopId: ID!, authorizedMinor: String!, priceMinor: String!, taxMinor: String): JSON
   previewShopInvoice(repairOrderId: ID!): JSON
   shopDaySummary(shopId: ID!, businessDate: String!): JSON
+  followUpBoard(soonDays: Int): JSON
+  aiProviderStatus: JSON
+  diagnosisGate(sessionId: ID!, jobId: ID): JSON
+  supplierDisputeEmail(invoiceId: ID!): JSON
+  campaignPreview(campaignId: ID!): JSON
 }
 
 union AuthenticatedItem = User

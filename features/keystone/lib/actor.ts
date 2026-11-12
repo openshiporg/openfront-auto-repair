@@ -1,4 +1,4 @@
-import { isSignedIn, permissionNames, type Permission, type Session } from '../access'
+import { hasPermission, isSignedIn, permissionNames, type Permission, type Session } from '../access'
 import { DomainError, Codes } from './errors'
 import { mcpSessionMarker } from '../mcp-oauth/session'
 
@@ -14,7 +14,8 @@ export type Actor =
 export function actorFromSession(session: Session | null | undefined): Actor {
   if (!session || !isSignedIn({ session })) throw new DomainError(Codes.NOT_AUTHORIZED, 'Sign in to continue.')
   const role = session.data.role
-  const granted = new Set<Permission>(role ? permissionNames.filter(name => role[name] === true) : [])
+  const agentMarker = mcpSessionMarker(session)
+  const granted = new Set<Permission>(role ? permissionNames.filter(name => role[name] === true && (!agentMarker?.agentId || hasPermission(session, name))) : [])
   // An MCP token acts for the user who approved it, but it is a machine at the keyboard: it is
   // treated as an agent for everything only a person may do (I-A3, I-R3).
   const channel = mcpSessionMarker(session) ? 'mcp' : 'web'

@@ -65,16 +65,21 @@ function setsCredential(field: FieldNode, variables: Record<string, unknown>): b
 }
 
 /** Why this operation is refused for the given MCP scopes, or null when it may run. */
+export const AGENT_MUTATIONS = new Set(['draftAgentProposal'])
+export const AGENT_MUTATION_MESSAGE = 'An assistant can only propose a plan. A person confirms it in the dashboard.'
+
 export function mcpOperationProblem({
   document,
   operationName,
   variables,
   scopes,
+  agent,
 }: {
   document: DocumentNode
   operationName?: string | null
   variables?: Record<string, unknown> | null
   scopes: readonly string[]
+  agent?: boolean
 }): string | null {
   const operations = document.definitions.filter(
     (definition): definition is OperationDefinitionNode => definition.kind === Kind.OPERATION_DEFINITION
@@ -94,6 +99,7 @@ export function mcpOperationProblem({
   )
   for (const field of rootFields(operation.selectionSet, fragments)) {
     const name = field.name.value
+    if (agent && !AGENT_MUTATIONS.has(name)) return AGENT_MUTATION_MESSAGE
     if (HUMAN_ONLY_MUTATIONS.has(name)) return HUMAN_ONLY_MESSAGE
     if (CREDENTIAL_MUTATION.test(name)) return CREDENTIAL_MESSAGE
     if (USER_UPDATE_MUTATION.test(name) && setsCredential(field, variables ?? {})) return CREDENTIAL_MESSAGE
@@ -114,6 +120,7 @@ export function useMcpScopeGuard() {
           operationName: args.operationName,
           variables: args.variableValues,
           scopes: marker.scopes,
+          agent: Boolean(marker.agentId),
         })
       } catch {
         problem = READ_ONLY_MESSAGE

@@ -1,6 +1,6 @@
 import {
   BookOpenCheck, CalendarDays, Car, ClipboardCheck, ClipboardList, Columns3, FileText, ListChecks, LucideIcon, Scale, Settings, Store, Users, Wrench, BookTemplate, Receipt, Landmark, Package, Timer, Building2, FileSpreadsheet,
-  BellRing, MessageSquare, Megaphone,
+  BellRing, MessageSquare, Megaphone, Bot, Stethoscope, ListTodo,
 } from 'lucide-react'
 
 export interface PlatformNavItem {
@@ -43,14 +43,17 @@ export const platformNavItems: PlatformNavItem[] = [
   { title: 'Labor', href: '/platform/time', color: 'orange', description: 'Time clock, technicians and certificates, flagged hours, pay periods and comebacks.', icon: Timer, group: 'standalone' },
   { title: 'Approvals', href: '/platform/approvals', color: 'amber', description: 'Maker-checker requests waiting for a second person.', icon: ClipboardCheck, group: 'standalone' },
 
+  { title: 'Diagnosis', href: '/platform/diagnosis', color: 'cyan', description: 'Likely causes with their sources, tests, and the confidence bar before a quote.', icon: Stethoscope, group: 'standalone' },
+  { title: 'Assistant plans', href: '/platform/proposals', color: 'amber', description: 'Plans assistants made, previewed and waiting for a person to confirm each step.', icon: ListTodo, group: 'standalone' },
   { title: 'Shops', href: '/platform/shops', color: 'slate', description: 'Shops, bays, hours and staff memberships.', icon: Store, group: 'settings' },
   { title: 'Canned jobs', href: '/platform/canned-jobs', color: 'slate', description: 'Job templates: lines, labor-guide codes and wording, drafted then published.', icon: BookTemplate, group: 'settings' },
   { title: 'Policies', href: '/platform/policies', color: 'slate', description: 'Jurisdiction rules, labor rates, matrices, fees, tax and warranty: draft and publish.', icon: Scale, group: 'settings' },
+  { title: 'Assistants', href: '/platform/agents', color: 'slate', description: 'Assistants, what each may do, the AI provider and pausing.', icon: Bot, group: 'settings' },
   { title: 'Audit log', href: '/platform/audit', color: 'slate', description: 'Hash-chained audit events and chain verification.', icon: BookOpenCheck, group: 'settings' },
 ]
 
 /** Routes that exist in this build. Others stay out of the menu until their phase ships. */
-export const SHIPPED_ROUTES = new Set<string>(['/platform/follow-ups', '/platform/messages', '/platform/campaigns', '/platform/accounts', '/platform/statements', '/platform/time', '/platform/technicians', '/platform/pay-periods', '/platform/comebacks', '/platform/parts', '/platform/purchase-orders', '/platform/stock', '/platform/cores', '/platform/supplier-invoices', '/platform/tires', '/platform/board', '/platform/repair-orders', '/platform/inspections', '/platform/canned-jobs', '/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/receivables', '/platform/day-close', '/platform/shops', '/platform/policies', '/platform/audit'])
+export const SHIPPED_ROUTES = new Set<string>(['/platform/follow-ups', '/platform/messages', '/platform/campaigns', '/platform/accounts', '/platform/statements', '/platform/time', '/platform/technicians', '/platform/pay-periods', '/platform/comebacks', '/platform/parts', '/platform/purchase-orders', '/platform/stock', '/platform/cores', '/platform/supplier-invoices', '/platform/tires', '/platform/board', '/platform/repair-orders', '/platform/inspections', '/platform/canned-jobs', '/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/receivables', '/platform/day-close', '/platform/shops', '/platform/policies', '/platform/audit', '/platform/agents', '/platform/proposals', '/platform/diagnosis'])
 
 const shipped = platformNavItems.filter(item => SHIPPED_ROUTES.has(item.href))
 
