@@ -28,6 +28,11 @@ async function threadFor(uow: UnitOfWork, input: { shopId: string; customerId: s
   return tx.messageThread.create({ data: { threadKey, shopId: input.shopId, customerId: input.customerId, vehicleId: input.vehicleId ?? null, repairOrderId: input.repairOrderId ?? null, lastMessageAt: now } })
 }
 
+/** The shop a logged message or call belongs to: the repair order's shop, else the one chosen, else the customer's home shop. */
+export async function conversationShop(tx: Tx, input: { customerId: string; repairOrderId?: string | null; shopId?: string | null }) {
+  return (await context(tx, input)).shopId
+}
+
 async function context(tx: Tx, input: { customerId: string; repairOrderId?: string | null; shopId?: string | null }) {
   const customer = await tx.customer.findUnique({ where: { id: input.customerId }, select: { id: true, homeShopId: true } })
   if (!customer) throw new DomainError(Codes.NOT_FOUND, 'Customer not found.')

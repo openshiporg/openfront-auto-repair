@@ -15,6 +15,8 @@ import { trackingFields } from './trackingFields'
 const readMessages = shopScoped(governed(['canMessageCustomers', 'canManageCustomers', 'canManageCampaigns']))
 const readFollowUps = shopScoped(governed(['canReadRepairOrders', 'canMessageCustomers', 'canManageCampaigns']))
 const readCampaigns = shopScoped(governed(['canManageCampaigns', 'canMessageCustomers']))
+/** Exports and their recipients belong to a campaign: they are scoped through the campaign's shop. */
+const readCampaignChildren = shopScoped(governed(['canManageCampaigns', 'canMessageCustomers']), 'campaign.shop')
 
 export const MessageThread = list({
   access: readMessages,
@@ -169,7 +171,7 @@ export const Campaign = list({
 
 /** One export of an audience, with who was left out and why. Append-only. */
 export const CampaignExport = list({
-  access: readCampaigns,
+  access: readCampaignChildren,
   ui: { labelField: 'id', listView: { initialColumns: ['campaign', 'recipientCount', 'excludedCount', 'at'] } },
   fields: {
     campaign: relationship({ ref: 'Campaign.exports', ...readOnly }),
@@ -184,7 +186,7 @@ export const CampaignExport = list({
 
 /** Who was on an export, and the consent event that allowed it. The database refuses a row without a written grant. */
 export const CampaignRecipient = list({
-  access: readCampaigns,
+  access: readCampaignChildren,
   ui: { labelField: 'id', listView: { initialColumns: ['export', 'customer', 'channel'] } },
   fields: {
     export: relationship({ ref: 'CampaignExport.recipients', ...readOnly }),

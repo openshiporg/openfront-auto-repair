@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { hasTestDatabase, resetDatabase, testPrisma, uniqueKey } from '../../../tests/helpers/db'
+import { hasTestDatabase, resetDatabase, TEST_DATABASE_URL, testPrisma, uniqueKey } from '../../../tests/helpers/db'
 import { permissionNames } from '../access'
 import { systemActor } from '../lib/actor'
 import { contactHash } from '../lib/customers'
@@ -11,6 +11,7 @@ import { portalCustomer, portalOverview, portalRepairOrder, portalVehicle } from
 import { checkInShopVehicle, linkVehicleOwner, recordContactConsent } from './phase1'
 import { addRepairJob, openShopRepairOrder, recordCustomerAuthorization, sendRepairEstimate, transitionRepairJob } from './phase2'
 import {
+  readMessageThread, recordReviewRequest,
   closeRecommendation, copyMarketingMessage, exportMarketingCampaign, logCustomerCall, logCustomerMessage, markFollowUpContacted, markServiceReminderContacted, saveMarketingCampaign,
   campaignPreview, createCustomerPortalLink, followUpBoard,
 } from './phase7'
@@ -306,5 +307,72 @@ describe.skipIf(!hasTestDatabase)('Phase 7 recommendations, reminders, consent a
     expect(h2.ros).toEqual(['RO-P7-0102'])
     expect(h2.odometer).toEqual([48_260])
     expect(await one(hannah.id, theoRo.id)).toBe('hidden')
+  })
+
+  it('refuses every P7 write on another shop\'s records for staff of one shop', { timeout: 300_000 }, async () => {
+    const NGT = 'seed_shop_ngt'
+    const u = await prisma.user.create({ data: { name: 'nga-only', email: `${uniqueKey('ngaonly')}@test.local`, password: 'x'.repeat(60) } })
+    const ngaOnly: Ctx = { prisma, session: { ...sessionFor(u.id, MARKETING), data: { ...sessionFor(u.id, MARKETING).data, memberships: [{ status: 'active', shop: { id: NGA } }] } } }
+    const sandra = await prisma.customer.create({ data: { firstName: 'Sandra', lastName: 'Kaur', displayName: 'Sandra Kaur', homeShopId: NGT } as never })
+    const sms = await prisma.customerContact.create({ data: { customerId: sandra.id, kind: 'mobile', value: '+19165550321', valueHash: contactHash('mobile', '+19165550321'), isPrimary: true, status: 'active' } as never })
+    const vehicle = await prisma.vehicle.create({ data: { vin: '5YJ3E1EA7KF317000', year: 2019, make: 'Toyota', model: 'Camry', status: 'active', vinValid: 'valid' } as never })
+    const ro = await prisma.repairOrder.create({ data: { roNumber: 'RO-NGT-P7-0001', shopId: NGT, customerId: sandra.id, vehicleId: vehicle.id, status: 'closed', openedAt: new Date() } as never })
+    const job = await prisma.job.create({ data: { repairOrderId: ro.id, number: 1, title: 'Oil and filter change', status: 'completed' } as never })
+    const rec = await prisma.recommendation.create({ data: { shopId: NGT, customerId: sandra.id, vehicleId: vehicle.id, repairOrderId: ro.id, title: 'Rear brakes', urgency: 'soon', decision: 'declined', status: 'open', declinedAt: new Date() } as never })
+    const camp = (await saveMarketingCampaign(null, { input: { shopId: NGT, name: 'Tire rotation', kind: 'promo', messageText: 'Hi {name}, tire rotations are $20 this week at Northgate Tire.' }, idempotencyKey: key('camp') } as never, owner) as { id: string }).id
+    await logCustomerMessage(null, { input: { customerId: sandra.id, shopId: NGT, direction: 'outbound', channel: 'sms', body: 'Your car is ready.' }, idempotencyKey: key('m0') } as never, owner)
+    const thread = await prisma.messageThread.findFirstOrThrow({ where: { customerId: sandra.id, shopId: NGT } })
+    const before = { msgs: await prisma.message.count({ where: { customerId: sandra.id } }), calls: await prisma.callRecord.count({ where: { customerId: sandra.id } }), reviews: await prisma.reviewRequest.count({ where: { repairOrderId: ro.id } }), tokens: await prisma.publicAccessToken.count({ where: { subjectId: sandra.id } }), exports: await prisma.campaignExport.count({ where: { campaignId: camp } }) }
+
+    const refused = { code: 'NOT_AUTHORIZED' }
+    const tries: [string, () => Promise<unknown>][] = [
+      ['text on her thread, shop from her home shop', () => logCustomerMessage(null, { input: { customerId: sandra.id, direction: 'outbound', channel: 'sms', body: 'Hi Sandra' }, idempotencyKey: key('x') } as never, ngaOnly)],
+      ['text on her thread, NGT named', () => logCustomerMessage(null, { input: { customerId: sandra.id, shopId: NGT, direction: 'outbound', channel: 'sms', body: 'Hi Sandra' }, idempotencyKey: key('x') } as never, ngaOnly)],
+      ['text on her NGT repair order, NGA named', () => logCustomerMessage(null, { input: { customerId: sandra.id, shopId: NGA, repairOrderId: ro.id, direction: 'outbound', channel: 'sms', body: 'Hi Sandra' }, idempotencyKey: key('x') } as never, ngaOnly)],
+      ['call', () => logCustomerCall(null, { input: { customerId: sandra.id, shopId: NGT, direction: 'outbound', outcome: 'reached' }, idempotencyKey: key('x') } as never, ngaOnly)],
+      ['mark thread read', () => readMessageThread(null, { threadId: thread.id, idempotencyKey: key('x') }, ngaOnly)],
+      ['review request', () => recordReviewRequest(null, { repairOrderId: ro.id, channel: 'text', idempotencyKey: key('x') }, ngaOnly)],
+      ['portal link', () => createCustomerPortalLink(null, { customerId: sandra.id, idempotencyKey: key('x') }, ngaOnly)],
+      ['follow-up contacted', () => markFollowUpContacted(null, { recommendationId: rec.id, channel: 'call', expectedContactedCount: 0, idempotencyKey: key('x') }, ngaOnly)],
+      ['close recommendation', () => closeRecommendation(null, { recommendationId: rec.id, reason: 'Sold', idempotencyKey: key('x') }, ngaOnly)],
+      ['reminder contacted', () => markServiceReminderContacted(null, { cycleKey: `${vehicle.id}:oil:${job.id}`, channel: 'text', idempotencyKey: key('x') }, ngaOnly)],
+      ['new campaign at NGT', () => saveMarketingCampaign(null, { input: { shopId: NGT, name: 'x', kind: 'promo', messageText: 'x' }, idempotencyKey: key('x') } as never, ngaOnly)],
+      ['edit NGT campaign', () => saveMarketingCampaign(null, { input: { campaignId: camp, shopId: NGA, name: 'x', kind: 'promo', messageText: 'x' }, idempotencyKey: key('x') } as never, ngaOnly)],
+      ['export NGT campaign', () => exportMarketingCampaign(null, { campaignId: camp, idempotencyKey: key('x') }, ngaOnly)],
+      ['copy NGT campaign', () => copyMarketingMessage(null, { campaignId: camp, customerId: sandra.id, idempotencyKey: key('x') }, ngaOnly)],
+    ]
+    const results: Record<string, string> = {}
+    for (const [name, attempt] of tries) results[name] = await attempt().then(() => 'allowed', (e: any) => e?.code ?? String(e))
+    expect(results).toEqual(Object.fromEntries(tries.map(([n]) => [n, refused.code])))
+    // Nothing was written.
+    expect({ msgs: await prisma.message.count({ where: { customerId: sandra.id } }), calls: await prisma.callRecord.count({ where: { customerId: sandra.id } }), reviews: await prisma.reviewRequest.count({ where: { repairOrderId: ro.id } }), tokens: await prisma.publicAccessToken.count({ where: { subjectId: sandra.id } }), exports: await prisma.campaignExport.count({ where: { campaignId: camp } }) }).toEqual(before)
+    expect((await prisma.recommendation.findUniqueOrThrow({ where: { id: rec.id } })).contactedCount).toBe(0)
+    // The same person can still do it at their own shop.
+    await expect(logCustomerMessage(null, { input: { customerId: sandra.id, shopId: NGA, direction: 'outbound', channel: 'sms', body: 'Hi Sandra, this is Northgate Auto Care.' }, idempotencyKey: key('ok') } as never, ngaOnly)).resolves.toMatchObject({ threadId: expect.any(String) })
+    void sms
+  })
+
+  it('lists campaign exports and recipients to staff of the campaign\'s shop only', { timeout: 300_000 }, async () => {
+    const { getContext } = await import('@keystone-6/core/context')
+    const PrismaModule = await import('@prisma/client')
+    process.env.DATABASE_URL = TEST_DATABASE_URL
+    process.env.SESSION_SECRET ||= 'phase7-test-session-secret-0123456789abcdef'
+    const ctx: any = getContext((await import('../index')).default, PrismaModule)
+    const zoe = await newCustomer('Zoe', 'Park', '+19165550331', 'zoe.park@example.com')
+    await consent(zoe.mail, 'email', 'marketing', 'granted', true)
+    const ngaCamp = await campaign()
+    const ngaExport = (await exportMarketingCampaign(null, { campaignId: ngaCamp, idempotencyKey: key('x') }, staff) as any).exportId as string
+    const ngtCamp = (await saveMarketingCampaign(null, { input: { shopId: 'seed_shop_ngt', name: 'Tire check', kind: 'promo', messageText: 'Hi {name}, free tire checks at Northgate Tire.' }, idempotencyKey: key('camp') } as never, owner) as { id: string }).id
+    const ngtExport = await prisma.campaignExport.create({ data: { campaignId: ngtCamp, recipientCount: 0, excludedCount: 0, excluded: [], at: new Date() } as never })
+    const ngaOnly = (perms: string[]) => { const s = sessionFor('nga-reader', perms); return { ...s, listKey: 'User', data: { ...s.data, memberships: [{ status: 'active', shop: { id: NGA } }] } } }
+    for (const perms of [MARKETING, ['canAccessDashboard', 'canMessageCustomers', 'canReadRepairOrders']]) {
+      const r = await ctx.withSession(ngaOnly(perms)).graphql.raw({ query: `query($a:ID!,$b:ID!){ mine: campaignExport(where:{id:$a}){ id recipientCount } other: campaignExport(where:{id:$b}){ id } exports: campaignExports(where:{id:{in:[$a,$b]}}){ id } n: campaignExportsCount(where:{id:{in:[$a,$b]}}) recipients: campaignRecipients(where:{export:{id:{in:[$a,$b]}}}){ id customer { id } } }`, variables: { a: ngaExport, b: ngtExport.id } })
+      expect(r.errors).toBeUndefined()
+      expect(r.data.mine).toMatchObject({ id: ngaExport })
+      expect(r.data.other).toBeNull()
+      expect(r.data.exports.map((e: any) => e.id)).toEqual([ngaExport])
+      expect(r.data.n).toBe(1)
+      expect(r.data.recipients.length).toBeGreaterThan(0)
+    }
   })
 })
