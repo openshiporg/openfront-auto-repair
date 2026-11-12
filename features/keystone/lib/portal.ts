@@ -29,19 +29,52 @@ export async function portalCustomer(tx: Tx, token: string, now: Date, consume: 
   return customer
 }
 
-type Window = { vehicleId: string; from: Date; to: Date | null }
+/**
+ * One ownership period. `from`/`to` are the outer calendar-day bounds (the start day and the end day count, because the
+ * ownership columns are days). `innerFrom`/`innerTo` are the bounds with no doubt: the exact moment of a sale when the rows
+ * record it, otherwise the boundary days are left out. A sale closes one ownership and opens the next on the same day, so on a
+ * boundary day a record is shown only when it is plainly this customer's: a repair order whose customer is them, or anything
+ * inside the exact bounds. It fails closed: a new owner never sees the previous owner's visit from the day of the sale.
+ */
+export type Window = { vehicleId: string; from: Date; to: Date | null; innerFrom: Date; innerTo: Date | null }
 
-const endOfDay = (d: Date) => new Date(d.getTime() + 86_400_000)
+const DAY = 86_400_000
+const dayOf = (d: Date) => d.toISOString().slice(0, 10)
 
-/** The periods this customer owned each vehicle. A day-only end date means the end of that day. */
+/** The periods this customer owned each vehicle. */
 export async function ownershipWindows(tx: Tx, customerId: string): Promise<Window[]> {
-  const rows = await tx.vehicleOwnership.findMany({ where: { customerId, role: 'owner', vehicleId: { not: null } }, select: { vehicleId: true, startedAt: true, endedAt: true } })
-  return rows.map(r => ({ vehicleId: r.vehicleId!, from: r.startedAt ?? new Date(0), to: r.endedAt ? endOfDay(r.endedAt) : null }))
+  const rows = await tx.vehicleOwnership.findMany({ where: { customerId, role: 'owner', vehicleId: { not: null } }, select: { id: true, vehicleId: true, startedAt: true, endedAt: true, createdAt: true } })
+  if (!rows.length) return []
+  // Every owner row on these vehicles, to find the moment the next owner took over.
+  const all = await tx.vehicleOwnership.findMany({ where: { vehicleId: { in: rows.map(r => r.vehicleId!) }, role: 'owner' }, select: { id: true, vehicleId: true, startedAt: true, createdAt: true } })
+  return rows.map(r => {
+    const from = r.startedAt ?? new Date(0)
+    const to = r.endedAt ? new Date(r.endedAt.getTime() + DAY) : null
+    // linkOwner creates the row at the moment of the sale, on the start day: that moment is the exact start.
+    const innerFrom = r.startedAt ? (dayOf(r.createdAt) === dayOf(r.startedAt) ? r.createdAt : new Date(r.startedAt.getTime() + DAY)) : new Date(0)
+    let innerTo: Date | null = null
+    if (r.endedAt) {
+      const end = r.endedAt
+      const successor = all
+        .filter(o => o.id !== r.id && o.vehicleId === r.vehicleId && o.startedAt && dayOf(o.startedAt) === dayOf(end) && dayOf(o.createdAt) === dayOf(end) && o.createdAt > r.createdAt)
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
+      innerTo = successor ? successor.createdAt : end
+    }
+    return { vehicleId: r.vehicleId!, from, to, innerFrom, innerTo }
+  })
 }
 
-/** A Prisma filter for repair orders that fall inside any ownership window. Empty when the customer owns nothing. */
-export function withinOwnership(windows: Window[]) {
-  return { OR: windows.map(w => ({ vehicleId: w.vehicleId, openedAt: { gte: w.from, ...(w.to ? { lt: w.to } : {}) } })) }
+const between = (gte: Date, lt: Date | null) => ({ gte, ...(lt ? { lt } : {}) })
+
+/** A Prisma filter for repair orders that fall inside any ownership window. */
+export function withinOwnership(windows: Window[], customerId: string) {
+  return {
+    OR: windows.map(w => ({
+      vehicleId: w.vehicleId,
+      openedAt: between(w.from, w.to),
+      OR: [{ customerId }, { openedAt: between(w.innerFrom, w.innerTo) }],
+    })),
+  }
 }
 
 const roSelect = { id: true, roNumber: true, status: true, openedAt: true, vehicleId: true, vehicle: { select: { id: true, year: true, make: true, model: true } }, shop: { select: { name: true } } } as const
@@ -49,7 +82,7 @@ const roSelect = { id: true, roNumber: true, status: true, openedAt: true, vehic
 export async function portalOverview(tx: Tx, customerId: string) {
   const windows = await ownershipWindows(tx, customerId)
   if (!windows.length) return { vehicles: [], repairOrders: [], count: 0 }
-  const where = withinOwnership(windows)
+  const where = withinOwnership(windows, customerId)
   const [repairOrders, count, vehicles] = await Promise.all([
     tx.repairOrder.findMany({ where: { ...where, status: { not: 'draft' } }, orderBy: { openedAt: 'desc' }, take: 100, select: roSelect }),
     tx.repairOrder.count({ where: { ...where, status: { not: 'draft' } } }),
@@ -67,7 +100,7 @@ export async function portalRepairOrder(tx: Tx, customerId: string, repairOrderI
   const windows = await ownershipWindows(tx, customerId)
   if (!windows.length) throw new DomainError(Codes.NOT_FOUND, 'Not found.')
   const ro = await tx.repairOrder.findFirst({
-    where: { id: repairOrderId, status: { not: 'draft' }, ...withinOwnership(windows) },
+    where: { id: repairOrderId, status: { not: 'draft' }, ...withinOwnership(windows, customerId) },
     select: { ...roSelect, jobs: { where: { status: { notIn: ['draft', 'voided'] } }, orderBy: { number: 'asc' }, select: { id: true, number: true, title: true, status: true, totalMinor: true } } },
   })
   if (!ro) throw new DomainError(Codes.NOT_FOUND, 'Not found.')
@@ -79,12 +112,14 @@ export async function portalRepairOrder(tx: Tx, customerId: string, repairOrderI
 export async function portalVehicle(tx: Tx, customerId: string, vehicleId: string) {
   const windows = (await ownershipWindows(tx, customerId)).filter(w => w.vehicleId === vehicleId)
   if (!windows.length) throw new DomainError(Codes.NOT_FOUND, 'Not found.')
-  const within = (field: string) => ({ OR: windows.map(w => ({ [field]: { gte: w.from, ...(w.to ? { lt: w.to } : {}) } })) })
+  // A reading has no customer, so only the exact bounds count for it.
+  const readingWhere = { OR: windows.map(w => ({ at: between(w.innerFrom, w.innerTo) })) }
+  const roWhere = { status: { not: 'draft' }, ...withinOwnership(windows, customerId) }
   const [vehicle, readings, repairOrders, count] = await Promise.all([
     tx.vehicle.findUniqueOrThrow({ where: { id: vehicleId }, select: { id: true, year: true, make: true, model: true } }),
-    tx.odometerReading.findMany({ where: { vehicleId, accepted: true, ...within('at') }, orderBy: { at: 'desc' }, take: 50, select: { value: true, unit: true, at: true } }),
-    tx.repairOrder.findMany({ where: { vehicleId, status: { not: 'draft' }, ...within('openedAt') }, orderBy: { openedAt: 'desc' }, take: 100, select: roSelect }),
-    tx.repairOrder.count({ where: { vehicleId, status: { not: 'draft' }, ...within('openedAt') } }),
+    tx.odometerReading.findMany({ where: { vehicleId, accepted: true, ...readingWhere }, orderBy: { at: 'desc' }, take: 50, select: { value: true, unit: true, at: true } }),
+    tx.repairOrder.findMany({ where: roWhere, orderBy: { openedAt: 'desc' }, take: 100, select: roSelect }),
+    tx.repairOrder.count({ where: roWhere }),
   ])
   return { vehicle, count, odometer: readings, repairOrders: repairOrders.map(r => ({ id: r.id, number: r.roNumber, status: r.status, openedAt: r.openedAt, shop: r.shop?.name ?? '' })) }
 }

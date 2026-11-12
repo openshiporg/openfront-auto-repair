@@ -8,7 +8,7 @@ import { recordInbound, stopKeyword } from '../lib/communications'
 import { computeReminder, nextFollowUp } from '../lib/followUps'
 import { runInTransaction } from '../lib/unitOfWork'
 import { portalCustomer, portalOverview, portalRepairOrder, portalVehicle } from '../lib/portal'
-import { checkInShopVehicle, recordContactConsent } from './phase1'
+import { checkInShopVehicle, linkVehicleOwner, recordContactConsent } from './phase1'
 import { addRepairJob, openShopRepairOrder, recordCustomerAuthorization, sendRepairEstimate, transitionRepairJob } from './phase2'
 import {
   closeRecommendation, copyMarketingMessage, exportMarketingCampaign, logCustomerCall, logCustomerMessage, markFollowUpContacted, markServiceReminderContacted, saveMarketingCampaign,
@@ -250,5 +250,61 @@ describe.skipIf(!hasTestDatabase)('Phase 7 recommendations, reminders, consent a
     const other = await newCustomer('Ines', 'Moreau', '+19165550308', 'ines.moreau@example.com')
     await expect(tx(uow => portalVehicle(uow.tx, other.id, vehicle.id))).rejects.toMatchObject({ code: 'NOT_FOUND' })
     await expect(tx(uow => portalRepairOrder(uow.tx, other.id, mine.id))).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('a same-day sale never shows the new owner the previous owner\'s visit', { timeout: 180_000 }, async () => {
+    const daniel = await newCustomer('Daniel', 'Okonkwo', '+19165550311', 'daniel.okonkwo@example.com')
+    const hannah = await newCustomer('Hannah', 'Brooks', '+19165550312', 'hannah.brooks@example.com')
+    const theo = await newCustomer('Theo', 'Marsh', '+19165550313', 'theo.marsh@example.com')
+    const vehicle = await prisma.vehicle.create({ data: { vin: '1HGCV1F34LA012345', year: 2020, make: 'Honda', model: 'Accord', status: 'active', vinValid: 'valid' } as never })
+    const sell = (customerId: string) => linkVehicleOwner(null, { vehicleId: vehicle.id, customerId, idempotencyKey: key('own') }, staff)
+    const visit = async (n: string, customerId: string, odometer: number) => {
+      const ro = await prisma.repairOrder.create({ data: { roNumber: n, shopId: NGA, customerId, vehicleId: vehicle.id, status: 'closed', openedAt: new Date() } as never })
+      await prisma.odometerReading.create({ data: { vehicleId: vehicle.id, value: odometer, unit: 'mi', source: 'ro_in', anomaly: 'none', at: new Date(), accepted: true } as never })
+      return ro
+    }
+    const view = (customerId: string) => tx(async uow => {
+      const overview = await portalOverview(uow.tx, customerId)
+      const veh = await portalVehicle(uow.tx, customerId, vehicle.id).catch(() => null)
+      return { ros: overview.repairOrders.map((r: any) => r.number).sort(), count: overview.count, vehRos: veh ? veh.repairOrders.map((r: any) => r.number).sort() : null, odometer: veh ? veh.odometer.map((o: any) => o.value) : null }
+    }) as Promise<any>
+    const one = (customerId: string, id: string) => tx(uow => portalRepairOrder(uow.tx, customerId, id)).then(() => 'shown', () => 'hidden')
+
+    // Daniel owns the car and brings it in; later that day he sells it to Hannah.
+    await sell(daniel.id)
+    const danielRo = await visit('RO-P7-0101', daniel.id, 48_210)
+    await sell(hannah.id)
+    const rows = await prisma.vehicleOwnership.findMany({ where: { vehicleId: vehicle.id }, orderBy: { createdAt: 'asc' } })
+    expect(rows.map(r => r.startedAt?.toISOString().slice(0, 10))).toEqual([rows[0].startedAt?.toISOString().slice(0, 10), rows[0].startedAt?.toISOString().slice(0, 10)])
+    expect(rows[0].endedAt?.toISOString().slice(0, 10)).toBe(rows[1].startedAt?.toISOString().slice(0, 10))
+
+    const h1 = await view(hannah.id)
+    expect(h1).toEqual({ ros: [], count: 0, vehRos: [], odometer: [] })
+    expect(await one(hannah.id, danielRo.id)).toBe('hidden')
+
+    // Hannah's own visit the same day shows for her, and not for Daniel.
+    const hannahRo = await visit('RO-P7-0102', hannah.id, 48_260)
+    expect(await view(hannah.id)).toEqual({ ros: ['RO-P7-0102'], count: 1, vehRos: ['RO-P7-0102'], odometer: [48_260] })
+
+    // Back to back: Hannah sells to Theo the same day. Theo sees neither earlier visit.
+    await sell(theo.id)
+    expect(await view(theo.id)).toEqual({ ros: [], count: 0, vehRos: [], odometer: [] })
+    expect(await one(theo.id, danielRo.id)).toBe('hidden')
+    expect(await one(theo.id, hannahRo.id)).toBe('hidden')
+    const theoRo = await visit('RO-P7-0103', theo.id, 48_300)
+    expect((await view(theo.id)).ros).toEqual(['RO-P7-0103'])
+
+    // The old owners still see their own visit after the sale, and nothing after it.
+    const d = await view(daniel.id)
+    expect(d.ros).toEqual(['RO-P7-0101'])
+    expect(d.count).toBe(1)
+    expect(d.odometer).toEqual([48_210])
+    expect(await one(daniel.id, danielRo.id)).toBe('shown')
+    expect(await one(daniel.id, hannahRo.id)).toBe('hidden')
+    expect(await one(daniel.id, theoRo.id)).toBe('hidden')
+    const h2 = await view(hannah.id)
+    expect(h2.ros).toEqual(['RO-P7-0102'])
+    expect(h2.odometer).toEqual([48_260])
+    expect(await one(hannah.id, theoRo.id)).toBe('hidden')
   })
 })
