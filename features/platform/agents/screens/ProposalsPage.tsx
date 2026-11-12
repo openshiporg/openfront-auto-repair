@@ -1,5 +1,5 @@
 import { q, holds, orgTimeZone } from '../../lib/server';
-import { when, label } from '../../lib/format';
+import { when, label, money } from '../../lib/format';
 import { Page, Row, Empty, Status, Meta, Section, Stat } from '../../components/ui';
 import { Act, AskPanel } from './AgentsActions';
 import { TOOLS } from '@/features/keystone/agents/tools';
@@ -10,11 +10,12 @@ type Proposal = { id: string; title: string; status: string; version: number; st
 /** A short plain sentence from the dry-run result: its readable fields, never ids or codes. */
 const effect = (p: unknown) => {
   if (!p || typeof p !== 'object') return '';
-  const skip = /(^id$|Id$|^version$|hash|key|status|^kind$)/i;
+  const skip = /(^id$|Id$|^version$|hash|key|status|^kind$|Minor$|^number$)/i;
   return Object.entries(p as Record<string, unknown>)
     .filter(([k, v]) => !skip.test(k) && (typeof v === 'string' || typeof v === 'number') && String(v).length < 120)
     .slice(0, 4).map(([k, v]) => `${label(k.replace(/([A-Z])/g, '_$1').toLowerCase())} ${v}`).join(', ');
 };
+const total = (p: unknown) => (p && typeof p === 'object' && typeof (p as { totalMinor?: unknown }).totalMinor === 'string' ? ` Total ${money((p as { totalMinor: string }).totalMinor)}.` : '');
 
 /** Plans assistants have made. Nothing here has changed the shop's records until a person presses Confirm on a step. */
 export default async function ProposalsPage() {
@@ -50,7 +51,7 @@ export default async function ProposalsPage() {
               <ol className="space-y-1 text-sm">
                 {(p.plan ?? []).map(s => (
                   <li key={s.index} className="min-w-0 break-words"><span className="font-medium">{s.index + 1}. {s.summary}</span> <Meta>{s.status === 'done' ? 'done' : s.status === 'failed' ? `did not run${s.error ? `: ${s.error}` : ''}` : s.index === p.stepIndex && p.status === 'previewed' ? 'next' : ''}</Meta>
-                    {effect(s.preview) ? <div className="text-xs text-muted-foreground">Will: {effect(s.preview)}</div> : null}</li>
+                    {effect(s.preview) || total(s.preview) ? <div className="text-xs text-muted-foreground">Will: {effect(s.preview) || 'make this change'}.{total(s.preview)}</div> : null}</li>
                 ))}
               </ol>
               {p.failure ? <p className="break-words text-sm text-red-600">{p.failure}</p> : null}

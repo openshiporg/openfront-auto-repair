@@ -6,7 +6,7 @@ import { HypothesisForm, QuoteReadyForm, StartSession, TestForm } from './Diagno
 
 type Session = {
   id: string; summary: string; status: string; version: number; confidence: string; override: { reason?: string; by?: string } | null; dtcs: string[];
-  repairOrder: { id: string; roNumber: string } | null; concern: { text: string } | null;
+  repairOrder: { id: string; roNumber: string } | null; concern: { customerWords: string } | null;
   hypotheses: { id: string; cause: string; confidence: string; origin: string; status: string; sources: { sourceKind: string; title: string }[] }[];
   tests: { id: string; procedure: string; result: string; outcome: string; at: string }[];
 };
@@ -20,7 +20,7 @@ export default async function DiagnosisPage() {
   const gates: Record<string, { ok: boolean; reason: string | null; threshold: number; canOverride: boolean }> = {};
   try {
     const d = await q<any>(`{
-      diagnosisSessions(orderBy: { createdAt: desc }, take: 40) { id summary status version confidence override dtcs repairOrder { id roNumber } concern { text }
+      diagnosisSessions(orderBy: { createdAt: desc }, take: 40) { id summary status version confidence override dtcs repairOrder { id roNumber } concern { customerWords }
         hypotheses(orderBy: { rank: asc }) { id cause confidence origin status sources } tests(orderBy: { at: desc }) { id procedure result outcome at } }
       jobs(where: { kind: { equals: "diagnosis" }, status: { in: ["authorized", "in_progress"] } }, orderBy: { createdAt: desc }, take: 30) { id title repairOrder { id roNumber } concern { id } }
       repairJobs: jobs(where: { kind: { not: { equals: "diagnosis" } }, status: { notIn: ["cancelled", "declined", "void"] } }, orderBy: { createdAt: desc }, take: 150) { id title repairOrder { id } } }`);
@@ -50,7 +50,7 @@ export default async function DiagnosisPage() {
           return (
             <Row key={s.id}>
               <div className="min-w-0 flex-1 space-y-3">
-                <div className="flex flex-wrap items-center gap-2"><span className="break-words font-medium">{s.summary || s.concern?.text || 'Diagnosis'}</span><Status value={s.status} /></div>
+                <div className="flex flex-wrap items-center gap-2"><span className="break-words font-medium">{s.summary || s.concern?.customerWords || 'Diagnosis'}</span><Status value={s.status} /></div>
                 <Meta>Repair order {s.repairOrder?.roNumber}{s.dtcs?.length ? ` · codes ${s.dtcs.join(', ')}` : ''}{Number(s.confidence) > 0 ? ` · top cause ${percent(s.confidence)} sure` : ''}</Meta>
                 {s.override?.reason ? <p className="break-words rounded-md border border-amber-300 p-2 text-sm">Quoted below the confidence bar. Reason given: {s.override.reason}</p> : null}
                 <ul className="space-y-2">
