@@ -6,6 +6,7 @@ import { DomainError, Codes } from './errors'
 import { nextShopReference } from './sequence'
 import { shopLaw } from './policy'
 import { recordOdometer } from './vehicles'
+import { currentConsent, recordConsent } from './customers'
 import type { UnitOfWork } from './unitOfWork'
 
 /*
@@ -35,6 +36,8 @@ export type CheckInInput = {
   transportationNeed?: 'none' | 'shuttle' | 'loaner' | 'rideshare'
   valuablesNote?: string | null
   signature?: SignatureInput | null
+  /** What the customer agreed to on the form, per contact. Marketing counts as written only with the work-order signature. */
+  consents?: { contactId: string; channel: 'sms' | 'email'; transactional?: boolean; marketing?: boolean }[] | null
 }
 
 /** The work-order wording the customer signs: the shop's details, the concerns, and the jurisdiction's notices for the work order. */
@@ -129,6 +132,20 @@ export async function checkInVehicle(uow: UnitOfWork, actor: Actor, input: Check
       },
       data: { customerId: input.customerId, vehicleId: input.vehicleId },
     })
+  }
+  // Consent is captured here, once per contact and kind, with the form as the evidence. A box left empty records nothing
+  // (it never revokes); a customer who already has the same answer on file is not asked to repeat it.
+  for (const c of (input.consents ?? []).slice(0, 6)) {
+    const contact = await tx.customerContact.findUnique({ where: { id: c.contactId }, select: { id: true, customerId: true, kind: true } })
+    if (!contact || contact.customerId !== input.customerId) throw new DomainError(Codes.INVALID_INPUT, "That contact is not this customer's.", { field: 'consents' })
+    const events = await tx.contactConsent.findMany({ where: { contactId: contact.id }, select: { channel: true, purpose: true, action: true, at: true } })
+    const state = currentConsent(events)
+    const evidence = { checkIn: reference, workOrderHash: sha256(text), signed: Boolean(signature), signerName: signature?.signerName ?? null }
+    for (const [purpose, ticked] of [['transactional', c.transactional], ['marketing', c.marketing]] as const) {
+      if (!ticked || state[`${c.channel}:${purpose}`] === 'granted') continue
+      if (purpose === 'marketing' && !signature) throw new DomainError(Codes.CONSENT_BLOCKED, 'Marketing consent has to be signed on the work order.', { field: 'consents' })
+      await recordConsent(uow, actor, { contactId: contact.id, channel: c.channel, purpose, action: 'granted', method: 'in_person_form', writtenConsent: Boolean(signature), evidence })
+    }
   }
   auditCreate(uow, actor, 'CheckIn', row.id, 'vehicle.checked_in', { reference, shopId: input.shopId, vehicleId: input.vehicleId, appointmentId: input.appointmentId ?? null, workOrderHash: sha256(text), signed: Boolean(signature), odometerAnomaly: odometer?.anomaly ?? null, recallWarning: Boolean(recallWarning), lawVersion: law.id })
   return { id: row.id, reference, recallWarning, odometerAnomaly: odometer?.anomaly ?? null }

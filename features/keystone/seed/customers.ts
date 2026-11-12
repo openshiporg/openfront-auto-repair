@@ -189,7 +189,7 @@ export async function seedCustomers(uow: UnitOfWork, actor: Actor, from = 0, to 
       if (c.consent !== 'none' && c.consent !== 'email_only') await grant(mobile.id, 'sms', 'transactional', false)
       if (c.consent === 'marketing') await grant(mobile.id, 'sms', 'marketing', true)
       if (mail && c.consent !== 'none') await grant(mail.id, 'email', 'transactional', false)
-      if (mail && c.consent === 'marketing') await grant(mail.id, 'email', 'marketing', false)
+      if (mail && c.consent === 'marketing') await grant(mail.id, 'email', 'marketing', true)
       if (c.consent === 'stopped') {
         // The customer replied STOP: every text stops; email stays the fallback.
         await recordConsent(uow, actor, { contactId: mobile.id, channel: 'sms', purpose: 'all', action: 'revoked', method: 'keyword_reply', evidence: { keyword: 'STOP', seed: true } })

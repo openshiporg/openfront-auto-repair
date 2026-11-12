@@ -12,7 +12,7 @@ const auth = await (await fetch(BASE + '/api/graphql', { method: 'POST', headers
 const cookie = 'keystonejs-session=' + auth.data?.authenticateUserWithPassword?.sessionToken
 const meta = (await gql('{keystone{adminMeta{lists{key path listQueryName}}}}', cookie)).data?.keystone?.adminMeta?.lists
 if (!meta) { console.log('CHECK crawl setup: FAIL'); process.exit(1) }
-const platform = ['accounts', 'statements', 'approvals', 'audit', 'board', 'canned-jobs', 'check-in', 'comebacks', 'cores', 'customers', 'day-close', 'inspections', 'parts', 'pay-periods', 'policies', 'purchase-orders', 'receivables', 'repair-orders', 'schedule', 'shops', 'stock', 'supplier-invoices', 'technicians', 'time', 'tires', 'vehicles']
+const platform = ['follow-ups', 'messages', 'campaigns', 'accounts', 'statements', 'approvals', 'audit', 'board', 'canned-jobs', 'check-in', 'comebacks', 'cores', 'customers', 'day-close', 'inspections', 'parts', 'pay-periods', 'policies', 'purchase-orders', 'receivables', 'repair-orders', 'schedule', 'shops', 'stock', 'supplier-invoices', 'technicians', 'time', 'tires', 'vehicles']
 const pages = ['/dashboard/', ...platform.map(s => '/dashboard/platform/' + s)]
 const ro = (await gql('{repairOrders(take:2){id}}', cookie)).data?.repairOrders ?? []
 for (const r of ro) pages.push('/dashboard/platform/repair-orders/' + r.id, '/dashboard/platform/repair-orders/' + r.id + '/authorize')

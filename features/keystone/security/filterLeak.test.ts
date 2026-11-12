@@ -139,3 +139,42 @@ describe('every list query is bounded (r2 F3)', () => {
     expect(unbounded).toEqual(['organizationSettingsItems']) // a one-row list; the guard below bounds it
   })
 })
+
+describe('messages, follow-ups and campaigns (Phase 7)', () => {
+  const counter = ['canAccessDashboard', 'canReadRepairOrders']
+  it('a role without messaging rights reads no messages, calls, threads or campaign lists', async () => {
+    for (const source of [
+      '{ messages(take: 1) { id } }', '{ messageThreads(take: 1) { id } }', '{ callRecords(take: 1) { id } }',
+      '{ campaigns(take: 1) { id } }', '{ campaignExports(take: 1) { id } }', '{ campaignRecipients(take: 1) { id } }', '{ messageTemplates(take: 1) { id } }',
+    ]) {
+      const r = await run(counter, source) as any
+      expect(r.data?.[Object.keys(r.data ?? {})[0]] ?? [], source).toEqual([])
+    }
+  })
+  it('a message cannot be used to filter or sort its way to a contact number', async () => {
+    const withMessaging = [...counter, 'canMessageCustomers']
+    for (const source of [
+      '{ messagesCount(where: { contact: { value: { contains: "555" } } }) }',
+      '{ messages(orderBy: { contact: { value: asc } }, take: 1) { id } }',
+      '{ campaignRecipientsCount(where: { contact: { value: { contains: "555" } } }) }',
+    ]) {
+      const r = await run(withMessaging, source)
+      expect(refused(r) || (r.errors?.length ?? 0) > 0, source + JSON.stringify(r.errors)).toBe(true)
+    }
+  })
+  it('messages, calls, exports and recipients cannot be written through the API', async () => {
+    for (const source of [
+      'mutation { createMessage(data: { body: "x" }) { id } }', 'mutation { updateMessage(where: { id: "x" }, data: { body: "y" }) { id } }', 'mutation { deleteMessage(where: { id: "x" }) { id } }',
+      'mutation { createCampaignRecipient(data: { channel: "sms" }) { id } }', 'mutation { createCallRecord(data: { note: "x" }) { id } }', 'mutation { createCampaignExport(data: { recipientCount: 1 }) { id } }',
+      'mutation { createServiceReminder(data: { kind: "oil" }) { id } }', 'mutation { updateRecommendation(where: { id: "x" }, data: { contactedCount: 5 }) { id } }',
+    ]) {
+      const r = await run(permissionNames as unknown as string[], source)
+      expect(JSON.stringify(r.errors ?? []), source).toMatch(/access|denied|permission|Cannot query|not defined|Unknown/i)
+    }
+  })
+  it('a portal-only session reads none of them', async () => {
+    const r = await run([], '{ recommendations(take: 1) { id } serviceReminders(take: 1) { id } }') as any
+    expect(r.data?.recommendations ?? []).toEqual([])
+    expect(r.data?.serviceReminders ?? []).toEqual([])
+  })
+})

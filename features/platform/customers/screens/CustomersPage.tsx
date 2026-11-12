@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { q, orgTimeZone } from '../../lib/server';
+import { q, orgTimeZone, holds } from '../../lib/server';
 import { when, label, money } from '../../lib/format';
 import { Page, Row, Empty, Status, Meta, Section, Tabs, Stat } from '../../components/ui';
 import { NewCustomerForm } from './NewCustomerForm';
+import { RevokeConsent } from '../../messages/screens/Actions';
 
-type Contact = { id: string; kind: string; label: string; isPrimary: boolean; status: string; consents: { channel: string; purpose: string; action: string; method: string; at: string }[] };
+type Contact = { id: string; kind: string; label: string; isPrimary: boolean; status: string; consents: { channel: string; purpose: string; action: string; method: string; writtenConsent: boolean; at: string }[] };
 type Customer = {
   id: string; kind: string; displayName: string; status: string; noShowCount: number; preferredChannel: string; notes: string; createdAt: string;
   homeShop: { name: string } | null; businessAccount: { id: string; name: string; termsDays: number; poRequired: boolean } | null;
@@ -15,7 +16,7 @@ type Customer = {
 type Account = { id: string; name: string; accountNumber: string; termsDays: number; creditLimitMinor: string; poRequired: boolean; billingMode: string; customersCount: number; status: string };
 
 const CUSTOMER = `id kind displayName status noShowCount preferredChannel notes createdAt homeShop { name } businessAccount { id name termsDays poRequired }
-  contacts(orderBy: { createdAt: asc }) { id kind label isPrimary status consents(orderBy: { at: desc }) { channel purpose action method at } }
+  contacts(orderBy: { createdAt: asc }) { id kind label isPrimary status consents(orderBy: { at: desc }) { channel purpose action method writtenConsent at } }
   ownerships(where: { endedAt: null }) { vehicle { id label vin } }
   appointments(orderBy: { startsAt: desc }, take: 1) { reference startsAt status }`;
 
@@ -37,6 +38,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
   const view = params.view === 'fleet' ? 'fleet' : 'people';
   const search = (params.q ?? '').trim().slice(0, 80);
   const where = search ? `{ status: { equals: "active" }, OR: [{ displayName: { contains: $q, mode: insensitive } }, { companyName: { contains: $q, mode: insensitive } }] }` : '{ status: { equals: "active" } }';
+  const mayRevoke = await holds(['canMessageCustomers', 'canManageCustomers']).then(h => h.canMessageCustomers || h.canManageCustomers);
   const [data, tz] = await Promise.all([
     q<{ customers: Customer[]; customersCount: number; businessAccounts: Account[]; shops: { id: string; code: string; name: string }[]; stopped: number }>(`query${search ? '($q: String!)' : ''} {
       customers(where: ${where}, orderBy: { displayName: asc }, take: 60) { ${CUSTOMER} }
@@ -100,6 +102,19 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
                       </span>
                     ))}
                   </div>
+                  {c.contacts.some(ct => ct.consents.length) ? (
+                    <details className="text-xs">
+                      <summary className="inline-flex min-h-11 cursor-pointer items-center md:min-h-0">Consent history</summary>
+                      <div className="space-y-2 pt-1">
+                        {c.contacts.filter(ct => ct.consents.length).map(ct => (
+                          <div key={ct.id} className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2"><span className="font-mono">{ct.label}</span>{mayRevoke && ct.kind !== 'landline' && consentSummary(ct).some(s => s.purposes.some(p => p.action === 'granted')) ? <RevokeConsent contactId={ct.id} channel={ct.kind === 'email' ? 'email' : 'sms'} /> : null}</div>
+                            {ct.consents.map((e, i) => <p key={i} className="break-words text-muted-foreground">{when(e.at, tz, 'day')}: {e.action === 'granted' ? 'agreed to' : 'withdrew'} {e.purpose === 'all' ? 'all' : e.purpose === 'transactional' ? 'repair' : 'marketing'} {e.channel === 'sms' ? 'texts' : e.channel === 'email' ? 'email' : 'calls'}, {label(e.method)}{e.writtenConsent ? ', in writing' : ''}</p>)}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
                   <Meta>
                     {c.ownerships.length ? c.ownerships.map(o => o.vehicle?.label).filter(Boolean).join(' · ') : 'No vehicles'}
                     {c.businessAccount ? ` · ${c.businessAccount.name}` : ''}

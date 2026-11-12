@@ -13424,6 +13424,998 @@ input FleetUnitCreateInput {
   updatedAt: DateTime
 }
 
+type CallRecord {
+  id: ID!
+  thread: MessageThread
+  shop: Shop
+  customer: Customer
+  contact: CustomerContact
+  repairOrder: RepairOrder
+  direction: String
+  outcome: String
+  note: String
+  minutes: Int
+  recordedBy: User
+  at: DateTime
+}
+
+input CallRecordWhereUniqueInput {
+  id: ID
+}
+
+input CallRecordWhereInput {
+  AND: [CallRecordWhereInput!]
+  OR: [CallRecordWhereInput!]
+  NOT: [CallRecordWhereInput!]
+  id: IDFilter
+  thread: MessageThreadWhereInput
+  shop: ShopWhereInput
+  customer: CustomerWhereInput
+  contact: CustomerContactWhereInput
+  repairOrder: RepairOrderWhereInput
+  direction: StringFilter
+  outcome: StringFilter
+  note: StringFilter
+  minutes: IntNullableFilter
+  recordedBy: UserWhereInput
+  at: DateTimeFilter
+}
+
+input CallRecordOrderByInput {
+  id: OrderDirection
+  direction: OrderDirection
+  outcome: OrderDirection
+  note: OrderDirection
+  minutes: OrderDirection
+  at: OrderDirection
+}
+
+input CallRecordUpdateInput {
+  thread: MessageThreadRelateToOneForUpdateInput
+  shop: ShopRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  contact: CustomerContactRelateToOneForUpdateInput
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  direction: String
+  outcome: String
+  note: String
+  minutes: Int
+  recordedBy: UserRelateToOneForUpdateInput
+  at: DateTime
+}
+
+input MessageThreadRelateToOneForUpdateInput {
+  create: MessageThreadCreateInput
+  connect: MessageThreadWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CallRecordUpdateArgs {
+  where: CallRecordWhereUniqueInput!
+  data: CallRecordUpdateInput!
+}
+
+input CallRecordCreateInput {
+  thread: MessageThreadRelateToOneForCreateInput
+  shop: ShopRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  contact: CustomerContactRelateToOneForCreateInput
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  direction: String
+  outcome: String
+  note: String
+  minutes: Int
+  recordedBy: UserRelateToOneForCreateInput
+  at: DateTime
+}
+
+input MessageThreadRelateToOneForCreateInput {
+  create: MessageThreadCreateInput
+  connect: MessageThreadWhereUniqueInput
+}
+
+type Campaign {
+  id: ID!
+  shop: Shop
+  name: String
+  kind: String
+  audienceRule: JSON
+  messageText: String
+  status: String
+  exports(where: CampaignExportWhereInput! = {}, orderBy: [CampaignExportOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CampaignExportWhereUniqueInput): [CampaignExport!]
+  exportsCount(where: CampaignExportWhereInput! = {}): Int
+  createdBy: User
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CampaignWhereUniqueInput {
+  id: ID
+}
+
+input CampaignWhereInput {
+  AND: [CampaignWhereInput!]
+  OR: [CampaignWhereInput!]
+  NOT: [CampaignWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  name: StringFilter
+  kind: StringFilter
+  messageText: StringFilter
+  status: StringFilter
+  exports: CampaignExportManyRelationFilter
+  createdBy: UserWhereInput
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input CampaignExportManyRelationFilter {
+  every: CampaignExportWhereInput
+  some: CampaignExportWhereInput
+  none: CampaignExportWhereInput
+}
+
+input CampaignOrderByInput {
+  id: OrderDirection
+  name: OrderDirection
+  kind: OrderDirection
+  messageText: OrderDirection
+  status: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input CampaignUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  name: String
+  kind: String
+  audienceRule: JSON
+  messageText: String
+  status: String
+  exports: CampaignExportRelateToManyForUpdateInput
+  createdBy: UserRelateToOneForUpdateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CampaignExportRelateToManyForUpdateInput {
+  disconnect: [CampaignExportWhereUniqueInput!]
+  set: [CampaignExportWhereUniqueInput!]
+  create: [CampaignExportCreateInput!]
+  connect: [CampaignExportWhereUniqueInput!]
+}
+
+input CampaignUpdateArgs {
+  where: CampaignWhereUniqueInput!
+  data: CampaignUpdateInput!
+}
+
+input CampaignCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  name: String
+  kind: String
+  audienceRule: JSON
+  messageText: String
+  status: String
+  exports: CampaignExportRelateToManyForCreateInput
+  createdBy: UserRelateToOneForCreateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CampaignExportRelateToManyForCreateInput {
+  create: [CampaignExportCreateInput!]
+  connect: [CampaignExportWhereUniqueInput!]
+}
+
+type CampaignExport {
+  id: ID!
+  campaign: Campaign
+  recipients(where: CampaignRecipientWhereInput! = {}, orderBy: [CampaignRecipientOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CampaignRecipientWhereUniqueInput): [CampaignRecipient!]
+  recipientsCount(where: CampaignRecipientWhereInput! = {}): Int
+  recipientCount: Int
+  excludedCount: Int
+  excluded: JSON
+  exportedBy: User
+  at: DateTime
+}
+
+input CampaignExportWhereUniqueInput {
+  id: ID
+}
+
+input CampaignExportWhereInput {
+  AND: [CampaignExportWhereInput!]
+  OR: [CampaignExportWhereInput!]
+  NOT: [CampaignExportWhereInput!]
+  id: IDFilter
+  campaign: CampaignWhereInput
+  recipients: CampaignRecipientManyRelationFilter
+  recipientCount: IntNullableFilter
+  excludedCount: IntNullableFilter
+  exportedBy: UserWhereInput
+  at: DateTimeFilter
+}
+
+input CampaignRecipientManyRelationFilter {
+  every: CampaignRecipientWhereInput
+  some: CampaignRecipientWhereInput
+  none: CampaignRecipientWhereInput
+}
+
+input CampaignExportOrderByInput {
+  id: OrderDirection
+  recipientCount: OrderDirection
+  excludedCount: OrderDirection
+  at: OrderDirection
+}
+
+input CampaignExportUpdateInput {
+  campaign: CampaignRelateToOneForUpdateInput
+  recipients: CampaignRecipientRelateToManyForUpdateInput
+  recipientCount: Int
+  excludedCount: Int
+  excluded: JSON
+  exportedBy: UserRelateToOneForUpdateInput
+  at: DateTime
+}
+
+input CampaignRelateToOneForUpdateInput {
+  create: CampaignCreateInput
+  connect: CampaignWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CampaignRecipientRelateToManyForUpdateInput {
+  disconnect: [CampaignRecipientWhereUniqueInput!]
+  set: [CampaignRecipientWhereUniqueInput!]
+  create: [CampaignRecipientCreateInput!]
+  connect: [CampaignRecipientWhereUniqueInput!]
+}
+
+input CampaignExportUpdateArgs {
+  where: CampaignExportWhereUniqueInput!
+  data: CampaignExportUpdateInput!
+}
+
+input CampaignExportCreateInput {
+  campaign: CampaignRelateToOneForCreateInput
+  recipients: CampaignRecipientRelateToManyForCreateInput
+  recipientCount: Int
+  excludedCount: Int
+  excluded: JSON
+  exportedBy: UserRelateToOneForCreateInput
+  at: DateTime
+}
+
+input CampaignRelateToOneForCreateInput {
+  create: CampaignCreateInput
+  connect: CampaignWhereUniqueInput
+}
+
+input CampaignRecipientRelateToManyForCreateInput {
+  create: [CampaignRecipientCreateInput!]
+  connect: [CampaignRecipientWhereUniqueInput!]
+}
+
+type CampaignRecipient {
+  id: ID!
+  export: CampaignExport
+  campaign: Campaign
+  shop: Shop
+  customer: Customer
+  contact: CustomerContact
+  channel: String
+  consent: ContactConsent
+  at: DateTime
+}
+
+input CampaignRecipientWhereUniqueInput {
+  id: ID
+}
+
+input CampaignRecipientWhereInput {
+  AND: [CampaignRecipientWhereInput!]
+  OR: [CampaignRecipientWhereInput!]
+  NOT: [CampaignRecipientWhereInput!]
+  id: IDFilter
+  export: CampaignExportWhereInput
+  campaign: CampaignWhereInput
+  shop: ShopWhereInput
+  customer: CustomerWhereInput
+  contact: CustomerContactWhereInput
+  channel: StringFilter
+  consent: ContactConsentWhereInput
+  at: DateTimeFilter
+}
+
+input CampaignRecipientOrderByInput {
+  id: OrderDirection
+  channel: OrderDirection
+  at: OrderDirection
+}
+
+input CampaignRecipientUpdateInput {
+  export: CampaignExportRelateToOneForUpdateInput
+  campaign: CampaignRelateToOneForUpdateInput
+  shop: ShopRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  contact: CustomerContactRelateToOneForUpdateInput
+  channel: String
+  consent: ContactConsentRelateToOneForUpdateInput
+  at: DateTime
+}
+
+input CampaignExportRelateToOneForUpdateInput {
+  create: CampaignExportCreateInput
+  connect: CampaignExportWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ContactConsentRelateToOneForUpdateInput {
+  create: ContactConsentCreateInput
+  connect: ContactConsentWhereUniqueInput
+  disconnect: Boolean
+}
+
+input CampaignRecipientUpdateArgs {
+  where: CampaignRecipientWhereUniqueInput!
+  data: CampaignRecipientUpdateInput!
+}
+
+input CampaignRecipientCreateInput {
+  export: CampaignExportRelateToOneForCreateInput
+  campaign: CampaignRelateToOneForCreateInput
+  shop: ShopRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  contact: CustomerContactRelateToOneForCreateInput
+  channel: String
+  consent: ContactConsentRelateToOneForCreateInput
+  at: DateTime
+}
+
+input CampaignExportRelateToOneForCreateInput {
+  create: CampaignExportCreateInput
+  connect: CampaignExportWhereUniqueInput
+}
+
+input ContactConsentRelateToOneForCreateInput {
+  create: ContactConsentCreateInput
+  connect: ContactConsentWhereUniqueInput
+}
+
+type Message {
+  id: ID!
+  thread: MessageThread
+  shop: Shop
+  customer: Customer
+  contact: CustomerContact
+  repairOrder: RepairOrder
+  direction: String
+  channel: String
+  purpose: String
+  source: String
+  templateCode: String
+  templateVersion: Int
+  body: String
+  providerMessageId: String
+  keyword: String
+  reviewState: String
+  reviewedAt: DateTime
+  reviewedBy: User
+  consent: ContactConsent
+  recordedBy: User
+  at: DateTime
+}
+
+input MessageWhereUniqueInput {
+  id: ID
+  providerMessageId: String
+}
+
+input MessageWhereInput {
+  AND: [MessageWhereInput!]
+  OR: [MessageWhereInput!]
+  NOT: [MessageWhereInput!]
+  id: IDFilter
+  thread: MessageThreadWhereInput
+  shop: ShopWhereInput
+  customer: CustomerWhereInput
+  contact: CustomerContactWhereInput
+  repairOrder: RepairOrderWhereInput
+  direction: StringFilter
+  channel: StringFilter
+  purpose: StringFilter
+  source: StringFilter
+  templateCode: StringFilter
+  templateVersion: IntNullableFilter
+  body: StringFilter
+  providerMessageId: StringNullableFilter
+  keyword: StringFilter
+  reviewState: StringFilter
+  reviewedAt: DateTimeNullableFilter
+  reviewedBy: UserWhereInput
+  consent: ContactConsentWhereInput
+  recordedBy: UserWhereInput
+  at: DateTimeFilter
+}
+
+input MessageOrderByInput {
+  id: OrderDirection
+  direction: OrderDirection
+  channel: OrderDirection
+  purpose: OrderDirection
+  source: OrderDirection
+  templateCode: OrderDirection
+  templateVersion: OrderDirection
+  body: OrderDirection
+  providerMessageId: OrderDirection
+  keyword: OrderDirection
+  reviewState: OrderDirection
+  reviewedAt: OrderDirection
+  at: OrderDirection
+}
+
+input MessageUpdateInput {
+  thread: MessageThreadRelateToOneForUpdateInput
+  shop: ShopRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  contact: CustomerContactRelateToOneForUpdateInput
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  direction: String
+  channel: String
+  purpose: String
+  source: String
+  templateCode: String
+  templateVersion: Int
+  body: String
+  providerMessageId: String
+  keyword: String
+  reviewState: String
+  reviewedAt: DateTime
+  reviewedBy: UserRelateToOneForUpdateInput
+  consent: ContactConsentRelateToOneForUpdateInput
+  recordedBy: UserRelateToOneForUpdateInput
+  at: DateTime
+}
+
+input MessageUpdateArgs {
+  where: MessageWhereUniqueInput!
+  data: MessageUpdateInput!
+}
+
+input MessageCreateInput {
+  thread: MessageThreadRelateToOneForCreateInput
+  shop: ShopRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  contact: CustomerContactRelateToOneForCreateInput
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  direction: String
+  channel: String
+  purpose: String
+  source: String
+  templateCode: String
+  templateVersion: Int
+  body: String
+  providerMessageId: String
+  keyword: String
+  reviewState: String
+  reviewedAt: DateTime
+  reviewedBy: UserRelateToOneForCreateInput
+  consent: ContactConsentRelateToOneForCreateInput
+  recordedBy: UserRelateToOneForCreateInput
+  at: DateTime
+}
+
+type MessageTemplate {
+  id: ID!
+  code: String
+  name: String
+  purpose: String
+  body: String
+  version: Int
+  active: String
+  updatedBy: User
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input MessageTemplateWhereUniqueInput {
+  id: ID
+  code: String
+}
+
+input MessageTemplateWhereInput {
+  AND: [MessageTemplateWhereInput!]
+  OR: [MessageTemplateWhereInput!]
+  NOT: [MessageTemplateWhereInput!]
+  id: IDFilter
+  code: StringFilter
+  name: StringFilter
+  purpose: StringFilter
+  body: StringFilter
+  version: IntNullableFilter
+  active: StringFilter
+  updatedBy: UserWhereInput
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input MessageTemplateOrderByInput {
+  id: OrderDirection
+  code: OrderDirection
+  name: OrderDirection
+  purpose: OrderDirection
+  body: OrderDirection
+  version: OrderDirection
+  active: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input MessageTemplateUpdateInput {
+  code: String
+  name: String
+  purpose: String
+  body: String
+  version: Int
+  active: String
+  updatedBy: UserRelateToOneForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input MessageTemplateUpdateArgs {
+  where: MessageTemplateWhereUniqueInput!
+  data: MessageTemplateUpdateInput!
+}
+
+input MessageTemplateCreateInput {
+  code: String
+  name: String
+  purpose: String
+  body: String
+  version: Int
+  active: String
+  updatedBy: UserRelateToOneForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type MessageThread {
+  id: ID!
+  shop: Shop
+  customer: Customer
+  vehicle: Vehicle
+  repairOrder: RepairOrder
+  threadKey: String
+  messages(where: MessageWhereInput! = {}, orderBy: [MessageOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: MessageWhereUniqueInput): [Message!]
+  messagesCount(where: MessageWhereInput! = {}): Int
+  calls(where: CallRecordWhereInput! = {}, orderBy: [CallRecordOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CallRecordWhereUniqueInput): [CallRecord!]
+  callsCount(where: CallRecordWhereInput! = {}): Int
+  lastMessageAt: DateTime
+  unreadCount: Int
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input MessageThreadWhereUniqueInput {
+  id: ID
+  threadKey: String
+}
+
+input MessageThreadWhereInput {
+  AND: [MessageThreadWhereInput!]
+  OR: [MessageThreadWhereInput!]
+  NOT: [MessageThreadWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  customer: CustomerWhereInput
+  vehicle: VehicleWhereInput
+  repairOrder: RepairOrderWhereInput
+  threadKey: StringFilter
+  messages: MessageManyRelationFilter
+  calls: CallRecordManyRelationFilter
+  lastMessageAt: DateTimeNullableFilter
+  unreadCount: IntNullableFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input MessageManyRelationFilter {
+  every: MessageWhereInput
+  some: MessageWhereInput
+  none: MessageWhereInput
+}
+
+input CallRecordManyRelationFilter {
+  every: CallRecordWhereInput
+  some: CallRecordWhereInput
+  none: CallRecordWhereInput
+}
+
+input MessageThreadOrderByInput {
+  id: OrderDirection
+  threadKey: OrderDirection
+  lastMessageAt: OrderDirection
+  unreadCount: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input MessageThreadUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  vehicle: VehicleRelateToOneForUpdateInput
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  threadKey: String
+  messages: MessageRelateToManyForUpdateInput
+  calls: CallRecordRelateToManyForUpdateInput
+  lastMessageAt: DateTime
+  unreadCount: Int
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input MessageRelateToManyForUpdateInput {
+  disconnect: [MessageWhereUniqueInput!]
+  set: [MessageWhereUniqueInput!]
+  create: [MessageCreateInput!]
+  connect: [MessageWhereUniqueInput!]
+}
+
+input CallRecordRelateToManyForUpdateInput {
+  disconnect: [CallRecordWhereUniqueInput!]
+  set: [CallRecordWhereUniqueInput!]
+  create: [CallRecordCreateInput!]
+  connect: [CallRecordWhereUniqueInput!]
+}
+
+input MessageThreadUpdateArgs {
+  where: MessageThreadWhereUniqueInput!
+  data: MessageThreadUpdateInput!
+}
+
+input MessageThreadCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  vehicle: VehicleRelateToOneForCreateInput
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  threadKey: String
+  messages: MessageRelateToManyForCreateInput
+  calls: CallRecordRelateToManyForCreateInput
+  lastMessageAt: DateTime
+  unreadCount: Int
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input MessageRelateToManyForCreateInput {
+  create: [MessageCreateInput!]
+  connect: [MessageWhereUniqueInput!]
+}
+
+input CallRecordRelateToManyForCreateInput {
+  create: [CallRecordCreateInput!]
+  connect: [CallRecordWhereUniqueInput!]
+}
+
+type Recommendation {
+  id: ID!
+  shop: Shop
+  customer: Customer
+  vehicle: Vehicle
+  repairOrder: RepairOrder
+  sourceJob: Job
+  sourceJobKey: String
+  title: String
+  urgency: String
+  decision: String
+  priceSnapshotMinor: BigInt
+  evidence: JSON
+  declinedAt: DateTime
+  deferUntil: DateTime
+  deferMiles: Int
+  contactedCount: Int
+  lastContactedAt: DateTime
+  status: String
+  dismissedReason: String
+  convertedJob: Job
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RecommendationWhereUniqueInput {
+  id: ID
+  sourceJobKey: String
+}
+
+input RecommendationWhereInput {
+  AND: [RecommendationWhereInput!]
+  OR: [RecommendationWhereInput!]
+  NOT: [RecommendationWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  customer: CustomerWhereInput
+  vehicle: VehicleWhereInput
+  repairOrder: RepairOrderWhereInput
+  sourceJob: JobWhereInput
+  sourceJobKey: StringFilter
+  title: StringFilter
+  urgency: StringFilter
+  decision: StringFilter
+  priceSnapshotMinor: BigIntFilter
+  declinedAt: DateTimeNullableFilter
+  deferUntil: DateTimeNullableFilter
+  deferMiles: IntNullableFilter
+  contactedCount: IntNullableFilter
+  lastContactedAt: DateTimeNullableFilter
+  status: StringFilter
+  dismissedReason: StringFilter
+  convertedJob: JobWhereInput
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input RecommendationOrderByInput {
+  id: OrderDirection
+  sourceJobKey: OrderDirection
+  title: OrderDirection
+  urgency: OrderDirection
+  decision: OrderDirection
+  priceSnapshotMinor: OrderDirection
+  declinedAt: OrderDirection
+  deferUntil: OrderDirection
+  deferMiles: OrderDirection
+  contactedCount: OrderDirection
+  lastContactedAt: OrderDirection
+  status: OrderDirection
+  dismissedReason: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input RecommendationUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  vehicle: VehicleRelateToOneForUpdateInput
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  sourceJob: JobRelateToOneForUpdateInput
+  sourceJobKey: String
+  title: String
+  urgency: String
+  decision: String
+  priceSnapshotMinor: BigInt
+  evidence: JSON
+  declinedAt: DateTime
+  deferUntil: DateTime
+  deferMiles: Int
+  contactedCount: Int
+  lastContactedAt: DateTime
+  status: String
+  dismissedReason: String
+  convertedJob: JobRelateToOneForUpdateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RecommendationUpdateArgs {
+  where: RecommendationWhereUniqueInput!
+  data: RecommendationUpdateInput!
+}
+
+input RecommendationCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  vehicle: VehicleRelateToOneForCreateInput
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  sourceJob: JobRelateToOneForCreateInput
+  sourceJobKey: String
+  title: String
+  urgency: String
+  decision: String
+  priceSnapshotMinor: BigInt
+  evidence: JSON
+  declinedAt: DateTime
+  deferUntil: DateTime
+  deferMiles: Int
+  contactedCount: Int
+  lastContactedAt: DateTime
+  status: String
+  dismissedReason: String
+  convertedJob: JobRelateToOneForCreateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ReviewRequest {
+  id: ID!
+  shop: Shop
+  repairOrder: RepairOrder
+  repairOrderKey: String
+  customer: Customer
+  channel: String
+  note: String
+  askedAt: DateTime
+  askedBy: User
+}
+
+input ReviewRequestWhereUniqueInput {
+  id: ID
+  repairOrderKey: String
+}
+
+input ReviewRequestWhereInput {
+  AND: [ReviewRequestWhereInput!]
+  OR: [ReviewRequestWhereInput!]
+  NOT: [ReviewRequestWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  repairOrder: RepairOrderWhereInput
+  repairOrderKey: StringFilter
+  customer: CustomerWhereInput
+  channel: StringFilter
+  note: StringFilter
+  askedAt: DateTimeFilter
+  askedBy: UserWhereInput
+}
+
+input ReviewRequestOrderByInput {
+  id: OrderDirection
+  repairOrderKey: OrderDirection
+  channel: OrderDirection
+  note: OrderDirection
+  askedAt: OrderDirection
+}
+
+input ReviewRequestUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  repairOrder: RepairOrderRelateToOneForUpdateInput
+  repairOrderKey: String
+  customer: CustomerRelateToOneForUpdateInput
+  channel: String
+  note: String
+  askedAt: DateTime
+  askedBy: UserRelateToOneForUpdateInput
+}
+
+input ReviewRequestUpdateArgs {
+  where: ReviewRequestWhereUniqueInput!
+  data: ReviewRequestUpdateInput!
+}
+
+input ReviewRequestCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  repairOrder: RepairOrderRelateToOneForCreateInput
+  repairOrderKey: String
+  customer: CustomerRelateToOneForCreateInput
+  channel: String
+  note: String
+  askedAt: DateTime
+  askedBy: UserRelateToOneForCreateInput
+}
+
+type ServiceReminder {
+  id: ID!
+  shop: Shop
+  vehicle: Vehicle
+  customer: Customer
+  kind: String
+  cycleKey: String
+  lastServiceJob: Job
+  dueOn: CalendarDay
+  dueAtOdometer: Int
+  projectedDueOn: CalendarDay
+  status: String
+  contactChannel: String
+  note: String
+  contactedAt: DateTime
+  contactedBy: User
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ServiceReminderWhereUniqueInput {
+  id: ID
+  cycleKey: String
+}
+
+input ServiceReminderWhereInput {
+  AND: [ServiceReminderWhereInput!]
+  OR: [ServiceReminderWhereInput!]
+  NOT: [ServiceReminderWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  vehicle: VehicleWhereInput
+  customer: CustomerWhereInput
+  kind: StringFilter
+  cycleKey: StringFilter
+  lastServiceJob: JobWhereInput
+  dueOn: CalendarDayNullableFilter
+  dueAtOdometer: IntNullableFilter
+  projectedDueOn: CalendarDayNullableFilter
+  status: StringFilter
+  contactChannel: StringFilter
+  note: StringFilter
+  contactedAt: DateTimeNullableFilter
+  contactedBy: UserWhereInput
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ServiceReminderOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  cycleKey: OrderDirection
+  dueOn: OrderDirection
+  dueAtOdometer: OrderDirection
+  projectedDueOn: OrderDirection
+  status: OrderDirection
+  contactChannel: OrderDirection
+  note: OrderDirection
+  contactedAt: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ServiceReminderUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  vehicle: VehicleRelateToOneForUpdateInput
+  customer: CustomerRelateToOneForUpdateInput
+  kind: String
+  cycleKey: String
+  lastServiceJob: JobRelateToOneForUpdateInput
+  dueOn: CalendarDay
+  dueAtOdometer: Int
+  projectedDueOn: CalendarDay
+  status: String
+  contactChannel: String
+  note: String
+  contactedAt: DateTime
+  contactedBy: UserRelateToOneForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ServiceReminderUpdateArgs {
+  where: ServiceReminderWhereUniqueInput!
+  data: ServiceReminderUpdateInput!
+}
+
+input ServiceReminderCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  vehicle: VehicleRelateToOneForCreateInput
+  customer: CustomerRelateToOneForCreateInput
+  kind: String
+  cycleKey: String
+  lastServiceJob: JobRelateToOneForCreateInput
+  dueOn: CalendarDay
+  dueAtOdometer: Int
+  projectedDueOn: CalendarDay
+  status: String
+  contactChannel: String
+  note: String
+  contactedAt: DateTime
+  contactedBy: UserRelateToOneForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -14126,6 +15118,66 @@ type Mutation {
   updateFleetUnits(data: [FleetUnitUpdateArgs!]!): [FleetUnit]
   deleteFleetUnit(where: FleetUnitWhereUniqueInput!): FleetUnit
   deleteFleetUnits(where: [FleetUnitWhereUniqueInput!]!): [FleetUnit]
+  createCallRecord(data: CallRecordCreateInput!): CallRecord
+  createCallRecords(data: [CallRecordCreateInput!]!): [CallRecord]
+  updateCallRecord(where: CallRecordWhereUniqueInput!, data: CallRecordUpdateInput!): CallRecord
+  updateCallRecords(data: [CallRecordUpdateArgs!]!): [CallRecord]
+  deleteCallRecord(where: CallRecordWhereUniqueInput!): CallRecord
+  deleteCallRecords(where: [CallRecordWhereUniqueInput!]!): [CallRecord]
+  createCampaign(data: CampaignCreateInput!): Campaign
+  createCampaigns(data: [CampaignCreateInput!]!): [Campaign]
+  updateCampaign(where: CampaignWhereUniqueInput!, data: CampaignUpdateInput!): Campaign
+  updateCampaigns(data: [CampaignUpdateArgs!]!): [Campaign]
+  deleteCampaign(where: CampaignWhereUniqueInput!): Campaign
+  deleteCampaigns(where: [CampaignWhereUniqueInput!]!): [Campaign]
+  createCampaignExport(data: CampaignExportCreateInput!): CampaignExport
+  createCampaignExports(data: [CampaignExportCreateInput!]!): [CampaignExport]
+  updateCampaignExport(where: CampaignExportWhereUniqueInput!, data: CampaignExportUpdateInput!): CampaignExport
+  updateCampaignExports(data: [CampaignExportUpdateArgs!]!): [CampaignExport]
+  deleteCampaignExport(where: CampaignExportWhereUniqueInput!): CampaignExport
+  deleteCampaignExports(where: [CampaignExportWhereUniqueInput!]!): [CampaignExport]
+  createCampaignRecipient(data: CampaignRecipientCreateInput!): CampaignRecipient
+  createCampaignRecipients(data: [CampaignRecipientCreateInput!]!): [CampaignRecipient]
+  updateCampaignRecipient(where: CampaignRecipientWhereUniqueInput!, data: CampaignRecipientUpdateInput!): CampaignRecipient
+  updateCampaignRecipients(data: [CampaignRecipientUpdateArgs!]!): [CampaignRecipient]
+  deleteCampaignRecipient(where: CampaignRecipientWhereUniqueInput!): CampaignRecipient
+  deleteCampaignRecipients(where: [CampaignRecipientWhereUniqueInput!]!): [CampaignRecipient]
+  createMessage(data: MessageCreateInput!): Message
+  createMessages(data: [MessageCreateInput!]!): [Message]
+  updateMessage(where: MessageWhereUniqueInput!, data: MessageUpdateInput!): Message
+  updateMessages(data: [MessageUpdateArgs!]!): [Message]
+  deleteMessage(where: MessageWhereUniqueInput!): Message
+  deleteMessages(where: [MessageWhereUniqueInput!]!): [Message]
+  createMessageTemplate(data: MessageTemplateCreateInput!): MessageTemplate
+  createMessageTemplates(data: [MessageTemplateCreateInput!]!): [MessageTemplate]
+  updateMessageTemplate(where: MessageTemplateWhereUniqueInput!, data: MessageTemplateUpdateInput!): MessageTemplate
+  updateMessageTemplates(data: [MessageTemplateUpdateArgs!]!): [MessageTemplate]
+  deleteMessageTemplate(where: MessageTemplateWhereUniqueInput!): MessageTemplate
+  deleteMessageTemplates(where: [MessageTemplateWhereUniqueInput!]!): [MessageTemplate]
+  createMessageThread(data: MessageThreadCreateInput!): MessageThread
+  createMessageThreads(data: [MessageThreadCreateInput!]!): [MessageThread]
+  updateMessageThread(where: MessageThreadWhereUniqueInput!, data: MessageThreadUpdateInput!): MessageThread
+  updateMessageThreads(data: [MessageThreadUpdateArgs!]!): [MessageThread]
+  deleteMessageThread(where: MessageThreadWhereUniqueInput!): MessageThread
+  deleteMessageThreads(where: [MessageThreadWhereUniqueInput!]!): [MessageThread]
+  createRecommendation(data: RecommendationCreateInput!): Recommendation
+  createRecommendations(data: [RecommendationCreateInput!]!): [Recommendation]
+  updateRecommendation(where: RecommendationWhereUniqueInput!, data: RecommendationUpdateInput!): Recommendation
+  updateRecommendations(data: [RecommendationUpdateArgs!]!): [Recommendation]
+  deleteRecommendation(where: RecommendationWhereUniqueInput!): Recommendation
+  deleteRecommendations(where: [RecommendationWhereUniqueInput!]!): [Recommendation]
+  createReviewRequest(data: ReviewRequestCreateInput!): ReviewRequest
+  createReviewRequests(data: [ReviewRequestCreateInput!]!): [ReviewRequest]
+  updateReviewRequest(where: ReviewRequestWhereUniqueInput!, data: ReviewRequestUpdateInput!): ReviewRequest
+  updateReviewRequests(data: [ReviewRequestUpdateArgs!]!): [ReviewRequest]
+  deleteReviewRequest(where: ReviewRequestWhereUniqueInput!): ReviewRequest
+  deleteReviewRequests(where: [ReviewRequestWhereUniqueInput!]!): [ReviewRequest]
+  createServiceReminder(data: ServiceReminderCreateInput!): ServiceReminder
+  createServiceReminders(data: [ServiceReminderCreateInput!]!): [ServiceReminder]
+  updateServiceReminder(where: ServiceReminderWhereUniqueInput!, data: ServiceReminderUpdateInput!): ServiceReminder
+  updateServiceReminders(data: [ServiceReminderUpdateArgs!]!): [ServiceReminder]
+  deleteServiceReminder(where: ServiceReminderWhereUniqueInput!): ServiceReminder
+  deleteServiceReminders(where: [ServiceReminderWhereUniqueInput!]!): [ServiceReminder]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -14627,6 +15679,36 @@ type Query {
   fleetUnit(where: FleetUnitWhereUniqueInput!): FleetUnit
   fleetUnits(where: FleetUnitWhereInput! = {}, orderBy: [FleetUnitOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: FleetUnitWhereUniqueInput): [FleetUnit!]
   fleetUnitsCount(where: FleetUnitWhereInput! = {}): Int
+  callRecord(where: CallRecordWhereUniqueInput!): CallRecord
+  callRecords(where: CallRecordWhereInput! = {}, orderBy: [CallRecordOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CallRecordWhereUniqueInput): [CallRecord!]
+  callRecordsCount(where: CallRecordWhereInput! = {}): Int
+  campaign(where: CampaignWhereUniqueInput!): Campaign
+  campaigns(where: CampaignWhereInput! = {}, orderBy: [CampaignOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CampaignWhereUniqueInput): [Campaign!]
+  campaignsCount(where: CampaignWhereInput! = {}): Int
+  campaignExport(where: CampaignExportWhereUniqueInput!): CampaignExport
+  campaignExports(where: CampaignExportWhereInput! = {}, orderBy: [CampaignExportOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CampaignExportWhereUniqueInput): [CampaignExport!]
+  campaignExportsCount(where: CampaignExportWhereInput! = {}): Int
+  campaignRecipient(where: CampaignRecipientWhereUniqueInput!): CampaignRecipient
+  campaignRecipients(where: CampaignRecipientWhereInput! = {}, orderBy: [CampaignRecipientOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: CampaignRecipientWhereUniqueInput): [CampaignRecipient!]
+  campaignRecipientsCount(where: CampaignRecipientWhereInput! = {}): Int
+  message(where: MessageWhereUniqueInput!): Message
+  messages(where: MessageWhereInput! = {}, orderBy: [MessageOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: MessageWhereUniqueInput): [Message!]
+  messagesCount(where: MessageWhereInput! = {}): Int
+  messageTemplate(where: MessageTemplateWhereUniqueInput!): MessageTemplate
+  messageTemplates(where: MessageTemplateWhereInput! = {}, orderBy: [MessageTemplateOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: MessageTemplateWhereUniqueInput): [MessageTemplate!]
+  messageTemplatesCount(where: MessageTemplateWhereInput! = {}): Int
+  messageThread(where: MessageThreadWhereUniqueInput!): MessageThread
+  messageThreads(where: MessageThreadWhereInput! = {}, orderBy: [MessageThreadOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: MessageThreadWhereUniqueInput): [MessageThread!]
+  messageThreadsCount(where: MessageThreadWhereInput! = {}): Int
+  recommendation(where: RecommendationWhereUniqueInput!): Recommendation
+  recommendations(where: RecommendationWhereInput! = {}, orderBy: [RecommendationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: RecommendationWhereUniqueInput): [Recommendation!]
+  recommendationsCount(where: RecommendationWhereInput! = {}): Int
+  reviewRequest(where: ReviewRequestWhereUniqueInput!): ReviewRequest
+  reviewRequests(where: ReviewRequestWhereInput! = {}, orderBy: [ReviewRequestOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ReviewRequestWhereUniqueInput): [ReviewRequest!]
+  reviewRequestsCount(where: ReviewRequestWhereInput! = {}): Int
+  serviceReminder(where: ServiceReminderWhereUniqueInput!): ServiceReminder
+  serviceReminders(where: ServiceReminderWhereInput! = {}, orderBy: [ServiceReminderOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ServiceReminderWhereUniqueInput): [ServiceReminder!]
+  serviceRemindersCount(where: ServiceReminderWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult

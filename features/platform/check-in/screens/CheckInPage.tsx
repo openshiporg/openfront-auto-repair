@@ -7,12 +7,12 @@ import { CheckInForm } from './CheckInForm';
 type Appointment = {
   id: string; reference: string; startsAt: string; kind: string; status: string; concernText: string; requestedServices: string[] | null;
   shop: { id: string; code: string; name: string; timeZone: string } | null;
-  customer: { id: string; displayName: string } | null;
+  customer: { id: string; displayName: string; contacts: { id: string; kind: string; label: string }[] } | null;
   vehicle: { id: string; label: string; vin: string; lastOdometer: number | null; lastOdometerUnit: string; recallChecks: { campaignCount: number; parkItAny: boolean }[] } | null;
 };
 type Law = { requireOdometerIn: boolean; requireSignedWorkOrder: boolean; replacedPartsOfferRequired: boolean; replacedPartsOfferText: string; requiredNotices: { key: string; text: string; where: string }[] | null; pack: { code: string; name: string; verified: boolean } | null };
 
-const APPOINTMENT = `id reference startsAt kind status concernText requestedServices shop { id code name timeZone } customer { id displayName }
+const APPOINTMENT = `id reference startsAt kind status concernText requestedServices shop { id code name timeZone } customer { id displayName contacts(where: { status: { equals: "active" } }, orderBy: { isPrimary: desc }) { id kind label } }
   vehicle { id label vin lastOdometer lastOdometerUnit recallChecks(orderBy: { checkedAt: desc }, take: 1) { campaignCount parkItAny } }`;
 
 /**
@@ -47,7 +47,7 @@ export default async function CheckInPage({ searchParams }: { searchParams?: Pro
             </div>
           ) : null}
           <CheckInForm
-            appointment={{ id: a.id, shopId: a.shop.id, customerId: a.customer.id, customerName: a.customer.displayName, vehicleId: a.vehicle.id, vehicleLabel: a.vehicle.label, vin: a.vehicle.vin, lastOdometer: a.vehicle.lastOdometer, unit: a.vehicle.lastOdometerUnit || 'mi', concern: a.concernText, services: a.requestedServices ?? [], waiter: a.kind === 'waiter', timeZone: a.shop.timeZone, recall: a.vehicle.recallChecks[0] ?? null }}
+            appointment={{ id: a.id, shopId: a.shop.id, customerId: a.customer.id, customerName: a.customer.displayName, vehicleId: a.vehicle.id, vehicleLabel: a.vehicle.label, vin: a.vehicle.vin, lastOdometer: a.vehicle.lastOdometer, unit: a.vehicle.lastOdometerUnit || 'mi', concern: a.concernText, services: a.requestedServices ?? [], waiter: a.kind === 'waiter', contacts: a.customer.contacts.filter(c => c.kind !== 'landline').map(c => ({ id: c.id, channel: c.kind === 'email' ? 'email' : 'sms', label: c.kind === 'email' ? 'Email' : 'Text messages' })), timeZone: a.shop.timeZone, recall: a.vehicle.recallChecks[0] ?? null }}
             law={{ requireOdometerIn: law?.requireOdometerIn ?? true, requireSignedWorkOrder: law?.requireSignedWorkOrder ?? true, notices: (law?.requiredNotices ?? []).filter(n => n.where === 'work_order').map(n => n.text), replacedPartsOfferText: law?.replacedPartsOfferRequired ? law.replacedPartsOfferText : '' }}
           />
         </Section>

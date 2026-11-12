@@ -17,8 +17,20 @@ export async function orgTimeZone(): Promise<string> {
   }
 }
 
+type PermissionName = 'canReadAudit' | 'canCloseDay' | 'canReadFinancials' | 'canReadRepairOrders' | 'canManageCustomers' | 'canMessageCustomers' | 'canManageCampaigns' | 'canReadCustomerPII'
+
+/** Which of these permissions the signed-in role holds, so a screen can leave out buttons the server would refuse. */
+export async function holds(names: PermissionName[]): Promise<Record<PermissionName, boolean>> {
+  const out = Object.fromEntries(names.map((n) => [n, false])) as Record<PermissionName, boolean>
+  try {
+    const d: any = await q(`{ authenticatedItem { ... on User { role { ${names.join(' ')} } } } }`)
+    for (const n of names) out[n] = d.authenticatedItem?.role?.[n] === true
+  } catch {}
+  return out
+}
+
 /** Whether the signed-in role holds at least one of these permissions (for pages whose queries would otherwise be refused). */
-export async function holdsAny(names: ('canReadAudit' | 'canCloseDay' | 'canReadFinancials' | 'canReadRepairOrders' | 'canManageCustomers')[]): Promise<boolean> {
+export async function holdsAny(names: PermissionName[]): Promise<boolean> {
   try {
     const d: any = await q(`{ authenticatedItem { ... on User { role { ${names.join(' ')} } } } }`)
     const role = d.authenticatedItem?.role

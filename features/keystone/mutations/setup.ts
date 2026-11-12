@@ -6,6 +6,7 @@ import { CUSTOMERS, seedAppointments, seedBookingRules, seedCustomers, seedFleet
 import { seedOrgPlatform } from '../seed/platform'
 import { seedParts } from '../seed/parts'
 import { seedLabor } from '../seed/labor'
+import { seedCommunications } from '../seed/communications'
 import { seedGoldenRepairOrder, seedServiceCatalog } from '../seed/repairOrders'
 import { SHOP_POLICY, seedJurisdictions, seedShopPolicy } from '../seed/policy'
 
@@ -38,6 +39,7 @@ export function northgateSteps(actor: Actor, scope: SetupScope = 'all'): { name:
   steps.push({ name: 'golden_repair_order', run: uow => seedGoldenRepairOrder(uow, actor) })
   steps.push({ name: 'parts_and_stock', run: uow => seedParts(uow, actor) })
   steps.push({ name: 'technicians', run: uow => seedLabor(uow, actor) })
+  steps.push({ name: 'communications', run: uow => seedCommunications(uow, actor) })
   return steps
 }
 

@@ -12,6 +12,7 @@ import * as p3 from './phase3'
 import * as p4 from './phase4'
 import * as p5 from './phase5'
 import * as p6 from './phase6'
+import * as p7 from './phase7'
 import '../lib/orgControls'
 import '../lib/policy'
 
@@ -30,6 +31,8 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         checkAuthorizedCeiling(shopId: ID!, authorizedMinor: String!, priceMinor: String!, taxMinor: String): JSON
         previewShopInvoice(repairOrderId: ID!): JSON
         shopDaySummary(shopId: ID!, businessDate: String!): JSON
+        followUpBoard(soonDays: Int): JSON
+        campaignPreview(campaignId: ID!): JSON
       }
       input UserUpdateProfileInput { name: String, email: String, password: String, onboardingStatus: String }
       type Mutation {
@@ -150,6 +153,18 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         cancelShopComeback(comebackId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         withdrawShopPartWarrantyClaim(claimId: ID!, reason: String!, expectedVersion: Int, idempotencyKey: String!): JSON
         releaseShopJobReservations(jobId: ID!, reason: String!, idempotencyKey: String!): JSON
+        logCustomerMessage(input: JSON!, idempotencyKey: String!): JSON
+        logCustomerCall(input: JSON!, idempotencyKey: String!): JSON
+        readMessageThread(threadId: ID!, idempotencyKey: String!): JSON
+        saveMessageTemplate(input: JSON!, idempotencyKey: String!): JSON
+        markFollowUpContacted(recommendationId: ID!, channel: String!, note: String, expectedContactedCount: Int!, idempotencyKey: String!): JSON
+        closeRecommendation(recommendationId: ID!, reason: String!, idempotencyKey: String!): JSON
+        markServiceReminderContacted(cycleKey: String!, channel: String!, note: String, idempotencyKey: String!): JSON
+        saveMarketingCampaign(input: JSON!, idempotencyKey: String!): JSON
+        exportMarketingCampaign(campaignId: ID!, idempotencyKey: String!): JSON
+        copyMarketingMessage(campaignId: ID!, customerId: ID!, channel: String, idempotencyKey: String!): JSON
+        recordReviewRequest(repairOrderId: ID!, channel: String!, note: String, idempotencyKey: String!): JSON
+        createCustomerPortalLink(customerId: ID!, idempotencyKey: String!): JSON
       }
     `,
     resolvers: {
@@ -159,6 +174,8 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         checkAuthorizedCeiling: op(p1.checkAuthorizedCeiling),
         previewShopInvoice: op(p3.previewShopInvoice),
         shopDaySummary: op(p3.shopDaySummary),
+        followUpBoard: op(p7.followUpBoard),
+        campaignPreview: op(p7.campaignPreview),
       },
       Mutation: {
         updateActiveUser,
@@ -263,6 +280,18 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         makeAccountStatement: op(p6.makeAccountStatement),
         exportAccountStatement: op(p6.exportAccountStatement),
         exportAllAccountStatements: op(p6.exportAllAccountStatements),
+        logCustomerMessage: op(p7.logCustomerMessage),
+        logCustomerCall: op(p7.logCustomerCall),
+        readMessageThread: op(p7.readMessageThread),
+        saveMessageTemplate: op(p7.saveMessageTemplate),
+        markFollowUpContacted: op(p7.markFollowUpContacted),
+        closeRecommendation: op(p7.closeRecommendation),
+        markServiceReminderContacted: op(p7.markServiceReminderContacted),
+        saveMarketingCampaign: op(p7.saveMarketingCampaign),
+        exportMarketingCampaign: op(p7.exportMarketingCampaign),
+        copyMarketingMessage: op(p7.copyMarketingMessage),
+        recordReviewRequest: op(p7.recordReviewRequest),
+        createCustomerPortalLink: op(p7.createCustomerPortalLink),
         openShopComeback: op(p5.openShopComeback),
         diagnoseShopComeback: op(p5.diagnoseShopComeback),
         requestComebackGoodwill: op(p5.requestComebackGoodwill),

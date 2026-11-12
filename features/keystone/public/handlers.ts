@@ -288,3 +288,20 @@ export async function getFleetStatement(db: Db, request: Request, token: string,
     return fail(error)
   }
 }
+
+// ── Customer portal data by link (SCHEMA §17: /api/public/portal/*). Data only, no screens. ──────────
+
+async function portalGet(db: Db, token: string, path: { repairOrderId?: string; vehicleId?: string }) {
+  const lib = await import('../lib/portal')
+  return runInTransaction(db, async uow => {
+    const customer = await lib.portalCustomer(uow.tx, token, uow.now, true)
+    if (path.repairOrderId) return { customer, repairOrder: await lib.portalRepairOrder(uow.tx, customer.id, path.repairOrderId) }
+    if (path.vehicleId) return { customer, ...(await lib.portalVehicle(uow.tx, customer.id, path.vehicleId)) }
+    return { customer, ...(await lib.portalOverview(uow.tx, customer.id)) }
+  }, { actorKind: 'system' })
+}
+
+export async function getPortal(db: Db, request: Request, token: string, path: { repairOrderId?: string; vehicleId?: string } = {}) {
+  if (limited(request, 'portal-get', 60)) return tooMany()
+  try { return respond(await portalGet(db, token, path)) } catch (error) { return fail(error) }
+}

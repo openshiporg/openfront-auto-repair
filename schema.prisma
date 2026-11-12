@@ -101,6 +101,14 @@ model User {
   from_TechnicianCredential_verifiedBy       TechnicianCredential[]      @relation("TechnicianCredential_verifiedBy")
   from_TechnicianProfile_user                TechnicianProfile[]         @relation("TechnicianProfile_user")
   from_BusinessAccountContact_portalUser     BusinessAccountContact[]    @relation("BusinessAccountContact_portalUser")
+  from_CallRecord_recordedBy                 CallRecord[]                @relation("CallRecord_recordedBy")
+  from_Campaign_createdBy                    Campaign[]                  @relation("Campaign_createdBy")
+  from_CampaignExport_exportedBy             CampaignExport[]            @relation("CampaignExport_exportedBy")
+  from_Message_reviewedBy                    Message[]                   @relation("Message_reviewedBy")
+  from_Message_recordedBy                    Message[]                   @relation("Message_recordedBy")
+  from_MessageTemplate_updatedBy             MessageTemplate[]           @relation("MessageTemplate_updatedBy")
+  from_ReviewRequest_askedBy                 ReviewRequest[]             @relation("ReviewRequest_askedBy")
+  from_ServiceReminder_contactedBy           ServiceReminder[]           @relation("ServiceReminder_contactedBy")
 
   @@index([roleId])
 }
@@ -594,6 +602,14 @@ model Shop {
   from_PayPeriod_shop                  PayPeriod[]                  @relation("PayPeriod_shop")
   from_ShiftClock_shop                 ShiftClock[]                 @relation("ShiftClock_shop")
   from_TechnicianProfile_shop          TechnicianProfile[]          @relation("TechnicianProfile_shop")
+  from_CallRecord_shop                 CallRecord[]                 @relation("CallRecord_shop")
+  from_Campaign_shop                   Campaign[]                   @relation("Campaign_shop")
+  from_CampaignRecipient_shop          CampaignRecipient[]          @relation("CampaignRecipient_shop")
+  from_Message_shop                    Message[]                    @relation("Message_shop")
+  from_MessageThread_shop              MessageThread[]              @relation("MessageThread_shop")
+  from_Recommendation_shop             Recommendation[]             @relation("Recommendation_shop")
+  from_ReviewRequest_shop              ReviewRequest[]              @relation("ReviewRequest_shop")
+  from_ServiceReminder_shop            ServiceReminder[]            @relation("ServiceReminder_shop")
 
   @@index([jurisdictionPackId])
   @@index([jurisdictionPolicyId])
@@ -1079,18 +1095,20 @@ model BusinessAccount {
 }
 
 model ContactConsent {
-  id             String           @id @default(cuid())
-  contact        CustomerContact? @relation("ContactConsent_contact", fields: [contactId], references: [id])
-  contactId      String?          @map("contact")
-  channel        String
-  purpose        String
-  action         String
-  method         String
-  evidence       Json?
-  writtenConsent Boolean          @default(false)
-  recordedBy     User?            @relation("ContactConsent_recordedBy", fields: [recordedById], references: [id])
-  recordedById   String?          @map("recordedBy")
-  at             DateTime         @default(now())
+  id                             String              @id @default(cuid())
+  contact                        CustomerContact?    @relation("ContactConsent_contact", fields: [contactId], references: [id])
+  contactId                      String?             @map("contact")
+  channel                        String
+  purpose                        String
+  action                         String
+  method                         String
+  evidence                       Json?
+  writtenConsent                 Boolean             @default(false)
+  recordedBy                     User?               @relation("ContactConsent_recordedBy", fields: [recordedById], references: [id])
+  recordedById                   String?             @map("recordedBy")
+  at                             DateTime            @default(now())
+  from_CampaignRecipient_consent CampaignRecipient[] @relation("CampaignRecipient_consent")
+  from_Message_consent           Message[]           @relation("Message_consent")
 
   @@index([contactId])
   @@index([recordedById])
@@ -1134,6 +1152,13 @@ model Customer {
   from_FinancingApplication_customer FinancingApplication[] @relation("FinancingApplication_customer")
   from_Invoice_customer              Invoice[]              @relation("Invoice_customer")
   from_Payment_customer              Payment[]              @relation("Payment_customer")
+  from_CallRecord_customer           CallRecord[]           @relation("CallRecord_customer")
+  from_CampaignRecipient_customer    CampaignRecipient[]    @relation("CampaignRecipient_customer")
+  from_Message_customer              Message[]              @relation("Message_customer")
+  from_MessageThread_customer        MessageThread[]        @relation("MessageThread_customer")
+  from_Recommendation_customer       Recommendation[]       @relation("Recommendation_customer")
+  from_ReviewRequest_customer        ReviewRequest[]        @relation("ReviewRequest_customer")
+  from_ServiceReminder_customer      ServiceReminder[]      @relation("ServiceReminder_customer")
 
   @@index([lastName])
   @@index([displayName])
@@ -1159,6 +1184,9 @@ model CustomerContact {
   createdAt                         DateTime               @default(now())
   updatedAt                         DateTime               @default(now()) @updatedAt
   from_AuthorizationRequest_contact AuthorizationRequest[] @relation("AuthorizationRequest_contact")
+  from_CallRecord_contact           CallRecord[]           @relation("CallRecord_contact")
+  from_CampaignRecipient_contact    CampaignRecipient[]    @relation("CampaignRecipient_contact")
+  from_Message_contact              Message[]              @relation("Message_contact")
 
   @@unique([customerId, kind, valueHash], map: "CustomerContact_customer_kind_hash_key")
   @@index([customerId])
@@ -1295,6 +1323,9 @@ model Vehicle {
   from_RepairOrder_vehicle      RepairOrder[]       @relation("RepairOrder_vehicle")
   from_WarrantyCoverage_vehicle WarrantyCoverage[]  @relation("WarrantyCoverage_vehicle")
   from_FleetUnit_vehicle        FleetUnit[]         @relation("FleetUnit_vehicle")
+  from_MessageThread_vehicle    MessageThread[]     @relation("MessageThread_vehicle")
+  from_Recommendation_vehicle   Recommendation[]    @relation("Recommendation_vehicle")
+  from_ServiceReminder_vehicle  ServiceReminder[]   @relation("ServiceReminder_vehicle")
 
   @@index([vin])
   @@index([currentDecodeId])
@@ -1499,68 +1530,71 @@ model Concern {
 }
 
 model Job {
-  id                            String                @id @default(cuid())
-  repairOrder                   RepairOrder?          @relation("Job_repairOrder", fields: [repairOrderId], references: [id])
-  repairOrderId                 String?               @map("repairOrder")
-  number                        Int
-  title                         String                @default("")
-  customerDescription           String                @default("")
-  kind                          String                @default("repair")
-  concern                       Concern?              @relation("Job_concern", fields: [concernId], references: [id])
-  concernId                     String?               @map("concern")
-  source                        String                @default("manual")
-  cannedJobVersion              CannedJobVersion?     @relation("Job_cannedJobVersion", fields: [cannedJobVersionId], references: [id])
-  cannedJobVersionId            String?               @map("cannedJobVersion")
-  inspectionItemResult          InspectionItemResult? @relation("Job_inspectionItemResult", fields: [inspectionItemResultId], references: [id])
-  inspectionItemResultId        String?               @map("inspectionItemResult")
-  lines                         JobLine[]             @relation("JobLine_job")
-  techShares                    JobTechShare[]        @relation("JobTechShare_job")
-  payerSplits                   PayerSplit[]          @relation("PayerSplit_job")
-  urgency                       String                @default("none")
-  warrantyTerm                  WarrantyTerm?         @relation("Job_warrantyTerm", fields: [warrantyTermId], references: [id])
-  warrantyTermId                String?               @map("warrantyTerm")
-  contentHash                   String                @default("")
-  priceSnapshot                 Json?
-  subtotalMinor                 BigInt                @default(0)
-  taxMinor                      BigInt                @default(0)
-  totalMinor                    BigInt                @default(0)
-  laborMinor                    BigInt                @default(0)
-  partsMinor                    BigInt                @default(0)
-  feesMinor                     BigInt                @default(0)
-  costMinor                     BigInt                @default(0)
-  marginMinor                   BigInt                @default(0)
-  offeredInVersion              EstimateVersion?      @relation("Job_offeredInVersion", fields: [offeredInVersionId], references: [id])
-  offeredInVersionId            String?               @map("offeredInVersion")
-  authorizedAmountMinor         BigInt                @default(0)
-  authorizedSubtotalMinor       BigInt                @default(0)
-  authorizedContentHash         String                @default("")
-  authorizedIdentityHash        String                @default("")
-  chargeCeilingMinor            BigInt                @default(0)
-  currentAuthorization          Authorization?        @relation("Job_currentAuthorization", fields: [currentAuthorizationId], references: [id])
-  currentAuthorizationId        String?               @map("currentAuthorization")
-  authorizations                Authorization[]       @relation("Authorization_job")
-  decisions                     JobDecision[]         @relation("JobDecision_job")
-  belowThresholdRecordedAt      DateTime?
-  noChargeReason                String                @default("")
-  teardownDisclosure            TeardownDisclosure?   @relation("Job_teardownDisclosure", fields: [teardownDisclosureId], references: [id])
-  teardownDisclosureId          String?               @unique @map("teardownDisclosure")
-  reauthorizationReason         String                @default("")
-  workStartedAt                 DateTime?
-  completedAt                   DateTime?
-  status                        String                @default("draft")
-  version                       Int                   @default(0)
-  createdAt                     DateTime              @default(now())
-  updatedAt                     DateTime              @default(now()) @updatedAt
-  from_WarrantyCoverage_job     WarrantyCoverage[]    @relation("WarrantyCoverage_job")
-  from_CoreObligation_job       CoreObligation[]      @relation("CoreObligation_job")
-  from_JobTire_job              JobTire[]             @relation("JobTire_job")
-  from_PartQuote_job            PartQuote[]           @relation("PartQuote_job")
-  from_StockMovement_job        StockMovement[]       @relation("StockMovement_job")
-  from_SupplierOrderLine_job    SupplierOrderLine[]   @relation("SupplierOrderLine_job")
-  from_ComebackCase_originalJob ComebackCase[]        @relation("ComebackCase_originalJob")
-  from_ComebackCase_comebackJob ComebackCase[]        @relation("ComebackCase_comebackJob")
-  from_FlaggedHoursEntry_job    FlaggedHoursEntry[]   @relation("FlaggedHoursEntry_job")
-  from_JobClock_job             JobClock[]            @relation("JobClock_job")
+  id                                  String                @id @default(cuid())
+  repairOrder                         RepairOrder?          @relation("Job_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId                       String?               @map("repairOrder")
+  number                              Int
+  title                               String                @default("")
+  customerDescription                 String                @default("")
+  kind                                String                @default("repair")
+  concern                             Concern?              @relation("Job_concern", fields: [concernId], references: [id])
+  concernId                           String?               @map("concern")
+  source                              String                @default("manual")
+  cannedJobVersion                    CannedJobVersion?     @relation("Job_cannedJobVersion", fields: [cannedJobVersionId], references: [id])
+  cannedJobVersionId                  String?               @map("cannedJobVersion")
+  inspectionItemResult                InspectionItemResult? @relation("Job_inspectionItemResult", fields: [inspectionItemResultId], references: [id])
+  inspectionItemResultId              String?               @map("inspectionItemResult")
+  lines                               JobLine[]             @relation("JobLine_job")
+  techShares                          JobTechShare[]        @relation("JobTechShare_job")
+  payerSplits                         PayerSplit[]          @relation("PayerSplit_job")
+  urgency                             String                @default("none")
+  warrantyTerm                        WarrantyTerm?         @relation("Job_warrantyTerm", fields: [warrantyTermId], references: [id])
+  warrantyTermId                      String?               @map("warrantyTerm")
+  contentHash                         String                @default("")
+  priceSnapshot                       Json?
+  subtotalMinor                       BigInt                @default(0)
+  taxMinor                            BigInt                @default(0)
+  totalMinor                          BigInt                @default(0)
+  laborMinor                          BigInt                @default(0)
+  partsMinor                          BigInt                @default(0)
+  feesMinor                           BigInt                @default(0)
+  costMinor                           BigInt                @default(0)
+  marginMinor                         BigInt                @default(0)
+  offeredInVersion                    EstimateVersion?      @relation("Job_offeredInVersion", fields: [offeredInVersionId], references: [id])
+  offeredInVersionId                  String?               @map("offeredInVersion")
+  authorizedAmountMinor               BigInt                @default(0)
+  authorizedSubtotalMinor             BigInt                @default(0)
+  authorizedContentHash               String                @default("")
+  authorizedIdentityHash              String                @default("")
+  chargeCeilingMinor                  BigInt                @default(0)
+  currentAuthorization                Authorization?        @relation("Job_currentAuthorization", fields: [currentAuthorizationId], references: [id])
+  currentAuthorizationId              String?               @map("currentAuthorization")
+  authorizations                      Authorization[]       @relation("Authorization_job")
+  decisions                           JobDecision[]         @relation("JobDecision_job")
+  belowThresholdRecordedAt            DateTime?
+  noChargeReason                      String                @default("")
+  teardownDisclosure                  TeardownDisclosure?   @relation("Job_teardownDisclosure", fields: [teardownDisclosureId], references: [id])
+  teardownDisclosureId                String?               @unique @map("teardownDisclosure")
+  reauthorizationReason               String                @default("")
+  workStartedAt                       DateTime?
+  completedAt                         DateTime?
+  status                              String                @default("draft")
+  version                             Int                   @default(0)
+  createdAt                           DateTime              @default(now())
+  updatedAt                           DateTime              @default(now()) @updatedAt
+  from_WarrantyCoverage_job           WarrantyCoverage[]    @relation("WarrantyCoverage_job")
+  from_CoreObligation_job             CoreObligation[]      @relation("CoreObligation_job")
+  from_JobTire_job                    JobTire[]             @relation("JobTire_job")
+  from_PartQuote_job                  PartQuote[]           @relation("PartQuote_job")
+  from_StockMovement_job              StockMovement[]       @relation("StockMovement_job")
+  from_SupplierOrderLine_job          SupplierOrderLine[]   @relation("SupplierOrderLine_job")
+  from_ComebackCase_originalJob       ComebackCase[]        @relation("ComebackCase_originalJob")
+  from_ComebackCase_comebackJob       ComebackCase[]        @relation("ComebackCase_comebackJob")
+  from_FlaggedHoursEntry_job          FlaggedHoursEntry[]   @relation("FlaggedHoursEntry_job")
+  from_JobClock_job                   JobClock[]            @relation("JobClock_job")
+  from_Recommendation_sourceJob       Recommendation[]      @relation("Recommendation_sourceJob")
+  from_Recommendation_convertedJob    Recommendation[]      @relation("Recommendation_convertedJob")
+  from_ServiceReminder_lastServiceJob ServiceReminder[]     @relation("ServiceReminder_lastServiceJob")
 
   @@unique([repairOrderId, number], map: "Job_ro_number_key")
   @@index([repairOrderId])
@@ -1755,6 +1789,11 @@ model RepairOrder {
   from_Invoice_repairOrder              Invoice[]                  @relation("Invoice_repairOrder")
   from_Payment_repairOrder              Payment[]                  @relation("Payment_repairOrder")
   from_WarrantyCoverage_repairOrder     WarrantyCoverage[]         @relation("WarrantyCoverage_repairOrder")
+  from_CallRecord_repairOrder           CallRecord[]               @relation("CallRecord_repairOrder")
+  from_Message_repairOrder              Message[]                  @relation("Message_repairOrder")
+  from_MessageThread_repairOrder        MessageThread[]            @relation("MessageThread_repairOrder")
+  from_Recommendation_repairOrder       Recommendation[]           @relation("Recommendation_repairOrder")
+  from_ReviewRequest_repairOrder        ReviewRequest[]            @relation("ReviewRequest_repairOrder")
 
   @@index([shopId])
   @@index([customerId])
@@ -3290,6 +3329,269 @@ model FleetUnit {
   @@unique([businessAccountId, unitNumber], map: "FleetUnit_account_unit_key")
   @@index([businessAccountId])
   @@index([vehicleId])
+}
+
+model CallRecord {
+  id            String           @id @default(cuid())
+  thread        MessageThread?   @relation("CallRecord_thread", fields: [threadId], references: [id])
+  threadId      String?          @map("thread")
+  shop          Shop?            @relation("CallRecord_shop", fields: [shopId], references: [id])
+  shopId        String?          @map("shop")
+  customer      Customer?        @relation("CallRecord_customer", fields: [customerId], references: [id])
+  customerId    String?          @map("customer")
+  contact       CustomerContact? @relation("CallRecord_contact", fields: [contactId], references: [id])
+  contactId     String?          @map("contact")
+  repairOrder   RepairOrder?     @relation("CallRecord_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId String?          @map("repairOrder")
+  direction     String
+  outcome       String
+  note          String           @default("")
+  minutes       Int?
+  recordedBy    User?            @relation("CallRecord_recordedBy", fields: [recordedById], references: [id])
+  recordedById  String?          @map("recordedBy")
+  at            DateTime         @default(now())
+
+  @@index([threadId])
+  @@index([shopId])
+  @@index([customerId])
+  @@index([contactId])
+  @@index([repairOrderId])
+  @@index([recordedById])
+}
+
+model Campaign {
+  id                              String              @id @default(cuid())
+  shop                            Shop?               @relation("Campaign_shop", fields: [shopId], references: [id])
+  shopId                          String?             @map("shop")
+  name                            String              @default("")
+  kind                            String
+  audienceRule                    Json?               @default("{}")
+  messageText                     String              @default("")
+  status                          String              @default("draft")
+  exports                         CampaignExport[]    @relation("CampaignExport_campaign")
+  createdBy                       User?               @relation("Campaign_createdBy", fields: [createdById], references: [id])
+  createdById                     String?             @map("createdBy")
+  version                         Int                 @default(0)
+  createdAt                       DateTime            @default(now())
+  updatedAt                       DateTime            @default(now()) @updatedAt
+  from_CampaignRecipient_campaign CampaignRecipient[] @relation("CampaignRecipient_campaign")
+
+  @@index([shopId])
+  @@index([createdById])
+}
+
+model CampaignExport {
+  id             String              @id @default(cuid())
+  campaign       Campaign?           @relation("CampaignExport_campaign", fields: [campaignId], references: [id])
+  campaignId     String?             @map("campaign")
+  recipients     CampaignRecipient[] @relation("CampaignRecipient_export")
+  recipientCount Int?                @default(0)
+  excludedCount  Int?                @default(0)
+  excluded       Json?               @default("[]")
+  exportedBy     User?               @relation("CampaignExport_exportedBy", fields: [exportedById], references: [id])
+  exportedById   String?             @map("exportedBy")
+  at             DateTime            @default(now())
+
+  @@index([campaignId])
+  @@index([exportedById])
+}
+
+model CampaignRecipient {
+  id         String           @id @default(cuid())
+  export     CampaignExport?  @relation("CampaignRecipient_export", fields: [exportId], references: [id])
+  exportId   String?          @map("export")
+  campaign   Campaign?        @relation("CampaignRecipient_campaign", fields: [campaignId], references: [id])
+  campaignId String?          @map("campaign")
+  shop       Shop?            @relation("CampaignRecipient_shop", fields: [shopId], references: [id])
+  shopId     String?          @map("shop")
+  customer   Customer?        @relation("CampaignRecipient_customer", fields: [customerId], references: [id])
+  customerId String?          @map("customer")
+  contact    CustomerContact? @relation("CampaignRecipient_contact", fields: [contactId], references: [id])
+  contactId  String?          @map("contact")
+  channel    String
+  consent    ContactConsent?  @relation("CampaignRecipient_consent", fields: [consentId], references: [id])
+  consentId  String?          @map("consent")
+  at         DateTime         @default(now())
+
+  @@index([exportId])
+  @@index([campaignId])
+  @@index([shopId])
+  @@index([customerId])
+  @@index([contactId])
+  @@index([consentId])
+}
+
+model Message {
+  id                String           @id @default(cuid())
+  thread            MessageThread?   @relation("Message_thread", fields: [threadId], references: [id])
+  threadId          String?          @map("thread")
+  shop              Shop?            @relation("Message_shop", fields: [shopId], references: [id])
+  shopId            String?          @map("shop")
+  customer          Customer?        @relation("Message_customer", fields: [customerId], references: [id])
+  customerId        String?          @map("customer")
+  contact           CustomerContact? @relation("Message_contact", fields: [contactId], references: [id])
+  contactId         String?          @map("contact")
+  repairOrder       RepairOrder?     @relation("Message_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId     String?          @map("repairOrder")
+  direction         String
+  channel           String
+  purpose           String
+  source            String
+  templateCode      String           @default("")
+  templateVersion   Int?             @default(0)
+  body              String           @default("")
+  providerMessageId String?          @unique
+  keyword           String           @default("")
+  reviewState       String           @default("none")
+  reviewedAt        DateTime?
+  reviewedBy        User?            @relation("Message_reviewedBy", fields: [reviewedById], references: [id])
+  reviewedById      String?          @map("reviewedBy")
+  consent           ContactConsent?  @relation("Message_consent", fields: [consentId], references: [id])
+  consentId         String?          @map("consent")
+  recordedBy        User?            @relation("Message_recordedBy", fields: [recordedById], references: [id])
+  recordedById      String?          @map("recordedBy")
+  at                DateTime         @default(now())
+
+  @@index([threadId])
+  @@index([shopId])
+  @@index([customerId])
+  @@index([contactId])
+  @@index([repairOrderId])
+  @@index([reviewedById])
+  @@index([consentId])
+  @@index([recordedById])
+}
+
+model MessageTemplate {
+  id          String   @id @default(cuid())
+  code        String   @unique @default("")
+  name        String   @default("")
+  purpose     String
+  body        String   @default("")
+  version     Int?     @default(1)
+  active      String   @default("active")
+  updatedBy   User?    @relation("MessageTemplate_updatedBy", fields: [updatedById], references: [id])
+  updatedById String?  @map("updatedBy")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([updatedById])
+}
+
+model MessageThread {
+  id            String       @id @default(cuid())
+  shop          Shop?        @relation("MessageThread_shop", fields: [shopId], references: [id])
+  shopId        String?      @map("shop")
+  customer      Customer?    @relation("MessageThread_customer", fields: [customerId], references: [id])
+  customerId    String?      @map("customer")
+  vehicle       Vehicle?     @relation("MessageThread_vehicle", fields: [vehicleId], references: [id])
+  vehicleId     String?      @map("vehicle")
+  repairOrder   RepairOrder? @relation("MessageThread_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId String?      @map("repairOrder")
+  threadKey     String       @unique @default("")
+  messages      Message[]    @relation("Message_thread")
+  calls         CallRecord[] @relation("CallRecord_thread")
+  lastMessageAt DateTime?
+  unreadCount   Int?         @default(0)
+  version       Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([repairOrderId])
+}
+
+model Recommendation {
+  id                 String       @id @default(cuid())
+  shop               Shop?        @relation("Recommendation_shop", fields: [shopId], references: [id])
+  shopId             String?      @map("shop")
+  customer           Customer?    @relation("Recommendation_customer", fields: [customerId], references: [id])
+  customerId         String?      @map("customer")
+  vehicle            Vehicle?     @relation("Recommendation_vehicle", fields: [vehicleId], references: [id])
+  vehicleId          String?      @map("vehicle")
+  repairOrder        RepairOrder? @relation("Recommendation_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId      String?      @map("repairOrder")
+  sourceJob          Job?         @relation("Recommendation_sourceJob", fields: [sourceJobId], references: [id])
+  sourceJobId        String?      @map("sourceJob")
+  sourceJobKey       String       @unique @default("")
+  title              String       @default("")
+  urgency            String
+  decision           String
+  priceSnapshotMinor BigInt       @default(0)
+  evidence           Json?
+  declinedAt         DateTime?
+  deferUntil         DateTime?
+  deferMiles         Int?
+  contactedCount     Int?         @default(0)
+  lastContactedAt    DateTime?
+  status             String       @default("open")
+  dismissedReason    String       @default("")
+  convertedJob       Job?         @relation("Recommendation_convertedJob", fields: [convertedJobId], references: [id])
+  convertedJobId     String?      @map("convertedJob")
+  version            Int          @default(0)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([repairOrderId])
+  @@index([sourceJobId])
+  @@index([convertedJobId])
+}
+
+model ReviewRequest {
+  id             String       @id @default(cuid())
+  shop           Shop?        @relation("ReviewRequest_shop", fields: [shopId], references: [id])
+  shopId         String?      @map("shop")
+  repairOrder    RepairOrder? @relation("ReviewRequest_repairOrder", fields: [repairOrderId], references: [id])
+  repairOrderId  String?      @map("repairOrder")
+  repairOrderKey String       @unique @default("")
+  customer       Customer?    @relation("ReviewRequest_customer", fields: [customerId], references: [id])
+  customerId     String?      @map("customer")
+  channel        String
+  note           String       @default("")
+  askedAt        DateTime     @default(now())
+  askedBy        User?        @relation("ReviewRequest_askedBy", fields: [askedById], references: [id])
+  askedById      String?      @map("askedBy")
+
+  @@index([shopId])
+  @@index([repairOrderId])
+  @@index([customerId])
+  @@index([askedById])
+}
+
+model ServiceReminder {
+  id               String    @id @default(cuid())
+  shop             Shop?     @relation("ServiceReminder_shop", fields: [shopId], references: [id])
+  shopId           String?   @map("shop")
+  vehicle          Vehicle?  @relation("ServiceReminder_vehicle", fields: [vehicleId], references: [id])
+  vehicleId        String?   @map("vehicle")
+  customer         Customer? @relation("ServiceReminder_customer", fields: [customerId], references: [id])
+  customerId       String?   @map("customer")
+  kind             String
+  cycleKey         String    @unique @default("")
+  lastServiceJob   Job?      @relation("ServiceReminder_lastServiceJob", fields: [lastServiceJobId], references: [id])
+  lastServiceJobId String?   @map("lastServiceJob")
+  dueOn            DateTime? @postgresql.Date
+  dueAtOdometer    Int?
+  projectedDueOn   DateTime? @postgresql.Date
+  status           String    @default("contacted")
+  contactChannel   String
+  note             String    @default("")
+  contactedAt      DateTime?
+  contactedBy      User?     @relation("ServiceReminder_contactedBy", fields: [contactedById], references: [id])
+  contactedById    String?   @map("contactedBy")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
+
+  @@index([shopId])
+  @@index([vehicleId])
+  @@index([customerId])
+  @@index([lastServiceJobId])
+  @@index([contactedById])
 }
 
 enum UserKindType {

@@ -10,7 +10,7 @@ import { SignaturePad } from '../../components/SignaturePad';
 type Props = {
   appointment: {
     id: string; shopId: string; customerId: string; customerName: string; vehicleId: string; vehicleLabel: string; vin: string; lastOdometer: number | null; unit: string;
-    concern: string; services: string[]; waiter: boolean; timeZone: string; recall: { campaignCount: number; parkItAny: boolean } | null;
+    concern: string; services: string[]; waiter: boolean; contacts: { id: string; channel: 'sms' | 'email'; label: string }[]; timeZone: string; recall: { campaignCount: number; parkItAny: boolean } | null;
   };
   law: { requireOdometerIn: boolean; requireSignedWorkOrder: boolean; notices: string[]; replacedPartsOfferText: string };
 };
@@ -29,6 +29,9 @@ export function CheckInForm({ appointment: a, law }: Props) {
   const [signerName, setSignerName] = React.useState(a.customerName);
   const [strokes, setStrokes] = React.useState<number[][][]>([]);
   const [agreed, setAgreed] = React.useState(false);
+  // What the customer ticks on the form. Left empty records nothing.
+  const [ticks, setTicks] = React.useState<Record<string, { transactional: boolean; marketing: boolean }>>({});
+  const tick = (id: string, kind: 'transactional' | 'marketing', on: boolean) => setTicks(t => ({ ...t, [id]: { ...(t[id] ?? { transactional: false, marketing: false }), [kind]: on } }));
   const save = useCommand<{ reference: string; recallWarning: { count: number; doNotDrive: boolean } | null }>('checkInShopVehicle', ['/dashboard/platform/check-in', '/dashboard/platform/schedule']);
   const lower = a.lastOdometer !== null && odometer !== '' && Number(odometer) < a.lastOdometer;
   const lines = concerns.split('\n').map(s => s.trim()).filter(Boolean);
@@ -55,6 +58,7 @@ export function CheckInForm({ appointment: a, law }: Props) {
             odometer: odometer ? { value: Number(odometer), unit: a.unit, overrideReason: lower ? overrideReason : undefined } : undefined,
             promisedAt: localToday(a.timeZone, promised), waiter: a.waiter, keyTag, transportationNeed: transport, contactPreference: 'sms',
             signature: strokes.length ? { method: 'in_person', signerName, strokes } : undefined,
+            consents: a.contacts.map(c => ({ contactId: c.id, channel: c.channel, ...(ticks[c.id] ?? {}) })).filter(c => c.transactional || c.marketing),
           },
         });
       }}
@@ -101,6 +105,18 @@ export function CheckInForm({ appointment: a, law }: Props) {
         <ol className="list-decimal space-y-0.5 pl-5 text-sm">{lines.map((l, i) => <li key={i} className="break-words">{l}</li>)}</ol>
         {law.notices.map((n, i) => <p key={i} className="break-words text-sm">{n}</p>)}
         {law.replacedPartsOfferText ? <p className="break-words text-sm">{law.replacedPartsOfferText}</p> : null}
+        {a.contacts.length ? (
+          <fieldset className="space-y-2 border-t pt-3">
+            <legend className="text-sm font-medium">How may we reach you?</legend>
+            {a.contacts.map(c => (
+              <div key={c.id} className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">{c.label}</p>
+                <label className="flex min-h-11 items-start gap-2 text-sm md:min-h-0"><input type="checkbox" className="mt-1" checked={ticks[c.id]?.transactional ?? false} onChange={e => tick(c.id, 'transactional', e.target.checked)} /> About this repair: estimates, questions and when the car is ready</label>
+                <label className="flex min-h-11 items-start gap-2 text-sm md:min-h-0"><input type="checkbox" className="mt-1" checked={ticks[c.id]?.marketing ?? false} onChange={e => tick(c.id, 'marketing', e.target.checked)} /> Service reminders and offers from the shop. This is not required to get the repair, and you can say STOP at any time.</label>
+              </div>
+            ))}
+          </fieldset>
+        ) : null}
         <label className={labelClass}>Name of the person signing<input required className={inputClass} value={signerName} onChange={e => setSignerName(e.target.value)} /></label>
         <SignaturePad strokes={strokes} onChange={setStrokes} />
         <div className="flex flex-wrap items-center justify-between gap-2">
