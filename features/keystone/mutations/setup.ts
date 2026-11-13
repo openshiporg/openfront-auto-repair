@@ -2,7 +2,7 @@ import { actorFromSession, requirePermission, type Actor } from '../lib/actor'
 import { command } from '../lib/command'
 import { Codes, DomainError } from '../lib/errors'
 import type { UnitOfWork } from '../lib/unitOfWork'
-import { CUSTOMERS, seedAppointments, seedBookingRules, seedCustomers, seedFleets, seedRecordedVehicleData } from '../seed/customers'
+import { CUSTOMERS, seedAppointments, seedBookingRules, seedCustomers, seedFleets } from '../seed/customers'
 import { seedOrgPlatform } from '../seed/platform'
 import { seedParts } from '../seed/parts'
 import { seedLabor } from '../seed/labor'
@@ -34,7 +34,6 @@ export function northgateSteps(actor: Actor, scope: SetupScope = 'all'): { name:
     steps.push({ name: `customers_${from}`, run: uow => seedCustomers(uow, actor, from, from + CUSTOMER_BATCH) })
   }
   steps.push({ name: 'fleets', run: async uow => { const r = await seedFleets(uow, actor); return { fleetAccounts: r.accounts, fleetVehicles: r.vehicles } } })
-  steps.push({ name: 'vehicle_data', run: async uow => ({ vehicleData: await seedRecordedVehicleData(uow, actor) }) })
   steps.push({ name: 'appointments', run: async uow => ({ appointments: await seedAppointments(uow, actor) }) })
   steps.push({ name: 'golden_repair_order', run: uow => seedGoldenRepairOrder(uow, actor) })
   steps.push({ name: 'parts_and_stock', run: uow => seedParts(uow, actor) })

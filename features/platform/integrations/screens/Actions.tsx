@@ -114,7 +114,7 @@ export function ConnectionForm({ shopId }: { shopId: string }) {
     <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); cmd.run({ input: { shopId, ...f } }); }}>
       <label className={labelClass}>Kind<input className={inputClass} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} /></label>
       <label className={labelClass}>Provider<input className={inputClass} value={f.providerKey} onChange={(e) => setF({ ...f, providerKey: e.target.value })} /></label>
-      <label className={labelClass}>Mode<select className={inputClass} value={f.mode} onChange={(e) => setF({ ...f, mode: e.target.value })}><option value="manual">Manual</option><option value="sandbox">Sandbox</option><option value="live">Live</option></select></label>
+      <label className={labelClass}>Mode<select className={inputClass} value={f.mode} onChange={(e) => setF({ ...f, mode: e.target.value })}><option value="manual">Manual</option><option value="live">Live</option></select></label>
       <button className={primary} disabled={cmd.pending}>{cmd.pending ? 'Working' : 'Add'}</button>
       <FormError error={cmd.error} />
     </form>

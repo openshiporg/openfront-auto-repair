@@ -13,7 +13,7 @@ import { confirmProposal, draftProposal, rejectProposal, type DraftInput } from 
 
 type Ctx = { session: any; prisma: any }
 
-/** Where the model is called from. Tests replace this with a deterministic fake; in production it is the owner's own key or nothing. */
+/** Where the model is called from. Tests replace this with a double; in production it is the owner's own key or nothing. */
 export const adapters: { completion: (config: Parameters<typeof llmCompletion>[0]) => Completion } = { completion: config => llmCompletion(config) }
 
 const run = async <T>(context: Ctx, actor: Actor, name: string, idempotencyKey: string, params: unknown, work: Parameters<typeof command<T>>[2]): Promise<{ replay: boolean } & T> => {

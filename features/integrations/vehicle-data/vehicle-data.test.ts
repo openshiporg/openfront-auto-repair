@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { fixtureAdapter, FIXTURE_VINS } from './fixtures'
+import { recordedAdapter, RECORDED_VINS } from './testdata'
 import { decodeHasErrors, nhtsaAdapter, nhtsaDate, parseRecalls } from './nhtsa'
 import { checkVin, normalizeVin, vinCheckDigit, withCheckDigit } from './vin'
-import accord from './fixtures/recalls-accord-2018.json'
+import accord from './testdata/recalls-accord-2018.json'
 
 describe('VIN (I-V1)', () => {
   it('normalises spaces, dashes and case', () => {
@@ -10,7 +10,7 @@ describe('VIN (I-V1)', () => {
   })
 
   it('computes the check digit (position 9), including X', () => {
-    expect(vinCheckDigit(FIXTURE_VINS.clean)).toBe('7')
+    expect(vinCheckDigit(RECORDED_VINS.clean)).toBe('7')
     expect(vinCheckDigit('11111111111111111')).toBe('1') // the classic all-ones test VIN
     const x = Array.from({ length: 1000 }, (_, i) => withCheckDigit(`1M8GDM9A${'0'}KP${String(i).padStart(6, '0')}`)).find(v => v[8] === 'X')
     expect(x).toBeDefined()
@@ -18,8 +18,8 @@ describe('VIN (I-V1)', () => {
   })
 
   it('a wrong check digit warns but never blocks; a malformed VIN is invalid; empty is none', () => {
-    expect(checkVin(FIXTURE_VINS.clean)).toMatchObject({ validity: 'valid' })
-    expect(checkVin(FIXTURE_VINS.checkDigit)).toMatchObject({ validity: 'check_digit_warning', message: expect.stringContaining('should be 7') })
+    expect(checkVin(RECORDED_VINS.clean)).toMatchObject({ validity: 'valid' })
+    expect(checkVin(RECORDED_VINS.checkDigit)).toMatchObject({ validity: 'check_digit_warning', message: expect.stringContaining('should be 7') })
     expect(checkVin('1HGCV1F37JA00000I').validity).toBe('invalid_format') // I is never used
     expect(checkVin('1HGCV1F37JA0001').validity).toBe('invalid_format') // too short
     expect(checkVin('')).toMatchObject({ vin: null, validity: 'none' })
@@ -27,10 +27,10 @@ describe('VIN (I-V1)', () => {
 })
 
 describe('NHTSA adapter on recorded responses', () => {
-  const adapter = fixtureAdapter()
+  const adapter = recordedAdapter()
 
   it('decodes the clean fixture VIN', async () => {
-    const res = await adapter.decodeVin(FIXTURE_VINS.clean)
+    const res = await adapter.decodeVin(RECORDED_VINS.clean)
     expect(res.kind).toBe('ok')
     if (res.kind !== 'ok') return
     expect(res.value).toMatchObject({ year: 2018, make: 'HONDA', model: 'Accord', errorCode: '0' })
@@ -38,7 +38,7 @@ describe('NHTSA adapter on recorded responses', () => {
   })
 
   it('reports the check-digit error from NHTSA but still decodes year, make and model', async () => {
-    const res = await adapter.decodeVin(FIXTURE_VINS.checkDigit)
+    const res = await adapter.decodeVin(RECORDED_VINS.checkDigit)
     expect(res.kind).toBe('ok')
     if (res.kind !== 'ok') return
     expect(res.value.errorCode).toBe('1')
@@ -80,7 +80,7 @@ describe('NHTSA adapter on recorded responses', () => {
     const down = nhtsaAdapter(async () => ({ ok: false, status: 503, json: async () => ({}) }))
     expect(await down.recallsByVehicle({ make: 'Honda', model: 'Accord', modelYear: 2018 })).toMatchObject({ kind: 'error', code: 'PROVIDER_ERROR', retryable: true })
     const limited = nhtsaAdapter(async () => ({ ok: false, status: 429, json: async () => ({}) }))
-    expect(await limited.decodeVin(FIXTURE_VINS.clean)).toMatchObject({ code: 'RATE_LIMITED', retryable: true })
+    expect(await limited.decodeVin(RECORDED_VINS.clean)).toMatchObject({ code: 'RATE_LIMITED', retryable: true })
     const garbage = nhtsaAdapter(async () => ({ ok: true, status: 200, json: async () => ({ unexpected: true }) }))
     expect(await garbage.recallsByVehicle({ make: 'Honda', model: 'Accord', modelYear: 2018 })).toMatchObject({ kind: 'error', code: 'PROVIDER_SHAPE', retryable: false })
   })

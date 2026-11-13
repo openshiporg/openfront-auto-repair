@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { hasTestDatabase, resetDatabase, testPrisma, uniqueKey } from '../../../tests/helpers/db'
-import { FIXTURE_VINS } from '../../integrations/vehicle-data/fixtures'
+import { RECORDED_VINS, recordedAdapter } from '../../integrations/vehicle-data/testdata'
 import { permissionNames } from '../access'
 import { systemActor } from '../lib/actor'
 import { verifyAuditChain } from '../lib/audit'
@@ -190,13 +190,13 @@ describe.skipIf(!hasTestDatabase)('Phase 1 commands (database)', () => {
   // ── Vehicles ────────────────────────────────────────────────────────────────
 
   it('one active vehicle per VIN; a check-digit typo warns; a lower odometer needs a reason', async () => {
-    const existing = await saveVehicle(null, { input: { vin: FIXTURE_VINS.clean }, idempotencyKey: uniqueKey('v') }, advisor) as { id: string; existing: boolean }
+    const existing = await saveVehicle(null, { input: { vin: RECORDED_VINS.clean }, idempotencyKey: uniqueKey('v') }, advisor) as { id: string; existing: boolean }
     expect(existing).toMatchObject({ id: 'seed_veh_01_1', existing: true })
-    const typo = await saveVehicle(null, { input: { vin: FIXTURE_VINS.checkDigit, year: 2018, make: 'Honda', model: 'Accord' }, idempotencyKey: uniqueKey('v') }, advisor) as { id: string; vinCheck: { validity: string } }
+    const typo = await saveVehicle(null, { input: { vin: RECORDED_VINS.checkDigit, year: 2018, make: 'Honda', model: 'Accord' }, idempotencyKey: uniqueKey('v') }, advisor) as { id: string; vinCheck: { validity: string } }
     expect(typo.vinCheck.validity).toBe('check_digit_warning')
-    await expect(saveVehicle(null, { input: { id: typo.id, vin: FIXTURE_VINS.clean }, idempotencyKey: uniqueKey('v') }, advisor)).rejects.toMatchObject({ code: 'DUPLICATE' })
+    await expect(saveVehicle(null, { input: { id: typo.id, vin: RECORDED_VINS.clean }, idempotencyKey: uniqueKey('v') }, advisor)).rejects.toMatchObject({ code: 'DUPLICATE' })
     await expect(saveVehicle(null, { input: { vin: 'ABC' }, idempotencyKey: uniqueKey('v') }, advisor)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
-    await expect(prisma.vehicle.create({ data: { vin: FIXTURE_VINS.clean, vinValid: 'valid', status: 'active' } as never })).rejects.toThrow(/Vehicle_active_vin_key|Unique constraint/)
+    await expect(prisma.vehicle.create({ data: { vin: RECORDED_VINS.clean, vinValid: 'valid', status: 'active' } as never })).rejects.toThrow(/Vehicle_active_vin_key|Unique constraint/)
 
     await recordOdometerReading(null, { vehicleId: typo.id, value: 60_000, idempotencyKey: uniqueKey('o') }, advisor)
     await expect(recordOdometerReading(null, { vehicleId: typo.id, value: 59_000, idempotencyKey: uniqueKey('o') }, advisor)).rejects.toMatchObject({ code: 'ODOMETER_REGRESSION' })
@@ -259,6 +259,10 @@ describe.skipIf(!hasTestDatabase)('Phase 1 commands (database)', () => {
     const customerId = 'seed_cust_07' // the 2017 Kia Sportage with park-outside recalls
     const owned = await prisma.vehicleOwnership.findFirstOrThrow({ where: { customerId, endedAt: null }, include: { vehicle: true } })
     const vehicle = { vehicleId: owned.vehicleId!, vehicle: owned.vehicle! }
+    // A recall check taken earlier, from the recorded NHTSA response for this make, model and year.
+    const recalls = await recordedAdapter().recallsByVehicle({ make: 'Kia', model: 'Sportage', modelYear: 2017 })
+    if (recalls.kind !== 'ok') throw new Error('recorded recalls missing')
+    await prisma.recallCheck.create({ data: { vehicleId: vehicle.vehicleId, source: 'nhtsa_make_model_year', query: { make: 'Kia', model: 'Sportage', modelYear: 2017 }, campaigns: JSON.parse(JSON.stringify(recalls.value)), campaignCount: recalls.value.length, parkItAny: recalls.value.some(c => c.parkIt || c.parkOutSide), checkedAt: new Date() } })
     const appt = await bookShopAppointment(null, { shopId: NGA, startsAt: at('15:00').toISOString(), kind: 'drop_off', customerId, vehicleId: vehicle.vehicleId, confirm: true, idempotencyKey: uniqueKey('b') }, advisor) as { id: string }
     const base = { shopId: NGA, appointmentId: appt.id, customerId, vehicleId: vehicle.vehicleId, concerns: ['Check engine light on'], promisedAt: new Date(Date.now() + 86_400_000).toISOString() }
     await expect(checkInShopVehicle(null, { input: { ...base, signature: SIGNATURE }, idempotencyKey: uniqueKey('ci') }, advisor)).rejects.toMatchObject({ code: 'ODOMETER_REQUIRED' })

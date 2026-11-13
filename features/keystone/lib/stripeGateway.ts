@@ -1,7 +1,7 @@
 import { DomainError, Codes } from './errors'
 
 /*
- * Card payments through Stripe (TEST keys in development and on the demo). No webhook endpoint:
+ * Card payments through Stripe (the key decides test or live). No webhook endpoint:
  * the account is out of webhook slots, so every payment and refund is settled by asking Stripe
  * (the "unknown" resolver and the polling the pay page does). Network calls never run inside a
  * database transaction. A call that fails without a clear answer leaves the payment "unknown"
@@ -98,15 +98,14 @@ function realGateway(secret: string): StripeGateway {
 }
 
 let override: StripeGateway | null = null
-/** Tests install a fake; null restores the real gateway. */
+/** Test seam: tests install a double; null restores the real gateway. */
 export function setStripeGateway(gateway: StripeGateway | null) { override = gateway }
 
 export function stripeGateway(): StripeGateway {
   if (override) return override
   const key = process.env.STRIPE_SECRET_KEY ?? ''
   if (!key) throw new DomainError(Codes.PROVIDER_UNAVAILABLE, 'Card payments are not set up on this server yet.')
-  // The demo takes test money only; a live key is refused until the owner turns live payments on (not built).
-  if (!key.startsWith('sk_test_') && !key.startsWith('rk_test_')) throw new DomainError(Codes.PROVIDER_UNAVAILABLE, 'Card payments run on Stripe test mode in this build.')
+  // The mode follows the key (test keys on demo deployments, live keys in production): one code path.
   return realGateway(key)
 }
-export const cardPaymentsConfigured = () => !!override || /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY ?? '')
+export const cardPaymentsConfigured = () => !!override || /^(sk|rk)_(test|live)_/.test(process.env.STRIPE_SECRET_KEY ?? '')

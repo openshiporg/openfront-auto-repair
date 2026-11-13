@@ -2,7 +2,7 @@ import type { Actor } from '../lib/actor'
 import { auditCreate } from '../lib/cas'
 import { postMovement, saveShopItem } from '../lib/stock'
 import type { UnitOfWork } from '../lib/unitOfWork'
-import { FIXTURE_SUPPLIERS } from '../../integrations/parts-supplier'
+import { SEED_SUPPLIERS } from './suppliers'
 
 /**
  * Phase 4 demo data: three suppliers, the shelf items a general repair shop keeps, and opening stock
@@ -26,10 +26,10 @@ export async function seedParts(uow: UnitOfWork, actor: Actor) {
   const counts = { suppliers: 0, shopItems: 0, openingStock: 0 }
   const have = new Set((await tx.supplier.findMany({ select: { name: true } })).map(s => s.name))
   const byName = new Map<string, string>()
-  for (const s of FIXTURE_SUPPLIERS) {
+  for (const s of SEED_SUPPLIERS) {
     if (have.has(s.name)) { byName.set(s.name, (await tx.supplier.findFirstOrThrow({ where: { name: s.name }, select: { id: true } })).id); continue }
     const row = await tx.supplier.create({
-      data: { name: s.name, kind: s.kind, adapter: 'fixture', phone: s.phone, email: s.email, website: s.website, coreReturnWindowDays: s.coreReturnWindowDays, priceToleranceMinor: s.priceToleranceMinor, preferred: s.preferred, active: true },
+      data: { name: s.name, kind: s.kind, adapter: 'manual', phone: s.phone, email: s.email, website: s.website, coreReturnWindowDays: s.coreReturnWindowDays, priceToleranceMinor: s.priceToleranceMinor, preferred: s.preferred, active: true },
     })
     auditCreate(uow, actor, 'Supplier', row.id, 'supplier.created', { name: s.name, kind: s.kind }, { metadata: { seed: true } })
     byName.set(s.name, row.id)

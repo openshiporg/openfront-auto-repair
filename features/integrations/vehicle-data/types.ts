@@ -43,7 +43,7 @@ export type RecallCampaign = {
 }
 
 export interface VehicleDataAdapter {
-  key: 'nhtsa' | 'fixture' | 'manual'
+  key: 'nhtsa' | 'manual'
   decodeVin(vin: string, modelYear?: number): Promise<Observed<VinDecode>>
   recallsByVehicle(query: { make: string; model: string; modelYear: number }): Promise<Observed<RecallCampaign[]>>
 }

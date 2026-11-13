@@ -1,4 +1,3 @@
-import { fixtureAdapter, FIXTURE_VINS } from '../../integrations/vehicle-data/fixtures'
 import { withCheckDigit } from '../../integrations/vehicle-data/vin'
 import { auditCreate } from '../lib/cas'
 import type { Actor } from '../lib/actor'
@@ -7,7 +6,10 @@ import { nextBusinessDay, zonedInstant } from '../lib/calendar'
 import { createBusinessAccount, recordConsent, upsertCustomer } from '../lib/customers'
 import { bookAppointment, loadShopCalendar } from '../lib/scheduling'
 import type { UnitOfWork } from '../lib/unitOfWork'
-import { recordOdometer, storeDecode, storeRecallCheck, upsertVehicle } from '../lib/vehicles'
+import { recordOdometer, upsertVehicle } from '../lib/vehicles'
+
+/** The first seeded car carries a VIN with a valid check digit. */
+const SEED_VIN = '1HGCV1F37JA000001'
 
 /*
  * Customers, vehicles, fleets, booking rules and a few upcoming appointments (BUILD-PLAN §5).
@@ -23,7 +25,7 @@ type CustomerSeed = { first: string; last: string; shop: 'nga' | 'ngt'; consent:
 const vin = (prefix: string, yearCode: string, plant: string, serial: number) => withCheckDigit(`${prefix}0${yearCode}${plant}${String(serial).padStart(6, '0')}`)
 
 const V = {
-  accord18: (n: number, extra: Partial<VehicleSeed> = {}): VehicleSeed => ({ vin: n === 1 ? FIXTURE_VINS.clean : vin('1HGCV1F3', 'J', 'A', 100 + n), year: 2018, make: 'Honda', model: 'Accord', trim: 'LX', odometer: 61_200 + n * 731, ...extra }),
+  accord18: (n: number, extra: Partial<VehicleSeed> = {}): VehicleSeed => ({ vin: n === 1 ? SEED_VIN : vin('1HGCV1F3', 'J', 'A', 100 + n), year: 2018, make: 'Honda', model: 'Accord', trim: 'LX', odometer: 61_200 + n * 731, ...extra }),
   camry16: (n: number): VehicleSeed => ({ vin: vin('4T1BF1FK', 'G', 'U', 200 + n), year: 2016, make: 'Toyota', model: 'Camry', trim: 'SE', odometer: 98_400 + n * 913 }),
   f150_19: (n: number): VehicleSeed => ({ vin: vin('1FTEW1E5', 'K', 'F', 300 + n), year: 2019, make: 'Ford', model: 'F-150', trim: 'XLT', odometer: 74_050 + n * 1_207 }),
   model3_20: (n: number): VehicleSeed => ({ vin: vin('5YJ3E1EA', 'L', 'F', 400 + n), year: 2020, make: 'Tesla', model: 'Model 3', trim: 'Standard Range Plus', odometer: 41_900 + n * 517 }),
@@ -105,7 +107,7 @@ export const BOOKING_RULES: Record<'nga' | 'ngt', [string, unknown][]> = {
 const SHOP_ID = { nga: 'seed_shop_nga', ngt: 'seed_shop_ngt' } as const
 /** 916-555-0100 to 0139: the 555-01xx block is reserved for fiction. */
 const phone = (n: number) => `+19165550${100 + n}`
-/** Realistic consumer domains for the demo. Messaging providers run on fixtures, so nothing is ever sent to these. */
+/** Realistic consumer domains for the demo. These addresses cannot receive mail. */
 const MAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'icloud.com', 'comcast.net', 'sbcglobal.net']
 const email = (c: CustomerSeed, i: number) => `${c.first}.${c.last}`.toLowerCase().replace(/[^a-z.]/g, '') + '@' + MAIL_DOMAINS[i % MAIL_DOMAINS.length]
 export const customerId = (i: number) => `seed_cust_${String(i + 1).padStart(2, '0')}`
@@ -126,34 +128,6 @@ export async function seedBookingRules(uow: UnitOfWork, actor: Actor) {
   return created
 }
 
-const RECALL_FIXTURES = [{ make: 'Honda', model: 'Accord', year: 2018 }, { make: 'Kia', model: 'Sportage', year: 2017 }]
-
-/**
- * Recorded NHTSA responses for the fixture vehicles: the decode for the fixture VIN and the recall
- * check for the fixture make/model/years. The fixture adapter runs in memory (live calls never run inside a
- * transaction). Each is added once: a vehicle that already has one is left alone.
- */
-async function seedVehicleData(uow: UnitOfWork, actor: Actor, vehicleId: string, v: Pick<VehicleSeed, 'vin' | 'make' | 'model' | 'year'>) {
-  const fixtures = fixtureAdapter()
-  if (v.vin === FIXTURE_VINS.clean && !(await uow.tx.vehicleDecode.count({ where: { vehicleId } }))) {
-    const decoded = await fixtures.decodeVin(v.vin)
-    if (decoded.kind === 'ok') await storeDecode(uow, actor, vehicleId, decoded.value, uow.now, true)
-  }
-  if (RECALL_FIXTURES.some(f => f.make === v.make && f.model === v.model && f.year === v.year) && !(await uow.tx.recallCheck.count({ where: { vehicleId } }))) {
-    const query = { make: v.make, model: v.model, modelYear: v.year }
-    const recalls = await fixtures.recallsByVehicle(query)
-    if (recalls.kind === 'ok') await storeRecallCheck(uow, actor, vehicleId, query, recalls.value, uow.now, true)
-  }
-}
-
-/** Fill the recorded NHTSA data for seeded vehicles that don't have it yet (also repairs earlier partial loads). */
-export async function seedRecordedVehicleData(uow: UnitOfWork, actor: Actor) {
-  const before = await uow.tx.recallCheck.count() + await uow.tx.vehicleDecode.count()
-  const vehicles = await uow.tx.vehicle.findMany({ where: { id: { startsWith: 'seed_veh_' }, OR: [{ vin: FIXTURE_VINS.clean }, ...RECALL_FIXTURES.map(f => ({ make: f.make, model: f.model, year: f.year }))] }, select: { id: true, vin: true, make: true, model: true, year: true } })
-  for (const v of vehicles) await seedVehicleData(uow, actor, v.id, { vin: v.vin, make: v.make, model: v.model, year: v.year ?? 0 })
-  return (await uow.tx.recallCheck.count()) + (await uow.tx.vehicleDecode.count()) - before
-}
-
 async function seedVehicle(uow: UnitOfWork, actor: Actor, id: string, v: VehicleSeed, owner: { customerId?: string; businessAccountId?: string }) {
   if (await uow.tx.vehicle.findUnique({ where: { id }, select: { id: true } })) return false
   const { id: savedId } = await upsertVehicle(uow, actor, {
@@ -162,7 +136,6 @@ async function seedVehicle(uow: UnitOfWork, actor: Actor, id: string, v: Vehicle
     plate: v.plate ? { plate: v.plate, state: 'CA' } : null,
   })
   await recordOdometer(uow, actor, { vehicleId: savedId, value: v.odometer, source: 'import' })
-  await seedVehicleData(uow, actor, savedId, v)
   return true
 }
 

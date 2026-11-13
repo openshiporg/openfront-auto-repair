@@ -125,7 +125,7 @@ export async function decodeVehicleVin(_root: unknown, args: { vehicleId: string
   const observedAt = new Date()
   const result = await adapter.decodeVin(vin.vin, vehicle.year ?? undefined)
   if (result.kind === 'error') throw new DomainError(Codes.PROVIDER_UNAVAILABLE, result.retryable ? 'NHTSA did not answer. Try again in a minute, or enter the details by hand.' : 'NHTSA could not decode this VIN. Check it, or enter the details by hand.', { reason: result.code })
-  return run(context, actor, 'vehicle.decode', args.idempotencyKey, { vehicleId: args.vehicleId, vin: vin.vin }, uow => storeDecode(uow, actor, args.vehicleId, result.value, observedAt, adapter.key === 'fixture'))
+  return run(context, actor, 'vehicle.decode', args.idempotencyKey, { vehicleId: args.vehicleId, vin: vin.vin }, uow => storeDecode(uow, actor, args.vehicleId, result.value, observedAt))
 }
 
 /** Check NHTSA recalls by make, model and year. These are possible recalls: the VIN is not confirmed. */
@@ -139,7 +139,7 @@ export async function checkVehicleRecalls(_root: unknown, args: { vehicleId: str
   const observedAt = new Date()
   const result = await adapter.recallsByVehicle(query)
   if (result.kind === 'error') throw new DomainError(Codes.PROVIDER_UNAVAILABLE, 'NHTSA recalls did not answer. Try again in a minute.', { reason: result.code })
-  return run(context, actor, 'vehicle.recalls', args.idempotencyKey, { vehicleId: args.vehicleId, ...query }, uow => storeRecallCheck(uow, actor, args.vehicleId, query, result.value, observedAt, adapter.key === 'fixture'))
+  return run(context, actor, 'vehicle.recalls', args.idempotencyKey, { vehicleId: args.vehicleId, ...query }, uow => storeRecallCheck(uow, actor, args.vehicleId, query, result.value, observedAt))
 }
 
 // ── Scheduling ────────────────────────────────────────────────────────────────

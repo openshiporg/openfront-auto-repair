@@ -33,7 +33,7 @@ export const Supplier = list({
   fields: {
     name: systemText({ required: true, indexed: 'unique' }),
     kind: systemChoice(SUPPLIER_KINDS, 'parts_store'),
-    adapter: systemChoice(['manual', 'fixture'], 'manual'),
+    adapter: systemChoice(['manual'], 'manual'),
     phone: systemText(),
     email: systemText(),
     website: systemText(),

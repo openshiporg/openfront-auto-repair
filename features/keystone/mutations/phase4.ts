@@ -12,7 +12,7 @@ import {
 } from '../lib/supplierOrders'
 import { approveSupplierInvoice, exportSupplierInvoice, matchSupplierInvoice, recordSupplierInvoice, resolveDiscrepancy, reverseSupplierInvoice, type SupplierInvoiceInput } from '../lib/supplierInvoices'
 import { completeTireRegistration, confirmTireRegistration, recordJobTire } from '../lib/tires'
-import { AmbiguousSendError, supplierAdapter, type QuoteRequest } from '../../integrations/parts-supplier'
+import { AmbiguousSendError, supplierAdapter, supplierHasApi, type QuoteRequest } from '../../integrations/parts-supplier'
 import { textOf } from '../lib/partsInput'
 import type { Permission } from '../access'
 
@@ -50,7 +50,7 @@ export async function saveShopPartItem(_root: unknown, args: { input: ItemInput;
   return run(context, actor, 'item.save', args.idempotencyKey, input, uow => saveShopItem(uow, actor, input))
 }
 
-/** Ask a supplier for a price. The sandbox suppliers answer; manual suppliers get a quote recorded by phone instead. */
+/** Ask a supplier for a price. A supplier with an API answers; any other supplier is quoted by phone and the price recorded. */
 export async function requestSupplierQuote(_root: unknown, args: { shopId: string; supplierId: string; partNumber: string; quantityMilli: number; jobId?: string | null; jobLineId?: string | null; idempotencyKey: string }, context: Ctx) {
   const actor = actorFromSession(context.session)
   requirePermission(actor, 'canOrderParts', 'canManageParts')
@@ -60,9 +60,9 @@ export async function requestSupplierQuote(_root: unknown, args: { shopId: strin
   if (!supplier?.active) throw new DomainError(Codes.NOT_FOUND, 'Supplier not found.', { field: 'supplierId' })
   const request: QuoteRequest = { partNumber: textOf(args.partNumber, 'Part number', 60, true), quantityMilli: args.quantityMilli }
   const answer = await supplierAdapter(supplier.adapter, supplier.name).quote(request)
-  if (!answer) return { found: false, message: supplier.adapter === 'manual' ? `${supplier.name} is quoted by phone. Record the price they gave you.` : `${supplier.name} does not carry ${request.partNumber}.` }
+  if (!answer) return { found: false, message: !supplierHasApi() ? `${supplier.name} is quoted by phone. Record the price they gave you.` : `${supplier.name} does not carry ${request.partNumber}.` }
   const made = await run(context, actor, 'quote.record', args.idempotencyKey, args, uow => recordPartQuote(uow, actor, {
-    shopId: args.shopId, jobId: args.jobId, jobLineId: args.jobLineId, supplierId: args.supplierId, source: 'fixture', partNumber: answer.partNumber, brand: answer.brand, description: answer.description,
+    shopId: args.shopId, jobId: args.jobId, jobLineId: args.jobLineId, supplierId: args.supplierId, source: 'api', partNumber: answer.partNumber, brand: answer.brand, description: answer.description,
     unitCostMinor: answer.unitCostMinor.toString(), listPriceMinor: answer.listPriceMinor.toString(), coreChargeMinor: answer.coreChargeMinor.toString(), availableQuantityMilli: answer.availableQuantityMilli,
     availability: answer.availability, etaHours: answer.etaHours, supplierLocation: answer.location,
   }))
@@ -106,7 +106,7 @@ export async function placeSupplierOrder(_root: unknown, args: { orderId: string
   const order = await context.prisma.supplierOrder.findUniqueOrThrow({ where: { id: args.orderId }, select: { status: true, reference: true } })
   // A retry after the outcome was recorded must not call the supplier again.
   if (order.status !== 'placing') return { id: args.orderId, reference: order.reference, status: order.status, replay: true }
-  if (begun.adapter === 'manual') {
+  if (!supplierHasApi()) {
     throw new DomainError(Codes.PROVIDER_UNAVAILABLE, `${begun.supplierName} takes orders by phone. Call them, then record who took the order.`)
   }
   let outcome: 'placed' | 'unknown' | 'failed' = 'placed'

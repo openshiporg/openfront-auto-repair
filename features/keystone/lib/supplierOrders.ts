@@ -38,7 +38,7 @@ export function requireAuthorizedJob(job: { status: string }, what: string) {
 // ── Quotes ────────────────────────────────────────────────────────────────────
 
 export type QuoteInput = {
-  shopId: string; jobId?: string | null; jobLineId?: string | null; supplierId: string; source: 'phone' | 'fixture' | 'manual'
+  shopId: string; jobId?: string | null; jobLineId?: string | null; supplierId: string; source: 'phone' | 'api' | 'manual'
   partNumber: string; brand?: string; description?: string; unitCostMinor: unknown; listPriceMinor?: unknown; coreChargeMinor?: unknown
   availableQuantityMilli?: number; availability?: string; etaHours?: number; supplierLocation?: string; phoneEvidence?: { spokeTo?: string; note?: string } | null
 }
@@ -48,7 +48,7 @@ export async function recordPartQuote(uow: UnitOfWork, actor: Actor, input: Quot
   const supplier = await tx.supplier.findUnique({ where: { id: idOf(input.supplierId, 'a supplier') }, select: { id: true, active: true, name: true } })
   if (!supplier || !supplier.active) throw new DomainError(Codes.NOT_FOUND, 'Supplier not found or not active.', { field: 'supplierId' })
   const partNumber = textOf(input.partNumber, 'Part number', 60, true)
-  const source = choiceOf(input.source, ['phone', 'fixture', 'manual'] as const, 'Source')
+  const source = choiceOf(input.source, ['phone', 'api', 'manual'] as const, 'Source')
   if (source === 'phone' && !textOf(input.phoneEvidence?.spokeTo, 'Who you spoke to', 80)) {
     throw new DomainError(Codes.INVALID_INPUT, 'For a quote taken by phone, write down who you spoke to.', { field: 'phoneEvidence' })
   }

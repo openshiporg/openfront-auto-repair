@@ -37,7 +37,7 @@ export const AgentRun = list({
     shop: relationship({ ref: 'Shop', ...readOnly }),
     invokedBy: relationship({ ref: 'User', ...readOnly }),
     channel: systemChoice(['dashboard_chat', 'mcp', 'voice', 'manual']),
-    adapter: systemChoice(['manual', 'llm', 'fake', 'mcp_client']),
+    adapter: systemChoice(['manual', 'llm', 'mcp_client']),
     inputSummary: systemText(),
     toolCalls: withoutCostKeys(json({ defaultValue: [], ...readOnly })),
     tokens: integer({ defaultValue: 0, ...readOnly }),

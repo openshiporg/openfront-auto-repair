@@ -45,7 +45,7 @@ export function requireProvider(config: ProviderConfig | null): ProviderConfig {
 }
 
 /** What an adapter returns: free text from outside is data, never instructions. */
-export type Suggestion<T> = { adapter: 'manual' | 'llm' | 'fake'; value: T }
+export type Suggestion<T> = { adapter: 'manual' | 'llm'; value: T }
 
 export interface Completion { complete(system: string, user: string): Promise<string> }
 
@@ -65,9 +65,6 @@ export function llmCompletion(config: ProviderConfig, fetcher: typeof fetch = fe
     },
   }
 }
-
-/** Deterministic stand-in used by the tests (no network, no key). */
-export const fakeCompletion = (reply: string | ((system: string, user: string) => string)): Completion => ({ complete: async (s, u) => (typeof reply === 'function' ? reply(s, u) : reply) })
 
 /** Text from outside the shop is wrapped so a model sees it as quoted data. */
 export const untrusted = (text: string) => ({ untrusted: String(text ?? '').slice(0, 4000) })

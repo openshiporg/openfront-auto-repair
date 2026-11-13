@@ -4,7 +4,8 @@ import { hasTestDatabase, resetDatabase, testPrisma, uniqueKey } from '../../../
 import { permissionNames } from '../access'
 import { NEVER_EXPOSED } from '../agents/constants'
 import { TOOLS } from '../agents/tools'
-import { fakeCompletion } from '../lib/aiProvider'
+import type { Completion } from '../lib/aiProvider'
+const fakeCompletion = (reply: (system: string, user: string) => string): Completion => ({ complete: async (s, u) => reply(s, u) })
 import { effectivePermissions, loadAgent } from '../lib/agentAccess'
 import { planWithModel } from '../lib/assistant'
 import { DOMAIN_TOOLS } from '../mcp/registry'

@@ -5,7 +5,8 @@ import { hasTestDatabase, resetDatabase, testPrisma, uniqueKey } from '../../../
 import { permissionNames } from '../access'
 import { verifyAuditChain } from '../lib/audit'
 import { mcpOperationProblem } from '../mcp-oauth/guard'
-import { resetFixtureSuppliers, fixtureOrdersReceived } from '../../integrations/parts-supplier'
+import { setSupplierAdapter } from '../../integrations/parts-supplier'
+import { resetTestSuppliers, testOrdersReceived, testSupplierAdapter } from '../../integrations/parts-supplier/testdata'
 import { decideApprovalRequest } from './approvals'
 import { checkInShopVehicle } from './phase1'
 import { addRepairJob, openShopRepairOrder, recordCustomerAuthorization, sendRepairEstimate, transitionRepairJob } from './phase2'
@@ -80,7 +81,8 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
   beforeAll(async () => {
     prisma = testPrisma(10)
     await resetDatabase(prisma)
-    resetFixtureSuppliers()
+    resetTestSuppliers()
+    setSupplierAdapter(testSupplierAdapter)
     const make = (name: string) => prisma.user.create({ data: { name, email: `${uniqueKey(name)}@test.local`, password: 'x'.repeat(60) } })
     const [o, a, p, m] = await Promise.all([make('owner'), make('advisor'), make('parts'), make('manager')])
     owner = { session: sessionFor(o.id, permissionNames.filter(x => x !== 'canBreakGlass')), prisma }
@@ -93,7 +95,7 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     ;[capitol, valley, sierra] = await Promise.all([sup('Capitol Auto Parts'), sup('Valley Warehouse Distributing'), sup('Sierra Tire Supply')])
   }, 900_000)
 
-  afterAll(async () => { await prisma?.$disconnect() })
+  afterAll(async () => { setSupplierAdapter(null); await prisma?.$disconnect() })
 
   it('loads suppliers and opening stock through the ledger, at the cost paid', { timeout: 60_000 }, async () => {
     expect(await prisma.supplier.count()).toBe(4)
@@ -215,10 +217,10 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     const made = await createShopSupplierOrder(null, { input: { shopId: NGA, supplierId: valley, kind: 'stock', lines: [{ partNumber: 'KYB-339370', brand: 'KYB', description: 'Front strut assembly, complete', quantityMilli: 2000, unitCostMinor: '8450' }] }, idempotencyKey: key('po') }, parts) as { id: string; reference: string }
     const sent = await placeSupplierOrder(null, { orderId: made.id, idempotencyKey: key('pl') }, parts) as { status: string }
     expect(sent.status).toBe('unknown')
-    expect(fixtureOrdersReceived(made.reference)).toBe(1)
+    expect(testOrdersReceived(made.reference)).toBe(1)
     // A second press cannot send it again: the order is not in a state that can be placed.
     await expect(placeSupplierOrder(null, { orderId: made.id, idempotencyKey: key('pl2') }, parts)).rejects.toMatchObject({ code: 'INVALID_TRANSITION' })
-    expect(fixtureOrdersReceived(made.reference)).toBe(1)
+    expect(testOrdersReceived(made.reference)).toBe(1)
     // Nothing is on order yet; receiving is refused until a person settles it.
     const line = await prisma.supplierOrderLine.findFirstOrThrow({ where: { orderId: made.id } })
     await expect(receiveShopSupplierOrder(null, { input: { orderId: made.id, receiptKey: key('rc'), lines: [{ orderLineId: line.id, quantityMilli: 1000 }] }, idempotencyKey: key('r') }, parts)).rejects.toMatchObject({ code: 'INVALID_TRANSITION' })
@@ -228,7 +230,7 @@ describe.skipIf(!hasTestDatabase)('Phase 4 parts, inventory, cores and supplier 
     // The resolver asks the supplier for its record of the reference and finds the one order.
     const resolved = await resolveUnknownSupplierOrder(null, { orderId: made.id, note: 'Valley Warehouse has it under this reference', idempotencyKey: key('res') }, parts) as { status: string }
     expect(resolved.status).toBe('placed')
-    expect(fixtureOrdersReceived(made.reference)).toBe(1)
+    expect(testOrdersReceived(made.reference)).toBe(1)
     expect((await prisma.supplierOrder.findUniqueOrThrow({ where: { id: made.id } })).placedAt).not.toBeNull()
     expect((await level('TIR-MICH-22545R17', NGT)).onOrderMilli).toBe(0)
     const tire = await prisma.supplierOrderLine.findFirstOrThrow({ where: { orderId: made.id } })

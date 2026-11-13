@@ -142,8 +142,8 @@ export const IntegrationConnection = list({
   fields: {
     shop: relationship({ ref: 'Shop', ...readOnly }),
     kind: systemChoice(['vehicle_data', 'labor_guide', 'parts_catalog', 'messaging', 'voice', 'payments', 'financing', 'accounting', 'service_history', 'tire_registration', 'tax', 'import']),
-    providerKey: systemChoice(['nhtsa', 'motor', 'alldata', 'partstech', 'nexpart', 'twilio', 'stripe', 'quickbooks', 'carfax', 'manual', 'fixture']),
-    mode: systemChoice(['manual', 'sandbox', 'live']),
+    providerKey: systemChoice(['nhtsa', 'motor', 'alldata', 'partstech', 'nexpart', 'twilio', 'stripe', 'quickbooks', 'carfax', 'manual']),
+    mode: systemChoice(['manual', 'live']),
     // Name of a SecretBox key. The secret itself is never a field of this list.
     secretRef: systemText(),
     capabilityProfile: json({ defaultValue: {}, ...readOnly }),

@@ -47,7 +47,7 @@ export function checkVin(value: unknown): { vin: string | null; validity: VinVal
   return { vin, validity: 'valid', message: 'VIN format and check digit are correct.' }
 }
 
-/** Returns the VIN with its check digit corrected (fixture and test helper). */
+/** Returns the VIN with its check digit corrected (test helper). */
 export function withCheckDigit(vin17: string): string {
   const vin = normalizeVin(vin17)
   return `${vin.slice(0, 8)}${vinCheckDigit(vin)}${vin.slice(9)}`

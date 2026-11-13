@@ -148,14 +148,14 @@ export async function recordOdometer(uow: UnitOfWork, actor: Actor, input: Odome
 }
 
 /** Store a decode snapshot and fill blank vehicle fields from it (it never overwrites what staff typed). */
-export async function storeDecode(uow: UnitOfWork, actor: Actor, vehicleId: string, v: VinDecode, observedAt: Date, fixture: boolean) {
+export async function storeDecode(uow: UnitOfWork, actor: Actor, vehicleId: string, v: VinDecode, observedAt: Date) {
   const { tx } = uow
   const vehicle = await lockRow<Record<string, any>>(tx, 'Vehicle', vehicleId)
   const errorCodes = v.errorCode.split(',').map(c => c.trim()).filter(Boolean)
   const { raw: _raw, ...kept } = v
   const row = await tx.vehicleDecode.create({
     data: {
-      vehicleId, provider: fixture ? 'fixture' : 'nhtsa_vpic', requestedVin: v.vin, decoded: toJsonValue(kept) as never,
+      vehicleId, provider: 'nhtsa_vpic', requestedVin: v.vin, decoded: toJsonValue(kept) as never,
       errorCode: v.errorCode ?? '', errorText: v.errorText?.slice(0, 2000) ?? '', fetchedAt: observedAt, fetchedById: actorUserId(actor),
     },
   })
@@ -172,11 +172,11 @@ export async function storeDecode(uow: UnitOfWork, actor: Actor, vehicleId: stri
   return { id: row.id, filled: Object.keys(fill), errorCode: v.errorCode }
 }
 
-export async function storeRecallCheck(uow: UnitOfWork, actor: Actor, vehicleId: string, query: { make: string; model: string; modelYear: number }, campaigns: RecallCampaign[], observedAt: Date, fixture: boolean) {
+export async function storeRecallCheck(uow: UnitOfWork, actor: Actor, vehicleId: string, query: { make: string; model: string; modelYear: number }, campaigns: RecallCampaign[], observedAt: Date) {
   const parkItAny = campaigns.some(c => c.parkIt || c.parkOutSide)
   const row = await uow.tx.recallCheck.create({
     data: {
-      vehicleId, source: fixture ? 'fixture' : 'nhtsa_make_model_year', query: query as never, campaigns: toJsonValue(campaigns) as never,
+      vehicleId, source: 'nhtsa_make_model_year', query: query as never, campaigns: toJsonValue(campaigns) as never,
       campaignCount: campaigns.length, parkItAny, checkedAt: observedAt, checkedById: actorUserId(actor),
     },
   })

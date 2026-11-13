@@ -194,7 +194,7 @@ export const VehicleDecode = list({
   ui: { listView: { initialColumns: ['vehicle', 'provider', 'requestedVin', 'errorCode', 'fetchedAt'] } },
   fields: {
     vehicle: relationship({ ref: 'Vehicle.decodes', ...readOnly }),
-    provider: fixedChoice(['nhtsa_vpic', 'fixture', 'labor_guide', 'parts_catalog', 'manual']),
+    provider: fixedChoice(['nhtsa_vpic', 'labor_guide', 'parts_catalog', 'manual']),
     requestedVin: systemText({ indexed: true, required: true }),
     decoded: json({ ...readOnly }),
     errorCode: systemText(),
@@ -256,7 +256,7 @@ export const RecallCheck = list({
   ui: { listView: { initialColumns: ['vehicle', 'source', 'campaignCount', 'parkItAny', 'checkedAt'] } },
   fields: {
     vehicle: relationship({ ref: 'Vehicle.recallChecks', ...readOnly }),
-    source: fixedChoice(['nhtsa_make_model_year', 'fixture', 'oem_vin']),
+    source: fixedChoice(['nhtsa_make_model_year', 'oem_vin']),
     query: json({ ...readOnly }),
     campaigns: json({ ...readOnly }),
     campaignCount: integer({ defaultValue: 0, ...readOnly }),
