@@ -52,7 +52,7 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, webho
 
     // Subscribe before the work so the outbox sees it.
     transport.fetch = async () => ({ status: 200, text: async () => 'ok' })
-    await p9.createWebhookEndpoint(null, { input: { shopId: NGA, url: 'https://shop.example/hook', events: ['invoice.finalized', 'payment.succeeded', 'job.authorized', 'estimate.sent'] }, idempotencyKey: key('wh') }, books)
+    await p9.addWebhookEndpoint(null, { input: { shopId: NGA, url: 'https://shop.example/hook', events: ['invoice.finalized', 'payment.succeeded', 'job.authorized', 'estimate.sent'] }, idempotencyKey: key('wh') }, books)
 
     const owned = await prisma.vehicleOwnership.findFirstOrThrow({ where: { customerId: 'seed_cust_04', endedAt: null, vehicle: { make: 'Toyota' } }, include: { vehicle: true } })
     const ci = await checkInShopVehicle(null, { input: { shopId: NGA, customerId: 'seed_cust_04', vehicleId: owned.vehicleId!, concerns: ['Grinding from the front brakes'], promisedAt: new Date(Date.now() + 86_400_000).toISOString(), odometer: { value: (owned.vehicle!.lastOdometer ?? 0) + 200 }, signature: SIGNATURE }, idempotencyKey: key('ci') }, books) as { id: string }
@@ -160,7 +160,7 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, webho
 
   it('an assistant connection cannot stage, export, import or add a webhook', async () => {
     await expect(p9.stageAccountingBatch(null, { shopId: NGA, businessDate: today, idempotencyKey: key('m') }, viaMcp)).rejects.toMatchObject({ code: expect.stringMatching(/AGENT_FORBIDDEN_ACTION|NOT_AUTHORIZED/) })
-    await expect(p9.createWebhookEndpoint(null, { input: { url: 'https://x.example/h', events: ['*'] }, idempotencyKey: key('m') }, viaMcp)).rejects.toMatchObject({ code: expect.stringMatching(/AGENT_FORBIDDEN_ACTION|NOT_AUTHORIZED/) })
+    await expect(p9.addWebhookEndpoint(null, { input: { url: 'https://x.example/h', events: ['*'] }, idempotencyKey: key('m') }, viaMcp)).rejects.toMatchObject({ code: expect.stringMatching(/AGENT_FORBIDDEN_ACTION|NOT_AUTHORIZED/) })
   })
 
   it('importing the Tekmetric fixture creates customers and vehicles once, and a second run changes nothing', async () => {
@@ -232,8 +232,8 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, webho
   })
 
   it('refuses a plain http address and an event this system does not send', async () => {
-    await expect(p9.createWebhookEndpoint(null, { input: { shopId: NGA, url: 'http://shop.example/h', events: ['job.declined'] }, idempotencyKey: key('b1') }, books)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
-    await expect(p9.createWebhookEndpoint(null, { input: { shopId: NGA, url: 'https://shop.example/h', events: ['customer.exported'] }, idempotencyKey: key('b2') }, books)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
+    await expect(p9.addWebhookEndpoint(null, { input: { shopId: NGA, url: 'http://shop.example/h', events: ['job.declined'] }, idempotencyKey: key('b1') }, books)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
+    await expect(p9.addWebhookEndpoint(null, { input: { shopId: NGA, url: 'https://shop.example/h', events: ['customer.exported'] }, idempotencyKey: key('b2') }, books)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
   })
 
   it('integration connections: live needs a capability profile, observations are kept once and never changed', async () => {

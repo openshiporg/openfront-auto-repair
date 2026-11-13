@@ -163,6 +163,8 @@ export async function getAuthenticatedUser() {
             canReadAudit
             canCloseDay
             canReadFinancials
+            canReadReports
+            canManageIntegrations
           }
         }
       }

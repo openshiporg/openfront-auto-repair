@@ -40,7 +40,9 @@ export function assertPeriod(from: unknown, to: unknown) {
 }
 
 const ratio = (num: bigint, den: bigint, scale = 100n) => (den === 0n ? null : (num * scale) / den)
-const pctString = (n: number, d: number) => (d === 0 ? null : (Math.round((n / d) * 10000) / 100).toFixed(2))
+/** Whole-number arithmetic only: a percentage with two places, rounded half up, as text. */
+const fixed = (hundredths: bigint, places: 1 | 2) => { const unit = places === 2 ? 100n : 10n; return `${hundredths / unit}.${String(hundredths % unit).padStart(places, '0')}` }
+const pctString = (n: number | bigint, d: number | bigint) => { const num = BigInt(n), den = BigInt(d); return den === 0n ? null : fixed((num * 20000n / den + 1n) / 2n, 2) }
 
 export type KpiOptions = { includeCost: boolean }
 
@@ -119,10 +121,10 @@ export async function computeKpis(tx: Tx, shopId: string, from: string, to: stri
       ? { partsSalesMinor: partsSalesMinor.toString(), partsCostMinor: partsCostMinor.toString(), gpMinor: (partsSalesMinor - partsCostMinor).toString(), gpPct: ratio(partsSalesMinor - partsCostMinor, partsSalesMinor, 10000n)?.toString() ?? null, gpPctScale: 100, costComplete: costKnown }
       : { partsSalesMinor: partsSalesMinor.toString(), hidden: true },
     tech_productivity: { technicians },
-    approval_rate: { approvedJobs: approvalCount, declined: answered.filter(a => a.decision === 'declined').length, deferred: answered.filter(a => a.decision === 'deferred').length, ratePct: pctString(approvalCount, approvalCount + answered.length), approvedMinor: approvedMinor.toString(), declinedMinor: declinedMinor.toString(), dollarRatePct: pctString(Number(approvedMinor), Number(approvedMinor + declinedMinor)) },
+    approval_rate: { approvedJobs: approvalCount, declined: answered.filter(a => a.decision === 'declined').length, deferred: answered.filter(a => a.decision === 'deferred').length, ratePct: pctString(approvalCount, approvalCount + answered.length), approvedMinor: approvedMinor.toString(), declinedMinor: declinedMinor.toString(), dollarRatePct: pctString(approvedMinor, approvedMinor + declinedMinor) },
     dvi_rate: { repairOrders: ros.length, inspected: inspectedRos, ratePct: pctString(inspectedRos, ros.length) },
     comeback_rate: { comebacks, carCount, ratePct: pctString(comebacks, carCount) },
-    cycle_time: { released: spans.length, averageHours: spans.length ? (Math.round((spans.reduce((a, b) => a + b, 0) / spans.length) * 10) / 10).toFixed(1) : null },
+    cycle_time: { released: spans.length, averageHours: spans.length ? fixed(BigInt(Math.round((spans.reduce((a, b) => a + b, 0) / spans.length) * 10)), 1) : null },
   }
   return { shopId, shopName: shop.name, from, to, values, definitions: Object.fromEntries(Object.entries(REPORT_DEFINITIONS).map(([k, v]) => [k, v.definition])) }
 }

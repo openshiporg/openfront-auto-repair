@@ -1,6 +1,6 @@
 import {
   BookOpenCheck, CalendarDays, Car, ClipboardCheck, ClipboardList, Columns3, FileText, ListChecks, LucideIcon, Scale, Settings, Store, Users, Wrench, BookTemplate, Receipt, Landmark, Package, Timer, Building2, FileSpreadsheet,
-  BellRing, MessageSquare, Megaphone, Bot, Stethoscope, ListTodo,
+  BarChart3, BookOpenText, Upload, Plug, BellRing, MessageSquare, Megaphone, Bot, Stethoscope, ListTodo,
 } from 'lucide-react'
 
 export interface PlatformNavItem {
@@ -45,6 +45,10 @@ export const platformNavItems: PlatformNavItem[] = [
 
   { title: 'Diagnosis', href: '/platform/diagnosis', color: 'cyan', description: 'Likely causes with their sources, tests, and the confidence bar before a quote.', icon: Stethoscope, group: 'standalone' },
   { title: 'Assistant plans', href: '/platform/proposals', color: 'amber', description: 'Plans assistants made, previewed and waiting for a person to confirm each step.', icon: ListTodo, group: 'standalone' },
+  { title: 'Reports', href: '/platform/reports', color: 'green', description: 'Car count, ARO, ELR, gross profit, technician productivity, approval and comeback rates, with definitions and books tie-outs.', icon: BarChart3, group: 'standalone' },
+  { title: 'Accounting export', href: '/platform/accounting', color: 'green', description: 'Daily journal files staged for the books. Nothing posts until a person records the books accepted it.', icon: BookOpenText, group: 'standalone' },
+  { title: 'Imports', href: '/platform/imports', color: 'slate', description: 'Bring customers and vehicles in from Tekmetric, Shopmonkey or any CSV, with a preview first.', icon: Upload, group: 'settings' },
+  { title: 'Integrations', href: '/platform/integrations', color: 'slate', description: 'Provider connections, what they told us, and webhooks out.', icon: Plug, group: 'settings' },
   { title: 'Shops', href: '/platform/shops', color: 'slate', description: 'Shops, bays, hours and staff memberships.', icon: Store, group: 'settings' },
   { title: 'Canned jobs', href: '/platform/canned-jobs', color: 'slate', description: 'Job templates: lines, labor-guide codes and wording, drafted then published.', icon: BookTemplate, group: 'settings' },
   { title: 'Policies', href: '/platform/policies', color: 'slate', description: 'Jurisdiction rules, labor rates, matrices, fees, tax and warranty: draft and publish.', icon: Scale, group: 'settings' },

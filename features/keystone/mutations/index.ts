@@ -203,7 +203,7 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         recordIntegrationHealth(connectionId: ID!, ok: Boolean!, message: String, idempotencyKey: String!): JSON
         revokeIntegrationConnection(connectionId: ID!, reason: String!, idempotencyKey: String!): JSON
         recordProviderObservation(input: JSON!, idempotencyKey: String!): JSON
-        createWebhookEndpoint(input: JSON!, idempotencyKey: String!): JSON
+        addWebhookEndpoint(input: JSON!, idempotencyKey: String!): JSON
         changeWebhookEndpoint(input: JSON!, idempotencyKey: String!): JSON
         replayWebhookEvent(eventId: ID!, idempotencyKey: String!): JSON
         sendDueWebhooks(idempotencyKey: String!): JSON
@@ -374,7 +374,7 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         recordIntegrationHealth: op(p9.recordIntegrationHealth),
         revokeIntegrationConnection: op(p9.revokeIntegrationConnection),
         recordProviderObservation: op(p9.recordProviderObservation),
-        createWebhookEndpoint: op(p9.createWebhookEndpoint),
+        addWebhookEndpoint: op(p9.addWebhookEndpoint),
         changeWebhookEndpoint: op(p9.changeWebhookEndpoint),
         replayWebhookEvent: op(p9.replayWebhookEvent),
         sendDueWebhooks: op(p9.sendDueWebhooks),

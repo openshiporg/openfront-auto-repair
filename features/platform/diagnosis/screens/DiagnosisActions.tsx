@@ -80,7 +80,7 @@ export function QuoteReadyForm({ sessionId, version, jobs, ok, reason, canOverri
     <form className="grid w-full gap-3 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); cmd.run({ input: { sessionId, repairJobId, expectedVersion: version, ...(why.trim() ? { overrideReason: why.trim() } : {}) } }); }}>
       <label className={labelClass}>Repair job to quote<select className={inputClass} value={repairJobId} onChange={e => setJob(e.target.value)}>{jobs.map(j => <option key={j.id} value={j.id}>{j.label}</option>)}</select></label>
       {!ok && canOverride ? <label className={labelClass}>Why quote anyway<input className={inputClass} value={why} onChange={e => setWhy(e.target.value)} /></label> : null}
-      {!ok ? <p className="text-sm sm:col-span-2">{reason}{canOverride ? '' : ' A lead technician or advisor can quote anyway, with a reason.'}</p> : null}
+      {!ok ? <p className="text-sm sm:col-span-2">{reason}{canOverride ? '' : ' A shop manager or owner can quote anyway, with a reason.'}</p> : null}
       <div className="sm:col-span-2"><button type="submit" disabled={cmd.pending || (!ok && !why.trim())} className={primary}>{cmd.pending ? 'Saving' : ok ? 'Ready to quote' : 'Quote anyway'}</button></div>
       <div className="sm:col-span-2"><FormError error={cmd.error} /></div>
     </form>

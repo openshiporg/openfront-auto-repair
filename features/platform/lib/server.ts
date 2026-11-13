@@ -17,7 +17,7 @@ export async function orgTimeZone(): Promise<string> {
   }
 }
 
-type PermissionName = 'canReadAudit' | 'canCloseDay' | 'canReadFinancials' | 'canReadRepairOrders' | 'canManageCustomers' | 'canMessageCustomers' | 'canManageCampaigns' | 'canReadCustomerPII' | 'canManageAgents' | 'canConfirmProposals' | 'canDiagnose' | 'canOverrideTrustGate' | 'canApproveAgentAutonomy'
+type PermissionName = 'canReadReports' | 'canManageIntegrations' | 'canReadAudit' | 'canCloseDay' | 'canReadFinancials' | 'canReadRepairOrders' | 'canManageCustomers' | 'canMessageCustomers' | 'canManageCampaigns' | 'canReadCustomerPII' | 'canManageAgents' | 'canConfirmProposals' | 'canDiagnose' | 'canOverrideTrustGate' | 'canApproveAgentAutonomy'
 
 /** Which of these permissions the signed-in role holds, so a screen can leave out buttons the server would refuse. */
 export async function holds(names: PermissionName[]): Promise<Record<PermissionName, boolean>> {

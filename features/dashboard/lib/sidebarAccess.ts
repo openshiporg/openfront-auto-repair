@@ -5,13 +5,17 @@
  */
 
 type SidebarList = { path: string; isHidden?: boolean | null }
-type SidebarUser = { role?: { canAccessDashboard?: boolean | null; canReadAudit?: boolean | null; canCloseDay?: boolean | null; canReadFinancials?: boolean | null } | null } | null | undefined
+type SidebarUser = { role?: { canAccessDashboard?: boolean | null; canReadAudit?: boolean | null; canCloseDay?: boolean | null; canReadFinancials?: boolean | null; canReadReports?: boolean | null; canManageIntegrations?: boolean | null } | null } | null | undefined
 
 /** Pages that need a permission the role may lack: the link is shown only when the role holds one of them. */
-const PLATFORM_PAGE_PERMISSIONS: Record<string, ('canReadAudit' | 'canCloseDay' | 'canReadFinancials')[]> = {
+const PLATFORM_PAGE_PERMISSIONS: Record<string, ('canReadAudit' | 'canCloseDay' | 'canReadFinancials' | 'canReadReports' | 'canManageIntegrations')[]> = {
   audit: ['canReadAudit'],
   'day-close': ['canCloseDay', 'canReadFinancials'],
   statements: ['canReadFinancials'],
+  reports: ['canReadReports', 'canReadFinancials'],
+  accounting: ['canCloseDay', 'canReadFinancials'],
+  imports: ['canManageIntegrations'],
+  integrations: ['canManageIntegrations'],
 }
 
 /** Only an explicit false hides navigation; an unknown user is left to the middleware. */

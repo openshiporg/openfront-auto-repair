@@ -84,6 +84,6 @@ describe('accounting export file and report definitions', () => {
     for (const key of ['car_count', 'aro', 'elr', 'gp_labor', 'gp_parts', 'tech_productivity', 'approval_rate', 'dvi_rate', 'comeback_rate', 'cycle_time']) expect(REPORT_DEFINITIONS[key].definition.length).toBeGreaterThan(40)
   })
   it('keeps money and integration commands away from connected assistants', () => {
-    for (const n of ['stageAccountingBatch', 'exportAccountingBatch', 'recordAccountingResponse', 'applyDataImport', 'createWebhookEndpoint', 'saveIntegrationConnection']) expect(HUMAN_ONLY_MUTATIONS.has(n), n).toBe(true)
+    for (const n of ['stageAccountingBatch', 'exportAccountingBatch', 'recordAccountingResponse', 'applyDataImport', 'addWebhookEndpoint', 'saveIntegrationConnection']) expect(HUMAN_ONLY_MUTATIONS.has(n), n).toBe(true)
   })
 })

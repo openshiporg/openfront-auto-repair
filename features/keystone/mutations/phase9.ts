@@ -197,7 +197,7 @@ export async function recordProviderObservation(_root: unknown, args: { input: P
 
 // ── Webhooks out ─────────────────────────────────────────────────────────────────────────────
 
-export async function createWebhookEndpoint(_root: unknown, args: { input: { shopId?: string | null; url: string; events: string[] }; idempotencyKey: string }, context: Ctx) {
+export async function addWebhookEndpoint(_root: unknown, args: { input: { shopId?: string | null; url: string; events: string[] }; idempotencyKey: string }, context: Ctx) {
   const actor = actorFromSession(context.session)
   requirePermission(actor, ...ADMIN)
   requireHuman(actor, 'add a webhook')

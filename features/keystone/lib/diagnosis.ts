@@ -9,7 +9,7 @@ import type { UnitOfWork } from './unitOfWork'
  * Diagnosis sessions (STATE-MACHINES §7). open → testing → quote_ready | inconclusive → closed.
  * The trust gate: a diagnosis-based job can be quoted only when a test confirms the top hypothesis,
  * its confidence is at or above the shop's threshold (default 0.70) and the job addresses that hypothesis.
- * A lead technician or advisor can override with a reason. An agent never can.
+ * A shop manager or owner can override with a reason. An agent never can.
  */
 
 const text = (v: unknown, field: string, max: number, required = true) => {
@@ -173,8 +173,8 @@ export async function markQuoteReady(uow: UnitOfWork, actor: Actor, input: Ready
   const reason = typeof input.overrideReason === 'string' ? input.overrideReason.trim() : ''
   let override: Record<string, unknown> | null = null
   if (!gate.ok) {
-    if (!reason) throw new DomainError(Codes.GUARD_FAILED, `${gate.reason} A lead technician or advisor can override with a reason.`, { reason: gate.reason ?? '' })
-    if (!can(actor, 'canOverrideTrustGate')) throw new DomainError(Codes.NOT_AUTHORIZED, 'Only a lead technician or advisor can override the diagnosis check.')
+    if (!reason) throw new DomainError(Codes.GUARD_FAILED, `${gate.reason} A shop manager or owner can override with a reason.`, { reason: gate.reason ?? '' })
+    if (!can(actor, 'canOverrideTrustGate')) throw new DomainError(Codes.NOT_AUTHORIZED, 'Only a shop manager or owner can override the diagnosis check.')
     if (!gate.topId) throw new DomainError(Codes.GUARD_FAILED, 'Add a likely cause before overriding.')
     override = { by: actor.userId, reason: text(reason, 'Reason', 400), at: uow.now.toISOString(), threshold: gate.threshold, confidence: gate.confidence, confirmed: gate.confirmed }
     await tx.job.update({ where: { id: job.id }, data: { addressesHypothesisId: gate.topId } })
@@ -225,7 +225,7 @@ export async function assertDiagnosisCleared(tx: Tx, jobIds: string[]) {
       if (gate.ok) continue
       throw new DomainError(Codes.TRUST_GATE, `"${s.title}" rests on a diagnosis that has not cleared: ${gate.reason}`, { sessionId: s.id, reason: gate.reason ?? '' })
     }
-    throw new DomainError(Codes.TRUST_GATE, `"${s.title}" rests on a diagnosis that is not ready to quote. Confirm the cause (or a lead technician or advisor overrides with a reason) first.`, { sessionId: s.id, currentStatus: s.status })
+    throw new DomainError(Codes.TRUST_GATE, `"${s.title}" rests on a diagnosis that is not ready to quote. Confirm the cause (or a shop manager or owner overrides with a reason) first.`, { sessionId: s.id, currentStatus: s.status })
   }
 }
 

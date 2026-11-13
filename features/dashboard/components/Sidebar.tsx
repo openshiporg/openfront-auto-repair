@@ -62,6 +62,8 @@ interface User {
     canReadAudit?: boolean;
     canCloseDay?: boolean;
     canReadFinancials?: boolean;
+    canReadReports?: boolean;
+    canManageIntegrations?: boolean;
   };
 }
 
