@@ -9,6 +9,7 @@ import { assertOpen, refreshRoTotals } from './repairOrders'
 import { deriveToken, hashToken, isTokenShape, newTokenId } from './publicTokens'
 import { requireTransactionalConsent } from './inspections'
 import { releaseJobReservations } from './stock'
+import { assertDiagnosisCleared } from './diagnosis'
 import { recordRecommendation } from './followUps'
 import type { Tx } from './db'
 import type { UnitOfWork } from './unitOfWork'
@@ -66,6 +67,7 @@ export async function issueEstimate(uow: UnitOfWork, actor: Actor, input: { repa
 
   const missing = await disclosureProblems(tx, ro, chosen.map(j => j.id))
   if (missing.length) throw new DomainError(Codes.DISCLOSURE_MISSING, `The estimate can't be sent yet: ${missing.slice(0, 4).join('; ')}${missing.length > 4 ? '…' : ''}.`, { problems: missing, missing })
+  await assertDiagnosisCleared(tx, chosen.map(j => j.id))
   const unpriced = chosen.filter(j => !j.contentHash || j.status === 'draft')
   if (unpriced.length) throw new DomainError(Codes.GUARD_FAILED, `Price every job first: job ${unpriced.map(j => j.number).join(', ')}.`, { problems: unpriced.map(j => `job ${j.number}`) })
 

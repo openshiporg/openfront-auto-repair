@@ -11,7 +11,9 @@ import { DOMAIN_TOOLS } from '../mcp/registry'
 import { HUMAN_ONLY_MUTATIONS } from '../mcp-oauth/guard'
 import { checkInShopVehicle } from './phase1'
 import { addRepairJob, openShopRepairOrder, recordCustomerAuthorization, saveJobLines, sendRepairEstimate } from './phase2'
-import { loadNorthgateSetup } from './setup'
+import { northgateSteps } from './setup'
+import { actorFromSession } from '../lib/actor'
+import { command } from '../lib/command'
 import {
   addDiagnosisHypothesis, askAssistant, confirmAgentProposal, createAssistant, grantAssistantScope, pauseAssistant, recordDiagnosisTest, markDiagnosisQuoteReady, startDiagnosisSession, diagnosisGate,
 } from './phase8'
@@ -91,9 +93,15 @@ describe.skipIf(!hasTestDatabase)('Phase 8 red-team: proposals, stale, pause, gr
     owner = { session: sessionFor(o.id, permissionNames.filter(x => x !== 'canBreakGlass')), prisma }
     advisor = { session: sessionFor(a.id, ADVISOR), prisma }
     tech = { session: sessionFor(t.id, TECH), prisma }
+    // Every Northgate step but the golden repair order and the sample appointments: these tests open their own orders.
+    // The golden order is one ~330-query transaction that runs past the 60 s limit over the remote scratch database
+    // (~130 ms a query), and the appointment seed depends on the wall clock (the backlogged next-business-day issue).
     const setupKey = key('setup')
-    for (let attempt = 1; ; attempt += 1) {
-      try { await loadNorthgateSetup(null, { idempotencyKey: setupKey }, owner); break } catch (error) { if (attempt >= 4) throw error }
+    const actor = actorFromSession(owner.session as never)
+    for (const step of northgateSteps(actor).filter(s => !['golden_repair_order', 'appointments'].includes(s.name))) {
+      for (let attempt = 1; ; attempt += 1) {
+        try { await command(prisma, { name: `setup.load_northgate.${step.name}`, actor, idempotencyKey: `${setupKey}:${step.name}`, params: {} }, step.run); break } catch (error) { if (attempt >= 4) throw error }
+      }
     }
     const created = await createAssistant(null, { input: { name: 'Front counter helper', shopIds: [NGA] }, idempotencyKey: key('ag') }, owner) as { id: string }
     agentId = created.id
@@ -203,5 +211,113 @@ describe.skipIf(!hasTestDatabase)('Phase 8 red-team: proposals, stale, pause, gr
     expect(((await v()).override as { reason: string }).reason).toContain('conclusive')
     // An assistant can add a cause, but cannot record the test or override.
     await expect(askAssistant(null, { agentId, repairOrderId: roId, title: 'Override', steps: [{ tool: 'override_trust_gate', args: { sessionId: session.id } }], idempotencyKey: key('o') }, advisor)).rejects.toMatchObject({ code: 'AGENT_FORBIDDEN_ACTION' })
+  })
+
+  // r1 B1: agent lines carry no money decisions (applyDiscount and overrideLinePrice are never exposed).
+  it('refuses agent lines with a discount, a price override, a negative amount or a below-floor part, writing nothing', { timeout: 300_000 }, async () => {
+    const roId = await openOrder()
+    const job = await addRepairJob(null, { input: { repairOrderId: roId, title: 'Front brakes', lines: LABOR }, idempotencyKey: key('j') }, owner) as { id: string }
+    const before = await prisma.job.findUniqueOrThrow({ where: { id: job.id } })
+    const linesBefore = await prisma.jobLine.count({ where: { jobId: job.id } })
+    const jobsBefore = await prisma.job.count({ where: { repairOrderId: roId } })
+    const cases: [string, unknown[]][] = [
+      ['-$50 discount', [LABOR[0], { kind: 'discount', description: 'Loyalty discount', discountMinor: '5000', discountTargetRef: 'L1' }]],
+      ['negative discount amount', [LABOR[0], { kind: 'discount', description: 'Discount', discountMinor: '-5000', discountTargetRef: 'L1' }]],
+      ['labor override 100', [{ ...LABOR[0], unitPriceOverrideMinor: '100' }]],
+      ['labor override 999900', [{ ...LABOR[0], unitPriceOverrideMinor: '999900' }]],
+      ['$1 part against $40 cost', [{ kind: 'part', description: 'Brake pad set', partNumber: 'BRK-PAD-F', condition: 'new', quantityMilli: 1000, unitCostMinor: '4000', unitPriceOverrideMinor: '100' }]],
+      ['negative sublet price', [{ kind: 'sublet', description: 'Alignment', subletVendorName: 'Rack Shop', subletCostMinor: '5000', subletPriceMinor: '-5000' }]],
+      ['negative hours', [{ ...LABOR[0], soldCentiHours: -50 }]],
+    ]
+    for (const [name, lines] of cases) {
+      for (const step of [
+        { tool: 'add_job', args: { repairOrderId: roId, title: `Agent ${name}`, lines } },
+        { tool: 'price_job', args: { jobId: job.id, expectedVersion: before.version, lines } },
+      ]) {
+        const out = askAssistant(null, { agentId, repairOrderId: roId, title: name, steps: [step], idempotencyKey: key('b1') }, advisor)
+        await expect(out, `${step.tool}: ${name}`).rejects.toMatchObject({ code: 'AGENT_FORBIDDEN_ACTION' })
+      }
+    }
+    // Nothing was written: no new job, the priced job's lines and version unchanged, no below-floor snapshot.
+    expect(await prisma.job.count({ where: { repairOrderId: roId } })).toBe(jobsBefore)
+    expect(await prisma.jobLine.count({ where: { jobId: job.id } })).toBe(linesBefore)
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).version).toBe(before.version)
+    expect(await prisma.agentProposal.count({ where: { repairOrderId: roId, status: { in: ['previewed', 'executed'] } } })).toBe(0)
+    // A plain agent plan (matrix price, typed hours) still previews and confirms.
+    const ok = await askAssistant(null, { agentId, repairOrderId: roId, title: 'Price the brakes', steps: [{ tool: 'price_job', args: { jobId: job.id, expectedVersion: before.version, lines: [{ ...LABOR[0], soldCentiHours: 120 }, { kind: 'part', description: 'Brake pad set', partNumber: 'BRK-PAD-F', condition: 'new', quantityMilli: 1000, unitCostMinor: '4000' }] } }], idempotencyKey: key('ok') }, advisor) as any
+    const p = await prisma.agentProposal.findUniqueOrThrow({ where: { id: ok.proposalId } })
+    expect((await confirmAgentProposal(null, { proposalId: p.id, expectedVersion: p.version, idempotencyKey: key('c') }, advisor) as any).status).toBe('executed')
+    const snap = (await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).priceSnapshot as { belowFloor: string[] }
+    expect(snap.belowFloor).toEqual([])
+    // A person may still discount (unchanged human path).
+    const fresh = await prisma.job.findUniqueOrThrow({ where: { id: job.id } })
+    await saveJobLines(null, { jobId: job.id, expectedVersion: fresh.version, lines: [LABOR[0], { kind: 'discount', description: 'Loyalty discount', discountMinor: '500', discountTargetRef: 'L1' }], idempotencyKey: key('s') }, owner)
+    expect(await prisma.jobLine.count({ where: { jobId: job.id, kind: 'discount' } })).toBe(1)
+  })
+
+  // r1 B2: plans drafted on one job version and confirmed at once: exactly one executes, the rest are stale.
+  async function raceTrials(width: number, trials: number) {
+    const roId = await openOrder()
+    for (let trial = 0; trial < trials; trial += 1) {
+      const job = await addRepairJob(null, { input: { repairOrderId: roId, title: `Race ${width}.${trial}`, lines: LABOR }, idempotencyKey: key('j') }, owner) as { id: string }
+      const v = (await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).version
+      const ids: string[] = []
+      for (let i = 0; i < width; i += 1) {
+        const d = await askAssistant(null, { agentId, repairOrderId: roId, title: `Price ${i}`, steps: [{ tool: 'price_job', args: { jobId: job.id, expectedVersion: v, lines: [{ ...LABOR[0], soldCentiHours: 60 + i }] } }], idempotencyKey: key('d') }, advisor) as any
+        ids.push(d.proposalId)
+      }
+      const versions = await Promise.all(ids.map(async id => (await prisma.agentProposal.findUniqueOrThrow({ where: { id } })).version))
+      const results = await Promise.all(ids.map((id, i) => confirmAgentProposal(null, { proposalId: id, expectedVersion: versions[i], idempotencyKey: key('c') }, advisor).then((r: any) => String(r.status), (e: any) => `error:${e?.code ?? e?.message}`)))
+      console.log(`B2 width ${width} trial ${trial}: ${results.join(',')}`)
+      expect(results.filter(r => r === 'executed').length, `width ${width} trial ${trial}: ${results.join(',')}`).toBe(1)
+      // Losers are stale. With connection_limit=2 a loser queued behind nine others can instead time out waiting for a
+      // connection (P2028) before it runs anything; it is never executed.
+      expect(results.filter(r => r !== 'executed').every(r => r === 'stale' || r === 'error:P2028'), results.join(',')).toBe(true)
+      expect(results.filter(r => r === 'stale').length, results.join(',')).toBeGreaterThanOrEqual(1)
+      // The job holds the winner's hours, priced once; only one proposal is executed.
+      expect((await prisma.jobLine.findMany({ where: { jobId: job.id, kind: 'labor' } })).map(l => l.soldCentiHours)).toEqual([60 + results.indexOf('executed')])
+      expect(await prisma.agentProposal.count({ where: { id: { in: ids }, status: 'executed' } })).toBe(1)
+    }
+  }
+  it('B2: 10 trials of 2 concurrent Confirms of price_job on one job version: exactly one executes', { timeout: 1_800_000 }, () => raceTrials(2, 10))
+  it('B2: 10 trials of 10 concurrent Confirms of price_job on one job version: exactly one executes', { timeout: 3_600_000 }, () => raceTrials(10, 10))
+
+  // r1 B3: the trust gate holds in the pricing and estimate path, for a person and an assistant alike.
+  it('will not price or quote a repair job resting on a diagnosis below 0.70, until a person overrides with a reason', { timeout: 300_000 }, async () => {
+    const roId = await openOrder()
+    const concern = await prisma.concern.findFirstOrThrow({ where: { repairOrderId: roId } })
+    const diag = await addRepairJob(null, { input: { repairOrderId: roId, title: 'Diagnosis, first hour', kind: 'diagnosis', concernId: concern.id, lines: LABOR }, idempotencyKey: key('d') }, owner) as { id: string }
+    const ro = await prisma.repairOrder.findUniqueOrThrow({ where: { id: roId } })
+    const ev = await sendRepairEstimate(null, { repairOrderId: roId, expectedVersion: ro.version, idempotencyKey: key('e') }, owner) as { id: string }
+    await recordCustomerAuthorization(null, { input: { estimateVersionId: ev.id, method: 'in_person_signature', actorName: 'Customer', replacedPartsElection: 'do_not_return', signature: { method: 'in_person', signerName: 'Customer', strokes: [Array.from({ length: 12 }, (_, i) => [i, i * 2])] }, answers: [{ jobId: diag.id, decision: 'approve' }] }, idempotencyKey: key('a') }, owner)
+    const session = await startDiagnosisSession(null, { input: { repairOrderId: roId, concernId: concern.id, jobId: diag.id, dtcs: ['P0301'] }, idempotencyKey: key('s') }, tech) as { id: string }
+    await addDiagnosisHypothesis(null, { input: { sessionId: session.id, cause: 'Cylinder 1 ignition coil failed', confidence: 0.62, sources: [{ sourceKind: 'oem', title: 'Misfire diagnostic tree' }] }, idempotencyKey: key('h') }, tech)
+    const hyp = await prisma.diagnosisHypothesis.findFirstOrThrow({ where: { sessionId: session.id } })
+    await recordDiagnosisTest(null, { input: { sessionId: session.id, hypothesisId: hyp.id, procedure: 'Swap coil 1 and 2', result: 'Misfire followed the coil', outcome: 'confirms' }, idempotencyKey: key('t') }, tech)
+
+    // A person adds the repair for the diagnosed concern: it is kept as a draft with the reason, never priced.
+    const fix = await addRepairJob(null, { input: { repairOrderId: roId, title: 'Ignition coil, replace', concernId: concern.id, lines: LABOR }, idempotencyKey: key('f') }, owner) as any
+    expect(fix.status).toBe('draft')
+    expect(fix.problems.join(' ')).toMatch(/diagnosis/)
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: fix.id } })).contentHash).toBe('')
+    // An estimate including it is refused.
+    const ro2 = await prisma.repairOrder.findUniqueOrThrow({ where: { id: roId } })
+    await expect(sendRepairEstimate(null, { repairOrderId: roId, jobIds: [fix.id], expectedVersion: ro2.version, idempotencyKey: key('e') }, owner)).rejects.toMatchObject({ code: 'TRUST_GATE' })
+    // An assistant is refused outright, whether it adds the job or prices it.
+    await expect(askAssistant(null, { agentId, repairOrderId: roId, title: 'Quote the coil', steps: [{ tool: 'add_job', args: { repairOrderId: roId, title: 'Coil', concernId: concern.id, lines: LABOR } }], idempotencyKey: key('x') }, advisor)).rejects.toMatchObject({ code: 'TRUST_GATE' })
+    const fv = (await prisma.job.findUniqueOrThrow({ where: { id: fix.id } })).version
+    await expect(askAssistant(null, { agentId, repairOrderId: roId, title: 'Price the coil', steps: [{ tool: 'price_job', args: { jobId: fix.id, expectedVersion: fv, lines: LABOR } }], idempotencyKey: key('x') }, advisor)).rejects.toMatchObject({ code: 'TRUST_GATE' })
+    // An assistant raising its own confidence cannot clear it: only a person marks quote-ready.
+    await askAssistant(null, { agentId, repairOrderId: roId, title: 'More sure', steps: [{ tool: 'add_hypothesis', args: { sessionId: session.id, cause: 'Coil', confidence: 0.99, sources: [{ sourceKind: 'oem', title: 'x' }] } }], idempotencyKey: key('x') }, advisor).catch(() => null)
+    await expect(askAssistant(null, { agentId, repairOrderId: roId, title: 'Price the coil', steps: [{ tool: 'price_job', args: { jobId: fix.id, expectedVersion: fv, lines: LABOR } }], idempotencyKey: key('x') }, advisor)).rejects.toMatchObject({ code: 'TRUST_GATE' })
+
+    // A person overrides with a reason (recorded): the held job is priced, and the estimate can go.
+    const sv = (await prisma.diagnosisSession.findUniqueOrThrow({ where: { id: session.id } })).version
+    await markDiagnosisQuoteReady(null, { input: { sessionId: session.id, repairJobId: fix.id, expectedVersion: sv, overrideReason: 'Swap test is conclusive on this engine' }, idempotencyKey: key('q') }, owner)
+    const priced = await prisma.job.findUniqueOrThrow({ where: { id: fix.id } })
+    expect(priced.status).toBe('priced')
+    const ro3 = await prisma.repairOrder.findUniqueOrThrow({ where: { id: roId } })
+    const sent = await sendRepairEstimate(null, { repairOrderId: roId, jobIds: [fix.id], expectedVersion: ro3.version, idempotencyKey: key('e') }, owner) as { id: string }
+    expect(sent.id).toBeTruthy()
   })
 })

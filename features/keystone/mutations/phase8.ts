@@ -8,6 +8,7 @@ import { disputeEmail, findCannedJob, planWithModel } from '../lib/assistant'
 import { command } from '../lib/command'
 import { addHypothesis, closeDiagnosis, markInconclusive, markQuoteReady, recordDiagnosticTest, startDiagnosis, trustGate } from '../lib/diagnosis'
 import { Codes, DomainError } from '../lib/errors'
+import { repriceJob } from '../lib/repairOrders'
 import { confirmProposal, draftProposal, rejectProposal, type DraftInput } from '../lib/proposals'
 
 type Ctx = { session: any; prisma: any }
@@ -218,7 +219,13 @@ export async function markDiagnosisQuoteReady(_root: unknown, args: { input: { s
   requireHuman(actor, 'mark a diagnosis ready to quote')
   requirePermission(actor, ...DIAG, 'canOverrideTrustGate')
   await sessionShop(context, args.input?.sessionId)
-  return run(context, actor, 'diagnosis.quote_ready', args.idempotencyKey, args.input, uow => markQuoteReady(uow, actor, args.input))
+  return run(context, actor, 'diagnosis.quote_ready', args.idempotencyKey, args.input, async uow => {
+    const out = await markQuoteReady(uow, actor, args.input)
+    // The repair job's lines were held as a draft by the trust gate; price them now that the diagnosis cleared.
+    const job = await uow.tx.job.findUnique({ where: { id: args.input.repairJobId }, select: { status: true, _count: { select: { lines: true } } } })
+    if (job && job.status === 'draft' && job._count.lines > 0) await repriceJob(uow, actor, args.input.repairJobId)
+    return out
+  })
 }
 
 export async function markDiagnosisInconclusive(_root: unknown, args: { sessionId: string; expectedVersion: number; note?: string | null; idempotencyKey: string }, context: Ctx) {

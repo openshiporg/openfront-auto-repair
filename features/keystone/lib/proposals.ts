@@ -6,7 +6,7 @@ import { actorUserId, can, isMachine, type Actor } from './actor'
 import { assertAllowed, agentActor, loadAgent, type AgentState } from './agentAccess'
 import { auditCreate, lockRow, transition } from './cas'
 import { command } from './command'
-import { delegateOf, type Db, type Tx } from './db'
+import { delegateOf, tableName, type Db, type Tx } from './db'
 import { Codes, DomainError } from './errors'
 import { runInTransaction, type UnitOfWork } from './unitOfWork'
 
@@ -181,10 +181,18 @@ async function loadProposal(tx: Tx, id: unknown, shopIds: string[] | 'all') {
   return p
 }
 
+/**
+ * The compare-and-set: each record's row lock is taken (SELECT … FOR UPDATE) BEFORE its version is read, in the same
+ * transaction that runs the step. Two plans drafted on one version and confirmed at once queue on the lock; the second
+ * reads the version the first wrote and gets `stale`. A job's repair order is locked first (the order pricing locks in).
+ */
 async function checkReadSet(tx: Tx, readSet: ReadEntry[], stepIndex: number) {
   for (const e of readSet.filter(r => r.stepIndex === stepIndex)) {
-    const row = await delegateOf(tx, e.entity).findUnique({ where: { id: e.id } })
-    if (!row || Number((row as any).version ?? 0) !== e.version) return `${e.entity.replace(/([A-Z])/g, ' $1').trim().toLowerCase()} changed after the preview`
+    const locked = e.entity === 'Job'
+      ? await tx.$queryRaw<{ version: number }[]>`SELECT j.version FROM "Job" j JOIN "RepairOrder" r ON r.id = j."repairOrder" WHERE j.id = ${e.id} FOR UPDATE`
+      : await tx.$queryRawUnsafe<{ version: number }[]>(`SELECT version FROM ${tableName(e.entity)} WHERE id = $1 FOR UPDATE`, e.id)
+    const row = locked[0]
+    if (!row || Number(row.version ?? 0) !== e.version) return `${e.entity.replace(/([A-Z])/g, ' $1').trim().toLowerCase()} changed after the preview`
   }
   return null
 }

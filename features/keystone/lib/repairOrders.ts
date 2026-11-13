@@ -12,6 +12,7 @@ import type { UnitOfWork } from './unitOfWork'
 import { flagJob, shopPolicy } from './flagging'
 import { assertCredentialForJob } from './labor'
 import { releaseJobReservations } from './stock'
+import { assertDiagnosisCleared } from './diagnosis'
 import { guideSnapshot, laborGuide, type GuideOperation, type LibraryRow } from '../../integrations/labor-guide'
 
 /*
@@ -182,6 +183,24 @@ export function parseLines(raw: unknown): LineInput[] {
   })
 }
 
+/**
+ * Lines typed by a machine (an assistant's tool step or an MCP token) carry no money decisions (I§8 never exposed):
+ * no discount line, no price override, no negative amount. Discounts and price overrides are a person's call
+ * (applyDiscount, overrideLinePrice), with the manager approval they need.
+ */
+const PRICE_DECISION_FIELDS = ['unitPriceOverrideMinor', 'discountMinor', 'discountTargetRef', 'subletPriceMinor']
+export function assertAgentLines(raw: unknown) {
+  if (raw === undefined || raw === null) return
+  if (!Array.isArray(raw)) throw new DomainError(Codes.INVALID_INPUT, 'Lines must be a list.', { field: 'lines' })
+  raw.forEach((r: any, i) => {
+    if (!r || typeof r !== 'object') throw new DomainError(Codes.INVALID_INPUT, `Line ${i + 1} is not a line.`, { field: 'lines' })
+    if (r.kind === 'discount') throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, `Line ${i + 1}: an assistant cannot give a discount. A person does that.`, { field: 'kind' })
+    for (const f of PRICE_DECISION_FIELDS) if (r[f] !== undefined && r[f] !== null && r[f] !== '') throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, `Line ${i + 1}: an assistant cannot set ${f === 'subletPriceMinor' ? 'a sublet price' : f.startsWith('discount') ? 'a discount' : 'a price override'}. Prices come from the shop's matrix and rates; a person overrides them.`, { field: f })
+    for (const [k, v] of Object.entries(r)) if (/(Minor|Milli|CentiHours)$/.test(k) && ((typeof v === 'number' && v < 0) || (typeof v === 'string' && /^\s*-/.test(v)))) throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, `Line ${i + 1}: an assistant cannot enter a negative amount.`, { field: k })
+  })
+}
+const machineLines = (actor: Actor, raw: unknown) => { if (isMachine(actor)) assertAgentLines(raw) }
+
 /** Rows of a job back to inputs (for re-pricing). Auto (fee) lines are recomputed, never re-entered. */
 export function linesToInputs(rows: any[]): (LineInput & { variant?: string | null })[] {
   return rows.filter(r => !r.auto).sort((a, b) => a.sortOrder - b.sortOrder).map((r, i) => ({
@@ -239,6 +258,7 @@ export async function addJob(uow: UnitOfWork, actor: Actor, input: JobInput) {
   const ro = await lockRow<any>(tx, 'RepairOrder', input.repairOrderId)
   await assertOpen(tx, ro.id)
   const title = String(input.title ?? '').trim().slice(0, 160)
+  machineLines(actor, input.lines)
   let lines = input.lines === undefined ? [] : parseLines(input.lines)
   let kind = input.kind ?? 'repair'
   let cannedJobVersionId: string | null = null
@@ -302,8 +322,11 @@ async function saveTeardown(uow: UnitOfWork, jobId: string, lawId: string, input
 
 /** Replace a job's entered lines and price it. */
 export async function setJobLines(uow: UnitOfWork, actor: Actor, input: { jobId: string; expectedVersion: number; lines: unknown }) {
+  machineLines(actor, input.lines)
   const lines = parseLines(input.lines)
-  const job = await uow.tx.job.findUnique({ where: { id: input.jobId }, select: { version: true } })
+  // Lock before reading the version (RO then job, the order writeAndPrice uses), so two saves on one version can't both pass.
+  // One statement locks both rows; command() retries the rare deadlock.
+  const [job] = await uow.tx.$queryRaw<{ version: number }[]>`SELECT j.version FROM "Job" j JOIN "RepairOrder" r ON r.id = j."repairOrder" WHERE j.id = ${String(input.jobId ?? '')} FOR UPDATE`
   if (!job) throw new DomainError(Codes.NOT_FOUND, 'Job not found.')
   if (job.version !== input.expectedVersion) throw new DomainError(Codes.STALE_STATE, 'The job changed since you loaded it. Reload and try again.', { currentVersion: job.version })
   return writeAndPrice(uow, actor, input.jobId, lines)
@@ -326,6 +349,7 @@ export async function editJobLines(uow: UnitOfWork, actor: Actor, input: { jobId
   const pending = (job.priceSnapshot as { pendingLines?: unknown[] } | null)?.pendingLines
   let lines = rows.length || !Array.isArray(pending) ? linesToInputs(rows.filter(r => r.id !== input.removeLineId)) : parseLines(pending)
   if (input.removeLineId && !rows.some(r => r.id === input.removeLineId && !r.auto)) throw new DomainError(Codes.NOT_FOUND, 'That line is not on this job.', { field: 'removeLineId' })
+  if (input.add !== undefined && input.add !== null) machineLines(actor, Array.isArray(input.add) ? input.add : [input.add])
   if (input.add !== undefined && input.add !== null) lines = [...lines, ...parseLines(Array.isArray(input.add) ? input.add : [input.add])]
   if (input.choose) {
     const { operationCode, variant } = input.choose
@@ -402,7 +426,17 @@ export async function writeAndPrice(uow: UnitOfWork, actor: Actor, jobId: string
   }
 
   const problems = [...price.problems]
+  // SM§7 trust gate: a job resting on an uncleared diagnosis is never priced. An assistant is refused outright; a person's
+  // lines are kept as a draft with the reason, and become priced once the diagnosis is ready to quote.
+  try {
+    if (job.concernId || job.addressesHypothesisId) await assertDiagnosisCleared(tx, [jobId])
+  } catch (error) {
+    if (!(error instanceof DomainError) || error.code !== Codes.TRUST_GATE || isMachine(actor)) throw error
+    problems.push(error.message)
+  }
   // SM§8: a price below the margin floor needs canApprovePriceOverride. A manager pricing it is the approval (recorded in the snapshot).
+  // An assistant or MCP token never writes a below-floor price, approved or not: refused, nothing is written.
+  if (price.belowFloor.length && isMachine(actor)) throw new DomainError(Codes.PRICE_OVERRIDE_REQUIRED, `Price below the margin floor on ${price.belowFloor.join(', ')}. Only a manager can approve that, in the dashboard.`, { lines: price.belowFloor })
   const floorApprovedBy = price.belowFloor.length && can(actor, 'canApprovePriceOverride') ? actorUserId(actor) : null
   if (price.belowFloor.length && !floorApprovedBy) problems.push(`Price below the margin floor on ${price.belowFloor.join(', ')}: a manager must approve the override.`)
   const law = await tx.jurisdictionPolicyVersion.findUniqueOrThrow({ where: { id: ro.jurisdictionPolicyVersionId }, select: { toleranceRule: true } })

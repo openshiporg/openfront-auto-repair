@@ -198,15 +198,34 @@ export async function closeDiagnosis(uow: UnitOfWork, actor: Actor, input: { ses
   return { id: String(row.id), status: 'closed', version: Number(row.version) }
 }
 
-/** Estimates may not go out for a job that rests on a diagnosis which has not cleared the gate. Called when an estimate is built. */
+/**
+ * SM§7: a repair job that rests on a diagnosis (it addresses one of its causes, or it answers a concern that is being
+ * diagnosed) can be priced or put on an estimate only once that diagnosis cleared the trust gate: quote_ready with the
+ * gate met, or a person's recorded override (who and why). Called by writeAndPrice and issueEstimate, for every actor.
+ */
 export async function assertDiagnosisCleared(tx: Tx, jobIds: string[]) {
   if (!jobIds.length) return
-  const jobs = await tx.job.findMany({ where: { id: { in: jobIds }, addressesHypothesisId: { not: null } }, select: { id: true, title: true, addressesHypothesis: { select: { sessionId: true } } } })
-  for (const j of jobs) {
-    const sid = j.addressesHypothesis?.sessionId
-    if (!sid) continue
-    const s = await tx.diagnosisSession.findUnique({ where: { id: sid }, select: { status: true } })
-    if (!s || !['quote_ready', 'closed'].includes(s.status)) throw new DomainError(Codes.GUARD_FAILED, `"${j.title}" rests on a diagnosis that has not been confirmed. Finish the diagnosis first.`)
+  // One round trip: for each non-diagnosis job, the session it addresses and the latest session on its concern
+  // (an inconclusive diagnosis is followed by a new session, so the newest one counts).
+  const rows = await tx.$queryRaw<{ title: string; id: string; status: string; override: unknown }[]>`
+    SELECT j.title, ds.id, ds.status, ds.override
+    FROM "Job" j
+    JOIN "DiagnosisSession" ds ON ds.id IN (
+      (SELECT h.session FROM "DiagnosisHypothesis" h WHERE h.id = j."addressesHypothesis"),
+      (SELECT d2.id FROM "DiagnosisSession" d2 WHERE d2.concern = j.concern ORDER BY d2."createdAt" DESC LIMIT 1)
+    )
+    WHERE j.id = ANY(${jobIds}::text[]) AND j.kind <> 'diagnosis'`
+  for (const s of rows) {
+    const override = (s.override ?? null) as { by?: string; reason?: string } | null
+    const ready = ['quote_ready', 'closed'].includes(s.status)
+    // A person's recorded override (who and why) clears it; otherwise the gate itself must hold.
+    if (ready && override?.by && override.reason) continue
+    if (ready) {
+      const gate = await trustGate(tx, s.id, null)
+      if (gate.ok) continue
+      throw new DomainError(Codes.TRUST_GATE, `"${s.title}" rests on a diagnosis that has not cleared: ${gate.reason}`, { sessionId: s.id, reason: gate.reason ?? '' })
+    }
+    throw new DomainError(Codes.TRUST_GATE, `"${s.title}" rests on a diagnosis that is not ready to quote. Confirm the cause (or a lead technician or advisor overrides with a reason) first.`, { sessionId: s.id, currentStatus: s.status })
   }
 }
 
