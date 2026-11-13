@@ -16,6 +16,7 @@ import * as fleet from './fleet'
 import * as communications from './communications'
 import * as agents from './agents'
 import * as diagnosis from './diagnosis'
+import * as integrations from './integrations'
 import { boundTake, gateFilterAndOrder } from '../security/fieldGate'
 
 export const models = boundTake(gateFilterAndOrder({
@@ -37,6 +38,7 @@ export const models = boundTake(gateFilterAndOrder({
   ...communications,
   ...agents,
   ...diagnosis,
+  ...integrations,
 }))
 
 export default models

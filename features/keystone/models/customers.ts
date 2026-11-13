@@ -271,7 +271,7 @@ export const ExternalReference = list({
   fields: {
     entityType: systemText({ required: true }),
     entityId: systemText({ indexed: true, required: true }),
-    system: fixedChoice(['partstech', 'motor', 'alldata', 'nexpart', 'quickbooks', 'stripe', 'twilio', 'carfax', 'tekmetric_import', 'shopmonkey_import']),
+    system: fixedChoice(['partstech', 'motor', 'alldata', 'nexpart', 'quickbooks', 'stripe', 'twilio', 'carfax', 'tekmetric_import', 'shopmonkey_import', 'generic_import']),
     externalId: systemText({ required: true }),
     meta: json({ ...readOnly }),
     ...trackingFields,

@@ -48,6 +48,13 @@ export const COMPOUND_UNIQUES: Record<string, string[]> = {
   CannedJobVersion: ['@@unique([cannedJobId, versionNumber], map: "CannedJobVersion_job_number_key")'],
   PublishedService: ['@@unique([shopId, slug], map: "PublishedService_shop_slug_key")'],
   LaborOperation: ['@@index([code], map: "LaborOperation_code_idx")'],
+  // Reporting, accounting and integrations (SCHEMA §11.10, §15).
+  KpiSnapshot: ['@@unique([shopId, reportKey, periodStart, periodEnd, inputHash], map: "KpiSnapshot_period_input_key")'],
+  AccountingMapping: ['@@unique([shopId, sourceKey], map: "AccountingMapping_shop_source_key")'],
+  AccountingBatch: ['@@unique([shopId, businessDate, sourceHash], map: "AccountingBatch_shop_date_hash_key")'],
+  ImportJob: ['@@unique([shopId, format, entity, fileSha256], map: "ImportJob_shop_file_key")'],
+  ProviderObservation: ['@@unique([connectionId, contentHash], map: "ProviderObservation_connection_hash_key")'],
+  WebhookEvent: ['@@index([delivered, deadLetteredAt, nextAttempt], map: "WebhookEvent_retry_queue_idx")'],
   StaffTask: ['@@index([shopId, status, dueAt], map: "StaffTask_shop_status_due_idx")'],
 }
 

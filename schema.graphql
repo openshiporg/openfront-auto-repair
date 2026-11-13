@@ -15169,6 +15169,983 @@ input DiagnosisTestCreateInput {
   updatedAt: DateTime
 }
 
+type AccountingBatch {
+  id: ID!
+  shop: Shop
+  reference: String
+  businessDate: CalendarDay
+  status: String
+  postingStatus: String
+  lines: JSON
+  debitTotalMinor: BigInt
+  creditTotalMinor: BigInt
+  sourceHash: String
+  unmapped: JSON
+  exportJob: ExportJob
+  connection: IntegrationConnection
+  stagedById: String
+  confirmedById: String
+  confirmedAt: DateTime
+  providerRef: String
+  supersededBy: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AccountingBatchWhereUniqueInput {
+  id: ID
+  reference: String
+}
+
+input AccountingBatchWhereInput {
+  AND: [AccountingBatchWhereInput!]
+  OR: [AccountingBatchWhereInput!]
+  NOT: [AccountingBatchWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  businessDate: CalendarDayNullableFilter
+  status: StringFilter
+  postingStatus: StringFilter
+  debitTotalMinor: BigIntFilter
+  creditTotalMinor: BigIntFilter
+  sourceHash: StringFilter
+  exportJob: ExportJobWhereInput
+  connection: IntegrationConnectionWhereInput
+  stagedById: StringFilter
+  confirmedById: StringFilter
+  confirmedAt: DateTimeNullableFilter
+  providerRef: StringFilter
+  supersededBy: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AccountingBatchOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  businessDate: OrderDirection
+  status: OrderDirection
+  postingStatus: OrderDirection
+  debitTotalMinor: OrderDirection
+  creditTotalMinor: OrderDirection
+  sourceHash: OrderDirection
+  stagedById: OrderDirection
+  confirmedById: OrderDirection
+  confirmedAt: OrderDirection
+  providerRef: OrderDirection
+  supersededBy: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AccountingBatchUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  businessDate: CalendarDay
+  status: String
+  postingStatus: String
+  lines: JSON
+  debitTotalMinor: BigInt
+  creditTotalMinor: BigInt
+  sourceHash: String
+  unmapped: JSON
+  exportJob: ExportJobRelateToOneForUpdateInput
+  connection: IntegrationConnectionRelateToOneForUpdateInput
+  stagedById: String
+  confirmedById: String
+  confirmedAt: DateTime
+  providerRef: String
+  supersededBy: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ExportJobRelateToOneForUpdateInput {
+  create: ExportJobCreateInput
+  connect: ExportJobWhereUniqueInput
+  disconnect: Boolean
+}
+
+input IntegrationConnectionRelateToOneForUpdateInput {
+  create: IntegrationConnectionCreateInput
+  connect: IntegrationConnectionWhereUniqueInput
+  disconnect: Boolean
+}
+
+input AccountingBatchUpdateArgs {
+  where: AccountingBatchWhereUniqueInput!
+  data: AccountingBatchUpdateInput!
+}
+
+input AccountingBatchCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  businessDate: CalendarDay
+  status: String
+  postingStatus: String
+  lines: JSON
+  debitTotalMinor: BigInt
+  creditTotalMinor: BigInt
+  sourceHash: String
+  unmapped: JSON
+  exportJob: ExportJobRelateToOneForCreateInput
+  connection: IntegrationConnectionRelateToOneForCreateInput
+  stagedById: String
+  confirmedById: String
+  confirmedAt: DateTime
+  providerRef: String
+  supersededBy: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ExportJobRelateToOneForCreateInput {
+  create: ExportJobCreateInput
+  connect: ExportJobWhereUniqueInput
+}
+
+input IntegrationConnectionRelateToOneForCreateInput {
+  create: IntegrationConnectionCreateInput
+  connect: IntegrationConnectionWhereUniqueInput
+}
+
+type AccountingMapping {
+  id: ID!
+  shop: Shop
+  sourceKey: String
+  accountCode: String
+  accountName: String
+  side: String
+  active: Boolean
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AccountingMappingWhereUniqueInput {
+  id: ID
+}
+
+input AccountingMappingWhereInput {
+  AND: [AccountingMappingWhereInput!]
+  OR: [AccountingMappingWhereInput!]
+  NOT: [AccountingMappingWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  sourceKey: StringFilter
+  accountCode: StringFilter
+  accountName: StringFilter
+  side: StringFilter
+  active: BooleanFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AccountingMappingOrderByInput {
+  id: OrderDirection
+  sourceKey: OrderDirection
+  accountCode: OrderDirection
+  accountName: OrderDirection
+  side: OrderDirection
+  active: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AccountingMappingUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  sourceKey: String
+  accountCode: String
+  accountName: String
+  side: String
+  active: Boolean
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AccountingMappingUpdateArgs {
+  where: AccountingMappingWhereUniqueInput!
+  data: AccountingMappingUpdateInput!
+}
+
+input AccountingMappingCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  sourceKey: String
+  accountCode: String
+  accountName: String
+  side: String
+  active: Boolean
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type AccountingProviderResponse {
+  id: ID!
+  batch: AccountingBatch
+  outcome: String
+  providerRef: String
+  message: String
+  payload: JSON
+  contentHash: String
+  receivedAt: DateTime
+  recordedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AccountingProviderResponseWhereUniqueInput {
+  id: ID
+}
+
+input AccountingProviderResponseWhereInput {
+  AND: [AccountingProviderResponseWhereInput!]
+  OR: [AccountingProviderResponseWhereInput!]
+  NOT: [AccountingProviderResponseWhereInput!]
+  id: IDFilter
+  batch: AccountingBatchWhereInput
+  outcome: StringFilter
+  providerRef: StringFilter
+  message: StringFilter
+  contentHash: StringFilter
+  receivedAt: DateTimeNullableFilter
+  recordedById: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input AccountingProviderResponseOrderByInput {
+  id: OrderDirection
+  outcome: OrderDirection
+  providerRef: OrderDirection
+  message: OrderDirection
+  contentHash: OrderDirection
+  receivedAt: OrderDirection
+  recordedById: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input AccountingProviderResponseUpdateInput {
+  batch: AccountingBatchRelateToOneForUpdateInput
+  outcome: String
+  providerRef: String
+  message: String
+  payload: JSON
+  contentHash: String
+  receivedAt: DateTime
+  recordedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AccountingBatchRelateToOneForUpdateInput {
+  create: AccountingBatchCreateInput
+  connect: AccountingBatchWhereUniqueInput
+  disconnect: Boolean
+}
+
+input AccountingProviderResponseUpdateArgs {
+  where: AccountingProviderResponseWhereUniqueInput!
+  data: AccountingProviderResponseUpdateInput!
+}
+
+input AccountingProviderResponseCreateInput {
+  batch: AccountingBatchRelateToOneForCreateInput
+  outcome: String
+  providerRef: String
+  message: String
+  payload: JSON
+  contentHash: String
+  receivedAt: DateTime
+  recordedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AccountingBatchRelateToOneForCreateInput {
+  create: AccountingBatchCreateInput
+  connect: AccountingBatchWhereUniqueInput
+}
+
+type ExportJob {
+  id: ID!
+  shop: Shop
+  reference: String
+  kind: String
+  status: String
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  fileName: String
+  contentType: String
+  content: String
+  sha256: String
+  rowCount: Int
+  requestedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ExportJobWhereUniqueInput {
+  id: ID
+  reference: String
+}
+
+input ExportJobWhereInput {
+  AND: [ExportJobWhereInput!]
+  OR: [ExportJobWhereInput!]
+  NOT: [ExportJobWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  kind: StringFilter
+  status: StringFilter
+  periodStart: CalendarDayNullableFilter
+  periodEnd: CalendarDayNullableFilter
+  fileName: StringFilter
+  contentType: StringFilter
+  content: StringFilter
+  sha256: StringFilter
+  rowCount: IntNullableFilter
+  requestedById: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ExportJobOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  kind: OrderDirection
+  status: OrderDirection
+  periodStart: OrderDirection
+  periodEnd: OrderDirection
+  fileName: OrderDirection
+  contentType: OrderDirection
+  content: OrderDirection
+  sha256: OrderDirection
+  rowCount: OrderDirection
+  requestedById: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ExportJobUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  kind: String
+  status: String
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  fileName: String
+  contentType: String
+  content: String
+  sha256: String
+  rowCount: Int
+  requestedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ExportJobUpdateArgs {
+  where: ExportJobWhereUniqueInput!
+  data: ExportJobUpdateInput!
+}
+
+input ExportJobCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  kind: String
+  status: String
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  fileName: String
+  contentType: String
+  content: String
+  sha256: String
+  rowCount: Int
+  requestedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ImportJob {
+  id: ID!
+  shop: Shop
+  reference: String
+  format: String
+  entity: String
+  status: String
+  fileName: String
+  fileSha256: String
+  rowCount: Int
+  preview: JSON
+  result: JSON
+  sourceText: String
+  mapping: JSON
+  appliedAt: DateTime
+  createdById: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ImportJobWhereUniqueInput {
+  id: ID
+  reference: String
+}
+
+input ImportJobWhereInput {
+  AND: [ImportJobWhereInput!]
+  OR: [ImportJobWhereInput!]
+  NOT: [ImportJobWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reference: StringFilter
+  format: StringFilter
+  entity: StringFilter
+  status: StringFilter
+  fileName: StringFilter
+  fileSha256: StringFilter
+  rowCount: IntNullableFilter
+  sourceText: StringFilter
+  appliedAt: DateTimeNullableFilter
+  createdById: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ImportJobOrderByInput {
+  id: OrderDirection
+  reference: OrderDirection
+  format: OrderDirection
+  entity: OrderDirection
+  status: OrderDirection
+  fileName: OrderDirection
+  fileSha256: OrderDirection
+  rowCount: OrderDirection
+  sourceText: OrderDirection
+  appliedAt: OrderDirection
+  createdById: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ImportJobUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reference: String
+  format: String
+  entity: String
+  status: String
+  fileName: String
+  fileSha256: String
+  rowCount: Int
+  preview: JSON
+  result: JSON
+  sourceText: String
+  mapping: JSON
+  appliedAt: DateTime
+  createdById: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ImportJobUpdateArgs {
+  where: ImportJobWhereUniqueInput!
+  data: ImportJobUpdateInput!
+}
+
+input ImportJobCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reference: String
+  format: String
+  entity: String
+  status: String
+  fileName: String
+  fileSha256: String
+  rowCount: Int
+  preview: JSON
+  result: JSON
+  sourceText: String
+  mapping: JSON
+  appliedAt: DateTime
+  createdById: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type IntegrationConnection {
+  id: ID!
+  shop: Shop
+  kind: String
+  providerKey: String
+  mode: String
+  secretRef: String
+  capabilityProfile: JSON
+  capabilityHash: String
+  health: JSON
+  lastHealthAt: DateTime
+  status: String
+  note: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input IntegrationConnectionWhereUniqueInput {
+  id: ID
+}
+
+input IntegrationConnectionWhereInput {
+  AND: [IntegrationConnectionWhereInput!]
+  OR: [IntegrationConnectionWhereInput!]
+  NOT: [IntegrationConnectionWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  kind: StringFilter
+  providerKey: StringFilter
+  mode: StringFilter
+  secretRef: StringFilter
+  capabilityHash: StringFilter
+  lastHealthAt: DateTimeNullableFilter
+  status: StringFilter
+  note: StringFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input IntegrationConnectionOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  providerKey: OrderDirection
+  mode: OrderDirection
+  secretRef: OrderDirection
+  capabilityHash: OrderDirection
+  lastHealthAt: OrderDirection
+  status: OrderDirection
+  note: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input IntegrationConnectionUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  kind: String
+  providerKey: String
+  mode: String
+  secretRef: String
+  capabilityProfile: JSON
+  capabilityHash: String
+  health: JSON
+  lastHealthAt: DateTime
+  status: String
+  note: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input IntegrationConnectionUpdateArgs {
+  where: IntegrationConnectionWhereUniqueInput!
+  data: IntegrationConnectionUpdateInput!
+}
+
+input IntegrationConnectionCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  kind: String
+  providerKey: String
+  mode: String
+  secretRef: String
+  capabilityProfile: JSON
+  capabilityHash: String
+  health: JSON
+  lastHealthAt: DateTime
+  status: String
+  note: String
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type KpiSnapshot {
+  id: ID!
+  shop: Shop
+  reportKey: String
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  values: JSON
+  definitions: JSON
+  inputHash: String
+  computedAt: DateTime
+  computedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input KpiSnapshotWhereUniqueInput {
+  id: ID
+}
+
+input KpiSnapshotWhereInput {
+  AND: [KpiSnapshotWhereInput!]
+  OR: [KpiSnapshotWhereInput!]
+  NOT: [KpiSnapshotWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  reportKey: StringFilter
+  periodStart: CalendarDayNullableFilter
+  periodEnd: CalendarDayNullableFilter
+  inputHash: StringFilter
+  computedAt: DateTimeNullableFilter
+  computedById: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input KpiSnapshotOrderByInput {
+  id: OrderDirection
+  reportKey: OrderDirection
+  periodStart: OrderDirection
+  periodEnd: OrderDirection
+  inputHash: OrderDirection
+  computedAt: OrderDirection
+  computedById: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input KpiSnapshotUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  reportKey: String
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  values: JSON
+  definitions: JSON
+  inputHash: String
+  computedAt: DateTime
+  computedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input KpiSnapshotUpdateArgs {
+  where: KpiSnapshotWhereUniqueInput!
+  data: KpiSnapshotUpdateInput!
+}
+
+input KpiSnapshotCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  reportKey: String
+  periodStart: CalendarDay
+  periodEnd: CalendarDay
+  values: JSON
+  definitions: JSON
+  inputHash: String
+  computedAt: DateTime
+  computedById: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ProviderObservation {
+  id: ID!
+  connection: IntegrationConnection
+  kind: String
+  externalId: String
+  contentHash: String
+  payload: JSON
+  receivedAt: DateTime
+  appliedAt: DateTime
+  applyResult: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ProviderObservationWhereUniqueInput {
+  id: ID
+}
+
+input ProviderObservationWhereInput {
+  AND: [ProviderObservationWhereInput!]
+  OR: [ProviderObservationWhereInput!]
+  NOT: [ProviderObservationWhereInput!]
+  id: IDFilter
+  connection: IntegrationConnectionWhereInput
+  kind: StringFilter
+  externalId: StringFilter
+  contentHash: StringFilter
+  receivedAt: DateTimeNullableFilter
+  appliedAt: DateTimeNullableFilter
+  applyResult: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input ProviderObservationOrderByInput {
+  id: OrderDirection
+  kind: OrderDirection
+  externalId: OrderDirection
+  contentHash: OrderDirection
+  receivedAt: OrderDirection
+  appliedAt: OrderDirection
+  applyResult: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input ProviderObservationUpdateInput {
+  connection: IntegrationConnectionRelateToOneForUpdateInput
+  kind: String
+  externalId: String
+  contentHash: String
+  payload: JSON
+  receivedAt: DateTime
+  appliedAt: DateTime
+  applyResult: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ProviderObservationUpdateArgs {
+  where: ProviderObservationWhereUniqueInput!
+  data: ProviderObservationUpdateInput!
+}
+
+input ProviderObservationCreateInput {
+  connection: IntegrationConnectionRelateToOneForCreateInput
+  kind: String
+  externalId: String
+  contentHash: String
+  payload: JSON
+  receivedAt: DateTime
+  appliedAt: DateTime
+  applyResult: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type WebhookEndpoint {
+  id: ID!
+  shop: Shop
+  url: String
+  events: JSON
+  isActive: Boolean
+  secretRef: String
+  lastTriggered: DateTime
+  failureCount: Int
+  webhookEvents(where: WebhookEventWhereInput! = {}, orderBy: [WebhookEventOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WebhookEventWhereUniqueInput): [WebhookEvent!]
+  webhookEventsCount(where: WebhookEventWhereInput! = {}): Int
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WebhookEndpointWhereUniqueInput {
+  id: ID
+}
+
+input WebhookEndpointWhereInput {
+  AND: [WebhookEndpointWhereInput!]
+  OR: [WebhookEndpointWhereInput!]
+  NOT: [WebhookEndpointWhereInput!]
+  id: IDFilter
+  shop: ShopWhereInput
+  url: StringFilter
+  isActive: BooleanFilter
+  secretRef: StringFilter
+  lastTriggered: DateTimeNullableFilter
+  failureCount: IntNullableFilter
+  webhookEvents: WebhookEventManyRelationFilter
+  version: IntFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input WebhookEventManyRelationFilter {
+  every: WebhookEventWhereInput
+  some: WebhookEventWhereInput
+  none: WebhookEventWhereInput
+}
+
+input WebhookEndpointOrderByInput {
+  id: OrderDirection
+  url: OrderDirection
+  isActive: OrderDirection
+  secretRef: OrderDirection
+  lastTriggered: OrderDirection
+  failureCount: OrderDirection
+  version: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input WebhookEndpointUpdateInput {
+  shop: ShopRelateToOneForUpdateInput
+  url: String
+  events: JSON
+  isActive: Boolean
+  secretRef: String
+  lastTriggered: DateTime
+  failureCount: Int
+  webhookEvents: WebhookEventRelateToManyForUpdateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WebhookEventRelateToManyForUpdateInput {
+  disconnect: [WebhookEventWhereUniqueInput!]
+  set: [WebhookEventWhereUniqueInput!]
+  create: [WebhookEventCreateInput!]
+  connect: [WebhookEventWhereUniqueInput!]
+}
+
+input WebhookEndpointUpdateArgs {
+  where: WebhookEndpointWhereUniqueInput!
+  data: WebhookEndpointUpdateInput!
+}
+
+input WebhookEndpointCreateInput {
+  shop: ShopRelateToOneForCreateInput
+  url: String
+  events: JSON
+  isActive: Boolean
+  secretRef: String
+  lastTriggered: DateTime
+  failureCount: Int
+  webhookEvents: WebhookEventRelateToManyForCreateInput
+  version: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WebhookEventRelateToManyForCreateInput {
+  create: [WebhookEventCreateInput!]
+  connect: [WebhookEventWhereUniqueInput!]
+}
+
+type WebhookEvent {
+  id: ID!
+  eventType: String
+  resourceId: String
+  resourceType: String
+  payload: JSON
+  deliveryAttempts: Int
+  delivered: Boolean
+  lastAttempt: DateTime
+  nextAttempt: DateTime
+  deadLetteredAt: DateTime
+  responseStatus: Int
+  responseBody: String
+  endpoint: WebhookEndpoint
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WebhookEventWhereUniqueInput {
+  id: ID
+}
+
+input WebhookEventWhereInput {
+  AND: [WebhookEventWhereInput!]
+  OR: [WebhookEventWhereInput!]
+  NOT: [WebhookEventWhereInput!]
+  id: IDFilter
+  eventType: StringFilter
+  resourceId: StringFilter
+  resourceType: StringFilter
+  deliveryAttempts: IntNullableFilter
+  delivered: BooleanFilter
+  lastAttempt: DateTimeNullableFilter
+  nextAttempt: DateTimeNullableFilter
+  deadLetteredAt: DateTimeNullableFilter
+  responseStatus: IntNullableFilter
+  responseBody: StringFilter
+  endpoint: WebhookEndpointWhereInput
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input WebhookEventOrderByInput {
+  id: OrderDirection
+  eventType: OrderDirection
+  resourceId: OrderDirection
+  resourceType: OrderDirection
+  deliveryAttempts: OrderDirection
+  delivered: OrderDirection
+  lastAttempt: OrderDirection
+  nextAttempt: OrderDirection
+  deadLetteredAt: OrderDirection
+  responseStatus: OrderDirection
+  responseBody: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
+}
+
+input WebhookEventUpdateInput {
+  eventType: String
+  resourceId: String
+  resourceType: String
+  payload: JSON
+  deliveryAttempts: Int
+  delivered: Boolean
+  lastAttempt: DateTime
+  nextAttempt: DateTime
+  deadLetteredAt: DateTime
+  responseStatus: Int
+  responseBody: String
+  endpoint: WebhookEndpointRelateToOneForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WebhookEndpointRelateToOneForUpdateInput {
+  create: WebhookEndpointCreateInput
+  connect: WebhookEndpointWhereUniqueInput
+  disconnect: Boolean
+}
+
+input WebhookEventUpdateArgs {
+  where: WebhookEventWhereUniqueInput!
+  data: WebhookEventUpdateInput!
+}
+
+input WebhookEventCreateInput {
+  eventType: String
+  resourceId: String
+  resourceType: String
+  payload: JSON
+  deliveryAttempts: Int
+  delivered: Boolean
+  lastAttempt: DateTime
+  nextAttempt: DateTime
+  deadLetteredAt: DateTime
+  responseStatus: Int
+  responseBody: String
+  endpoint: WebhookEndpointRelateToOneForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input WebhookEndpointRelateToOneForCreateInput {
+  create: WebhookEndpointCreateInput
+  connect: WebhookEndpointWhereUniqueInput
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -15973,6 +16950,66 @@ type Mutation {
   updateDiagnosisTests(data: [DiagnosisTestUpdateArgs!]!): [DiagnosisTest]
   deleteDiagnosisTest(where: DiagnosisTestWhereUniqueInput!): DiagnosisTest
   deleteDiagnosisTests(where: [DiagnosisTestWhereUniqueInput!]!): [DiagnosisTest]
+  createAccountingBatch(data: AccountingBatchCreateInput!): AccountingBatch
+  createAccountingBatches(data: [AccountingBatchCreateInput!]!): [AccountingBatch]
+  updateAccountingBatch(where: AccountingBatchWhereUniqueInput!, data: AccountingBatchUpdateInput!): AccountingBatch
+  updateAccountingBatches(data: [AccountingBatchUpdateArgs!]!): [AccountingBatch]
+  deleteAccountingBatch(where: AccountingBatchWhereUniqueInput!): AccountingBatch
+  deleteAccountingBatches(where: [AccountingBatchWhereUniqueInput!]!): [AccountingBatch]
+  createAccountingMapping(data: AccountingMappingCreateInput!): AccountingMapping
+  createAccountingMappings(data: [AccountingMappingCreateInput!]!): [AccountingMapping]
+  updateAccountingMapping(where: AccountingMappingWhereUniqueInput!, data: AccountingMappingUpdateInput!): AccountingMapping
+  updateAccountingMappings(data: [AccountingMappingUpdateArgs!]!): [AccountingMapping]
+  deleteAccountingMapping(where: AccountingMappingWhereUniqueInput!): AccountingMapping
+  deleteAccountingMappings(where: [AccountingMappingWhereUniqueInput!]!): [AccountingMapping]
+  createAccountingProviderResponse(data: AccountingProviderResponseCreateInput!): AccountingProviderResponse
+  createAccountingProviderResponses(data: [AccountingProviderResponseCreateInput!]!): [AccountingProviderResponse]
+  updateAccountingProviderResponse(where: AccountingProviderResponseWhereUniqueInput!, data: AccountingProviderResponseUpdateInput!): AccountingProviderResponse
+  updateAccountingProviderResponses(data: [AccountingProviderResponseUpdateArgs!]!): [AccountingProviderResponse]
+  deleteAccountingProviderResponse(where: AccountingProviderResponseWhereUniqueInput!): AccountingProviderResponse
+  deleteAccountingProviderResponses(where: [AccountingProviderResponseWhereUniqueInput!]!): [AccountingProviderResponse]
+  createExportJob(data: ExportJobCreateInput!): ExportJob
+  createExportJobs(data: [ExportJobCreateInput!]!): [ExportJob]
+  updateExportJob(where: ExportJobWhereUniqueInput!, data: ExportJobUpdateInput!): ExportJob
+  updateExportJobs(data: [ExportJobUpdateArgs!]!): [ExportJob]
+  deleteExportJob(where: ExportJobWhereUniqueInput!): ExportJob
+  deleteExportJobs(where: [ExportJobWhereUniqueInput!]!): [ExportJob]
+  createImportJob(data: ImportJobCreateInput!): ImportJob
+  createImportJobs(data: [ImportJobCreateInput!]!): [ImportJob]
+  updateImportJob(where: ImportJobWhereUniqueInput!, data: ImportJobUpdateInput!): ImportJob
+  updateImportJobs(data: [ImportJobUpdateArgs!]!): [ImportJob]
+  deleteImportJob(where: ImportJobWhereUniqueInput!): ImportJob
+  deleteImportJobs(where: [ImportJobWhereUniqueInput!]!): [ImportJob]
+  createIntegrationConnection(data: IntegrationConnectionCreateInput!): IntegrationConnection
+  createIntegrationConnections(data: [IntegrationConnectionCreateInput!]!): [IntegrationConnection]
+  updateIntegrationConnection(where: IntegrationConnectionWhereUniqueInput!, data: IntegrationConnectionUpdateInput!): IntegrationConnection
+  updateIntegrationConnections(data: [IntegrationConnectionUpdateArgs!]!): [IntegrationConnection]
+  deleteIntegrationConnection(where: IntegrationConnectionWhereUniqueInput!): IntegrationConnection
+  deleteIntegrationConnections(where: [IntegrationConnectionWhereUniqueInput!]!): [IntegrationConnection]
+  createKpiSnapshot(data: KpiSnapshotCreateInput!): KpiSnapshot
+  createKpiSnapshots(data: [KpiSnapshotCreateInput!]!): [KpiSnapshot]
+  updateKpiSnapshot(where: KpiSnapshotWhereUniqueInput!, data: KpiSnapshotUpdateInput!): KpiSnapshot
+  updateKpiSnapshots(data: [KpiSnapshotUpdateArgs!]!): [KpiSnapshot]
+  deleteKpiSnapshot(where: KpiSnapshotWhereUniqueInput!): KpiSnapshot
+  deleteKpiSnapshots(where: [KpiSnapshotWhereUniqueInput!]!): [KpiSnapshot]
+  createProviderObservation(data: ProviderObservationCreateInput!): ProviderObservation
+  createProviderObservations(data: [ProviderObservationCreateInput!]!): [ProviderObservation]
+  updateProviderObservation(where: ProviderObservationWhereUniqueInput!, data: ProviderObservationUpdateInput!): ProviderObservation
+  updateProviderObservations(data: [ProviderObservationUpdateArgs!]!): [ProviderObservation]
+  deleteProviderObservation(where: ProviderObservationWhereUniqueInput!): ProviderObservation
+  deleteProviderObservations(where: [ProviderObservationWhereUniqueInput!]!): [ProviderObservation]
+  createWebhookEndpoint(data: WebhookEndpointCreateInput!): WebhookEndpoint
+  createWebhookEndpoints(data: [WebhookEndpointCreateInput!]!): [WebhookEndpoint]
+  updateWebhookEndpoint(where: WebhookEndpointWhereUniqueInput!, data: WebhookEndpointUpdateInput!): WebhookEndpoint
+  updateWebhookEndpoints(data: [WebhookEndpointUpdateArgs!]!): [WebhookEndpoint]
+  deleteWebhookEndpoint(where: WebhookEndpointWhereUniqueInput!): WebhookEndpoint
+  deleteWebhookEndpoints(where: [WebhookEndpointWhereUniqueInput!]!): [WebhookEndpoint]
+  createWebhookEvent(data: WebhookEventCreateInput!): WebhookEvent
+  createWebhookEvents(data: [WebhookEventCreateInput!]!): [WebhookEvent]
+  updateWebhookEvent(where: WebhookEventWhereUniqueInput!, data: WebhookEventUpdateInput!): WebhookEvent
+  updateWebhookEvents(data: [WebhookEventUpdateArgs!]!): [WebhookEvent]
+  deleteWebhookEvent(where: WebhookEventWhereUniqueInput!): WebhookEvent
+  deleteWebhookEvents(where: [WebhookEventWhereUniqueInput!]!): [WebhookEvent]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -16557,6 +17594,36 @@ type Query {
   diagnosisTest(where: DiagnosisTestWhereUniqueInput!): DiagnosisTest
   diagnosisTests(where: DiagnosisTestWhereInput! = {}, orderBy: [DiagnosisTestOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: DiagnosisTestWhereUniqueInput): [DiagnosisTest!]
   diagnosisTestsCount(where: DiagnosisTestWhereInput! = {}): Int
+  accountingBatch(where: AccountingBatchWhereUniqueInput!): AccountingBatch
+  accountingBatches(where: AccountingBatchWhereInput! = {}, orderBy: [AccountingBatchOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AccountingBatchWhereUniqueInput): [AccountingBatch!]
+  accountingBatchesCount(where: AccountingBatchWhereInput! = {}): Int
+  accountingMapping(where: AccountingMappingWhereUniqueInput!): AccountingMapping
+  accountingMappings(where: AccountingMappingWhereInput! = {}, orderBy: [AccountingMappingOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AccountingMappingWhereUniqueInput): [AccountingMapping!]
+  accountingMappingsCount(where: AccountingMappingWhereInput! = {}): Int
+  accountingProviderResponse(where: AccountingProviderResponseWhereUniqueInput!): AccountingProviderResponse
+  accountingProviderResponses(where: AccountingProviderResponseWhereInput! = {}, orderBy: [AccountingProviderResponseOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: AccountingProviderResponseWhereUniqueInput): [AccountingProviderResponse!]
+  accountingProviderResponsesCount(where: AccountingProviderResponseWhereInput! = {}): Int
+  exportJob(where: ExportJobWhereUniqueInput!): ExportJob
+  exportJobs(where: ExportJobWhereInput! = {}, orderBy: [ExportJobOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ExportJobWhereUniqueInput): [ExportJob!]
+  exportJobsCount(where: ExportJobWhereInput! = {}): Int
+  importJob(where: ImportJobWhereUniqueInput!): ImportJob
+  importJobs(where: ImportJobWhereInput! = {}, orderBy: [ImportJobOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ImportJobWhereUniqueInput): [ImportJob!]
+  importJobsCount(where: ImportJobWhereInput! = {}): Int
+  integrationConnection(where: IntegrationConnectionWhereUniqueInput!): IntegrationConnection
+  integrationConnections(where: IntegrationConnectionWhereInput! = {}, orderBy: [IntegrationConnectionOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: IntegrationConnectionWhereUniqueInput): [IntegrationConnection!]
+  integrationConnectionsCount(where: IntegrationConnectionWhereInput! = {}): Int
+  kpiSnapshot(where: KpiSnapshotWhereUniqueInput!): KpiSnapshot
+  kpiSnapshots(where: KpiSnapshotWhereInput! = {}, orderBy: [KpiSnapshotOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: KpiSnapshotWhereUniqueInput): [KpiSnapshot!]
+  kpiSnapshotsCount(where: KpiSnapshotWhereInput! = {}): Int
+  providerObservation(where: ProviderObservationWhereUniqueInput!): ProviderObservation
+  providerObservations(where: ProviderObservationWhereInput! = {}, orderBy: [ProviderObservationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ProviderObservationWhereUniqueInput): [ProviderObservation!]
+  providerObservationsCount(where: ProviderObservationWhereInput! = {}): Int
+  webhookEndpoint(where: WebhookEndpointWhereUniqueInput!): WebhookEndpoint
+  webhookEndpoints(where: WebhookEndpointWhereInput! = {}, orderBy: [WebhookEndpointOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WebhookEndpointWhereUniqueInput): [WebhookEndpoint!]
+  webhookEndpointsCount(where: WebhookEndpointWhereInput! = {}): Int
+  webhookEvent(where: WebhookEventWhereUniqueInput!): WebhookEvent
+  webhookEvents(where: WebhookEventWhereInput! = {}, orderBy: [WebhookEventOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WebhookEventWhereUniqueInput): [WebhookEvent!]
+  webhookEventsCount(where: WebhookEventWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult

@@ -2,6 +2,7 @@ import { fixtureAdapter, FIXTURE_VINS } from '../../integrations/vehicle-data/fi
 import { withCheckDigit } from '../../integrations/vehicle-data/vin'
 import { auditCreate } from '../lib/cas'
 import type { Actor } from '../lib/actor'
+import { Codes, isDomainError } from '../lib/errors'
 import { nextBusinessDay, zonedInstant } from '../lib/calendar'
 import { createBusinessAccount, recordConsent, upsertCustomer } from '../lib/customers'
 import { bookAppointment, loadShopCalendar } from '../lib/scheduling'
@@ -297,10 +298,16 @@ export async function seedAppointments(uow: UnitOfWork, actor: Actor) {
     let date = nextBusinessDay(calendar, now.toISOString().slice(0, 10))
     for (let k = 0; k < p.dayOffset; k += 1) date = nextBusinessDay(calendar, date)
     const startsAt = zonedInstant(calendar.timeZone, date, p.at)
-    await bookAppointment(uow, actor, {
-      shopId, startsAt, kind: p.kind, estimatedCentiHours: p.hours, customerId: customer, vehicleId: vehicle.vehicleId,
-      concernText: p.concern, requestedServices: p.services, source: 'staff', confirm: p.confirm,
-    })
+    // The plan is relative to today: tomorrow can be a short Saturday. A slot that does not fit is left out (the check throws before any write).
+    try {
+      await bookAppointment(uow, actor, {
+        shopId, startsAt, kind: p.kind, estimatedCentiHours: p.hours, customerId: customer, vehicleId: vehicle.vehicleId,
+        concernText: p.concern, requestedServices: p.services, source: 'staff', confirm: p.confirm,
+      })
+    } catch (e) {
+      if (isDomainError(e) && (e.code === Codes.OUTSIDE_HOURS || e.code === Codes.CAPACITY_FULL)) continue
+      throw e
+    }
     created += 1
   }
   return created

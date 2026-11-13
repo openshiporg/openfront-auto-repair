@@ -628,6 +628,13 @@ model Shop {
   from_AgentRun_shop                   AgentRun[]                   @relation("AgentRun_shop")
   from_VoiceTask_shop                  VoiceTask[]                  @relation("VoiceTask_shop")
   from_DiagnosisSession_shop           DiagnosisSession[]           @relation("DiagnosisSession_shop")
+  from_AccountingBatch_shop            AccountingBatch[]            @relation("AccountingBatch_shop")
+  from_AccountingMapping_shop          AccountingMapping[]          @relation("AccountingMapping_shop")
+  from_ExportJob_shop                  ExportJob[]                  @relation("ExportJob_shop")
+  from_ImportJob_shop                  ImportJob[]                  @relation("ImportJob_shop")
+  from_IntegrationConnection_shop      IntegrationConnection[]      @relation("IntegrationConnection_shop")
+  from_KpiSnapshot_shop                KpiSnapshot[]                @relation("KpiSnapshot_shop")
+  from_WebhookEndpoint_shop            WebhookEndpoint[]            @relation("WebhookEndpoint_shop")
 
   @@index([jurisdictionPackId])
   @@index([jurisdictionPolicyId])
@@ -3819,6 +3826,220 @@ model DiagnosisTest {
   @@index([sessionId])
   @@index([hypothesisId])
   @@index([performedById])
+}
+
+model AccountingBatch {
+  id                                    String                       @id @default(cuid())
+  shop                                  Shop?                        @relation("AccountingBatch_shop", fields: [shopId], references: [id])
+  shopId                                String?                      @map("shop")
+  reference                             String                       @unique @default("")
+  businessDate                          DateTime?                    @postgresql.Date
+  status                                String                       @default("staged")
+  postingStatus                         String                       @default("NOT_POSTED")
+  lines                                 Json?                        @default("[]")
+  debitTotalMinor                       BigInt                       @default(0)
+  creditTotalMinor                      BigInt                       @default(0)
+  sourceHash                            String                       @default("")
+  unmapped                              Json?                        @default("[]")
+  exportJob                             ExportJob?                   @relation("AccountingBatch_exportJob", fields: [exportJobId], references: [id])
+  exportJobId                           String?                      @map("exportJob")
+  connection                            IntegrationConnection?       @relation("AccountingBatch_connection", fields: [connectionId], references: [id])
+  connectionId                          String?                      @map("connection")
+  stagedById                            String                       @default("")
+  confirmedById                         String                       @default("")
+  confirmedAt                           DateTime?
+  providerRef                           String                       @default("")
+  supersededBy                          String                       @default("")
+  version                               Int                          @default(0)
+  createdAt                             DateTime                     @default(now())
+  updatedAt                             DateTime                     @default(now()) @updatedAt
+  from_AccountingProviderResponse_batch AccountingProviderResponse[] @relation("AccountingProviderResponse_batch")
+
+  @@unique([shopId, businessDate, sourceHash], map: "AccountingBatch_shop_date_hash_key")
+  @@index([shopId])
+  @@index([exportJobId])
+  @@index([connectionId])
+}
+
+model AccountingMapping {
+  id          String   @id @default(cuid())
+  shop        Shop?    @relation("AccountingMapping_shop", fields: [shopId], references: [id])
+  shopId      String?  @map("shop")
+  sourceKey   String   @default("")
+  accountCode String   @default("")
+  accountName String   @default("")
+  side        String   @default("credit")
+  active      Boolean  @default(true)
+  version     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@unique([shopId, sourceKey], map: "AccountingMapping_shop_source_key")
+  @@index([shopId])
+}
+
+model AccountingProviderResponse {
+  id           String           @id @default(cuid())
+  batch        AccountingBatch? @relation("AccountingProviderResponse_batch", fields: [batchId], references: [id])
+  batchId      String?          @map("batch")
+  outcome      String           @default("accepted")
+  providerRef  String           @default("")
+  message      String           @default("")
+  payload      Json?            @default("{}")
+  contentHash  String           @default("")
+  receivedAt   DateTime?
+  recordedById String           @default("")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @default(now()) @updatedAt
+
+  @@index([batchId])
+}
+
+model ExportJob {
+  id                             String            @id @default(cuid())
+  shop                           Shop?             @relation("ExportJob_shop", fields: [shopId], references: [id])
+  shopId                         String?           @map("shop")
+  reference                      String            @unique @default("")
+  kind                           String            @default("accounting_journal")
+  status                         String            @default("ready")
+  periodStart                    DateTime?         @postgresql.Date
+  periodEnd                      DateTime?         @postgresql.Date
+  fileName                       String            @default("")
+  contentType                    String            @default("")
+  content                        String            @default("")
+  sha256                         String            @default("")
+  rowCount                       Int?              @default(0)
+  requestedById                  String            @default("")
+  createdAt                      DateTime          @default(now())
+  updatedAt                      DateTime          @default(now()) @updatedAt
+  from_AccountingBatch_exportJob AccountingBatch[] @relation("AccountingBatch_exportJob")
+
+  @@index([shopId])
+}
+
+model ImportJob {
+  id          String    @id @default(cuid())
+  shop        Shop?     @relation("ImportJob_shop", fields: [shopId], references: [id])
+  shopId      String?   @map("shop")
+  reference   String    @unique @default("")
+  format      String    @default("tekmetric_csv")
+  entity      String    @default("customers")
+  status      String    @default("previewed")
+  fileName    String    @default("")
+  fileSha256  String    @default("")
+  rowCount    Int?      @default(0)
+  preview     Json?     @default("[]")
+  result      Json?     @default("{}")
+  sourceText  String    @default("")
+  mapping     Json?     @default("{}")
+  appliedAt   DateTime?
+  createdById String    @default("")
+  version     Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@unique([shopId, format, entity, fileSha256], map: "ImportJob_shop_file_key")
+  @@index([shopId])
+}
+
+model IntegrationConnection {
+  id                                  String                @id @default(cuid())
+  shop                                Shop?                 @relation("IntegrationConnection_shop", fields: [shopId], references: [id])
+  shopId                              String?               @map("shop")
+  kind                                String                @default("vehicle_data")
+  providerKey                         String                @default("nhtsa")
+  mode                                String                @default("manual")
+  secretRef                           String                @default("")
+  capabilityProfile                   Json?                 @default("{}")
+  capabilityHash                      String                @default("")
+  health                              Json?                 @default("{}")
+  lastHealthAt                        DateTime?
+  status                              String                @default("unconfigured")
+  note                                String                @default("")
+  version                             Int                   @default(0)
+  createdAt                           DateTime              @default(now())
+  updatedAt                           DateTime              @default(now()) @updatedAt
+  from_AccountingBatch_connection     AccountingBatch[]     @relation("AccountingBatch_connection")
+  from_ProviderObservation_connection ProviderObservation[] @relation("ProviderObservation_connection")
+
+  @@index([shopId])
+}
+
+model KpiSnapshot {
+  id           String    @id @default(cuid())
+  shop         Shop?     @relation("KpiSnapshot_shop", fields: [shopId], references: [id])
+  shopId       String?   @map("shop")
+  reportKey    String    @default("car_count")
+  periodStart  DateTime? @postgresql.Date
+  periodEnd    DateTime? @postgresql.Date
+  values       Json?     @default("{}")
+  definitions  Json?     @default("{}")
+  inputHash    String    @default("")
+  computedAt   DateTime?
+  computedById String    @default("")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  @@unique([shopId, reportKey, periodStart, periodEnd, inputHash], map: "KpiSnapshot_period_input_key")
+  @@index([shopId])
+}
+
+model ProviderObservation {
+  id           String                 @id @default(cuid())
+  connection   IntegrationConnection? @relation("ProviderObservation_connection", fields: [connectionId], references: [id])
+  connectionId String?                @map("connection")
+  kind         String                 @default("webhook")
+  externalId   String                 @default("")
+  contentHash  String                 @default("")
+  payload      Json?                  @default("{}")
+  receivedAt   DateTime?
+  appliedAt    DateTime?
+  applyResult  String                 @default("")
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @default(now()) @updatedAt
+
+  @@unique([connectionId, contentHash], map: "ProviderObservation_connection_hash_key")
+  @@index([connectionId])
+}
+
+model WebhookEndpoint {
+  id            String         @id @default(cuid())
+  shop          Shop?          @relation("WebhookEndpoint_shop", fields: [shopId], references: [id])
+  shopId        String?        @map("shop")
+  url           String         @default("")
+  events        Json?          @default("[]")
+  isActive      Boolean        @default(true)
+  secretRef     String         @default("")
+  lastTriggered DateTime?
+  failureCount  Int?           @default(0)
+  webhookEvents WebhookEvent[] @relation("WebhookEvent_endpoint")
+  version       Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now()) @updatedAt
+
+  @@index([shopId])
+}
+
+model WebhookEvent {
+  id               String           @id @default(cuid())
+  eventType        String           @default("")
+  resourceId       String           @default("")
+  resourceType     String           @default("")
+  payload          Json?            @default("{}")
+  deliveryAttempts Int?             @default(0)
+  delivered        Boolean          @default(false)
+  lastAttempt      DateTime?
+  nextAttempt      DateTime?
+  deadLetteredAt   DateTime?
+  responseStatus   Int?
+  responseBody     String           @default("")
+  endpoint         WebhookEndpoint? @relation("WebhookEvent_endpoint", fields: [endpointId], references: [id])
+  endpointId       String?          @map("endpoint")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now()) @updatedAt
+
+  @@index([endpointId])
+  @@index([delivered, deadLetteredAt, nextAttempt], map: "WebhookEvent_retry_queue_idx")
 }
 
 enum UserKindType {

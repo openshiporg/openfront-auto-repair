@@ -14,6 +14,7 @@ import * as p5 from './phase5'
 import * as p6 from './phase6'
 import * as p7 from './phase7'
 import * as p8 from './phase8'
+import * as p9 from './phase9'
 import '../lib/orgControls'
 import '../lib/policy'
 
@@ -37,6 +38,11 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         diagnosisGate(sessionId: ID!, jobId: ID): JSON
         supplierDisputeEmail(invoiceId: ID!): JSON
         campaignPreview(campaignId: ID!): JSON
+        shopReports(shopId: ID!, from: String!, to: String!): JSON
+        shopTieOuts(shopId: ID!): JSON
+        accountingJournalPreview(shopId: ID!, businessDate: String!): JSON
+        exportFile(exportJobId: ID!): JSON
+        webhookTopics: JSON
       }
       input UserUpdateProfileInput { name: String, email: String, password: String, onboardingStatus: String }
       type Mutation {
@@ -185,6 +191,22 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         closeRecommendation(recommendationId: ID!, reason: String!, idempotencyKey: String!): JSON
         markServiceReminderContacted(cycleKey: String!, channel: String!, note: String, idempotencyKey: String!): JSON
         saveMarketingCampaign(input: JSON!, idempotencyKey: String!): JSON
+        saveAccountingMappings(shopId: ID!, mappings: JSON!, idempotencyKey: String!): JSON
+        stageAccountingBatch(shopId: ID!, businessDate: String!, idempotencyKey: String!): JSON
+        exportAccountingBatch(batchId: ID!, idempotencyKey: String!): JSON
+        recordAccountingResponse(input: JSON!, idempotencyKey: String!): JSON
+        saveReportSnapshot(shopId: ID!, from: String!, to: String!, idempotencyKey: String!): JSON
+        previewDataImport(input: JSON!, idempotencyKey: String!): JSON
+        applyDataImport(jobId: ID!, idempotencyKey: String!): JSON
+        discardDataImport(jobId: ID!, idempotencyKey: String!): JSON
+        saveIntegrationConnection(input: JSON!, idempotencyKey: String!): JSON
+        recordIntegrationHealth(connectionId: ID!, ok: Boolean!, message: String, idempotencyKey: String!): JSON
+        revokeIntegrationConnection(connectionId: ID!, reason: String!, idempotencyKey: String!): JSON
+        recordProviderObservation(input: JSON!, idempotencyKey: String!): JSON
+        createWebhookEndpoint(input: JSON!, idempotencyKey: String!): JSON
+        changeWebhookEndpoint(input: JSON!, idempotencyKey: String!): JSON
+        replayWebhookEvent(eventId: ID!, idempotencyKey: String!): JSON
+        sendDueWebhooks(idempotencyKey: String!): JSON
         exportMarketingCampaign(campaignId: ID!, idempotencyKey: String!): JSON
         copyMarketingMessage(campaignId: ID!, customerId: ID!, channel: String, idempotencyKey: String!): JSON
         recordReviewRequest(repairOrderId: ID!, channel: String!, note: String, idempotencyKey: String!): JSON
@@ -203,6 +225,11 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         diagnosisGate: op(p8.diagnosisGate),
         supplierDisputeEmail: op(p8.supplierDisputeEmail),
         campaignPreview: op(p7.campaignPreview),
+        shopReports: op(p9.shopReports),
+        shopTieOuts: op(p9.shopTieOuts),
+        accountingJournalPreview: op(p9.accountingJournalPreview),
+        exportFile: op(p9.exportFile),
+        webhookTopics: op(p9.webhookTopics),
       },
       Mutation: {
         updateActiveUser,
@@ -335,6 +362,22 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         closeRecommendation: op(p7.closeRecommendation),
         markServiceReminderContacted: op(p7.markServiceReminderContacted),
         saveMarketingCampaign: op(p7.saveMarketingCampaign),
+        saveAccountingMappings: op(p9.saveAccountingMappings),
+        stageAccountingBatch: op(p9.stageAccountingBatch),
+        exportAccountingBatch: op(p9.exportAccountingBatch),
+        recordAccountingResponse: op(p9.recordAccountingResponse),
+        saveReportSnapshot: op(p9.saveReportSnapshot),
+        previewDataImport: op(p9.previewDataImport),
+        applyDataImport: op(p9.applyDataImport),
+        discardDataImport: op(p9.discardDataImport),
+        saveIntegrationConnection: op(p9.saveIntegrationConnection),
+        recordIntegrationHealth: op(p9.recordIntegrationHealth),
+        revokeIntegrationConnection: op(p9.revokeIntegrationConnection),
+        recordProviderObservation: op(p9.recordProviderObservation),
+        createWebhookEndpoint: op(p9.createWebhookEndpoint),
+        changeWebhookEndpoint: op(p9.changeWebhookEndpoint),
+        replayWebhookEvent: op(p9.replayWebhookEvent),
+        sendDueWebhooks: op(p9.sendDueWebhooks),
         exportMarketingCampaign: op(p7.exportMarketingCampaign),
         copyMarketingMessage: op(p7.copyMarketingMessage),
         recordReviewRequest: op(p7.recordReviewRequest),

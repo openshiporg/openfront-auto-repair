@@ -28,4 +28,6 @@ export function delegateOf(tx: Tx, model: string) {
   }
 }
 
-export const TRANSACTION_OPTIONS = { maxWait: 15_000, timeout: 60_000 } as const
+/** 60 s by default; a run against a far-away database (a remote scratch DB) can raise it with AR_TX_TIMEOUT_MS. */
+const txTimeout = Number(process.env.AR_TX_TIMEOUT_MS)
+export const TRANSACTION_OPTIONS = { maxWait: 15_000, timeout: Number.isFinite(txTimeout) && txTimeout >= 60_000 ? txTimeout : 60_000 } as const

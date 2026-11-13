@@ -1,0 +1,6 @@
+Customer ID,First Name,Last Name,Company,Email,Phone,Secondary Phone,Notes
+TM-1001,Dana,Whitfield,,dana.whitfield@example.com,(916) 555-0171,,Prefers text messages
+TM-1002,Luis,Ortega,,,(916) 555-0172,(916) 555-0173,"Drives for work, ""fleet-like"" mileage"
+TM-1003,,,Sierra Plumbing Co,office@sierraplumbing.example,(916) 555-0174,,Net 30 requested
+TM-1004,Priya,Nair,,priya.nair@example.com,not a phone,,"Bad phone is dropped, row kept"
+TM-1005,,,,,,,
