@@ -15938,214 +15938,6 @@ input ProviderObservationCreateInput {
   updatedAt: DateTime
 }
 
-type WebhookEndpoint {
-  id: ID!
-  shop: Shop
-  url: String
-  events: JSON
-  isActive: Boolean
-  secretRef: String
-  lastTriggered: DateTime
-  failureCount: Int
-  webhookEvents(where: WebhookEventWhereInput! = {}, orderBy: [WebhookEventOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WebhookEventWhereUniqueInput): [WebhookEvent!]
-  webhookEventsCount(where: WebhookEventWhereInput! = {}): Int
-  version: Int
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-input WebhookEndpointWhereUniqueInput {
-  id: ID
-}
-
-input WebhookEndpointWhereInput {
-  AND: [WebhookEndpointWhereInput!]
-  OR: [WebhookEndpointWhereInput!]
-  NOT: [WebhookEndpointWhereInput!]
-  id: IDFilter
-  shop: ShopWhereInput
-  url: StringFilter
-  isActive: BooleanFilter
-  secretRef: StringFilter
-  lastTriggered: DateTimeNullableFilter
-  failureCount: IntNullableFilter
-  webhookEvents: WebhookEventManyRelationFilter
-  version: IntFilter
-  createdAt: DateTimeFilter
-  updatedAt: DateTimeFilter
-}
-
-input WebhookEventManyRelationFilter {
-  every: WebhookEventWhereInput
-  some: WebhookEventWhereInput
-  none: WebhookEventWhereInput
-}
-
-input WebhookEndpointOrderByInput {
-  id: OrderDirection
-  url: OrderDirection
-  isActive: OrderDirection
-  secretRef: OrderDirection
-  lastTriggered: OrderDirection
-  failureCount: OrderDirection
-  version: OrderDirection
-  createdAt: OrderDirection
-  updatedAt: OrderDirection
-}
-
-input WebhookEndpointUpdateInput {
-  shop: ShopRelateToOneForUpdateInput
-  url: String
-  events: JSON
-  isActive: Boolean
-  secretRef: String
-  lastTriggered: DateTime
-  failureCount: Int
-  webhookEvents: WebhookEventRelateToManyForUpdateInput
-  version: Int
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-input WebhookEventRelateToManyForUpdateInput {
-  disconnect: [WebhookEventWhereUniqueInput!]
-  set: [WebhookEventWhereUniqueInput!]
-  create: [WebhookEventCreateInput!]
-  connect: [WebhookEventWhereUniqueInput!]
-}
-
-input WebhookEndpointUpdateArgs {
-  where: WebhookEndpointWhereUniqueInput!
-  data: WebhookEndpointUpdateInput!
-}
-
-input WebhookEndpointCreateInput {
-  shop: ShopRelateToOneForCreateInput
-  url: String
-  events: JSON
-  isActive: Boolean
-  secretRef: String
-  lastTriggered: DateTime
-  failureCount: Int
-  webhookEvents: WebhookEventRelateToManyForCreateInput
-  version: Int
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-input WebhookEventRelateToManyForCreateInput {
-  create: [WebhookEventCreateInput!]
-  connect: [WebhookEventWhereUniqueInput!]
-}
-
-type WebhookEvent {
-  id: ID!
-  eventType: String
-  resourceId: String
-  resourceType: String
-  payload: JSON
-  deliveryAttempts: Int
-  delivered: Boolean
-  lastAttempt: DateTime
-  nextAttempt: DateTime
-  deadLetteredAt: DateTime
-  responseStatus: Int
-  responseBody: String
-  endpoint: WebhookEndpoint
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-input WebhookEventWhereUniqueInput {
-  id: ID
-}
-
-input WebhookEventWhereInput {
-  AND: [WebhookEventWhereInput!]
-  OR: [WebhookEventWhereInput!]
-  NOT: [WebhookEventWhereInput!]
-  id: IDFilter
-  eventType: StringFilter
-  resourceId: StringFilter
-  resourceType: StringFilter
-  deliveryAttempts: IntNullableFilter
-  delivered: BooleanFilter
-  lastAttempt: DateTimeNullableFilter
-  nextAttempt: DateTimeNullableFilter
-  deadLetteredAt: DateTimeNullableFilter
-  responseStatus: IntNullableFilter
-  responseBody: StringFilter
-  endpoint: WebhookEndpointWhereInput
-  createdAt: DateTimeFilter
-  updatedAt: DateTimeFilter
-}
-
-input WebhookEventOrderByInput {
-  id: OrderDirection
-  eventType: OrderDirection
-  resourceId: OrderDirection
-  resourceType: OrderDirection
-  deliveryAttempts: OrderDirection
-  delivered: OrderDirection
-  lastAttempt: OrderDirection
-  nextAttempt: OrderDirection
-  deadLetteredAt: OrderDirection
-  responseStatus: OrderDirection
-  responseBody: OrderDirection
-  createdAt: OrderDirection
-  updatedAt: OrderDirection
-}
-
-input WebhookEventUpdateInput {
-  eventType: String
-  resourceId: String
-  resourceType: String
-  payload: JSON
-  deliveryAttempts: Int
-  delivered: Boolean
-  lastAttempt: DateTime
-  nextAttempt: DateTime
-  deadLetteredAt: DateTime
-  responseStatus: Int
-  responseBody: String
-  endpoint: WebhookEndpointRelateToOneForUpdateInput
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-input WebhookEndpointRelateToOneForUpdateInput {
-  create: WebhookEndpointCreateInput
-  connect: WebhookEndpointWhereUniqueInput
-  disconnect: Boolean
-}
-
-input WebhookEventUpdateArgs {
-  where: WebhookEventWhereUniqueInput!
-  data: WebhookEventUpdateInput!
-}
-
-input WebhookEventCreateInput {
-  eventType: String
-  resourceId: String
-  resourceType: String
-  payload: JSON
-  deliveryAttempts: Int
-  delivered: Boolean
-  lastAttempt: DateTime
-  nextAttempt: DateTime
-  deadLetteredAt: DateTime
-  responseStatus: Int
-  responseBody: String
-  endpoint: WebhookEndpointRelateToOneForCreateInput
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-input WebhookEndpointRelateToOneForCreateInput {
-  create: WebhookEndpointCreateInput
-  connect: WebhookEndpointWhereUniqueInput
-}
-
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
@@ -16998,18 +16790,6 @@ type Mutation {
   updateProviderObservations(data: [ProviderObservationUpdateArgs!]!): [ProviderObservation]
   deleteProviderObservation(where: ProviderObservationWhereUniqueInput!): ProviderObservation
   deleteProviderObservations(where: [ProviderObservationWhereUniqueInput!]!): [ProviderObservation]
-  createWebhookEndpoint(data: WebhookEndpointCreateInput!): WebhookEndpoint
-  createWebhookEndpoints(data: [WebhookEndpointCreateInput!]!): [WebhookEndpoint]
-  updateWebhookEndpoint(where: WebhookEndpointWhereUniqueInput!, data: WebhookEndpointUpdateInput!): WebhookEndpoint
-  updateWebhookEndpoints(data: [WebhookEndpointUpdateArgs!]!): [WebhookEndpoint]
-  deleteWebhookEndpoint(where: WebhookEndpointWhereUniqueInput!): WebhookEndpoint
-  deleteWebhookEndpoints(where: [WebhookEndpointWhereUniqueInput!]!): [WebhookEndpoint]
-  createWebhookEvent(data: WebhookEventCreateInput!): WebhookEvent
-  createWebhookEvents(data: [WebhookEventCreateInput!]!): [WebhookEvent]
-  updateWebhookEvent(where: WebhookEventWhereUniqueInput!, data: WebhookEventUpdateInput!): WebhookEvent
-  updateWebhookEvents(data: [WebhookEventUpdateArgs!]!): [WebhookEvent]
-  deleteWebhookEvent(where: WebhookEventWhereUniqueInput!): WebhookEvent
-  deleteWebhookEvents(where: [WebhookEventWhereUniqueInput!]!): [WebhookEvent]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -17160,6 +16940,18 @@ type Mutation {
   closeRecommendation(recommendationId: ID!, reason: String!, idempotencyKey: String!): JSON
   markServiceReminderContacted(cycleKey: String!, channel: String!, note: String, idempotencyKey: String!): JSON
   saveMarketingCampaign(input: JSON!, idempotencyKey: String!): JSON
+  saveAccountingMappings(shopId: ID!, mappings: JSON!, idempotencyKey: String!): JSON
+  stageAccountingBatch(shopId: ID!, businessDate: String!, idempotencyKey: String!): JSON
+  exportAccountingBatch(batchId: ID!, idempotencyKey: String!): JSON
+  recordAccountingResponse(input: JSON!, idempotencyKey: String!): JSON
+  saveReportSnapshot(shopId: ID!, from: String!, to: String!, idempotencyKey: String!): JSON
+  previewDataImport(input: JSON!, idempotencyKey: String!): JSON
+  applyDataImport(jobId: ID!, idempotencyKey: String!): JSON
+  discardDataImport(jobId: ID!, idempotencyKey: String!): JSON
+  saveIntegrationConnection(input: JSON!, idempotencyKey: String!): JSON
+  recordIntegrationHealth(connectionId: ID!, ok: Boolean!, message: String, idempotencyKey: String!): JSON
+  revokeIntegrationConnection(connectionId: ID!, reason: String!, idempotencyKey: String!): JSON
+  recordProviderObservation(input: JSON!, idempotencyKey: String!): JSON
   exportMarketingCampaign(campaignId: ID!, idempotencyKey: String!): JSON
   copyMarketingMessage(campaignId: ID!, customerId: ID!, channel: String, idempotencyKey: String!): JSON
   recordReviewRequest(repairOrderId: ID!, channel: String!, note: String, idempotencyKey: String!): JSON
@@ -17618,12 +17410,6 @@ type Query {
   providerObservation(where: ProviderObservationWhereUniqueInput!): ProviderObservation
   providerObservations(where: ProviderObservationWhereInput! = {}, orderBy: [ProviderObservationOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: ProviderObservationWhereUniqueInput): [ProviderObservation!]
   providerObservationsCount(where: ProviderObservationWhereInput! = {}): Int
-  webhookEndpoint(where: WebhookEndpointWhereUniqueInput!): WebhookEndpoint
-  webhookEndpoints(where: WebhookEndpointWhereInput! = {}, orderBy: [WebhookEndpointOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WebhookEndpointWhereUniqueInput): [WebhookEndpoint!]
-  webhookEndpointsCount(where: WebhookEndpointWhereInput! = {}): Int
-  webhookEvent(where: WebhookEventWhereUniqueInput!): WebhookEvent
-  webhookEvents(where: WebhookEventWhereInput! = {}, orderBy: [WebhookEventOrderByInput!]! = [], take: Int! = 1000, skip: Int! = 0, cursor: WebhookEventWhereUniqueInput): [WebhookEvent!]
-  webhookEventsCount(where: WebhookEventWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
   validateUserPasswordResetToken(email: String!, token: String!): ValidateUserPasswordResetTokenResult
@@ -17637,6 +17423,10 @@ type Query {
   diagnosisGate(sessionId: ID!, jobId: ID): JSON
   supplierDisputeEmail(invoiceId: ID!): JSON
   campaignPreview(campaignId: ID!): JSON
+  shopReports(shopId: ID!, from: String!, to: String!): JSON
+  shopTieOuts(shopId: ID!): JSON
+  accountingJournalPreview(shopId: ID!, businessDate: String!): JSON
+  exportFile(exportJobId: ID!): JSON
 }
 
 union AuthenticatedItem = User

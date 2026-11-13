@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseCsv, readTable } from './csv'
 import { parseImport } from './importers'
-import { normalizeWebhookEvents, normalizeWebhookUrl, nextWebhookAttempt, sign, topicOf, WEBHOOK_DELIVERY_MAX_ATTEMPTS, WEBHOOK_TOPICS } from './webhooks'
 import { journalCsv } from './accounting'
 import { REPORT_DEFINITIONS } from './reporting'
 import { HUMAN_ONLY_MUTATIONS } from '../mcp-oauth/guard'
@@ -42,33 +41,6 @@ describe('import parsing', () => {
   })
 })
 
-describe('webhooks out', () => {
-  it('only accepts https (or local http outside production) and no embedded passwords', () => {
-    expect(normalizeWebhookUrl('https://shop.example/hook')).toBe('https://shop.example/hook')
-    expect(() => normalizeWebhookUrl('http://shop.example/hook')).toThrow(/https/)
-    expect(() => normalizeWebhookUrl('https://u:p@shop.example/')).toThrow()
-    expect(() => normalizeWebhookUrl('not a url')).toThrow()
-  })
-  it('knows exactly the topics of INTEGRATIONS §10 and refuses others', () => {
-    expect(Object.keys(WEBHOOK_TOPICS).sort()).toEqual(['appointment.created', 'comeback.opened', 'estimate.sent', 'inspection.sent', 'invoice.finalized', 'job.authorized', 'job.declined', 'parts.received', 'payment.succeeded', 'repair_order.updated'].sort())
-    expect(normalizeWebhookEvents(['job.declined', 'job.declined', 'estimate.sent'])).toEqual(['estimate.sent', 'job.declined'])
-    expect(() => normalizeWebhookEvents(['customer.exported'])).toThrow()
-    expect(() => normalizeWebhookEvents([])).toThrow()
-    expect(topicOf('ro.in_service')).toBe('repair_order.updated')
-    expect(topicOf('receipt.recorded')).toBe('parts.received')
-    expect(topicOf('customer.updated')).toBeNull()
-  })
-  it('signs with HMAC-SHA256 and backs off then gives up', () => {
-    expect(sign('k', '{"a":1}')).toMatch(/^sha256=[0-9a-f]{64}$/)
-    expect(sign('k', 'x')).not.toBe(sign('j', 'x'))
-    const t = 1_000_000
-    expect(nextWebhookAttempt(1, t)!.getTime() - t).toBe(120_000)
-    expect(nextWebhookAttempt(20, t)).toBeNull()
-    expect(nextWebhookAttempt(WEBHOOK_DELIVERY_MAX_ATTEMPTS - 1, t)).not.toBeNull()
-    expect(nextWebhookAttempt(WEBHOOK_DELIVERY_MAX_ATTEMPTS, t)).toBeNull()
-  })
-})
-
 describe('accounting export file and report definitions', () => {
   it('writes debits and credits in dollars and neutralises spreadsheet formulas', () => {
     const csv = journalCsv('ACB-NGA-2026-000001', '2026-11-13', [
@@ -84,6 +56,6 @@ describe('accounting export file and report definitions', () => {
     for (const key of ['car_count', 'aro', 'elr', 'gp_labor', 'gp_parts', 'tech_productivity', 'approval_rate', 'dvi_rate', 'comeback_rate', 'cycle_time']) expect(REPORT_DEFINITIONS[key].definition.length).toBeGreaterThan(40)
   })
   it('keeps money and integration commands away from connected assistants', () => {
-    for (const n of ['stageAccountingBatch', 'exportAccountingBatch', 'recordAccountingResponse', 'applyDataImport', 'addWebhookEndpoint', 'saveIntegrationConnection']) expect(HUMAN_ONLY_MUTATIONS.has(n), n).toBe(true)
+    for (const n of ['stageAccountingBatch', 'exportAccountingBatch', 'recordAccountingResponse', 'applyDataImport', 'saveIntegrationConnection']) expect(HUMAN_ONLY_MUTATIONS.has(n), n).toBe(true)
   })
 })

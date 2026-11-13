@@ -5,7 +5,6 @@ import path from 'node:path'
 import { hasTestDatabase, resetDatabase, testPrisma, uniqueKey } from '../../../tests/helpers/db'
 import { permissionNames } from '../access'
 import { setStripeGateway } from '../lib/stripeGateway'
-import { deliverDue, transport } from '../lib/webhooks'
 import { checkInShopVehicle } from './phase1'
 import { addRepairJob, openShopRepairOrder, recordCustomerAuthorization, sendRepairEstimate, transitionRepairJob } from './phase2'
 import { closeShopDay, finalizeShopInvoice, takeShopPayment } from './phase3'
@@ -30,7 +29,7 @@ const BRAKES = [
 const fixture = (name: string) => readFileSync(path.join(import.meta.dirname, '../fixtures/imports', name), 'utf8')
 const day = (d: Date) => d.toISOString().slice(0, 10)
 
-describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, webhooks (database)', () => {
+describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, integrations (database)', () => {
   let prisma: PrismaClient
   type Ctx = { session: unknown; prisma: PrismaClient }
   let owner: Ctx, books: Ctx, noPerms: Ctx, viaMcp: Ctx
@@ -50,9 +49,6 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, webho
     viaMcp = { session: sessionFor(b.id, [...COUNTER, 'canManageIntegrations'], { mcp: { clientId: 'c', scopes: ['mcp:read', 'mcp:write'] } }), prisma }
     await loadNorthgateSetup(null, { idempotencyKey: key('setup') }, owner)
 
-    // Subscribe before the work so the outbox sees it.
-    transport.fetch = async () => ({ status: 200, text: async () => 'ok' })
-    await p9.addWebhookEndpoint(null, { input: { shopId: NGA, url: 'https://shop.example/hook', events: ['invoice.finalized', 'payment.succeeded', 'job.authorized', 'estimate.sent'] }, idempotencyKey: key('wh') }, books)
 
     const owned = await prisma.vehicleOwnership.findFirstOrThrow({ where: { customerId: 'seed_cust_04', endedAt: null, vehicle: { make: 'Toyota' } }, include: { vehicle: true } })
     const ci = await checkInShopVehicle(null, { input: { shopId: NGA, customerId: 'seed_cust_04', vehicleId: owned.vehicleId!, concerns: ['Grinding from the front brakes'], promisedAt: new Date(Date.now() + 86_400_000).toISOString(), odometer: { value: (owned.vehicle!.lastOdometer ?? 0) + 200 }, signature: SIGNATURE }, idempotencyKey: key('ci') }, books) as { id: string }
@@ -158,9 +154,8 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, webho
     await expect(prisma.$executeRawUnsafe(`UPDATE "AccountingBatch" SET "debitTotalMinor" = 1 WHERE id = '${batchId}'`)).rejects.toThrow(/check|balanced/i)
   })
 
-  it('an assistant connection cannot stage, export, import or add a webhook', async () => {
+  it('an assistant connection cannot stage, export or import', async () => {
     await expect(p9.stageAccountingBatch(null, { shopId: NGA, businessDate: today, idempotencyKey: key('m') }, viaMcp)).rejects.toMatchObject({ code: expect.stringMatching(/AGENT_FORBIDDEN_ACTION|NOT_AUTHORIZED/) })
-    await expect(p9.addWebhookEndpoint(null, { input: { url: 'https://x.example/h', events: ['*'] }, idempotencyKey: key('m') }, viaMcp)).rejects.toMatchObject({ code: expect.stringMatching(/AGENT_FORBIDDEN_ACTION|NOT_AUTHORIZED/) })
   })
 
   it('importing the Tekmetric fixture creates customers and vehicles once, and a second run changes nothing', async () => {
@@ -205,37 +200,6 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, webho
     expect(civic).not.toBeNull()
   })
 
-  it('the webhook outbox holds what the day raised, signed and delivered once, and a failing receiver dead-letters after the budget', async () => {
-    const queued = await prisma.webhookEvent.findMany({ orderBy: { createdAt: 'asc' } })
-    expect(new Set(queued.map(e => e.eventType))).toEqual(new Set(['estimate.sent', 'job.authorized', 'invoice.finalized', 'payment.succeeded']))
-    for (const e of queued) expect(JSON.stringify(e.payload)).not.toMatch(/Delgado|555|@/)
-    const seen: { sig: string; body: string; topic: string }[] = []
-    transport.fetch = async (_u, init) => { seen.push({ sig: init.headers['x-openfront-signature'], body: init.body, topic: init.headers['x-openfront-topic'] }); return { status: 200, text: async () => 'ok' } }
-    const first = await deliverDue(prisma)
-    expect(first.delivered).toBe(queued.length)
-    expect(seen.every(s => /^sha256=[0-9a-f]{64}$/.test(s.sig))).toBe(true)
-    expect((await deliverDue(prisma)).due).toBe(0)
-
-    const endpoint = await prisma.webhookEndpoint.findFirstOrThrow()
-    const ev = await prisma.webhookEvent.create({ data: { eventType: 'job.declined', resourceType: 'Job', resourceId: 'x', payload: { event: 'job.declined' }, endpointId: endpoint.id, nextAttempt: new Date(0) } })
-    transport.fetch = async () => ({ status: 500, text: async () => 'boom' })
-    let at = Date.now()
-    for (let i = 0; i < 12; i += 1) { await deliverDue(prisma, { now: new Date(at) }); at += 30 * 3_600_000 }
-    const dead = await prisma.webhookEvent.findUniqueOrThrow({ where: { id: ev.id } })
-    expect(dead.deadLetteredAt).not.toBeNull()
-    expect(dead.deliveryAttempts).toBe(12)
-    const replay = await p9.replayWebhookEvent(null, { eventId: ev.id, idempotencyKey: key('rpl') }, books) as any
-    expect(replay.id).toBe(ev.id)
-    transport.fetch = async () => ({ status: 204, text: async () => '' })
-    await deliverDue(prisma, { now: new Date(at) })
-    expect((await prisma.webhookEvent.findUniqueOrThrow({ where: { id: ev.id } })).delivered).toBe(true)
-  })
-
-  it('refuses a plain http address and an event this system does not send', async () => {
-    await expect(p9.addWebhookEndpoint(null, { input: { shopId: NGA, url: 'http://shop.example/h', events: ['job.declined'] }, idempotencyKey: key('b1') }, books)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
-    await expect(p9.addWebhookEndpoint(null, { input: { shopId: NGA, url: 'https://shop.example/h', events: ['customer.exported'] }, idempotencyKey: key('b2') }, books)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
-  })
-
   it('integration connections: live needs a capability profile, observations are kept once and never changed', async () => {
     await expect(p9.saveIntegrationConnection(null, { input: { shopId: NGA, kind: 'accounting', providerKey: 'quickbooks', mode: 'live' }, idempotencyKey: key('i1') }, books)).rejects.toMatchObject({ code: 'GUARD_FAILED' })
     await expect(p9.saveIntegrationConnection(null, { input: { shopId: NGA, kind: 'accounting', providerKey: 'twilio', mode: 'manual' }, idempotencyKey: key('i2') }, books)).rejects.toMatchObject({ code: 'INVALID_INPUT' })
@@ -250,10 +214,4 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, webho
     await expect(p9.recordIntegrationHealth(null, { connectionId: c.id, ok: true, idempotencyKey: key('i5') }, books)).rejects.toMatchObject({ code: 'INVALID_TRANSITION' })
   })
 
-  it('no secrets are readable from a connection or a webhook endpoint', async () => {
-    const e = await prisma.webhookEndpoint.findFirstOrThrow()
-    expect(e.secretRef).toMatch(/^webhook\./)
-    const box = await prisma.secretBox.findUniqueOrThrow({ where: { key: e.secretRef } })
-    expect(box.ciphertext).not.toMatch(/^[0-9a-f]{64}$/)
-  })
 })

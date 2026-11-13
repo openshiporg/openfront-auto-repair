@@ -42,7 +42,6 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         shopTieOuts(shopId: ID!): JSON
         accountingJournalPreview(shopId: ID!, businessDate: String!): JSON
         exportFile(exportJobId: ID!): JSON
-        webhookTopics: JSON
       }
       input UserUpdateProfileInput { name: String, email: String, password: String, onboardingStatus: String }
       type Mutation {
@@ -203,10 +202,6 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         recordIntegrationHealth(connectionId: ID!, ok: Boolean!, message: String, idempotencyKey: String!): JSON
         revokeIntegrationConnection(connectionId: ID!, reason: String!, idempotencyKey: String!): JSON
         recordProviderObservation(input: JSON!, idempotencyKey: String!): JSON
-        addWebhookEndpoint(input: JSON!, idempotencyKey: String!): JSON
-        changeWebhookEndpoint(input: JSON!, idempotencyKey: String!): JSON
-        replayWebhookEvent(eventId: ID!, idempotencyKey: String!): JSON
-        sendDueWebhooks(idempotencyKey: String!): JSON
         exportMarketingCampaign(campaignId: ID!, idempotencyKey: String!): JSON
         copyMarketingMessage(campaignId: ID!, customerId: ID!, channel: String, idempotencyKey: String!): JSON
         recordReviewRequest(repairOrderId: ID!, channel: String!, note: String, idempotencyKey: String!): JSON
@@ -229,7 +224,6 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         shopTieOuts: op(p9.shopTieOuts),
         accountingJournalPreview: op(p9.accountingJournalPreview),
         exportFile: op(p9.exportFile),
-        webhookTopics: op(p9.webhookTopics),
       },
       Mutation: {
         updateActiveUser,
@@ -374,10 +368,6 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         recordIntegrationHealth: op(p9.recordIntegrationHealth),
         revokeIntegrationConnection: op(p9.revokeIntegrationConnection),
         recordProviderObservation: op(p9.recordProviderObservation),
-        addWebhookEndpoint: op(p9.addWebhookEndpoint),
-        changeWebhookEndpoint: op(p9.changeWebhookEndpoint),
-        replayWebhookEvent: op(p9.replayWebhookEvent),
-        sendDueWebhooks: op(p9.sendDueWebhooks),
         exportMarketingCampaign: op(p7.exportMarketingCampaign),
         copyMarketingMessage: op(p7.copyMarketingMessage),
         recordReviewRequest: op(p7.recordReviewRequest),

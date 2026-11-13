@@ -159,10 +159,6 @@ const OPS: Record<string, Record<string, string>> = {
   saveIntegrationConnection: { input: 'JSON!' },
   recordIntegrationHealth: { connectionId: 'ID!', ok: 'Boolean!', message: 'String' },
   revokeIntegrationConnection: { connectionId: 'ID!', reason: 'String!' },
-  addWebhookEndpoint: { input: 'JSON!' },
-  changeWebhookEndpoint: { input: 'JSON!' },
-  replayWebhookEvent: { eventId: 'ID!' },
-  sendDueWebhooks: {},
   releaseShopJobReservations: { jobId: 'ID!', reason: 'String!' },
 };
 

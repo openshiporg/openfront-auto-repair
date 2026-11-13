@@ -6,7 +6,6 @@ import { applyImport, discardImport, previewImport } from '../lib/importers'
 import { recordHealth, recordObservation, revokeConnection, saveConnection } from '../lib/integrations'
 import { computeKpis, REPORT_DEFINITIONS, saveKpiSnapshot } from '../lib/reporting'
 import { runTieOuts } from '../lib/tieouts'
-import { changeEndpoint, createEndpoint, deliverDue, replayEvent, WEBHOOK_TOPICS } from '../lib/webhooks'
 import { requireShop } from './phase1'
 
 type Ctx = { session: any; prisma: any }
@@ -71,10 +70,6 @@ export async function exportFile(_root: unknown, args: { exportJobId: string }, 
   if (!job) throw new DomainError(Codes.NOT_FOUND, 'Not found.')
   requireShopOrOrg(context, job.shopId)
   return { fileName: job.fileName, contentType: job.contentType, content: job.content, sha256: job.sha256, rowCount: job.rowCount }
-}
-
-export async function webhookTopics() {
-  return Object.entries(WEBHOOK_TOPICS).map(([topic, sources]) => ({ topic, sources }))
 }
 
 // ── Accounting ────────────────────────────────────────────────────────────────────────────────
@@ -193,42 +188,4 @@ export async function recordProviderObservation(_root: unknown, args: { input: P
     requireShopOrOrg(context, await shopOf(uow.tx, 'integrationConnection', args.input?.connectionId))
     return recordObservation(uow, actor, args.input)
   })
-}
-
-// ── Webhooks out ─────────────────────────────────────────────────────────────────────────────
-
-export async function addWebhookEndpoint(_root: unknown, args: { input: { shopId?: string | null; url: string; events: string[] }; idempotencyKey: string }, context: Ctx) {
-  const actor = actorFromSession(context.session)
-  requirePermission(actor, ...ADMIN)
-  requireHuman(actor, 'add a webhook')
-  requireShopOrOrg(context, args.input?.shopId ?? null)
-  return run(context, actor, 'webhook.create', args.idempotencyKey, args.input, uow => createEndpoint(uow, actor, args.input))
-}
-
-export async function changeWebhookEndpoint(_root: unknown, args: { input: Parameters<typeof changeEndpoint>[2]; idempotencyKey: string }, context: Ctx) {
-  const actor = actorFromSession(context.session)
-  requirePermission(actor, ...ADMIN)
-  requireHuman(actor, 'change a webhook')
-  return run(context, actor, 'webhook.change', args.idempotencyKey, args.input, async uow => {
-    requireShopOrOrg(context, await shopOf(uow.tx, 'webhookEndpoint', args.input?.endpointId))
-    return changeEndpoint(uow, actor, args.input)
-  })
-}
-
-export async function replayWebhookEvent(_root: unknown, args: { eventId: string; idempotencyKey: string }, context: Ctx) {
-  const actor = actorFromSession(context.session)
-  requirePermission(actor, ...ADMIN)
-  requireHuman(actor, 'replay a webhook')
-  return run(context, actor, 'webhook.replay', args.idempotencyKey, args, async uow => {
-    requireShopOrOrg(context, await shopOf(uow.tx, 'webhookEvent', args.eventId, r => r.endpoint?.shopId, { endpoint: { select: { shopId: true } } }))
-    return replayEvent(uow, actor, { eventId: args.eventId })
-  })
-}
-
-/** A person pressing "send what is due": there is no scheduler (AGENTS.md); deliveries also go out right after each commit. */
-export async function sendDueWebhooks(_root: unknown, _args: { idempotencyKey: string }, context: Ctx) {
-  const actor = actorFromSession(context.session)
-  requirePermission(actor, ...ADMIN)
-  requireHuman(actor, 'send webhooks')
-  return deliverDue(context.prisma)
 }

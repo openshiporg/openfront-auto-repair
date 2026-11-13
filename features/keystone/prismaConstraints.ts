@@ -54,7 +54,6 @@ export const COMPOUND_UNIQUES: Record<string, string[]> = {
   AccountingBatch: ['@@unique([shopId, businessDate, sourceHash], map: "AccountingBatch_shop_date_hash_key")'],
   ImportJob: ['@@unique([shopId, format, entity, fileSha256], map: "ImportJob_shop_file_key")'],
   ProviderObservation: ['@@unique([connectionId, contentHash], map: "ProviderObservation_connection_hash_key")'],
-  WebhookEvent: ['@@index([delivered, deadLetteredAt, nextAttempt], map: "WebhookEvent_retry_queue_idx")'],
   StaffTask: ['@@index([shopId, status, dueAt], map: "StaffTask_shop_status_due_idx")'],
 }
 

@@ -120,18 +120,3 @@ export function ConnectionForm({ shopId }: { shopId: string }) {
     </form>
   );
 }
-
-export function WebhookForm({ shopId, topics }: { shopId: string; topics: string[] }) {
-  const cmd = useCommand<R>('addWebhookEndpoint', INT);
-  const [url, setUrl] = React.useState('');
-  const [events, setEvents] = React.useState<string[]>([]);
-  return (
-    <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); cmd.run({ input: { shopId, url, events } }); }}>
-      <label className={labelClass}>Address (https)<input className={inputClass} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/hook" /></label>
-      <fieldset className="flex flex-wrap gap-3 text-sm">{topics.map((t) => <label key={t} className="flex items-center gap-1"><input type="checkbox" checked={events.includes(t)} onChange={(e) => setEvents(e.target.checked ? [...events, t] : events.filter((x) => x !== t))} />{t}</label>)}</fieldset>
-      <button className={primary} disabled={cmd.pending || !events.length}>{cmd.pending ? 'Working' : 'Add webhook'}</button>
-      {cmd.result?.secret ? <p role="status" className="break-all text-sm">Signing secret, shown once: <span className="font-mono">{String(cmd.result.secret)}</span></p> : null}
-      <FormError error={cmd.error} />
-    </form>
-  );
-}

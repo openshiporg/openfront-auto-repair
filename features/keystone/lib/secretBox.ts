@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import type { Tx } from './db'
 
-/** Small secrets (webhook signing keys, provider credentials) sealed with AUTO_SECRET_KEY, kept in SecretBox. Never a column of a business list. */
+/** Small secrets (provider credentials) sealed with AUTO_SECRET_KEY, kept in SecretBox. Never a column of a business list. */
 const secret = () => {
   const hex = process.env.AUTO_SECRET_KEY ?? ''
   if (!hex) throw new Error('AUTO_SECRET_KEY is not set.')

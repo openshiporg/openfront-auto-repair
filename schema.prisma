@@ -634,7 +634,6 @@ model Shop {
   from_ImportJob_shop                  ImportJob[]                  @relation("ImportJob_shop")
   from_IntegrationConnection_shop      IntegrationConnection[]      @relation("IntegrationConnection_shop")
   from_KpiSnapshot_shop                KpiSnapshot[]                @relation("KpiSnapshot_shop")
-  from_WebhookEndpoint_shop            WebhookEndpoint[]            @relation("WebhookEndpoint_shop")
 
   @@index([jurisdictionPackId])
   @@index([jurisdictionPolicyId])
@@ -4000,46 +3999,6 @@ model ProviderObservation {
 
   @@unique([connectionId, contentHash], map: "ProviderObservation_connection_hash_key")
   @@index([connectionId])
-}
-
-model WebhookEndpoint {
-  id            String         @id @default(cuid())
-  shop          Shop?          @relation("WebhookEndpoint_shop", fields: [shopId], references: [id])
-  shopId        String?        @map("shop")
-  url           String         @default("")
-  events        Json?          @default("[]")
-  isActive      Boolean        @default(true)
-  secretRef     String         @default("")
-  lastTriggered DateTime?
-  failureCount  Int?           @default(0)
-  webhookEvents WebhookEvent[] @relation("WebhookEvent_endpoint")
-  version       Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @default(now()) @updatedAt
-
-  @@index([shopId])
-}
-
-model WebhookEvent {
-  id               String           @id @default(cuid())
-  eventType        String           @default("")
-  resourceId       String           @default("")
-  resourceType     String           @default("")
-  payload          Json?            @default("{}")
-  deliveryAttempts Int?             @default(0)
-  delivered        Boolean          @default(false)
-  lastAttempt      DateTime?
-  nextAttempt      DateTime?
-  deadLetteredAt   DateTime?
-  responseStatus   Int?
-  responseBody     String           @default("")
-  endpoint         WebhookEndpoint? @relation("WebhookEvent_endpoint", fields: [endpointId], references: [id])
-  endpointId       String?          @map("endpoint")
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @default(now()) @updatedAt
-
-  @@index([endpointId])
-  @@index([delivered, deadLetteredAt, nextAttempt], map: "WebhookEvent_retry_queue_idx")
 }
 
 enum UserKindType {

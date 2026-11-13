@@ -1,5 +1,4 @@
 import { appendAuditEvents, type AuditInput } from './audit'
-import { enqueueFromAudits } from './webhooks'
 import { TRANSACTION_OPTIONS, type Db, type Tx } from './db'
 
 /**
@@ -22,8 +21,6 @@ export async function runInTransaction<T>(db: Db, work: (uow: UnitOfWork) => Pro
     const result = await work(uow)
     // Last: the chain lock is held only for the final moments of the transaction.
     await appendAuditEvents(tx, uow.audits, uow.now)
-    // Outbox rows commit with the change that raised them; delivery happens after commit.
-    await enqueueFromAudits(tx, uow.audits, uow.now)
     return result
   }, TRANSACTION_OPTIONS)
 }
