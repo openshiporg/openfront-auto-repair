@@ -3,7 +3,7 @@ import { money, when, label } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Status } from '../../components/ui';
 import { Act, ExportBatch, MappingForm, RecordResponse, StageDay, accountingPaths } from './Actions';
 
-type Batch = { id: string; reference: string; businessDate: string; postingStatus: string; status: string; debitTotalMinor: string; creditTotalMinor: string; providerRef: string; exportJobId: string | null; shop: { name: string } | null };
+type Batch = { id: string; reference: string; businessDate: string; postingStatus: string; status: string; debitTotalMinor: string; creditTotalMinor: string; providerRef: string; exportJob: { id: string } | null; shop: { name: string } | null };
 
 /** The export is staged and NOT_POSTED. There is no ledger here: a day becomes POSTED only when a person records that the books accepted the file. */
 export default async function AccountingPage({ searchParams }: { searchParams?: Promise<{ shop?: string }> }) {
@@ -13,7 +13,7 @@ export default async function AccountingPage({ searchParams }: { searchParams?: 
   const { shops } = await q<{ shops: { id: string; name: string }[] }>(`{ shops(orderBy: { name: asc }) { id name } }`);
   const shop = shops.find((s) => s.id === params.shop) ?? shops[0];
   if (!shop) return <Page title="Accounting export"><Empty>No shops yet.</Empty></Page>;
-  const { accountingBatches: batches } = await q<{ accountingBatches: Batch[] }>(`query($s: ID!) { accountingBatches(where: { shop: { id: { equals: $s } } }, orderBy: { businessDate: desc }, take: 30) { id reference businessDate postingStatus status debitTotalMinor creditTotalMinor providerRef exportJobId shop { name } } }`, { s: shop.id });
+  const { accountingBatches: batches } = await q<{ accountingBatches: Batch[] }>(`query($s: ID!) { accountingBatches(where: { shop: { id: { equals: $s } } }, orderBy: { businessDate: desc }, take: 30) { id reference businessDate postingStatus status debitTotalMinor creditTotalMinor providerRef exportJob { id } shop { name } } }`, { s: shop.id });
   const preview = await q<{ accountingJournalPreview: { sourceKeys: string[]; unmapped: string[] } }>(`query($s: ID!, $d: String!) { accountingJournalPreview(shopId: $s, businessDate: $d) }`, { s: shop.id, d: new Date().toISOString().slice(0, 10) }).then((r) => r.accountingJournalPreview).catch(() => null);
   const { accountingMappings: maps } = await q<{ accountingMappings: { sourceKey: string; accountCode: string; accountName: string }[] }>(`query($s: ID!) { accountingMappings(where: { shop: { id: { equals: $s } } }) { sourceKey accountCode accountName } }`, { s: shop.id }).catch(() => ({ accountingMappings: [] }));
   return (
