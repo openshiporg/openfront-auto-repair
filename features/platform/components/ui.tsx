@@ -50,8 +50,8 @@ export function Tabs({ items, active }: { items: { key: string; label: string; h
 export function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="min-w-0 space-y-3">
-      <div className="flex items-center justify-between gap-3 border-b pb-2">
-        <h2 className="font-mono text-xs uppercase tracking-wide text-muted-foreground">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b pb-2">
+        <h2 className="min-w-0 break-words font-mono text-xs uppercase tracking-wide text-muted-foreground">{title}</h2>
         {aside}
       </div>
       {children}

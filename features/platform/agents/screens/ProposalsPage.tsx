@@ -48,12 +48,18 @@ export default async function ProposalsPage() {
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-2"><span className="break-words font-medium">{p.title}</span><Status value={p.status} /></div>
               <Meta>{p.agent?.name} · asked by {p.invokedBy?.name ?? 'someone'} · {when(p.createdAt, tz)}{p.repairOrder ? ` · repair order ${p.repairOrder.roNumber}` : ''}</Meta>
-              <ol className="space-y-1 text-sm">
-                {(p.plan ?? []).map(s => (
-                  <li key={s.index} className="min-w-0 break-words"><span className="font-medium">{s.index + 1}. {s.summary}</span> <Meta>{s.status === 'done' ? 'done' : s.status === 'failed' ? `did not run${s.error ? `: ${s.error}` : ''}` : s.index === p.stepIndex && p.status === 'previewed' ? 'next' : ''}</Meta>
-                    {effect(s.preview) || total(s.preview) ? <div className="text-xs text-muted-foreground">Will: {effect(s.preview) || 'make this change'}.{total(s.preview)}</div> : null}</li>
-                ))}
-              </ol>
+              {(() => {
+                const steps = (
+                  <ol className="space-y-1 text-sm">
+                    {(p.plan ?? []).map(s => (
+                      <li key={s.index} className="min-w-0 break-words"><span className="font-medium">{s.index + 1}. {s.summary}</span> <Meta>{s.status === 'done' ? 'done' : s.status === 'failed' ? `did not run${s.error ? `: ${s.error}` : ''}` : s.index === p.stepIndex && p.status === 'previewed' ? 'next' : ''}</Meta>
+                        {effect(s.preview) || total(s.preview) ? <div className="text-xs text-muted-foreground">Will: {effect(s.preview) || 'make this change'}.{total(s.preview)}</div> : null}</li>
+                    ))}
+                  </ol>
+                );
+                // Only a plan waiting for a decision shows its steps open; finished and out-of-date plans fold away.
+                return p.status === 'previewed' ? steps : <details><summary className="min-h-11 cursor-pointer py-3 text-sm">Steps ({(p.plan ?? []).length})</summary>{steps}</details>;
+              })()}
               {p.failure ? <p className="break-words text-sm text-red-600">{p.failure}</p> : null}
               {p.status === 'stale' ? <p className="text-sm">The record changed after this was previewed, so nothing more ran. Ask for a new plan.</p> : null}
             </div>

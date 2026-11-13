@@ -3,7 +3,7 @@ import { when, label } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Status } from '../../components/ui';
 import { Act, ImportForm, importPaths } from './Actions';
 
-type Job = { id: string; reference: string; format: string; entity: string; status: string; fileName: string; rowCount: number; preview: { externalId: string; action: string; reason?: string; summary?: string }[] | null; result: Record<string, number> | null; createdAt: string };
+type Job = { id: string; reference: string; format: string; entity: string; status: string; fileName: string; rowCount: number; preview: { externalId: string; label?: string; action: string; message?: string; reason?: string; summary?: string }[] | null; result: Record<string, unknown> | null; createdAt: string };
 
 /** Preview first: each row shows what would happen. Applying twice changes nothing, because every row keeps the id it had in the old system. */
 export default async function ImportsPage() {
@@ -16,10 +16,10 @@ export default async function ImportsPage() {
       {shops[0] ? <Section title="New import"><ImportForm shopId={shops[0].id} /></Section> : null}
       {jobs.length ? jobs.map((j) => (
         <Section key={j.id} title={`${j.reference} · ${label(j.entity)} from ${label(j.format)}`} aside={j.status === 'previewed' ? <span className="flex gap-2"><Act op="applyDataImport" vars={{ jobId: j.id }} paths={importPaths} tone="primary">Apply</Act><Act op="discardDataImport" vars={{ jobId: j.id }} paths={importPaths}>Discard</Act></span> : <Status value={j.status} />}>
-          <Meta>{j.fileName || 'file'} · {j.rowCount} rows · {when(j.createdAt)}{j.result ? ` · ${Object.entries(j.result).map(([k, v]) => `${v} ${label(k)}`).join(', ')}` : ''}</Meta>
+          <Meta>{j.fileName || 'file'} · {j.rowCount} rows · {when(j.createdAt)}{j.result ? ` · ${Object.entries(j.result).filter(([, v]) => typeof v === 'number').map(([k, v]) => `${v} ${label(k)}`).join(', ')}` : ''}</Meta>
           {j.status === 'previewed' && j.preview ? (
             <details><summary className="cursor-pointer py-1 text-sm">Rows ({j.preview.length})</summary>
-              {j.preview.slice(0, 200).map((p, i) => <Row key={i}><span className="font-mono text-xs">{p.externalId || 'no id'}</span><span className="text-sm">{label(p.action)}{p.reason ? ` · ${p.reason}` : p.summary ? ` · ${p.summary}` : ''}</span></Row>)}
+              {j.preview.slice(0, 200).map((p, i) => <Row key={i}><span className="font-mono text-xs">{p.externalId || 'no id'}</span><span className="text-sm">{p.label ? `${p.label} · ` : ''}{label(p.action)}{p.message ? ` · ${p.message}` : p.reason ? ` · ${p.reason}` : p.summary ? ` · ${p.summary}` : ''}</span></Row>)}
             </details>
           ) : null}
         </Section>

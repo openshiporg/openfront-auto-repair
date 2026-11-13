@@ -3,6 +3,7 @@ import { actorUserId, type Actor } from './actor'
 import { DomainError, Codes } from './errors'
 import type { UnitOfWork } from './unitOfWork'
 import type { Tx } from './db'
+import { addMonths } from './invoiceMath'
 
 /*
  * Declined-work follow-ups and service reminders (STATE-MACHINES §16, adapted: no timers).
@@ -44,19 +45,20 @@ export type CadenceInput = { declinedAt: Date | string; deferUntil: Date | strin
 
 /**
  * When the next follow-up is due, from the shop's cadence in days after the decline (for example 3, 30, 90).
+ * The days count from the shop's calendar day of the decline (an evening decline in Pacific time is still that day).
  * A deferred job with a date waits for that date first. Once every step has been done there is no next one.
  */
-export function nextFollowUp(rec: CadenceInput, cadenceDays: number[]): { step: number; of: number; dueOn: string } | null {
+export function nextFollowUp(rec: CadenceInput, cadenceDays: number[], timeZone = 'America/Los_Angeles'): { step: number; of: number; dueOn: string } | null {
   const steps = cadenceDays.filter(n => Number.isFinite(n) && n >= 0)
-  const declined = new Date(rec.declinedAt)
+  const declinedDay = todayIn(timeZone, new Date(rec.declinedAt))
   const n = rec.contactedCount
   if (n >= steps.length) return null
-  let due = addDays(declined, steps[n])
+  let dueOn = dayOf(addDays(dateOnly(declinedDay), steps[n]))
   if (rec.deferUntil && n === 0) {
-    const until = new Date(rec.deferUntil)
-    due = until.getTime() > due.getTime() ? until : due
+    const until = dayOf(new Date(rec.deferUntil))
+    if (until > dueOn) dueOn = until
   }
-  return { step: n + 1, of: steps.length, dueOn: dayOf(due) }
+  return { step: n + 1, of: steps.length, dueOn }
 }
 
 export function cadenceOf(policy: { followUpCadenceDays?: unknown } | null): number[] {
@@ -97,7 +99,7 @@ export async function recommendationBoard(tx: Tx, input: { shopIds: string[] | '
   const out = []
   for (const r of rows) {
     const today = todayIn(r.shop?.timeZone ?? 'America/Los_Angeles', input.now)
-    const next = nextFollowUp({ declinedAt: r.declinedAt!, deferUntil: r.deferUntil, contactedCount: r.contactedCount ?? 0, lastContactedAt: r.lastContactedAt }, cadenceOf(r.shop?.shopPolicy ?? null))
+    const next = nextFollowUp({ declinedAt: r.declinedAt!, deferUntil: r.deferUntil, contactedCount: r.contactedCount ?? 0, lastContactedAt: r.lastContactedAt }, cadenceOf(r.shop?.shopPolicy ?? null), r.shop?.timeZone ?? 'America/Los_Angeles')
     if (!next) continue
     const late = diffDays(today, next.dueOn)
     if (late < -(input.soonDays ?? 7)) continue
@@ -139,9 +141,8 @@ export type ReminderCalc = { dueOn: string; dueAtOdometer: number | null; projec
 
 /** Pure: when a service is next due from the date of the last one, the odometer then and now, and the usual driving rate. */
 export function computeReminder(input: { servicedOn: string; serviceOdometer: number | null; currentOdometer: number | null; today: string; interval: { miles: number; months: number }; perDay: number; soonDays?: number }): ReminderCalc {
-  const d = dateOnly(input.servicedOn)
-  const due = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + input.interval.months, d.getUTCDate()))
-  const dueOn = dayOf(due)
+  // Month-end clamps: Aug 31 + 6 months is Feb 28 (or 29), not Mar 3.
+  const dueOn = addMonths(input.servicedOn, input.interval.months)
   const dueAtOdometer = input.serviceOdometer !== null ? input.serviceOdometer + input.interval.miles : null
   let projectedDueOn: string | null = null
   if (dueAtOdometer !== null && input.currentOdometer !== null) {

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { q, holdsAny } from '../../lib/server';
+import { q, holds } from '../../lib/server';
 import { money, when } from '../../lib/format';
 import { Page, Row, Empty, Meta, Section, Stat, Status } from '../../components/ui';
 import { ApproverForm, CertificateForm, ContactForm, Do, ExportPeriod, LinkButton, ReleaseHold, TermsForm, UnitForm } from './AccountActions';
@@ -27,7 +27,12 @@ const lastMonth = (today: string) => {
 /** One account: terms, standing, units, who can approve and up to how much, tax certificates, and what is owed by age. */
 export default async function AccountPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!(await holdsAny(['canReadRepairOrders', 'canManageCustomers']))) return <Page title="Account"><Empty>Your role is not allowed to view accounts.</Empty></Page>;
+  const can = await holds(['canReadRepairOrders', 'canManageCustomers', 'canApproveCredit', 'canReadFinancials', 'canFinalizeInvoices']);
+  // Each button shows only for a role the server lets press it.
+  const manage = can.canManageCustomers;
+  const credit = can.canApproveCredit;
+  const books = can.canReadFinancials || can.canFinalizeInvoices;
+  if (!can.canReadRepairOrders && !can.canManageCustomers) return <Page title="Account"><Empty>Your role is not allowed to view accounts.</Empty></Page>;
   if (!/^[A-Za-z0-9_-]{1,40}$/.test(id)) notFound();
   const found = await q<{ businessAccount: Acct | null }>(`query($id: ID!) { businessAccount(where: { id: $id }) { id name accountNumber status termsDays creditLimitMinor openBalanceMinor poRequired taxExempt billingMode holdAfterOverdueDays holdReason holdSince } }`, { id }).catch(() => null);
   const a = found?.businessAccount;
@@ -69,37 +74,37 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
       {held ? (
         <div role="status" className="space-y-2 rounded-lg border border-red-300 p-3 text-sm">
           <p className="break-words">New work cannot be billed to this account. {a.holdReason || 'A manager placed it on hold.'}{a.holdSince ? ` Since ${when(a.holdSince, 'America/Los_Angeles', 'day')}.` : ''}</p>
-          <ReleaseHold businessAccountId={a.id} />
+          {credit ? <ReleaseHold businessAccountId={a.id} /> : null}
         </div>
       ) : limit && owed > limit ? <p role="status" className="text-sm text-red-600">The account owes more than its limit. It goes on hold the next time it is checked.</p> : null}
-      <Section title="Terms" aside={<span className="flex flex-wrap gap-2"><TermsForm a={a} />{!held && a.status === 'active' ? <Do op="holdAccountCredit" vars={{ businessAccountId: a.id }} ask="Why is the account going on hold?">Put on hold</Do> : null}<Do op="refreshAccountStanding" vars={{ businessAccountId: a.id }}>Check standing now</Do></span>}>
+      <Section title="Terms" aside={manage || credit || books ? <span className="flex flex-wrap gap-2">{manage ? <TermsForm a={a} /> : null}{credit && !held && a.status === 'active' ? <Do op="holdAccountCredit" vars={{ businessAccountId: a.id }} ask="Why is the account going on hold?">Put on hold</Do> : null}{manage || books ? <Do op="refreshAccountStanding" vars={{ businessAccountId: a.id }}>Check standing now</Do> : null}</span> : null}>
         <Row><div className="min-w-0 space-y-1 text-sm"><div>{a.poRequired ? 'A purchase order number is required on every invoice.' : 'No purchase order needed.'}</div><Meta>{a.billingMode === 'statement_monthly' ? 'Billed on a monthly statement.' : 'Billed on each invoice.'}{a.holdAfterOverdueDays ? ` Held when an invoice is more than ${a.holdAfterOverdueDays} days late.` : ' Not held for late invoices.'}</Meta></div></Row>
       </Section>
       <Section title="What is owed, by age">
         {BUCKETS.map(([k, name]) => <Row key={k}><span className="text-sm">{name}</span><span className="font-mono text-sm">{money(aging[k].toString())}</span></Row>)}
         {d.invoices.map(i => <Row key={i.id}><span className="font-mono text-xs">{i.invoiceNumber}{i.dueDate ? ` · due ${when(i.dueDate, 'UTC', 'day')}` : ''}</span><span className="font-mono text-xs">{money(i.balanceMinor)}</span></Row>)}
       </Section>
-      <Section title="Who can approve work" aside={<span className="flex flex-wrap gap-2"><ContactForm businessAccountId={a.id} /><ApproverForm businessAccountId={a.id} contacts={d.contacts.map(c => ({ id: c.id, name: c.name }))} /></span>}>
+      <Section title="Who can approve work" aside={manage ? <span className="flex flex-wrap gap-2"><ContactForm businessAccountId={a.id} /><ApproverForm businessAccountId={a.id} contacts={d.contacts.map(c => ({ id: c.id, name: c.name }))} /></span> : null}>
         {d.approvers.length ? d.approvers.map(p => (
-          <Row key={p.id}><div className="min-w-0"><span className="break-words text-sm font-medium">{p.order}. {p.contact?.name}</span><div><Meta>Can approve up to {money(p.limitMinor)}. Anything higher goes to the next person.</Meta></div></div><Do op="removeAccountApprover" vars={{ approverId: p.id }}>Remove</Do></Row>
+          <Row key={p.id}><div className="min-w-0"><span className="break-words text-sm font-medium">{p.order}. {p.contact?.name}</span><div><Meta>Can approve up to {money(p.limitMinor)}. Anything higher goes to the next person.</Meta></div></div>{manage ? <Do op="removeAccountApprover" vars={{ approverId: p.id }}>Remove</Do> : null}</Row>
         )) : <Empty>No approvers yet. Work is authorized with the shop directly.</Empty>}
-        {d.contacts.map(c => <Row key={c.id}><div className="min-w-0"><span className="break-words text-sm">{c.name}</span><div><Meta>{[c.email, c.phone].filter(Boolean).join(' · ')}</Meta></div></div><LinkButton contactId={c.id} /></Row>)}
+        {d.contacts.map(c => <Row key={c.id}><div className="min-w-0"><span className="break-words text-sm">{c.name}</span><div><Meta>{[c.email, c.phone].filter(Boolean).join(' · ')}</Meta></div></div>{manage ? <LinkButton contactId={c.id} /> : null}</Row>)}
       </Section>
-      <Section title="Tax certificates" aside={<CertificateForm businessAccountId={a.id} />}>
+      <Section title="Tax certificates" aside={manage ? <CertificateForm businessAccountId={a.id} /> : null}>
         {d.certs.length ? d.certs.map(c => (
           <Row key={c.id}>
             <div className="min-w-0 space-y-1"><div className="flex flex-wrap items-center gap-2"><span className="break-words text-sm font-medium">{c.number}</span><Status value={lapsed(c) ? 'expired' : c.status} /></div>
               <Meta>{c.kind.replaceAll('_', ' ')}{c.issuingState ? ` · ${c.issuingState}` : ''}{c.expiresAt ? ` · expires ${when(c.expiresAt, 'UTC', 'day')}` : ' · no expiry date'}</Meta>
               {soon(c) ? <Meta>Expires in {days(c.expiresAt!) - today} days. Ask for a new certificate, or invoices will be taxed after that date.</Meta> : null}
               {lapsed(c) ? <Meta>Past its date. New invoices are taxed.</Meta> : null}</div>
-            {c.status === 'active' ? <Do op="revokeAccountCertificate" vars={{ certificateId: c.id }} ask="Why is it being revoked?">Revoke</Do> : null}
+            {manage && c.status === 'active' ? <Do op="revokeAccountCertificate" vars={{ certificateId: c.id }} ask="Why is it being revoked?">Revoke</Do> : null}
           </Row>
         )) : <Empty>No certificate on file. Invoices are taxed.</Empty>}
       </Section>
-      <Section title="Units" aside={<UnitForm businessAccountId={a.id} vehicles={free} />}>
+      <Section title="Units" aside={manage ? <UnitForm businessAccountId={a.id} vehicles={free} /> : null}>
         {d.units.length ? d.units.map(u => <Row key={u.id}><div className="min-w-0"><span className="font-mono text-sm">{u.unitNumber}</span> <span className="break-words text-sm">{vehicleName(u.vehicle)}</span><div><Meta>{[u.driverName && `Driver ${u.driverName}`, u.costCenter].filter(Boolean).join(' · ')}</Meta></div></div></Row>) : <Empty>No units yet.</Empty>}
       </Section>
-      <Section title="Statements" aside={<ExportPeriod businessAccountId={a.id} start={period.start} end={period.end} label="Export last month" />}>
+      <Section title="Statements" aside={books ? <ExportPeriod businessAccountId={a.id} start={period.start} end={period.end} label="Export last month" /> : null}>
         {d.statements.length ? d.statements.map(s => <Row key={s.id}><div className="min-w-0"><span className="font-mono text-sm">{s.reference}</span><div><Meta>{when(s.periodStart, 'UTC', 'day')} to {when(s.periodEnd, 'UTC', 'day')}</Meta></div></div><span className="font-mono text-sm">{money(s.closingMinor)}</span></Row>) : <Empty>No statements yet.</Empty>}
       </Section>
     </Page>

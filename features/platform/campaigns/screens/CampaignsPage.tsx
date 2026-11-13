@@ -28,7 +28,7 @@ export default async function CampaignsPage() {
                 {p.included.map(r => (
                   <Row key={r.customerId}><div className="min-w-0"><div className="break-words font-medium">{r.name}</div><Meta>{r.channel === 'sms' ? 'Text' : 'Email'}{r.detail ? ` · ${r.detail}` : ''}</Meta></div><CopyForCustomer campaignId={c.id} customerId={r.customerId} /></Row>
                 ))}
-                {p.held.length ? <details className="text-sm"><summary className="cursor-pointer py-2">Held back: no marketing consent ({p.held.length})</summary>{p.held.map(r => <Row key={r.customerId}><div className="min-w-0"><div className="break-words font-medium">{r.name}</div><Meta>{r.reason}</Meta></div></Row>)}</details> : null}
+                {p.held.length ? <details className="text-sm"><summary className="min-h-11 cursor-pointer py-3">Held back: no marketing consent ({p.held.length})</summary>{p.held.map(r => <Row key={r.customerId}><div className="min-w-0"><div className="break-words font-medium">{r.name}</div><Meta>{r.reason}</Meta></div></Row>)}</details> : null}
               </>
             ) : <Empty>This audience could not be worked out.</Empty>}
           </Section>

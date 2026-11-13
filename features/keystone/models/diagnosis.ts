@@ -7,7 +7,7 @@ import { trackingFields } from './trackingFields'
 /*
  * Diagnosis (SCHEMA §6.4-6.6, STATE-MACHINES §7). open → testing → quote_ready | inconclusive → closed.
  * A diagnosis-based job can be quoted only when a test confirms the top hypothesis at or above the shop's
- * trust threshold, or a lead technician or advisor overrides it with a reason. An agent never overrides.
+ * trust threshold, or a shop manager or owner (canOverrideTrustGate) overrides it with a reason. An agent never overrides.
  */
 
 const read = ['canDiagnose', 'canReadRepairOrders', 'canConfirmProposals'] as const

@@ -31,8 +31,8 @@ export default async function FollowUpsPage() {
           <Row key={r.id}>
             <div className="min-w-0 space-y-1">
               <div className="break-words font-medium">{r.title} <Meta>{money(r.priceMinor)}</Meta></div>
-              <Meta>{r.customer?.displayName} · {car(r.vehicle)} · repair order {r.repairOrder}</Meta>
-              <Meta>{label(r.decision)} {when(r.dueOn, tz, 'day') ? '' : ''}· contact {r.step} of {r.steps}, {lateText(r.daysLate).toLowerCase()} ({when(r.dueOn, tz, 'day')}){r.lastContactedAt ? ` · last contacted ${when(r.lastContactedAt, tz, 'day')}` : ''}</Meta>
+              <div><Meta>{r.customer?.displayName} · {car(r.vehicle)} · repair order {r.repairOrder}</Meta></div>
+              <div><Meta>{label(r.decision)} · contact {r.step} of {r.steps}, {lateText(r.daysLate).toLowerCase()} ({when(r.dueOn, tz, 'day')}){r.lastContactedAt ? ` · last contacted ${when(r.lastContactedAt, tz, 'day')}` : ''}</Meta></div>
             </div>
             {mayAct ? <div className="flex flex-wrap items-center gap-2"><MarkContacted op="markFollowUpContacted" vars={{ recommendationId: r.id, expectedContactedCount: r.contactedCount }} /><CloseRecommendation recommendationId={r.id} /></div> : null}
           </Row>
@@ -43,8 +43,8 @@ export default async function FollowUpsPage() {
           <Row key={r.cycleKey}>
             <div className="min-w-0 space-y-1">
               <div className="break-words font-medium">{KIND[r.kind] ?? label(r.kind)} · {car(r.vehicle)}</div>
-              <Meta>{r.customer.displayName} · last done {when(r.servicedOn, tz, 'day')}{r.dueAtOdometer ? ` · due at ${r.dueAtOdometer.toLocaleString('en-US')} miles` : ''}</Meta>
-              <Meta>{lateText(r.daysLate)} ({when(r.dueDate, tz, 'day')})</Meta>
+              <div><Meta>{r.customer.displayName} · last done {when(r.servicedOn, tz, 'day')}{r.dueAtOdometer ? ` · due at ${r.dueAtOdometer.toLocaleString('en-US')} miles` : ''}</Meta></div>
+              <div><Meta>{lateText(r.daysLate)} ({when(r.dueDate, tz, 'day')})</Meta></div>
             </div>
             {mayAct ? <MarkContacted op="markServiceReminderContacted" vars={{ cycleKey: r.cycleKey }} /> : null}
           </Row>

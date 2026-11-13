@@ -65,7 +65,9 @@ export async function accountingJournalPreview(_root: unknown, args: { shopId: s
 
 export async function exportFile(_root: unknown, args: { exportJobId: string }, context: Ctx) {
   const actor = actorFromSession(context.session)
-  requirePermission(actor, ...BOOKS, ...ADMIN)
+  // The file holds the shop's books: finance or integration admins only, and only a person (not an MCP token) reads it.
+  requirePermission(actor, 'canReadFinancials', ...ADMIN)
+  requireHuman(actor, 'download an export file')
   const job = await context.prisma.exportJob.findUnique({ where: { id: args.exportJobId } })
   if (!job) throw new DomainError(Codes.NOT_FOUND, 'Not found.')
   requireShopOrOrg(context, job.shopId)

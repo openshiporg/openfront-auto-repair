@@ -5,7 +5,7 @@ import { auditCreate, transition } from './cas'
 import { payloadHash, sha256 } from './canonical'
 import { nextShopReference } from './sequence'
 import { readTable } from './csv'
-import { normalizeContact, upsertCustomer, type ContactInput } from './customers'
+import { findByContacts, normalizeContact, upsertCustomer, type ContactInput } from './customers'
 import { upsertVehicle } from './vehicles'
 import { normalizeVin } from '../../integrations/vehicle-data/vin'
 import type { UnitOfWork } from './unitOfWork'
@@ -108,6 +108,16 @@ export async function previewRows(tx: Tx, format: ImportFormat, entity: ImportEn
         const wanted = r.data.customerId ? await existingRef(tx, system, 'Customer', r.data.customerId) : null
         const other = owners.filter(o => !(wanted && o.customerId === wanted.entityId))
         if (other.length) { out.push({ line: r.line, externalId: r.externalId, label, action: 'error', message: `This VIN is already on file and owned by ${other.map(o => o.customer?.displayName || o.businessAccount?.name || 'another record').join(', ')}. Not changed; fix the owner in the app if the file is right.` }); continue }
+      }
+    }
+    if (entity === 'customers') {
+      // Applying links a row to the customer who already has its phone or email instead of adding a second one: say so here.
+      const contacts = contactsOf(r.data).map(c => ({ kind: c.kind, normalized: c.value }))
+      const clash = await findByContacts(tx, contacts)
+      if (clash[0]?.customerId) {
+        const who = await tx.customer.findUnique({ where: { id: clash[0].customerId }, select: { displayName: true } })
+        out.push({ line: r.line, externalId: r.externalId, label, action: 'create', message: `Will be linked to ${who?.displayName || 'an existing customer'}, who has the same ${clash[0].kind === 'email' ? 'email' : 'phone number'}. No new customer is added.` })
+        continue
       }
     }
     out.push({ line: r.line, externalId: r.externalId, label, action: 'create', message: '' })

@@ -80,9 +80,12 @@ export async function retireAgent(uow: UnitOfWork, actor: Actor, input: { agentI
   return { id: agent.id, status: 'retired' }
 }
 
-/** A run is the record of one request a person started with an assistant. */
+/**
+ * A run is the record of one request started with an assistant: by a person on the dashboard, or by the assistant's
+ * own MCP token (channel 'mcp', checked by the caller to belong to this assistant). It only drafts; a person confirms.
+ */
 export async function startRun(uow: UnitOfWork, actor: Actor, input: { agentId: string; shopId: string; channel: string; adapter: string; summary: string }) {
-  if (isMachine(actor) || actor.kind !== 'user') throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, 'A person starts an assistant request.')
+  if (actor.kind !== 'user' || (isMachine(actor) && input.channel !== 'mcp')) throw new DomainError(Codes.AGENT_FORBIDDEN_ACTION, 'A person starts an assistant request.')
   const run = await uow.tx.agentRun.create({ data: { agentId: input.agentId, shopId: input.shopId, invokedById: actor.userId, channel: input.channel, adapter: input.adapter, inputSummary: input.summary.slice(0, 300), status: 'running', startedAt: uow.now } as never })
   return run.id
 }

@@ -11,7 +11,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   if (!/^[A-Za-z0-9_-]{1,40}$/.test(id)) notFound();
   const can = await holds(['canMessageCustomers', 'canManageCustomers']);
-  if (!can.canMessageCustomers && !can.canManageCustomers) return <Page title="Conversation"><Empty>Your role is not allowed to view messages.</Empty></Page>;
+  // A role without message access gets the same 404 as a missing conversation.
+  if (!can.canMessageCustomers && !can.canManageCustomers) notFound();
   const d = await q<any>(`query($id: ID!) { messageThread(where: { id: $id }) { id customer { id displayName } shop { id } repairOrder { id roNumber } messages(orderBy: { at: asc }) { at direction channel body purpose } calls(orderBy: { at: asc }) { at direction outcome note } } }`, { id }).catch(() => null);
   const t = d?.messageThread;
   if (!t) notFound();

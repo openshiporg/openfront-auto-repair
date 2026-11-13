@@ -101,7 +101,7 @@ export async function standingOf(tx: Tx, accountId: string, now: Date) {
 }
 
 export const readableBlock = (s: Awaited<ReturnType<typeof standingOf>>) =>
-  s.status === 'closed' ? `${s.name} is closed. Reopen the account or bill the customer directly.` : `${s.name} is on credit hold: ${s.reason} A manager with credit approval must release it before new work is billed to the account, or take payment in cash.`
+  s.status === 'closed' ? `${s.name} is closed. Reopen the account or bill the customer directly.` : `${s.name} is on credit hold: ${/[.!?]$/.test(s.reason.trim()) ? s.reason.trim() : `${s.reason.trim()}.`} A manager with credit approval must release it before new work is billed to the account, or take payment in cash.`
 
 /** Write the computed standing back: certificates, and the hold when the account has earned one. Idempotent. */
 export async function refreshStanding(uow: UnitOfWork, actor: Actor, accountId: string) {

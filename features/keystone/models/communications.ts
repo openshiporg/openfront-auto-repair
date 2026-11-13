@@ -131,7 +131,7 @@ export const Recommendation = list({
 /** Created when staff mark a due reminder contacted. Which reminders are due is computed on read. */
 export const ServiceReminder = list({
   access: readFollowUps,
-  ui: { labelField: 'cycleKey', listView: { initialColumns: ['vehicle', 'customer', 'kind', 'dueOn', 'status'] } },
+  ui: { labelField: 'cycleKey', listView: { initialColumns: ['vehicle', 'customer', 'kind', 'contactedAt', 'status'] } },
   fields: {
     shop: relationship({ ref: 'Shop', ...readOnly }),
     vehicle: relationship({ ref: 'Vehicle', ...readOnly }),
@@ -139,6 +139,8 @@ export const ServiceReminder = list({
     kind: fixedChoice(['oil', 'rotation', 'inspection']),
     cycleKey: systemText({ indexed: 'unique', required: true }),
     lastServiceJob: relationship({ ref: 'Job', ...readOnly }),
+    // Not written: when a service is due is computed on read (followUps.computeReminder), never stored, so it cannot go stale.
+    // Kept only so no migration is needed; drop these three columns in the next migration.
     dueOn: calendarDay({ ...readOnly }),
     dueAtOdometer: integer({ ...readOnly }),
     projectedDueOn: calendarDay({ ...readOnly }),
