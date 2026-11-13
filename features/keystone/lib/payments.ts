@@ -32,8 +32,11 @@ export async function postingDate(tx: Tx, shopId: string, now: Date) {
   const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId }, select: { timeZone: true } })
   let date = zonedDate(shop.timeZone, now)
   for (let i = 0; i < 366; i += 1) {
-    const closed = await tx.businessDayClose.findFirst({ where: { shopId, businessDate: new Date(`${date}T00:00:00.000Z`), status: 'closed' }, select: { id: true } })
-    if (!closed) return date
+    const at = new Date(`${date}T00:00:00.000Z`)
+    const closed = await tx.businessDayClose.findFirst({ where: { shopId, businessDate: at, status: 'closed' }, select: { id: true } })
+    // A day whose books were accepted (POSTED) is frozen too: late money lands on the next open day.
+    const posted = closed ? null : await tx.accountingBatch.findFirst({ where: { shopId, businessDate: at, status: 'confirmed' }, select: { id: true } })
+    if (!closed && !posted) return date
     date = addDays(date, 1)
   }
   return date
@@ -73,6 +76,12 @@ export async function createPayment(uow: UnitOfWork, actor: Actor, input: Paymen
     if (new Set(invoices.map(i => i.shopId)).size !== 1) throw new DomainError(Codes.INVALID_INPUT, 'One payment cannot span shops.')
     const owed = sumMinor(invoices.map(i => BigInt(i.balanceMinor as bigint)))
     if (owed <= 0n) throw new DomainError(Codes.GUARD_FAILED, 'That invoice is already paid.')
+    if (isCard) {
+      // One open card payment per invoice, or the customer can be charged twice. The invoices are locked above, so this cannot race.
+      const open = await tx.payment.findMany({ where: { purpose: 'invoice', tender: { in: [...CARD_TENDERS] }, status: { in: ['initiated', 'pending', 'unknown'] } }, select: { id: true, targetInvoiceIds: true } })
+      const clash = open.find(p => ((p.targetInvoiceIds as string[] | null) ?? []).some(x => invoiceIds.includes(x)))
+      if (clash) throw new DomainError(Codes.GUARD_FAILED, 'A card payment is already open on this invoice. Finish or cancel it before starting another.', { existingId: clash.id })
+    }
     if (amount > owed) throw new DomainError(Codes.GUARD_FAILED, `That is more than the ${owed.toString().padStart(3, '0').slice(0, -2)}.${owed.toString().padStart(3, '0').slice(-2)} owed. Take only what is due.`, { field: 'amountMinor' })
     shopId = invoices[0].shopId as string
     customerId = (invoices[0].customerId as string | null) ?? null

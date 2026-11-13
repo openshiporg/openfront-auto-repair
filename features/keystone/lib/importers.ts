@@ -7,6 +7,7 @@ import { nextShopReference } from './sequence'
 import { readTable } from './csv'
 import { normalizeContact, upsertCustomer, type ContactInput } from './customers'
 import { upsertVehicle } from './vehicles'
+import { normalizeVin } from '../../integrations/vehicle-data/vin'
 import type { UnitOfWork } from './unitOfWork'
 
 /*
@@ -99,6 +100,16 @@ export async function previewRows(tx: Tx, format: ImportFormat, entity: ImportEn
     if (await existingRef(tx, system, entityType, r.externalId)) { out.push({ line: r.line, externalId: r.externalId, label, action: 'skip', message: 'Already imported.' }); continue }
     if (entity === 'customers' && !r.data.company && !r.data.firstName && !r.data.lastName) { out.push({ line: r.line, externalId: r.externalId, label, action: 'error', message: 'No name or company.' }); continue }
     if (entity === 'vehicles' && !r.data.vin && !(r.data.make || r.data.model)) { out.push({ line: r.line, externalId: r.externalId, label, action: 'error', message: 'No VIN, make or model.' }); continue }
+    if (entity === 'vehicles' && r.data.vin) {
+      // An import never takes a vehicle off its current owner: a VIN that is already on file with someone else is refused and reported.
+      const known = await tx.vehicle.findFirst({ where: { vin: normalizeVin(r.data.vin), status: 'active' }, select: { id: true } })
+      if (known) {
+        const owners = await tx.vehicleOwnership.findMany({ where: { vehicleId: known.id, role: 'owner', endedAt: null }, select: { customerId: true, businessAccountId: true, customer: { select: { displayName: true } }, businessAccount: { select: { name: true } } } })
+        const wanted = r.data.customerId ? await existingRef(tx, system, 'Customer', r.data.customerId) : null
+        const other = owners.filter(o => !(wanted && o.customerId === wanted.entityId))
+        if (other.length) { out.push({ line: r.line, externalId: r.externalId, label, action: 'error', message: `This VIN is already on file and owned by ${other.map(o => o.customer?.displayName || o.businessAccount?.name || 'another record').join(', ')}. Not changed; fix the owner in the app if the file is right.` }); continue }
+      }
+    }
     out.push({ line: r.line, externalId: r.externalId, label, action: 'create', message: '' })
   }
   return out

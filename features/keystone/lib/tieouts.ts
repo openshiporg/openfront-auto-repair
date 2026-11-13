@@ -93,11 +93,23 @@ export async function runTieOuts(tx: Tx, shopId: string): Promise<TieOut[]> {
   const feeLines = await tx.invoiceLine.findMany({ where: { invoice: { shopId, ...LIVE_INVOICE }, kind: 'fee' }, select: { extendedMinor: true } })
   out.push(check('fees_payable', 'Fees payable (tire and battery)', sumMinor(invoices.length ? (await tx.invoice.findMany({ where: { shopId, ...LIVE_INVOICE }, select: { feesSubtotalMinor: true } })).map(i => i.feesSubtotalMinor) : []), sumMinor(feeLines.map(l => l.extendedMinor))))
 
-  // Sales tax: invoice tax less credit-memo tax equals the line-level figures.
-  const taxInvoices = await tx.invoice.findMany({ where: { shopId, ...LIVE_INVOICE }, select: { taxMinor: true } })
-  const taxLines = await tx.invoiceLine.findMany({ where: { invoice: { shopId, ...LIVE_INVOICE } }, select: { taxMinor: true } })
-  const memoTax = await tx.creditMemo.findMany({ where: { shopId, status: 'issued' }, select: { taxMinor: true } })
-  const memoLineTax = await tx.creditMemoLine.findMany({ where: { creditMemo: { shopId, status: 'issued' } }, select: { taxMinor: true } })
-  out.push(check('sales_tax', 'Sales tax payable', sumMinor(taxInvoices.map(i => i.taxMinor)) - sumMinor(memoTax.map(m => m.taxMinor)), sumMinor(taxLines.map(l => l.taxMinor)) - sumMinor(memoLineTax.map(l => l.taxMinor))))
+  // Sales tax: invoice tax less credit-memo tax equals the line-level figures, invoice by invoice.
+  const taxInvoices = await tx.invoice.findMany({ where: { shopId, ...LIVE_INVOICE }, select: { id: true, invoiceNumber: true, taxMinor: true } })
+  const taxLines = await tx.invoiceLine.findMany({ where: { invoice: { shopId, ...LIVE_INVOICE } }, select: { invoiceId: true, taxMinor: true } })
+  const memos = await tx.creditMemo.findMany({ where: { shopId, status: 'issued' }, select: { id: true, reference: true, invoiceId: true, taxMinor: true, lines: { select: { taxMinor: true } } } })
+  const memoLineTax = memos.flatMap(m => m.lines.map(l => l.taxMinor))
+  const lineTaxOf = new Map<string, bigint>()
+  for (const l of taxLines) lineTaxOf.set(l.invoiceId!, (lineTaxOf.get(l.invoiceId!) ?? 0n) + l.taxMinor)
+  const taxDiff: string[] = []
+  for (const i of taxInvoices) if ((lineTaxOf.get(i.id) ?? 0n) !== i.taxMinor) taxDiff.push(`${i.invoiceNumber}: invoice tax ${i.taxMinor} but its lines add to ${lineTaxOf.get(i.id) ?? 0n}`)
+  for (const m of memos) if (m.lines.reduce((n, l) => n + l.taxMinor, 0n) !== m.taxMinor) taxDiff.push(`Credit memo ${m.reference}: tax ${m.taxMinor} but its lines add to ${m.lines.reduce((n, l) => n + l.taxMinor, 0n)}`)
+  out.push(check('sales_tax', 'Sales tax payable', sumMinor(taxInvoices.map(i => i.taxMinor)) - sumMinor(memos.map(m => m.taxMinor)), sumMinor(taxLines.map(l => l.taxMinor)) - sumMinor(memoLineTax), taxDiff))
+
+  // Payment allocations: what a payment says it has applied equals its allocation rows (refund rows are negative), payment by payment.
+  const pays = await tx.payment.findMany({ where: { shopId, purpose: 'invoice', status: { in: ['succeeded', 'partially_refunded', 'refunded'] } }, select: { id: true, tender: true, amountMinor: true, allocatedMinor: true } })
+  const rowsByPayment = await tx.paymentAllocation.groupBy({ by: ['paymentId'], where: { paymentId: { in: pays.map(p => p.id) } }, _sum: { amountMinor: true } })
+  const rowSum = new Map(rowsByPayment.map(r => [r.paymentId, r._sum.amountMinor ?? 0n]))
+  const allocDiff = pays.filter(p => p.allocatedMinor !== (rowSum.get(p.id) ?? 0n)).map(p => `Payment ${p.id} (${p.tender}): says ${p.allocatedMinor} applied but its allocations add to ${rowSum.get(p.id) ?? 0n}`)
+  out.push(check('payment_allocations', 'Payment allocations', sumMinor(pays.map(p => rowSum.get(p.id) ?? 0n)), sumMinor(pays.map(p => p.allocatedMinor)), allocDiff))
   return out
 }

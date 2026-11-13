@@ -7,7 +7,7 @@ import { permissionNames } from '../access'
 import { setStripeGateway } from '../lib/stripeGateway'
 import { checkInShopVehicle } from './phase1'
 import { addRepairJob, openShopRepairOrder, recordCustomerAuthorization, sendRepairEstimate, transitionRepairJob } from './phase2'
-import { closeShopDay, finalizeShopInvoice, takeShopPayment } from './phase3'
+import { closeShopDay, finalizeShopInvoice, refundShopPayment, takeShopPayment } from './phase3'
 import * as p9 from './phase9'
 import { loadNorthgateSetup } from './setup'
 import { SHOPS } from '../seed/northgate'
@@ -212,6 +212,59 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, integ
     const rev = await p9.revokeIntegrationConnection(null, { connectionId: c.id, reason: 'Switched books', idempotencyKey: key('i4') }, books) as any
     expect(rev.status).toBe('revoked')
     await expect(p9.recordIntegrationHealth(null, { connectionId: c.id, ok: true, idempotencyKey: key('i5') }, books)).rejects.toMatchObject({ code: 'INVALID_TRANSITION' })
+  })
+
+  it('r1 fixes: one open card payment per invoice, refunds in reports, frozen days, named tie-outs, imports never re-own', async () => {
+    const inv = await prisma.invoice.findFirstOrThrow({ where: { shopId: NGA, balanceMinor: { gt: 500n } } })
+    const card = () => takeShopPayment(null, { input: { purpose: 'invoice', invoiceIds: [inv.id], tender: 'card_link', amountMinor: '300', payerName: 'Marcus Delgado' }, idempotencyKey: key('card') }, books)
+    const first = await card() as { id: string }
+    await expect(card()).rejects.toMatchObject({ code: 'GUARD_FAILED' })
+    // The database says the same thing even if the code is bypassed.
+    await expect(prisma.payment.create({ data: { shopId: NGA, purpose: 'invoice', tender: 'card_link', amountMinor: 300n, provider: 'stripe', idempotencyKey: key('raw'), targetInvoiceIds: [inv.id], status: 'pending' } })).rejects.toThrow()
+    await prisma.payment.update({ where: { id: first.id }, data: { status: 'failed' } })
+
+    // A refund shows in the reports and never lands on a day whose books were accepted.
+    const tomorrow = day(new Date(Date.now() + 86_400_000))
+    const before = await p9.shopReports(null, { shopId: NGA, from: today, to: tomorrow }, owner) as any
+    const cash = await prisma.payment.findFirstOrThrow({ where: { shopId: NGA, tender: 'cash', status: 'succeeded' } })
+    await refundShopPayment(null, { input: { paymentId: cash.id, amountMinor: '2000', reason: 'Customer returned a part' }, idempotencyKey: key('rf') }, owner)
+    const refund = await prisma.refund.findFirstOrThrow({ where: { paymentId: cash.id }, orderBy: { createdAt: 'desc' } })
+    const posted = await prisma.accountingBatch.findFirst({ where: { shopId: NGA, status: 'confirmed', businessDate: refund.businessDate! } })
+    expect(posted).toBeNull()
+    const after = await p9.shopReports(null, { shopId: NGA, from: today, to: tomorrow }, owner) as any
+    expect(BigInt(after.values.aro.salesMinor)).toBeLessThan(BigInt(before.values.aro.salesMinor))
+    expect(BigInt(after.values.elr.laborSalesMinor) + BigInt(after.values.gp_parts.partsSalesMinor)).toBeLessThan(BigInt(before.values.elr.laborSalesMinor) + BigInt(before.values.gp_parts.partsSalesMinor))
+
+    // Tie-outs name the record.
+    const line = await prisma.invoiceLine.findFirstOrThrow({ where: { invoiceId: inv.id } })
+    await prisma.$executeRawUnsafe(`ALTER TABLE "InvoiceLine" DISABLE TRIGGER USER`)
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Payment" DISABLE TRIGGER USER`)
+    try {
+      await prisma.$executeRawUnsafe(`UPDATE "InvoiceLine" SET "taxMinor" = "taxMinor" + 3 WHERE id = '${line.id}'`)
+      let t = await p9.shopTieOuts(null, { shopId: NGA }, owner) as any
+      const tax = t.checks.find((c: any) => c.key === 'sales_tax')
+      expect(tax.ok).toBe(false)
+      expect(tax.differences.join(' ')).toContain(inv.invoiceNumber)
+      await prisma.$executeRawUnsafe(`UPDATE "InvoiceLine" SET "taxMinor" = "taxMinor" - 3 WHERE id = '${line.id}'`)
+      await prisma.$executeRawUnsafe(`UPDATE "Payment" SET "allocatedMinor" = "allocatedMinor" + 5 WHERE id = '${cash.id}'`)
+      t = await p9.shopTieOuts(null, { shopId: NGA }, owner) as any
+      const alloc = t.checks.find((c: any) => c.key === 'payment_allocations')
+      expect(alloc.ok).toBe(false)
+      expect(alloc.differences.join(' ')).toContain(cash.id)
+    } finally {
+      await prisma.$executeRawUnsafe(`UPDATE "Payment" SET "allocatedMinor" = "allocatedMinor" - 5 WHERE id = '${cash.id}' AND "allocatedMinor" >= 5`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE "InvoiceLine" ENABLE TRIGGER USER`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Payment" ENABLE TRIGGER USER`)
+    }
+
+    // An import never takes a vehicle off its owner.
+    const held = await prisma.vehicleOwnership.findFirstOrThrow({ where: { customerId: 'seed_cust_04', endedAt: null, vehicle: { vin: { not: '' } } }, include: { vehicle: true } })
+    const csv = `Vehicle ID,Customer ID,Year,Make,Model,Sub Model,Engine,Color,VIN,License Plate,License State,Mileage\nTMV-9001,TM-1001,2019,Honda,Civic,EX,2.0L I4,Blue,${held.vehicle!.vin},,,100\n`
+    const prev = await p9.previewDataImport(null, { input: { shopId: NGA, format: 'tekmetric_csv', entity: 'vehicles', fileName: 'owned.csv', text: csv }, idempotencyKey: key('pv') }, books) as any
+    expect(prev.preview[0].action).toBe('error')
+    expect(prev.preview[0].message).toContain('already on file')
+    await p9.applyDataImport(null, { jobId: prev.id, idempotencyKey: key('ap') }, books)
+    expect(await prisma.vehicleOwnership.count({ where: { vehicleId: held.vehicleId!, customerId: 'seed_cust_04', endedAt: null } })).toBe(1)
   })
 
 })

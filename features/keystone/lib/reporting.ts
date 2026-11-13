@@ -15,10 +15,10 @@ import type { UnitOfWork } from './unitOfWork'
 
 export const REPORT_DEFINITIONS: Record<string, { label: string; definition: string }> = {
   car_count: { label: 'Car count', definition: 'Repair orders with at least one finalized invoice dated in the period. A repair order counts once however many invoices it has.' },
-  aro: { label: 'Average repair order (ARO)', definition: 'Sales before tax on those invoices (labor + parts + fees + sublet − discounts) divided by car count. Tax is not sales.' },
-  elr: { label: 'Effective labor rate (ELR)', definition: 'Labor sales divided by the labor hours billed on the same invoices. Billed hours are the hours printed on labor lines.' },
-  gp_labor: { label: 'Gross profit, labor', definition: 'Labor sales minus labor cost. Labor cost is the hours flagged to technicians in the period times each technician\'s pay rate (flat rate, else hourly). Needs the pay-rate permission to be useful; shown as sales only without cost data.' },
-  gp_parts: { label: 'Gross profit, parts', definition: 'Parts sales (parts, tires, cores, refrigerant) minus the cost of those lines (unit cost × quantity at the time of the sale).' },
+  aro: { label: 'Average repair order (ARO)', definition: 'Sales before tax on those invoices (labor + parts + fees + sublet − discounts), less the pre-tax share of money refunded in the period, divided by car count. Tax is not sales.' },
+  elr: { label: 'Effective labor rate (ELR)', definition: 'Labor sales (less the labor share of refunds in the period) divided by the labor hours billed on the same invoices. Billed hours are the hours printed on labor lines.' },
+  gp_labor: { label: 'Gross profit, labor', definition: 'Labor sales (net of refunds) minus labor cost. Labor cost is the hours flagged to technicians in the period times each technician\'s pay rate (flat rate, else hourly). Needs the pay-rate permission to be useful; shown as sales only without cost data.' },
+  gp_parts: { label: 'Gross profit, parts', definition: 'Parts sales (parts, tires, cores, refrigerant; net of refunds) minus the cost of those lines (unit cost × quantity at the time of the sale).' },
   tech_productivity: { label: 'Technician productivity', definition: 'Per technician: productivity = flagged hours ÷ hours clocked in on shifts; efficiency = flagged hours ÷ hours on job clocks; proficiency = job-clock hours ÷ shift hours. Flagged hours are net of reversals.' },
   approval_rate: { label: 'Approval rate', definition: 'Jobs a customer approved in the period ÷ jobs a customer answered (approved + declined + deferred). Also shown by dollars.' },
   dvi_rate: { label: 'Inspection (DVI) rate', definition: 'Repair orders opened in the period (not draft or void) that have a completed inspection ÷ all such repair orders.' },
@@ -58,9 +58,21 @@ export async function computeKpis(tx: Tx, shopId: string, from: string, to: stri
   })
   const roIds = [...new Set(invoices.map(i => i.repairOrderId).filter((x): x is string => !!x))]
   const carCount = roIds.length
-  const salesMinor = sumMinor(invoices.map(i => i.totalMinor - i.taxMinor))
-  const laborSalesMinor = sumMinor(invoices.map(i => i.laborSubtotalMinor))
-  const partsSalesMinor = sumMinor(invoices.map(i => i.partsSubtotalMinor))
+  // Money refunded in the period comes off sales: each refund allocation takes its invoice's pre-tax share, split labor/parts in the invoice's own proportions.
+  const refundAllocs = await tx.paymentAllocation.findMany({ where: { refundId: { not: null }, refund: { status: 'succeeded', businessDate: edge, payment: { shopId } } }, select: { invoiceId: true, amountMinor: true } })
+  const refundInvoices = refundAllocs.length ? await tx.invoice.findMany({ where: { id: { in: [...new Set(refundAllocs.map(a => a.invoiceId!))] } }, select: { id: true, totalMinor: true, taxMinor: true, laborSubtotalMinor: true, partsSubtotalMinor: true } }) : []
+  let refundedSalesMinor = 0n, refundedLaborMinor = 0n, refundedPartsMinor = 0n
+  for (const a of refundAllocs) {
+    const inv = refundInvoices.find(i => i.id === a.invoiceId)
+    const back = -a.amountMinor
+    if (!inv || inv.totalMinor <= 0n) continue
+    refundedSalesMinor += (back * (inv.totalMinor - inv.taxMinor)) / inv.totalMinor
+    refundedLaborMinor += (back * inv.laborSubtotalMinor) / inv.totalMinor
+    refundedPartsMinor += (back * inv.partsSubtotalMinor) / inv.totalMinor
+  }
+  const salesMinor = sumMinor(invoices.map(i => i.totalMinor - i.taxMinor)) - refundedSalesMinor
+  const laborSalesMinor = sumMinor(invoices.map(i => i.laborSubtotalMinor)) - refundedLaborMinor
+  const partsSalesMinor = sumMinor(invoices.map(i => i.partsSubtotalMinor)) - refundedPartsMinor
 
   const lines = await tx.invoiceLine.findMany({ where: { invoiceId: { in: invoices.map(i => i.id) } }, select: { kind: true, centiHours: true, quantityMilli: true, sourceJobLineId: true, extendedMinor: true } })
   const billedCentiHours = lines.filter(l => l.kind === 'labor').reduce((n, l) => n + (l.centiHours ?? 0), 0)
@@ -112,8 +124,8 @@ export async function computeKpis(tx: Tx, shopId: string, from: string, to: stri
 
   const values = {
     car_count: { carCount },
-    aro: { salesMinor: salesMinor.toString(), carCount, aroMinor: carCount ? (salesMinor / BigInt(carCount)).toString() : null },
-    elr: { laborSalesMinor: laborSalesMinor.toString(), billedCentiHours, elrMinor: billedCentiHours ? ((laborSalesMinor * 100n) / BigInt(billedCentiHours)).toString() : null },
+    aro: { salesMinor: salesMinor.toString(), refundedSalesMinor: refundedSalesMinor.toString(), carCount, aroMinor: carCount ? (salesMinor / BigInt(carCount)).toString() : null },
+    elr: { laborSalesMinor: laborSalesMinor.toString(), refundedLaborMinor: refundedLaborMinor.toString(), billedCentiHours, elrMinor: billedCentiHours ? ((laborSalesMinor * 100n) / BigInt(billedCentiHours)).toString() : null },
     gp_labor: options.includeCost
       ? { laborSalesMinor: laborSalesMinor.toString(), laborCostMinor: laborCostMinor.toString(), gpMinor: (laborSalesMinor - laborCostMinor).toString(), gpPct: ratio(laborSalesMinor - laborCostMinor, laborSalesMinor, 10000n)?.toString() ?? null, gpPctScale: 100 }
       : { laborSalesMinor: laborSalesMinor.toString(), hidden: true },
