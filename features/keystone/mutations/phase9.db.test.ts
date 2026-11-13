@@ -98,7 +98,7 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, integ
   it('SCHEMA §21 tie-outs pass on the seed data and the day just worked', async () => {
     for (const shop of SHOPS.map(s => s.id)) {
       const t = await p9.shopTieOuts(null, { shopId: shop }, owner) as any
-      expect(t.checks.map((c: any) => c.key)).toEqual(['ar', 'deposits', 'stock', 'cores', 'flagged_hours', 'day_close', 'fees_payable', 'sales_tax'])
+      expect(t.checks.map((c: any) => c.key)).toEqual(['ar', 'deposits', 'stock', 'cores', 'flagged_hours', 'day_close', 'fees_payable', 'sales_tax', 'payment_allocations'])
       for (const c of t.checks) expect(c.ok, `${shop} ${c.key}: ${c.differences.join('; ')}`).toBe(true)
     }
   })
@@ -216,12 +216,15 @@ describe.skipIf(!hasTestDatabase)('Phase 9 reporting, accounting, imports, integ
 
   it('r1 fixes: one open card payment per invoice, refunds in reports, frozen days, named tie-outs, imports never re-own', async () => {
     const inv = await prisma.invoice.findFirstOrThrow({ where: { shopId: NGA, balanceMinor: { gt: 500n } } })
+    // Test seam: no real card page is opened here, only the "one open card payment" rule is under test.
+    setStripeGateway({ name: 'test-double', createCheckoutSession: async () => ({ id: 'cs_test_' + key('s'), url: 'https://checkout.invalid/pay', paymentStatus: 'unpaid', status: 'open' }) } as never)
     const card = () => takeShopPayment(null, { input: { purpose: 'invoice', invoiceIds: [inv.id], tender: 'card_link', amountMinor: '300', payerName: 'Marcus Delgado' }, idempotencyKey: key('card') }, books)
     const first = await card() as { id: string }
     await expect(card()).rejects.toMatchObject({ code: 'GUARD_FAILED' })
     // The database says the same thing even if the code is bypassed.
     await expect(prisma.payment.create({ data: { shopId: NGA, purpose: 'invoice', tender: 'card_link', amountMinor: 300n, provider: 'stripe', idempotencyKey: key('raw'), targetInvoiceIds: [inv.id], status: 'pending' } })).rejects.toThrow()
     await prisma.payment.update({ where: { id: first.id }, data: { status: 'failed' } })
+    setStripeGateway(null)
 
     // A refund shows in the reports and never lands on a day whose books were accepted.
     const tomorrow = day(new Date(Date.now() + 86_400_000))
