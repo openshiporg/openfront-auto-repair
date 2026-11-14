@@ -23,8 +23,8 @@ export default async function HomePage() {
   return (
     <main>
       {/* First paint: book a repair and check a repair, over the bay photograph on a wide screen. */}
-      <section className="relative">
-        {bay ? <Image src={bay} alt="" fill priority sizes="(min-width: 1024px) 100vw, 1px" className="hidden object-cover object-center lg:block" /> : <div className="sf-bay absolute inset-0 hidden lg:block" aria-hidden="true" />}
+      <section className="relative overflow-hidden">
+        {bay ? <Image src={bay} alt="" fill priority sizes="(min-width: 1024px) 100vw, 1px" className="hidden object-cover object-center lg:block lg:origin-[52%_60%] lg:scale-[1.12]" /> : <div className="sf-bay absolute inset-0 hidden lg:block" aria-hidden="true" />}
         <div className="absolute inset-0 hidden bg-gradient-to-r from-black/45 via-transparent to-black/45 lg:block" aria-hidden="true" />
         <div className="sf-wrap relative grid gap-0 py-3 lg:grid-cols-[minmax(0,495px)_1fr_minmax(0,495px)] lg:items-start lg:py-6">
           <div className="pb-4 lg:pb-0">
@@ -51,7 +51,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="sf-wrap mt-3 grid gap-x-14 gap-y-6 lg:mt-7 lg:grid-cols-[minmax(0,636px)_minmax(0,1fr)]">
+      <section className="sf-wrap mt-3 grid gap-x-14 gap-y-6 lg:mt-10 lg:grid-cols-[minmax(0,636px)_minmax(0,1fr)]">
         <div>
           <h2 className="sf-display text-[26px] lg:text-[44px]">Services and prices</h2>
           <div className="mt-1 lg:mt-3"><ServiceRows services={store.services} compact /></div>

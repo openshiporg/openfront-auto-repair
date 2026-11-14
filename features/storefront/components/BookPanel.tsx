@@ -52,13 +52,13 @@ export function BookPanel({ shopName, shopPhone, services, times }: {
         <div className="flex flex-col gap-2 lg:flex-col-reverse lg:gap-2">
           <fieldset className="rounded border border-[#aab1b8] px-4 py-2 lg:border-0 lg:p-0">
             <legend className="sf-label sr-only text-[16px] lg:not-sr-only lg:mb-1">Appointment time</legend>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <Calendar size={26} className="shrink-0 lg:hidden" aria-hidden="true" />
-              <span className="mr-auto text-[17px] lg:hidden" aria-hidden="true">Next open times</span>
+              <span className="mr-auto whitespace-nowrap text-[17px] lg:hidden" aria-hidden="true">Next open times</span>
               {offered.length ? (
-                <div className="flex flex-col gap-1 lg:w-full lg:flex-row lg:gap-3" role="radiogroup" aria-label="Appointment time">
+                <div className="flex min-w-0 max-w-full flex-col gap-1 lg:w-full lg:flex-row lg:gap-3" role="radiogroup" aria-label="Appointment time">
                   {offered.map(t => (
-                    <button key={t.iso} type="button" role="radio" aria-checked={at === t.iso} onClick={() => setAt(t.iso)} className="sf-btn-line whitespace-nowrap !px-3 text-[16px] lg:flex-1 lg:text-[17px]">{t.label}</button>
+                    <button key={t.iso} type="button" role="radio" aria-checked={at === t.iso} onClick={() => setAt(t.iso)} className="sf-btn-line !px-3 text-[16px] lg:flex-1 lg:whitespace-nowrap lg:text-[17px]">{t.label}</button>
                   ))}
                 </div>
               ) : (
