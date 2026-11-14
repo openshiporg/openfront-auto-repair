@@ -1,6 +1,7 @@
 import { list } from '@keystone-6/core'
 import { calendarDay, checkbox, integer, json, relationship, text, timestamp } from '@keystone-6/core/fields'
 import { lifecycle, minor, readOnly, systemChoice, systemText, versionField } from './domainFields'
+import { anyOf } from '../access'
 import { governed, immutable, shopScoped } from './listAccess'
 import { trackingFields } from './trackingFields'
 
@@ -128,7 +129,7 @@ export const ExportJob = list({
     periodEnd: calendarDay({ ...readOnly }),
     fileName: systemText(),
     contentType: systemText(),
-    content: text({ ...readOnly, ui: { displayMode: 'textarea', itemView: { fieldMode: 'hidden' } } }),
+    content: text({ ...readOnly, access: { ...readOnly.access, read: anyOf('canReadFinancials', 'canManageIntegrations') }, ui: { displayMode: 'textarea', itemView: { fieldMode: 'hidden' } } }),
     sha256: systemText(),
     rowCount: integer({ defaultValue: 0, ...readOnly }),
     requestedById: systemText(),
