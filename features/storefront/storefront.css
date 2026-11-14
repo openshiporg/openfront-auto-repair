@@ -1,0 +1,119 @@
+/* The customer site: near-black, electric orange, cool white. Scoped to .sf so the staff dashboard is untouched. */
+.sf {
+  --sf-bg: #111315;
+  --sf-panel: #0c0e10;
+  --sf-raise: #181b1e;
+  --sf-line: #3a3f44;
+  --sf-rule: #d8dde2;
+  --sf-text: #f4f6f8;
+  --sf-dim: #b9c0c7;
+  --sf-orange: #ff6a1a;
+  --sf-orange-ink: #140a04;
+  --sf-red: #ff5a1f;
+  --sf-yellow: #f2d21b;
+  --sf-green: #2fb344;
+  background: var(--sf-bg);
+  color: var(--sf-text);
+  font-family: var(--font-sf-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  min-height: 100vh;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+.sf *:focus-visible { outline: 2px solid var(--sf-orange); outline-offset: 2px; }
+.sf a { color: inherit; }
+
+.sf-display { font-family: var(--font-sf-display), ui-sans-serif, sans-serif; font-weight: 700; letter-spacing: 0.005em; line-height: 1.05; }
+.sf-label { font-family: var(--font-sf-display), ui-sans-serif, sans-serif; font-weight: 600; }
+.sf-num { font-family: var(--font-sf-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.sf-dim { color: var(--sf-dim); }
+.sf-accent { color: var(--sf-orange); }
+
+.sf-wrap { width: 100%; max-width: 1440px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
+@media (min-width: 1024px) { .sf-wrap { padding-left: 42px; padding-right: 42px; } }
+
+/* Fields: a thin cool outline on the dark panel, square-ish corners. */
+.sf-field {
+  display: block; width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid #aab1b8; border-radius: 4px;
+  background: #15181b; color: var(--sf-text); font: inherit; font-size: 16px;
+}
+.sf-field::placeholder { color: #c5cbd1; opacity: 1; }
+.sf-field:hover { border-color: #e3e7eb; }
+select.sf-field {
+  appearance: none; padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f4f6f8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
+}
+@media (min-width: 1024px) { .sf-field { min-height: 40px; padding-top: 7px; padding-bottom: 7px; } }
+select.sf-field option { background: #15181b; color: var(--sf-text); }
+textarea.sf-field { min-height: 96px; resize: vertical; }
+.sf-field[aria-invalid='true'] { border-color: var(--sf-orange); }
+
+.sf-btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 22px; border: 0; border-radius: 4px;
+  background: var(--sf-orange); color: var(--sf-orange-ink); font-family: var(--font-sf-display), sans-serif; font-weight: 700; font-size: 18px;
+  text-decoration: none; cursor: pointer; transition: background-color 120ms ease;
+}
+.sf-btn:hover { background: #ff7d36; }
+.sf-btn:active { background: #e85c10; }
+.sf-btn:disabled { opacity: 0.55; cursor: default; }
+.sf-btn-wide { width: 100%; }
+
+.sf-btn-line {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 18px; border: 1px solid #aab1b8; border-radius: 4px;
+  background: #101214; color: var(--sf-text); font: inherit; font-size: 16px; text-decoration: none; cursor: pointer;
+}
+.sf-btn-line:hover { border-color: #fff; }
+.sf-btn-line[aria-pressed='true'], .sf-btn-line[aria-checked='true'], .sf-btn-line[aria-selected='true'] { border-color: var(--sf-orange); box-shadow: inset 0 0 0 1px var(--sf-orange); }
+
+/* Text actions on a line, the way an estimate reads: Approve | Decline. */
+.sf-text-btn { background: none; border: 0; padding: 10px 2px; margin: -10px 0; font: inherit; color: var(--sf-text); cursor: pointer; text-decoration: none; }
+.sf-text-btn:hover { text-decoration: underline; }
+.sf-text-btn.is-accent { color: var(--sf-orange); }
+.sf-text-btn[aria-pressed='true'] { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; font-weight: 600; }
+
+/* Radio as an orange ring with a filled centre. */
+.sf-radio { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
+.sf-radio input { appearance: none; width: 24px; height: 24px; margin: 0; border: 2px solid #c5cbd1; border-radius: 50%; background: transparent; display: grid; place-content: center; flex: none; }
+.sf-radio input::before { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--sf-orange); transform: scale(0); }
+.sf-radio input:checked { border-color: var(--sf-orange); }
+.sf-radio input:checked::before { transform: scale(1); }
+
+.sf-check { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+.sf-check input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--sf-orange); flex: none; }
+
+/* Panels over the photograph. */
+.sf-panel { background: rgba(12, 14, 16, 0.94); border: 1px solid #8f969d; border-radius: 4px; }
+.sf-panel-accent { border-color: var(--sf-orange); box-shadow: 0 0 0 1px var(--sf-orange); }
+
+@media (min-width: 1024px) {
+  .sf-panel-lg { background: rgba(12, 14, 16, 0.94); border: 1px solid #8f969d; border-radius: 4px; }
+  .sf-panel-lg-accent { background: rgba(12, 14, 16, 0.94); border: 1px solid var(--sf-orange); box-shadow: 0 0 0 1px var(--sf-orange); border-radius: 4px; }
+}
+
+/* The bay backdrop when the shop has not added its photograph: a dark room under one strip light. */
+.sf-bay {
+  background:
+    radial-gradient(60% 75% at 45% 10%, rgba(190, 205, 215, 0.2), transparent 70%),
+    linear-gradient(180deg, #1b1f23 0%, #14171a 55%, #0d0f11 56%, #16191c 100%);
+}
+
+/* Ruled rows: services and prices, estimate jobs, records. */
+.sf-rows > * { border-bottom: 1px solid var(--sf-rule); }
+.sf-rows-soft > * { border-bottom: 1px solid var(--sf-line); }
+.sf-rule-top { border-top: 1px solid var(--sf-rule); }
+.sf-hair { border-color: var(--sf-line); }
+
+.sf-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.sf-dot-red { background: var(--sf-red); }
+.sf-dot-yellow { background: var(--sf-yellow); }
+.sf-dot-green { background: var(--sf-green); }
+
+.sf-note { border-left: 3px solid var(--sf-orange); padding-left: 14px; }
+.sf-error { color: #ffb38a; }
+
+.sf-prose p + p { margin-top: 0.9em; }
+.sf-prose { max-width: 68ch; }
+
+@media (prefers-reduced-motion: reduce) { .sf * { transition: none !important; } }
