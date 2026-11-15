@@ -24,7 +24,7 @@ export default async function HomePage() {
     <main>
       {/* First paint: book a repair and check a repair, over the bay photograph on a wide screen. */}
       <section className="relative overflow-hidden">
-        {bay ? <Image src={bay} alt="" fill priority sizes="(min-width: 1024px) 100vw, 1px" className="hidden object-cover object-center lg:block lg:origin-[52%_60%] lg:scale-[1.12]" /> : <div className="sf-bay absolute inset-0 hidden lg:block" aria-hidden="true" />}
+        {bay ? <Image src={bay} alt="" fill priority sizes="(min-width: 1024px) 100vw, 1px" className="hidden object-cover object-center lg:block" /> : <div className="sf-bay absolute inset-0 hidden lg:block" aria-hidden="true" />}
         <div className="absolute inset-0 hidden bg-gradient-to-r from-black/45 via-transparent to-black/45 lg:block" aria-hidden="true" />
         <div className="sf-wrap relative grid gap-0 py-3 lg:grid-cols-[minmax(0,495px)_1fr_minmax(0,495px)] lg:items-start lg:py-6">
           <div className="pb-4 lg:pb-0">
@@ -63,7 +63,7 @@ export default async function HomePage() {
             <div className={team ? 'grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-x-4 lg:block' : ''}>
               {team ? (
                 <div className="relative aspect-[400/150] overflow-hidden lg:aspect-[712/236]">
-                  <Image src={team} alt={`The ${shop.name} team in the shop`} fill sizes="(min-width: 1024px) 712px, 55vw" className="object-cover object-[center_30%]" />
+                  <Image src={team} alt={`The ${shop.name} team in the shop: ${[...store.technicians, ...store.advisors].map(p => p.name).join(', ')}`} fill sizes="(min-width: 1024px) 712px, 55vw" className="object-cover object-[center_30%]" />
                 </div>
               ) : null}
               <div className="lg:hidden"><TeamLists technicians={store.technicians} advisors={store.advisors} /></div>

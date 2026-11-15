@@ -20,8 +20,8 @@ export const SHOPS = [
   {
     id: 'seed_shop_nga', code: 'NGA', name: 'Northgate Auto Care', legalName: 'Northgate Auto Group LLC',
     addressLine1: '2215 Northgate Blvd', city: 'Sacramento', region: 'CA', postalCode: '95833', phone: '+19165550142', email: 'service@northgateautocare.com',
-    registrations: { barArd: 'ARD-000000', epaId: 'CAR000000000', sellerPermit: 'SR-XX-000-000000', tireFeeAccount: 'TF-000000' },
-    weeklyHours: WEEKDAY('07:30', '18:00', ['08:00', '14:00']),
+    registrations: { barArd: 'ARD 00296814', epaId: 'CAR000000000', sellerPermit: 'SR-XX-000-000000', tireFeeAccount: 'TF-000000' },
+    weeklyHours: WEEKDAY('07:30', '18:00', ['08:00', '16:00']),
     bays: [
       ...Array.from({ length: 6 }, (_, i) => ({ code: `B${i + 1}`, name: `Bay ${i + 1}`, kind: 'general' })),
       { code: 'B7', name: 'Bay 7 (heavy lift)', kind: 'lift_heavy' },

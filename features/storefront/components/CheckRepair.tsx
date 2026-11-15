@@ -11,7 +11,7 @@ export function RepairStatus({ repair, big = false }: { repair: RepairView; big?
   const waiting = repair.estimate?.jobs.some(j => j.status === 'offered' || j.status === 'needs_reauthorization') ?? false
   return (
     <div aria-live="polite">
-      <p className={`sf-label ${big ? 'text-[22px]' : 'text-[19px] lg:text-[21px]'}`}>{[repair.vehicle, repair.roNumber].filter(Boolean).join(' · ')}</p>
+      <p className={`sf-label ${big ? 'text-[24px]' : 'text-[20px] lg:text-[24px]'}`}>{[repair.vehicle, repair.roNumber].filter(Boolean).join(' · ')}</p>
       <p className="text-[16px]">{repairStatus(repair.status)}</p>
 
       {repair.inspection ? (
@@ -27,16 +27,16 @@ export function RepairStatus({ repair, big = false }: { repair: RepairView; big?
         <div className="sf-rule-top mt-3 pt-2">
           <p className="flex items-baseline gap-4"><span className="sf-label text-[24px]">Estimate</span><span className="sf-num text-[24px]">{money(repair.estimate.totalMinor)}</span></p>
           <p className="text-[15px]">{waiting ? 'Approve each job separately.' : 'Your answers are on file.'}</p>
-          <ul className="sf-rows-soft mt-1">
+          <ul className="sf-rows-soft mt-2">
             {repair.estimate.jobs.map(job => (
-              <li key={job.number} className="flex flex-wrap items-baseline gap-x-4 py-1.5 text-[16px]">
-                <span className="min-w-0 flex-1 break-words">{job.title}</span>
-                <span className="sf-num">{money(job.totalMinor)}</span>
-                <span className={`w-full text-[15px] sm:w-auto sm:min-w-[11rem] sm:text-right ${job.status === 'offered' || job.status === 'needs_reauthorization' ? 'sf-accent' : ''}`}>{jobStatus(job.status)}</span>
+              <li key={job.number} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-0 py-2 text-[16px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,9.5rem)]">
+                <span className="min-w-0 break-words">{job.title}</span>
+                <span className="sf-num text-right">{money(job.totalMinor)}</span>
+                <span className={`col-span-2 text-[15px] sm:col-span-1 sm:text-right ${job.status === 'offered' || job.status === 'needs_reauthorization' ? 'sf-accent' : ''}`}>{jobStatus(job.status)}</span>
               </li>
             ))}
           </ul>
-          <p className="sf-rule-top mt-0 flex items-baseline gap-4 pt-2"><span className="sf-label text-[17px]">Total (incl. tax)</span><span className="sf-num ml-auto text-[20px] sm:ml-10">{money(repair.estimate.totalMinor)}</span></p>
+          <p className="sf-rule-top mt-0 flex items-baseline justify-between gap-4 pt-2"><span className="sf-label text-[17px]">Total (incl. tax)</span><span className="sf-num text-[24px]">{money(repair.estimate.totalMinor)}</span></p>
           {waiting ? (
             <p className="sf-note mt-3 text-[15px]">
               To approve or decline, open the link we sent to {repair.approvalSentTo ?? 'your phone'}

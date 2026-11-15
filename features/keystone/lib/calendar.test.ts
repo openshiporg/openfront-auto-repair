@@ -11,7 +11,7 @@ describe('Shop calendar (Northgate Auto Care)', () => {
   it('knows open days, Saturdays, Sundays and holiday closures', () => {
     expect(isBusinessDay(NGA, '2026-11-26')).toBe(false) // Thanksgiving closure
     expect(isBusinessDay(NGA, '2026-11-29')).toBe(false) // Sunday
-    expect(hoursOn(NGA, '2026-11-28')).toEqual({ open: '08:00', close: '14:00' }) // Saturday
+    expect(hoursOn(NGA, '2026-11-28')).toEqual({ open: '08:00', close: '16:00' }) // Saturday
     expect(hoursOn(NGA, '2026-11-27')).toEqual({ open: '07:30', close: '18:00' })
     expect(hoursOn(NGA, '2026-12-24')).toEqual({ open: '07:30', close: '13:00' }) // special hours
   })
