@@ -149,10 +149,29 @@ export async function attachComebackJob(uow: UnitOfWork, actor: Actor, input: { 
   return { id: row.id, comebackJobId: jobId, noCharge: row.noCharge }
 }
 
+/** A cancelled comeback no longer pays for its repeat repair: the shop-warranty cover comes off and the customer authorizes the price. */
+async function uncoverComebackJob(uow: UnitOfWork, actor: Actor, row: Record<string, any>, reason: string) {
+  const { tx } = uow
+  const j = await lockRow<Record<string, any>>(tx, 'Job', row.comebackJobId)
+  if (!String(j.noChargeReason ?? '').startsWith(`Comeback ${row.reference}`)) return
+  if (await billedAlready(tx, j.id)) throw new DomainError(Codes.GUARD_FAILED, 'The repeat repair is already on an invoice at no charge. Void that invoice before cancelling the comeback.')
+  const authorized = Boolean(j.currentAuthorizationId)
+  if (!authorized && j.status === 'completed') throw new DomainError(Codes.GUARD_FAILED, 'The free repeat repair is already done. Resolve the comeback instead of cancelling it.')
+  await tx.payerSplit.deleteMany({ where: { jobId: j.id, payerKind: 'shop_warranty', claimNumber: row.reference } })
+  if (!authorized && ['authorized', 'in_progress'].includes(j.status)) {
+    await transition(uow, { model: 'Job', id: j.id, from: [j.status], to: 'needs_reauthorization', actor, eventType: 'job.warranty_cover_removed', reason, data: { noChargeReason: '', reauthorizationReason: `Comeback ${row.reference} was cancelled, so this work is no longer free. The customer authorizes the price.` } })
+  } else {
+    await tx.job.update({ where: { id: j.id }, data: { noChargeReason: '', version: { increment: 1 } } })
+    auditCreate(uow, actor, 'Job', j.id, 'job.warranty_cover_removed', { comeback: row.reference })
+  }
+}
+
 /** Drop a comeback that was opened by mistake or that the customer withdrew. Kept, with the reason. */
 export async function cancelComeback(uow: UnitOfWork, actor: Actor, input: { comebackId: string; reason: string; expectedVersion?: number | null }) {
   const reason = textOf(input.reason, 'Reason', 300, true)
   if (reason.length < 3) throw new DomainError(Codes.INVALID_INPUT, 'Say why the comeback is cancelled.', { field: 'reason' })
+  const row = await lockRow<any>(uow.tx, 'ComebackCase', input.comebackId)
+  if (row.comebackJobId) await uncoverComebackJob(uow, actor, row, reason)
   await transition(uow, { model: 'ComebackCase', id: input.comebackId, from: ['open', 'diagnosed'], to: 'cancelled', expectedVersion: input.expectedVersion, actor, eventType: 'comeback.cancelled', reason, data: { resolution: `Cancelled: ${reason}` } })
   return { id: input.comebackId, status: 'cancelled' }
 }
