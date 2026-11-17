@@ -530,8 +530,8 @@ export async function voidJob(uow: UnitOfWork, actor: Actor, input: { jobId: str
     model: 'Job', id: input.jobId, from: ['draft', 'priced', 'offered', 'authorized', 'declined', 'deferred'], to: 'voided', expectedVersion: input.expectedVersion, actor, eventType: 'job.voided', reason,
     guard: async (j: any) => {
       if (j.workStartedAt) throw new DomainError(Codes.GUARD_FAILED, 'Work has started on this job, so it cannot be voided.')
-      const issued = await uow.tx.stockMovement.count({ where: { jobId: j.id, type: 'issue' } })
-      if (issued) throw new DomainError(Codes.GUARD_FAILED, 'Parts were issued to this job. Return them to stock before voiding it.')
+      const net = await uow.tx.stockMovement.groupBy({ by: ['shopItemId'], where: { jobId: j.id, type: { in: ['issue', 'return_to_stock'] } }, _sum: { onHandDeltaMilli: true } })
+      if (net.some(n => (n._sum.onHandDeltaMilli ?? 0) < 0)) throw new DomainError(Codes.GUARD_FAILED, 'Parts were issued to this job. Return them to stock before voiding it.')
     },
   })
   await releaseJobReservations(uow, actor, input.jobId, `Job voided: ${reason}`)
