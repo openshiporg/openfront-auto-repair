@@ -199,6 +199,7 @@ async function fleetContext(uow: import('../lib/unitOfWork').UnitOfWork, token: 
 }
 
 async function fleetView(db: Db, token: string, consume: boolean) {
+  await settleFleetCards(db, token)
   return runInTransaction(db, async uow => {
     const { tx } = uow
     const { contact, account, approver } = await fleetContext(uow, token, consume)
@@ -224,6 +225,22 @@ async function fleetView(db: Db, token: string, consume: boolean) {
       canPayByCard: cardPaymentsConfigured(),
     }
   }, { actorKind: 'system' })
+}
+
+/** The account's open card payments, asked of Stripe, so a payment made from this page shows as paid when the payer comes back. */
+async function settleFleetCards(db: Db, token: string) {
+  const open = await runInTransaction(db, async uow => {
+    const { account } = await fleetContext(uow, token, false)
+    const invoices = await uow.tx.invoice.findMany({ where: { businessAccountId: account.id, balanceMinor: { gt: 0n } }, take: 50, select: { id: true } })
+    return openCardPaymentsFor(uow.tx, invoices.map(i => i.id))
+  }, { actorKind: 'system' }).catch(() => [] as { id: string; targetInvoiceIds: unknown }[])
+  for (const p of open) await resolvePayment(db, p.id, CUSTOMER).catch(() => null)
+}
+
+async function openCardPaymentsFor(tx: import('../lib/db').Tx, invoiceIds: string[]) {
+  if (!invoiceIds.length) return []
+  const open = await tx.payment.findMany({ where: { purpose: 'invoice', provider: 'stripe', status: { in: ['initiated', 'pending', 'unknown'] } }, select: { id: true, targetInvoiceIds: true } })
+  return open.filter(p => ((p.targetInvoiceIds as string[] | null) ?? []).some(x => invoiceIds.includes(x)))
 }
 
 export async function getFleet(db: Db, request: Request, token: string) {
@@ -256,6 +273,21 @@ export async function postFleet(db: Db, request: Request, token: string) {
     }
     if (input.action === 'pay') {
       if (!cardPaymentsConfigured()) throw new DomainError('PROVIDER_UNAVAILABLE', 'Card payments are not available right now. Please call the shop.')
+      // A card page already open on this invoice is asked of Stripe first: paid shows as paid, still open is opened again.
+      const already = await runInTransaction(db, async uow => {
+        const { account } = await fleetContext(uow, token, false)
+        const invoice = await uow.tx.invoice.findUnique({ where: { id: String(input.invoiceId ?? '') }, select: { id: true, businessAccountId: true, invoiceNumber: true } })
+        if (!invoice || invoice.businessAccountId !== account.id) throw new DomainError('NOT_FOUND', 'That invoice was not found.')
+        return { invoiceNumber: invoice.invoiceNumber, open: (await openCardPaymentsFor(uow.tx, [invoice.id]))[0]?.id ?? null }
+      }, { actorKind: 'system' })
+      if (already.open) {
+        const resolved = await resolvePayment(db, already.open, CUSTOMER)
+        if (resolved.status === 'succeeded') return respond({ status: 'succeeded', paymentId: already.open, ...(await fleetView(db, token, false)) })
+        if (['initiated', 'pending', 'unknown'].includes(resolved.status)) {
+          const again = await openCardPage(db, already.open, { description: `Invoice ${already.invoiceNumber}`, returnPath: `/fleet/${token}` })
+          return respond({ status: 'pending', paymentId: already.open, checkoutUrl: again.url })
+        }
+      }
       const made = await runInTransaction(db, async uow => {
         const { account } = await fleetContext(uow, token, false)
         const invoice = await uow.tx.invoice.findUnique({ where: { id: String(input.invoiceId ?? '') }, select: { id: true, businessAccountId: true, balanceMinor: true, invoiceNumber: true } })

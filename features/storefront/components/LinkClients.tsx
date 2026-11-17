@@ -262,6 +262,7 @@ export function FleetApprove({ token, item, canApprove, poRequired }: { token: s
 }
 
 export function FleetPay({ token, invoiceId, balance }: { token: string; invoiceId: string; balance: string }) {
+  const router = useRouter()
   const [pending, setPending] = React.useState(false)
   const [error, setError] = React.useState('')
   async function pay() {
@@ -269,6 +270,7 @@ export function FleetPay({ token, invoiceId, balance }: { token: string; invoice
     setError('')
     const { ok, data } = await post(`/api/public/fleet/${token}`, { action: 'pay', invoiceId })
     if (ok && data.checkoutUrl) { window.location.assign(data.checkoutUrl); return }
+    if (ok && data.status === 'succeeded') { setPending(false); router.refresh(); return }
     setPending(false)
     setError(problem(data, 'We could not open the card page. Please try again or call the shop.'))
   }
