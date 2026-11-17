@@ -388,6 +388,9 @@ export async function writeAndPrice(uow: UnitOfWork, actor: Actor, jobId: string
     const resolved = await resolveGuide(tx, ro.shopId, ro.vehicleId, actor, line)
     if (!resolved) continue
     line.guideCentiHours = resolved.op.centiHours
+    // Hours still at the guide less an earlier overlap are the guide's own hours: the overlap is worked out again below.
+    if (line.overlapCentiHours && line.soldCentiHours === Math.max(1, resolved.op.centiHours - line.overlapCentiHours)) line.soldCentiHours = resolved.op.centiHours
+    line.overlapCentiHours = 0
     if (!line.soldCentiHours) line.soldCentiHours = resolved.op.centiHours
     if (!line.rateClassCode && resolved.op.rateClass) line.rateClassCode = resolved.op.rateClass
     if (!line.description) line.description = resolved.op.description + (resolved.op.variant ? ` (${resolved.op.variant})` : '')
