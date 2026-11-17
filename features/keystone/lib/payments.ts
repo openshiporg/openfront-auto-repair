@@ -190,7 +190,15 @@ export async function applyCardResult(uow: UnitOfWork, actor: Actor, input: { pa
       model: 'Payment', id: payment.id as string, from: ['initiated', 'pending', 'unknown'], to: 'succeeded', actor, eventType: 'payment.succeeded',
       data: { providerPaymentId: input.paymentIntentId ?? '', cardBrand: input.cardBrand ?? '', cardLast4: input.cardLast4 ?? '', settledAt: now, businessDate, failureMessage: '' },
     })
-    const allocated = payment.purpose === 'invoice' ? await allocatePayment(uow, actor, payment.id as string) : 0n
+    let allocated = payment.purpose === 'invoice' ? await allocatePayment(uow, actor, payment.id as string) : 0n
+    // A deposit that settles after the order was invoiced goes onto that invoice now, as finalize would have done.
+    if (payment.purpose === 'deposit' && payment.repairOrderId) {
+      const invoices = await tx.invoice.findMany({ where: { repairOrderId: payment.repairOrderId as string, payerKind: 'customer' }, select: { id: true } })
+      if (invoices.length) {
+        await tx.payment.update({ where: { id: payment.id as string }, data: { targetInvoiceIds: invoices.map(i => i.id) as never } })
+        allocated = await allocatePayment(uow, actor, payment.id as string)
+      }
+    }
     return { status: 'succeeded', allocatedMinor: allocated.toString(), already: false }
   }
   await transition(uow, { model: 'Payment', id: payment.id as string, from: ['initiated', 'pending', 'unknown'], to: 'failed', actor, eventType: 'payment.failed', data: { failureMessage: text(input.message || (input.outcome === 'expired' ? 'The payment page expired before it was paid.' : 'The card was not charged.'), 300) } })
