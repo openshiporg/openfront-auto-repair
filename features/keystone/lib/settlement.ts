@@ -119,7 +119,7 @@ export async function issueCreditMemo(uow: UnitOfWork, actor: Actor, input: Cred
   const reason = reasonOf(input.reason, 'the invoice is being credited')
   const invoice = await lockRow<Record<string, any>>(tx, 'Invoice', input.invoiceId)
   if (!Array.isArray(input.lines) || !input.lines.length) throw new DomainError(Codes.INVALID_INPUT, 'Choose what to credit.', { field: 'lines' })
-  const prior = await tx.creditMemoLine.findMany({ where: { creditMemo: { invoiceId: invoice.id as string, status: 'issued' } }, select: { invoiceLineId: true, amountMinor: true } })
+  const prior = await tx.creditMemoLine.findMany({ where: { creditMemo: { invoiceId: invoice.id as string, status: 'issued' } }, select: { invoiceLineId: true, amountMinor: true, taxMinor: true } })
   const lines: { invoiceLineId: string; description: string; amountMinor: bigint; taxMinor: bigint }[] = []
   for (const l of input.lines) {
     const source = await tx.invoiceLine.findUnique({ where: { id: String(l.invoiceLineId) } })
@@ -127,7 +127,10 @@ export async function issueCreditMemo(uow: UnitOfWork, actor: Actor, input: Cred
     const amount = whole(l.amountMinor, 'amountMinor')
     const credited = sumMinor(prior.filter(p => p.invoiceLineId === source.id).map(p => p.amountMinor))
     if (amount > source.extendedMinor - credited) throw new DomainError(Codes.GUARD_FAILED, `${source.description}: only ${cents(source.extendedMinor - credited)} is left to credit.`, { field: 'amountMinor' })
-    const taxMinor = source.extendedMinor > 0n ? BigInt(dec(source.taxMinor).times(dec(amount)).div(dec(source.extendedMinor)).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN).toString()) : 0n
+    // Tax on everything credited so far on this line, less the tax already credited, so the pieces add up to the line's tax.
+    const taxOn = (part: bigint) => BigInt(dec(source.taxMinor).times(dec(part)).div(dec(source.extendedMinor)).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN).toString())
+    const taxCredited = sumMinor(prior.filter(p => p.invoiceLineId === source.id).map(p => p.taxMinor))
+    const taxMinor = source.extendedMinor > 0n ? (taxOn(credited + amount) > taxCredited ? taxOn(credited + amount) - taxCredited : 0n) : 0n
     lines.push({ invoiceLineId: source.id, description: source.description, amountMinor: amount, taxMinor })
   }
   const subtotal = sumMinor(lines.map(l => l.amountMinor))
