@@ -242,8 +242,9 @@ export async function recordAuthorization(uow: UnitOfWork, actor: Actor, input: 
     signatureDocumentId = doc.id
     Object.assign(evidence, { documentId: doc.id, documentSha256: doc.sha256 })
   } else if (input.method === 'fleet_po') {
-    if (!String(input.poNumber ?? '').trim()) throw new DomainError(Codes.PO_REQUIRED, 'Enter the purchase order number.', { field: 'poNumber' })
-    Object.assign(evidence, { poNumber: String(input.poNumber).trim().slice(0, 60) })
+    // Whether a PO is needed is the fleet account's own rule (checkFleetAuthorization below); a PO given is kept as evidence.
+    if (!ro.businessAccountId && !String(input.poNumber ?? '').trim()) throw new DomainError(Codes.PO_REQUIRED, 'Enter the purchase order number.', { field: 'poNumber' })
+    if (String(input.poNumber ?? '').trim()) Object.assign(evidence, { poNumber: String(input.poNumber).trim().slice(0, 60) })
   }
   // Fleet accounts: the PO rule, and the approver's limit. Over the limit escalates to the next approver in the chain.
   let fleetApproverId: string | null = null
