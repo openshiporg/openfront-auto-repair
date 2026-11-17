@@ -338,7 +338,8 @@ export const ApprovalPolicy = list({
 })
 
 export const ApprovalRequest = list({
-  access: governed('canAccessDashboard'),
+  // A shop's requests are seen by that shop's people; organisation-wide requests (no shop) by everyone with the dashboard.
+  access: { ...governed('canAccessDashboard'), filter: { query: ({ session }: { session?: Session | null }) => { const ids = sessionShopIds(session); return ids === 'all' ? true : { OR: [{ shop: null }, { shop: { id: { in: ids } } }] } } } },
   ui: { labelField: 'action', listView: { initialColumns: ['action', 'status', 'targetList', 'requestedBy', 'createdAt', 'expiresAt'] } },
   fields: {
     action: systemText({ indexed: true, required: true }),

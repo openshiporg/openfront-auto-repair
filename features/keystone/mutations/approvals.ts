@@ -1,6 +1,6 @@
 import { actorFromSession, requirePermission } from '../lib/actor'
 import { command } from '../lib/command'
-import { consumeApproval, decideApproval } from '../lib/approval'
+import { assertApprovalShop, consumeApproval, decideApproval } from '../lib/approval'
 import { applierFor } from '../lib/approvalAppliers'
 import { transition } from '../lib/cas'
 import { DomainError, Codes } from '../lib/errors'
@@ -15,6 +15,7 @@ export async function decideApprovalRequest(_root: unknown, args: { requestId: s
   if (args.decision !== 'approve' && args.decision !== 'reject') throw new DomainError(Codes.INVALID_INPUT, 'Decision must be approve or reject.')
   if (args.decision === 'reject' && !args.reason?.trim()) throw new DomainError(Codes.INVALID_INPUT, 'Say why you are rejecting it.', { field: 'reason' })
   const result = await command(context.prisma, { name: 'approval.decide', actor, idempotencyKey: args.idempotencyKey, params: { requestId: args.requestId, decision: args.decision, reason: args.reason ?? '', expectedVersion: args.expectedVersion } }, async uow => {
+    assertApprovalShop(context.session, await uow.tx.approvalRequest.findUniqueOrThrow({ where: { id: args.requestId }, select: { shopId: true } }))
     const org = await uow.tx.organizationSettings.findUnique({ where: { id: 1 }, select: { strictAgentOwnerSoD: true } })
     const decided = await decideApproval(uow, actor, { requestId: args.requestId, decision: args.decision, reason: args.reason ?? undefined, expectedVersion: args.expectedVersion, strictAgentOwner: org?.strictAgentOwnerSoD ?? true })
     let applied: unknown = null

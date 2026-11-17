@@ -3,6 +3,8 @@ import { actorAgentId, actorUserId, type Actor } from './actor'
 import { DomainError, Codes } from './errors'
 import { assertCanDecide } from './separationOfDuties'
 import { lockRow, transition } from './cas'
+import { delegateOf } from './db'
+import { sessionShopIds, type Session } from '../access'
 import type { UnitOfWork } from './unitOfWork'
 import type { Permission } from '../access'
 
@@ -27,8 +29,10 @@ export async function requestApproval(uow: UnitOfWork, actor: Actor, input: Requ
   const policy = await uow.tx.approvalPolicy.findUnique({ where: { action: input.action } })
   const requiredPermission = (policy?.requiredPermission as Permission | undefined) ?? input.requiredPermission
   const minutes = input.expiresInMinutes ?? policy?.expiresAfterMinutes ?? 1440
+  const shopId = await targetShopId(uow, input.targetList, input.targetId)
   const created = await uow.tx.approvalRequest.create({
     data: {
+      shopId,
       action: input.action,
       summary: input.summary ?? '',
       targetList: input.targetList,
@@ -44,6 +48,21 @@ export async function requestApproval(uow: UnitOfWork, actor: Actor, input: Requ
   })
   uow.audit({ eventType: 'approval.requested', entityType: 'ApprovalRequest', entityId: created.id, actorUserId: actorUserId(actor), actorAgentId: actorAgentId(actor), after: { action: input.action, targetList: input.targetList, targetId: input.targetId, payloadHash: created.payloadHash, requiredPermission } })
   return created
+}
+
+/** The shop a request belongs to, from its target row. Targets that are not a shop's (organisation settings, a fleet account) have none. */
+async function targetShopId(uow: UnitOfWork, targetList: string, targetId: string): Promise<string | null> {
+  if (targetList === 'OrganizationSettings') return null
+  try {
+    const row = await delegateOf(uow.tx, targetList).findUnique({ where: { id: targetId } })
+    return typeof row?.shopId === 'string' ? row.shopId : null
+  } catch { return null }
+}
+
+/** A person limited to their own shops may decide only that shop's requests (or organisation-wide ones). */
+export function assertApprovalShop(session: Session | null | undefined, request: { shopId?: string | null }) {
+  const ids = sessionShopIds(session)
+  if (request.shopId && ids !== 'all' && !ids.includes(request.shopId)) throw new DomainError(Codes.NOT_AUTHORIZED, "This request is for a shop you don't work at.")
 }
 
 export async function decideApproval(uow: UnitOfWork, actor: Actor, input: { requestId: string; decision: 'approve' | 'reject'; reason?: string; expectedVersion?: number | null; strictAgentOwner?: boolean }) {
