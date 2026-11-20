@@ -11,13 +11,20 @@ export const MAX_QUERY_ALIASES = 20
 
 type Count = { n: number; aliases: number }
 
+/*
+ * An alias counts only when it asks for a field already selected in the same set (`a: node b: node`), which is how a
+ * query multiplies work. Renaming a field once (`label: name` on each relationship, one `xCount` per list on the
+ * dashboard home) costs nothing extra and is not counted.
+ */
 function measure(set: SelectionSetNode, fragments: Record<string, FragmentDefinitionNode>, depth: number, seen: Set<string>, count: Count): number {
   let max = depth
+  const named = new Set<string>()
   for (const selection of set.selections) {
     if (selection.kind === Kind.FIELD) {
       if (selection.name.value.startsWith('__')) continue
       count.n++
-      if (selection.alias && selection.alias.value !== selection.name.value) count.aliases++
+      if (named.has(selection.name.value) && selection.alias && selection.alias.value !== selection.name.value) count.aliases++
+      named.add(selection.name.value)
       if (selection.selectionSet) max = Math.max(max, measure(selection.selectionSet, fragments, depth + 1, seen, count))
     } else if (selection.kind === Kind.INLINE_FRAGMENT) {
       max = Math.max(max, measure(selection.selectionSet, fragments, depth, seen, count))

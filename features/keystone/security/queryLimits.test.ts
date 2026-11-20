@@ -20,6 +20,11 @@ describe('query limits', () => {
     expect(errors(many(MAX_QUERY_ALIASES))).toEqual([])
     expect(errors(many(200)).join(' ')).toMatch(/aliases/)
   })
+  it('does not count a field renamed once (dashboard labels and list counts)', () => {
+    const relationSchema = buildSchema(`type Query { item: Item } type Item { ${Array.from({ length: 40 }, (_, i) => `f${i}: Node`).join(' ')} } type Node { id: ID! name: String }`)
+    const item = `{ item { ${Array.from({ length: 40 }, (_, i) => `f${i} { id label: name }`).join(' ')} } }`
+    expect(validate(relationSchema, parse(item), [queryLimitsRule]).map(e => e.message)).toEqual([])
+  })
   it('counts nesting through fragments', () => {
     const frag = `query { node { ...F } } fragment F on Node { child ${'{ child '.repeat(12)} { id } ${'}'.repeat(12)} }`
     expect(errors(frag).join(' ')).toMatch(/nests/)
