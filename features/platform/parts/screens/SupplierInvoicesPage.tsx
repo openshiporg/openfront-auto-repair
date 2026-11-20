@@ -1,4 +1,4 @@
-import { q } from '../../lib/server';
+import { q, holds } from '../../lib/server';
 import { money, milli, label, minorOrNull, when } from '../../lib/format';
 import { Page, Empty, Meta, Section, Stat, Status } from '../../components/ui';
 import { PartsTabs } from './PartsTabs';
@@ -13,6 +13,11 @@ type Inv = {
 
 /** Three-way match: what was ordered, what was received, what the supplier billed. Open discrepancies block approval. */
 export default async function SupplierInvoicesPage() {
+  const can = await holds(['canManageParts', 'canReceiveParts', 'canApproveSupplierInvoice']);
+  // Each button shows only for a role the server lets press it.
+  const receive = can.canManageParts || can.canReceiveParts;
+  const approve = can.canApproveSupplierInvoice;
+  const resolve = can.canManageParts || can.canApproveSupplierInvoice;
   const d = await q<{ supplierInvoices: Inv[]; suppliers: { id: string; name: string; adapter: string }[]; shops: { id: string }[] }>(`{
     supplierInvoices(orderBy: { createdAt: desc }, take: 100) { id invoiceNumber invoiceDate totalMinor status exportReference reversalReason version shop { id name } supplier { name }
       lines { id partNumber quantityMilli unitCostMinor coreCreditMinor matchStatus } discrepancies { id kind amountMinor detail status } }
@@ -40,7 +45,7 @@ export default async function SupplierInvoicesPage() {
         <Stat name="With discrepancies" value={<span className={`font-mono text-base ${stuck.length ? 'text-amber-600' : ''}`}>{stuck.length}</span>} />
         <Stat name="Ready to approve" value={<span className="font-mono text-base">{d.supplierInvoices.filter(i => i.status === 'matched').length}</span>} />
       </div>
-      {shopId ? <SupplierInvoiceForm shopId={shopId} suppliers={d.suppliers} /> : null}
+      {shopId && receive ? <SupplierInvoiceForm shopId={shopId} suppliers={d.suppliers} /> : null}
       <Section title="Invoices">
         {d.supplierInvoices.length ? d.supplierInvoices.map(i => (
           <div key={i.id} className="min-w-0 space-y-2 border-b py-3 last:border-b-0">
@@ -54,14 +59,14 @@ export default async function SupplierInvoicesPage() {
             {open(i).map(x => (
               <div key={x.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/40 p-2 text-sm">
                 <div className="min-w-0 break-words"><span className="font-mono text-xs uppercase">{label(x.kind)}</span> {x.amountMinor !== null ? money(x.amountMinor) : null} <Meta>{x.detail}</Meta></div>
-                {x.kind !== 'total_mismatch' ? <Act op="resolveSupplierDiscrepancy" ask="How was it settled with the supplier?" askKey="resolution" vars={{ discrepancyId: x.id, outcome: 'resolved' }}>Resolve</Act> : null}
+                {resolve && x.kind !== 'total_mismatch' ? <Act op="resolveSupplierDiscrepancy" ask="How was it settled with the supplier?" askKey="resolution" vars={{ discrepancyId: x.id, outcome: 'resolved' }}>Resolve</Act> : null}
               </div>
             ))}
             <div className="flex flex-wrap gap-2">
-              {['received', 'discrepancy'].includes(i.status) ? <Act op="matchShopSupplierInvoice" vars={{ invoiceId: i.id }}>Match to orders</Act> : null}
-              {i.status === 'matched' ? <Act primaryStyle op="approveShopSupplierInvoice" vars={{ invoiceId: i.id }}>Approve</Act> : null}
-              {i.status === 'approved' && !mismatch(i) ? <Act primaryStyle op="exportShopSupplierInvoice" vars={{ invoiceId: i.id }}>Export for the books</Act> : null}
-              {['received', 'matching', 'matched', 'discrepancy', 'approved'].includes(i.status) ? <Act op="reverseShopSupplierInvoice" ask="Why is this invoice being reversed?" vars={{ invoiceId: i.id, expectedVersion: i.version }} confirm="Reverse this invoice? It stays on file, and you can enter it again as billed.">Reverse</Act> : null}
+              {receive && ['received', 'discrepancy'].includes(i.status) ? <Act op="matchShopSupplierInvoice" vars={{ invoiceId: i.id }}>Match to orders</Act> : null}
+              {approve && i.status === 'matched' ? <Act primaryStyle op="approveShopSupplierInvoice" vars={{ invoiceId: i.id }}>Approve</Act> : null}
+              {approve && i.status === 'approved' && !mismatch(i) ? <Act primaryStyle op="exportShopSupplierInvoice" vars={{ invoiceId: i.id }}>Export for the books</Act> : null}
+              {approve && ['received', 'matching', 'matched', 'discrepancy', 'approved'].includes(i.status) ? <Act op="reverseShopSupplierInvoice" ask="Why is this invoice being reversed?" vars={{ invoiceId: i.id, expectedVersion: i.version }} confirm="Reverse this invoice? It stays on file, and you can enter it again as billed.">Reverse</Act> : null}
             </div>
           </div>
         )) : <Empty>No supplier invoices yet.</Empty>}
