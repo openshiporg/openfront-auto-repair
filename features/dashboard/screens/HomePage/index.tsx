@@ -34,9 +34,9 @@ function ListCard({ list, count, singletonItemId = null, hideCreate = false }: L
           ? singletonIsMissing && !hideCreate
             ? 'Create singleton'
             : 'Singleton'
-          : count === null || count === undefined
-            ? 'Unknown'
-            : `${count} item${count !== 1 ? 's' : ''}`
+          : typeof count === 'number'
+            ? `${count} item${count !== 1 ? 's' : ''}`
+            : null
         }
       </p>
     </CardContent>

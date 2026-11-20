@@ -37,10 +37,11 @@ export async function getListCounts(
     const selections = [...countQueries, ...singletonQueries]
     if (selections.length === 0) return { success: true, data: {} }
 
-    const query = `query GetListCounts { ${selections.join('\n')} }`
-    
-    const response = await keystoneClient(
-      query,
+    // The API refuses more than 20 aliases in one query, so the counts go in batches of 20.
+    const batches: string[][] = []
+    for (let i = 0; i < selections.length; i += 20) batches.push(selections.slice(i, i + 20))
+    const responses = await Promise.all(batches.map(batch => keystoneClient(
+      `query GetListCounts { ${batch.join('\n')} }`,
       {},
       {
         next: {
@@ -48,9 +49,11 @@ export async function getListCounts(
           tags: ['list-counts'],
         },
       }
-    )
+    )))
+    const data: Record<string, unknown> = {}
+    for (const response of responses) if (response.success && response.data) Object.assign(data, response.data)
 
-    return response
+    return { success: true, data }
   } catch (error: unknown) {
     console.error('Error fetching list counts:', safeErrorSummary(error))
     const errorMessage =
