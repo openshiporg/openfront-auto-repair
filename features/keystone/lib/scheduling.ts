@@ -7,6 +7,8 @@ import { DomainError, Codes } from './errors'
 import { fromRows, hoursOn, localDate, zonedInstant, type CalendarSpec } from './calendar'
 import { nextShopReference } from './sequence'
 import type { UnitOfWork } from './unitOfWork'
+import { findByContacts, normalizeContact, upsertCustomer } from './customers'
+import { upsertVehicle } from './vehicles'
 
 /*
  * Appointments (STATE-MACHINES §1, scheduling bookingHolds.ts + barbershop bookingCapacity.ts adapted).
@@ -236,6 +238,34 @@ export async function confirmAppointment(uow: UnitOfWork, actor: Actor, id: stri
   })
   emitConfirmation(uow, id, row.reference)
   return { id, status: 'confirmed' }
+}
+
+/**
+ * An online or phone booking arrives as a lead (name, phone, vehicle text). The advisor puts it on file:
+ * the customer with that phone is reused (or a new one is made from the lead), the vehicle is added to
+ * them, and both are set on the appointment so it can be confirmed and checked in.
+ */
+export async function attachAppointmentCustomer(uow: UnitOfWork, actor: Actor, input: {
+  id: string; expectedVersion?: number | null; firstName: string; lastName?: string | null; phone: string
+  vin?: string | null; year?: number | null; make?: string | null; model?: string | null
+}) {
+  const { tx } = uow
+  const row = await lockRow<Record<string, any>>(tx, 'Appointment', input.id)
+  if (!['requested', 'confirmed'].includes(row.status)) throw new DomainError(Codes.INVALID_TRANSITION, `A ${row.status} appointment can't be changed.`, { currentStatus: row.status })
+  if (input.expectedVersion !== undefined && input.expectedVersion !== null && row.version !== input.expectedVersion) throw new DomainError(Codes.STALE_STATE, 'This appointment changed since you loaded it. Reload and try again.', { currentVersion: row.version })
+  if (row.customerId && row.vehicleId) throw new DomainError(Codes.INVALID_TRANSITION, 'This appointment already has a customer and a vehicle.')
+  let customerId: string = row.customerId
+  if (!customerId) {
+    if (!String(input.firstName ?? '').trim() && !String(input.lastName ?? '').trim()) throw new DomainError(Codes.INVALID_INPUT, 'Enter the customer name.', { field: 'firstName' })
+    const phone = normalizeContact('mobile', input.phone)
+    const found = await findByContacts(tx, [{ kind: 'mobile', normalized: phone }])
+    customerId = found[0]?.customerId ?? (await upsertCustomer(uow, actor, { firstName: input.firstName, lastName: input.lastName ?? '', homeShopId: row.shopId, preferredChannel: 'sms', contacts: [{ kind: 'mobile', value: phone, isPrimary: true }] })).id
+  }
+  const vin = String(input.vin ?? '').trim()
+  const vehicle = await upsertVehicle(uow, actor, { vin: vin || null, noVinReason: vin ? null : 'VIN to be read at check-in', year: input.year ?? null, make: input.make ?? '', model: input.model ?? '', customerId })
+  await tx.appointment.update({ where: { id: row.id }, data: { customerId, vehicleId: vehicle.id, version: { increment: 1 } } })
+  uow.audit({ eventType: 'appointment.customer_attached', entityType: 'Appointment', entityId: row.id, actorUserId: actorUserId(actor), before: { customerId: row.customerId, vehicleId: row.vehicleId }, after: { customerId, vehicleId: vehicle.id } })
+  return { id: row.id, customerId, vehicleId: vehicle.id }
 }
 
 export async function rescheduleAppointment(uow: UnitOfWork, actor: Actor, input: { id: string; startsAt: Date; expectedVersion?: number | null; kind?: AppointmentKind }) {

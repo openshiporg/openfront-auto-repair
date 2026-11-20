@@ -84,6 +84,7 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         holdAppointmentSlot(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, idempotencyKey: String!): JSON
         bookShopAppointment(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, customerId: ID, vehicleId: ID, lead: JSON, concernText: String, requestedServices: [String!], holdToken: String, confirm: Boolean, idempotencyKey: String!): JSON
         transitionAppointment(id: ID!, to: String!, expectedVersion: Int!, reason: String, startsAt: String, idempotencyKey: String!): JSON
+        attachAppointmentLead(id: ID!, expectedVersion: Int!, input: JSON!, idempotencyKey: String!): JSON
         checkInShopVehicle(input: JSON!, idempotencyKey: String!): JSON
         openShopRepairOrder(input: JSON!, idempotencyKey: String!): JSON
         holdRepairOrder(repairOrderId: ID!, expectedVersion: Int!, hold: Boolean!, reason: String, note: String, idempotencyKey: String!): JSON
@@ -245,6 +246,7 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         holdAppointmentSlot: op(p1.holdAppointmentSlot),
         bookShopAppointment: op(p1.bookShopAppointment),
         transitionAppointment: op(p1.transitionAppointment),
+        attachAppointmentLead: op(p1.attachAppointmentLead),
         checkInShopVehicle: op(p1.checkInShopVehicle),
         openShopRepairOrder: op(p2.openShopRepairOrder),
         holdRepairOrder: op(p2.holdRepairOrder),

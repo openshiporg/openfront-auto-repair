@@ -4,10 +4,11 @@ import { hours, label, when } from '../../lib/format';
 import { Page, Row, Empty, Status, Meta, Section, Tabs, Stat } from '../../components/ui';
 import { ActionButton } from '../../components/ActionButton';
 import { BookingForm } from './BookingForm';
+import { AttachLeadForm } from './AttachLeadForm';
 
 type Appointment = {
   id: string; reference: string; startsAt: string; kind: string; status: string; version: number; estimatedCentiHours: number; concernText: string; requestedServices: string[] | null; source: string;
-  lead: { name?: string } | null; customer: { id: string; displayName: string } | null; vehicle: { id: string; label: string } | null; checkIn: { reference: string } | null;
+  lead: { name?: string; phone?: string | null; vehicle?: string | null } | null; customer: { id: string; displayName: string } | null; vehicle: { id: string; label: string } | null; checkIn: { reference: string } | null;
 };
 type Shop = { id: string; code: string; name: string; timeZone: string; calendar: { weeklyHours: { dow: number; open: string; close: string }[] | null } | null };
 
@@ -75,7 +76,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
                   <span className="font-medium">{a.customer?.displayName ?? a.lead?.name ?? 'Unknown'}</span>
                   <span className="font-mono text-xs text-muted-foreground">{a.reference}</span>
                 </div>
-                <Meta>{a.kind === 'waiter' ? 'Waiter' : 'Drop-off'} · {hours(a.estimatedCentiHours)} · {a.vehicle?.label ?? 'No vehicle yet'}{a.requestedServices?.length ? ` · ${a.requestedServices.join(', ')}` : ''}</Meta>
+                <Meta>{a.kind === 'waiter' ? 'Waiter' : 'Drop-off'} · {hours(a.estimatedCentiHours)} · {a.vehicle?.label ?? (a.lead?.vehicle ? `${a.lead.vehicle} (as typed)` : 'No vehicle yet')}{a.requestedServices?.length ? ` · ${a.requestedServices.join(', ')}` : ''}</Meta>
                 {a.concernText ? <p className="break-words text-xs">“{a.concernText}”</p> : null}
               </div>
             </div>
@@ -83,6 +84,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
               <Status value={a.status} />
               {a.status === 'requested' && a.customer ? <ActionButton op="transitionAppointment" vars={{ id: a.id, to: 'confirmed', expectedVersion: a.version }}>Confirm</ActionButton> : null}
               {['requested', 'confirmed'].includes(a.status) && a.customer && a.vehicle ? <Link className="inline-flex h-8 max-md:h-11 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground" href={`/dashboard/platform/check-in?appointment=${a.id}`}>Check in</Link> : null}
+              {['requested', 'confirmed'].includes(a.status) && (!a.customer || !a.vehicle) && a.lead ? <AttachLeadForm appointmentId={a.id} version={a.version} lead={a.lead} /> : null}
               {['requested', 'confirmed'].includes(a.status) ? <ActionButton op="transitionAppointment" vars={{ id: a.id, to: 'no_show', expectedVersion: a.version }} confirm="Mark as a no-show? This counts against the customer.">No-show</ActionButton> : null}
               {['requested', 'confirmed'].includes(a.status) ? <ActionButton op="transitionAppointment" vars={{ id: a.id, to: 'cancelled', expectedVersion: a.version }} ask="Why is this appointment cancelled?">Cancel</ActionButton> : null}
               {a.checkIn ? <Meta>{a.checkIn.reference}</Meta> : null}

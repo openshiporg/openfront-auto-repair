@@ -16834,6 +16834,7 @@ type Mutation {
   holdAppointmentSlot(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, idempotencyKey: String!): JSON
   bookShopAppointment(shopId: ID!, startsAt: String!, kind: String!, estimatedCentiHours: Int, customerId: ID, vehicleId: ID, lead: JSON, concernText: String, requestedServices: [String!], holdToken: String, confirm: Boolean, idempotencyKey: String!): JSON
   transitionAppointment(id: ID!, to: String!, expectedVersion: Int!, reason: String, startsAt: String, idempotencyKey: String!): JSON
+  attachAppointmentLead(id: ID!, expectedVersion: Int!, input: JSON!, idempotencyKey: String!): JSON
   checkInShopVehicle(input: JSON!, idempotencyKey: String!): JSON
   openShopRepairOrder(input: JSON!, idempotencyKey: String!): JSON
   holdRepairOrder(repairOrderId: ID!, expectedVersion: Int!, hold: Boolean!, reason: String, note: String, idempotencyKey: String!): JSON

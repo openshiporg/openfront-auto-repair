@@ -33,6 +33,7 @@ const OPS: Record<string, Record<string, string>> = {
   checkVehicleRecalls: { vehicleId: 'ID!' },
   bookShopAppointment: { shopId: 'ID!', startsAt: 'String!', kind: 'String!', estimatedCentiHours: 'Int', customerId: 'ID', vehicleId: 'ID', lead: 'JSON', concernText: 'String', requestedServices: '[String!]', confirm: 'Boolean' },
   transitionAppointment: { id: 'ID!', to: 'String!', expectedVersion: 'Int!', reason: 'String', startsAt: 'String' },
+  attachAppointmentLead: { id: 'ID!', expectedVersion: 'Int!', input: 'JSON!' },
   checkInShopVehicle: { input: 'JSON!' },
   openShopRepairOrder: { input: 'JSON!' },
   holdRepairOrder: { repairOrderId: 'ID!', expectedVersion: 'Int!', hold: 'Boolean!', reason: 'String', note: 'String' },

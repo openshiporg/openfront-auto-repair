@@ -5,7 +5,7 @@ import { sessionShopIds } from '../access'
 import { createDraft, kindOf, requestPublish } from '../lib/policy'
 import { addContact, createBusinessAccount, recordConsent, upsertCustomer, type ConsentInput, type ContactInput, type CustomerInput } from '../lib/customers'
 import { linkOwner, recordOdometer, storeDecode, storeRecallCheck, upsertVehicle, vehicleForLookup, type VehicleInput } from '../lib/vehicles'
-import { bookAppointment, cancelAppointment, confirmAppointment, markNoShow, placeHold, rescheduleAppointment, type AppointmentKind } from '../lib/scheduling'
+import { attachAppointmentCustomer, bookAppointment, cancelAppointment, confirmAppointment, markNoShow, placeHold, rescheduleAppointment, type AppointmentKind } from '../lib/scheduling'
 import { checkInVehicle, type CheckInInput } from '../lib/checkIn'
 import { assertWithinCeiling } from '../lib/ceiling'
 import { vehicleData } from '../../integrations/vehicle-data'
@@ -167,6 +167,15 @@ export async function bookShopAppointment(_root: unknown, args: BookArgs, contex
     customerId: args.customerId ?? null, vehicleId: args.vehicleId ?? null, lead: args.lead ?? null, concernText: args.concernText ?? null,
     requestedServices: args.requestedServices ?? [], source: 'staff', holdToken: args.holdToken ?? null, confirm: Boolean(args.confirm),
   }))
+}
+
+/** Put an online or phone booking on file: customer (matched by phone, or new) and vehicle. */
+export async function attachAppointmentLead(_root: unknown, args: { id: string; expectedVersion: number; input: { firstName: string; lastName?: string | null; phone: string; vin?: string | null; year?: number | null; make?: string | null; model?: string | null }; idempotencyKey: string }, context: Ctx) {
+  const actor = actorFromSession(context.session)
+  requirePermission(actor, 'canManageSchedule')
+  requirePermission(actor, 'canManageCustomers')
+  await appointmentShop(context, args.id)
+  return run(context, actor, 'appointment.attach_customer', args.idempotencyKey, args, uow => attachAppointmentCustomer(uow, actor, { id: args.id, expectedVersion: args.expectedVersion, ...(args.input ?? {}) } as never))
 }
 
 async function appointmentShop(context: Ctx, id: string) {
