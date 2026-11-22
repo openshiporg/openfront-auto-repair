@@ -6,12 +6,13 @@
 import { PUBLIC_REQUEST_ERROR } from '@/features/dashboard/lib/security';
 import React from 'react'
 import Link from 'next/link'
-import { PlusIcon, Database } from 'lucide-react'
+import { PlusIcon, Database, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PageContainer } from '../../components/PageContainer'
 import { getAdminMetaAction, getListCounts } from '../../actions'
 import { cn } from '@/lib/utils'
+import { Today } from '@/features/platform/today/Today'
 
 interface ListCardProps {
   list: any
@@ -57,7 +58,7 @@ function ListCard({ list, count, singletonItemId = null, hideCreate = false }: L
           <Button
             variant="outline" 
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 max-md:h-11 max-md:w-11"
             title={`Add ${list.singular?.toLowerCase() || 'item'}`}
           >
             <PlusIcon className="h-4 w-4" />
@@ -115,9 +116,6 @@ export async function HomePage() {
   const header = (
     <div className="flex flex-col">
       <h1 className="text-lg font-semibold md:text-2xl">Dashboard</h1>
-      {enhancedLists.length > 0 && (
-        <p className="text-muted-foreground">{enhancedLists.length} Models</p>
-      )}
     </div>
   )
 
@@ -136,12 +134,15 @@ export async function HomePage() {
   return (
     <PageContainer title="Dashboard" header={header} breadcrumbs={breadcrumbs}>
       <div className="w-full max-w-4xl p-4 md:p-6 flex flex-col gap-4">
-        <div className="mb-4">
-          <h2 className="tracking-wide uppercase font-medium mb-2 text-muted-foreground text-sm">
-            Data Models
-          </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 md:gap-4">
+        <Today />
+        {/* Every record type, for the rare edit the screens above do not cover. Closed until asked for. */}
+        <details className="group mb-4">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+            All records ({enhancedLists.length} lists)
+          </summary>
+
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 md:gap-4">
             {enhancedLists.map((list: any) => (
               <ListCard
                 key={list.key}
@@ -152,7 +153,7 @@ export async function HomePage() {
               />
             ))}
           </div>
-        </div>
+        </details>
       </div>
     </PageContainer>
   )

@@ -78,6 +78,8 @@ function hoursLines(weekly: unknown, zone: string) {
 }
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
+/** A number still at its starting value (ARD-000001, all zeros) is not shown to customers. */
+const realNumber = (value: string) => (/[1-9]\d/.test(value.replace(/\D/g, '').replace(/^0+/, '')) ? value : '')
 const slugOf = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
 function priceLine(priceMinor: bigint | null, time: string, bookable: boolean) {
@@ -104,7 +106,7 @@ export const getStorefront = cache(async (): Promise<Storefront | null> => {
       cityLine: [r.city, [r.region, r.postalCode].filter(Boolean).join(' ')].filter(Boolean).join(', '), city: r.city,
       phone: phone(r.phone), phoneHref: r.phone ? `tel:${r.phone.replace(/[^\d+]/g, '')}` : '',
       timeZone: r.timeZone, zone, hours: hoursLines(r.calendar?.weeklyHours, zone),
-      barRegistration: text(registrations.barArd), tagline: text(profile.tagline), about: text(profile.about),
+      barRegistration: realNumber(text(registrations.barArd)), tagline: text(profile.tagline), about: text(profile.about),
     }
   })
   const shop = shops[0]

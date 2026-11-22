@@ -287,10 +287,10 @@ function RepairList({ base, rows, tz, showVehicle = false }: { base: string; row
     <ul className="sf-rows-soft">
       {rows.map(r => (
         <li key={r.id}>
-          <Link href={`${base}/repair-orders/${r.id}`} className="flex min-h-12 flex-wrap items-baseline gap-x-5 py-2 text-[16px] no-underline hover:bg-white/5">
-            <span className="sf-num">{r.number}</span>
-            <span className="min-w-0 flex-1">{[showVehicle ? vehicleName(r.vehicle) : '', dayAt(r.openedAt, tz)].filter(Boolean).join(' · ')}</span>
-            <span>{words(r.status)}</span>
+          <Link href={`${base}/repair-orders/${r.id}`} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-5 py-2 text-[16px] no-underline hover:bg-white/5 sm:flex sm:flex-wrap">
+            <span className="sf-num whitespace-nowrap">{r.number}</span>
+            <span className="text-right sm:order-last">{words(r.status)}</span>
+            <span className="sf-dim col-span-2 min-w-0 sm:flex-1">{[showVehicle ? vehicleName(r.vehicle) : '', dayAt(r.openedAt, tz)].filter(Boolean).join(' · ')}</span>
           </Link>
         </li>
       ))}
