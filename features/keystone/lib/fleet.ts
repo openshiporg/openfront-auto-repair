@@ -297,7 +297,7 @@ export async function createFleetLink(uow: UnitOfWork, actor: Actor, input: { co
   await revokeTokensFor(tx, 'BusinessAccountContact', contact.id, uow.now)
   const made = await createAccessToken(uow, { purpose: 'fleet_magic_link', subjectType: 'BusinessAccountContact', subjectId: contact.id, shopId: null, ttlHours: 720, maxUses: 2000 })
   auditCreate(uow, actor, 'BusinessAccountContact', contact.id, 'fleet_link.created', { expiresAt: made.expiresAt.toISOString() })
-  return { apiPath: `/api/public/fleet/${made.token}`, expiresAt: made.expiresAt.toISOString() }
+  return { path: `/fleet/${made.token}`, apiPath: `/api/public/fleet/${made.token}`, expiresAt: made.expiresAt.toISOString() }
 }
 
 // ── Opening work for an account ──────────────────────────────────────────────

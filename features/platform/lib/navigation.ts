@@ -1,6 +1,6 @@
 import {
   BookOpenCheck, CalendarDays, Car, ClipboardCheck, ClipboardList, Columns3, FileText, ListChecks, LucideIcon, Scale, Settings, Store, Users, Wrench, BookTemplate, Receipt, Landmark, Package, Timer, Building2, FileSpreadsheet,
-  BarChart3, BookOpenText, Upload, Plug, BellRing, MessageSquare, Megaphone, Bot, Stethoscope, ListTodo,
+  BarChart3, BookOpenText, Upload, Plug, BellRing, MessageSquare, Megaphone, Bot, Stethoscope, ListTodo, Globe,
 } from 'lucide-react'
 
 export interface PlatformNavItem {
@@ -50,6 +50,7 @@ export const platformNavItems: PlatformNavItem[] = [
   { title: 'Imports', href: '/platform/imports', color: 'slate', description: 'Bring customers and vehicles in from Tekmetric, Shopmonkey or any CSV, with a preview first.', icon: Upload, group: 'settings' },
   { title: 'Integrations', href: '/platform/integrations', color: 'slate', description: 'Provider connections and what they told us.', icon: Plug, group: 'settings' },
   { title: 'Shops', href: '/platform/shops', color: 'slate', description: 'Shops, bays, hours and staff memberships.', icon: Store, group: 'settings' },
+  { title: 'Website', href: '/platform/website', color: 'slate', description: 'What customers see: your shops, your services and their prices.', icon: Globe, group: 'settings' },
   { title: 'Canned jobs', href: '/platform/canned-jobs', color: 'slate', description: 'Job templates: lines, labor-guide codes and wording, drafted then published.', icon: BookTemplate, group: 'settings' },
   { title: 'Policies', href: '/platform/policies', color: 'slate', description: 'Jurisdiction rules, labor rates, matrices, fees, tax and warranty: draft and publish.', icon: Scale, group: 'settings' },
   { title: 'Assistants', href: '/platform/agents', color: 'slate', description: 'Assistants, what each may do, the AI provider and pausing.', icon: Bot, group: 'settings' },
@@ -57,7 +58,7 @@ export const platformNavItems: PlatformNavItem[] = [
 ]
 
 /** Routes that exist in this build. Others stay out of the menu until their phase ships. */
-export const SHIPPED_ROUTES = new Set<string>(['/platform/reports', '/platform/accounting', '/platform/imports', '/platform/integrations', '/platform/follow-ups', '/platform/messages', '/platform/campaigns', '/platform/accounts', '/platform/statements', '/platform/time', '/platform/technicians', '/platform/pay-periods', '/platform/comebacks', '/platform/parts', '/platform/purchase-orders', '/platform/stock', '/platform/cores', '/platform/supplier-invoices', '/platform/tires', '/platform/board', '/platform/repair-orders', '/platform/inspections', '/platform/canned-jobs', '/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/receivables', '/platform/day-close', '/platform/shops', '/platform/policies', '/platform/audit', '/platform/agents', '/platform/proposals', '/platform/diagnosis'])
+export const SHIPPED_ROUTES = new Set<string>(['/platform/website', '/platform/reports', '/platform/accounting', '/platform/imports', '/platform/integrations', '/platform/follow-ups', '/platform/messages', '/platform/campaigns', '/platform/accounts', '/platform/statements', '/platform/time', '/platform/technicians', '/platform/pay-periods', '/platform/comebacks', '/platform/parts', '/platform/purchase-orders', '/platform/stock', '/platform/cores', '/platform/supplier-invoices', '/platform/tires', '/platform/board', '/platform/repair-orders', '/platform/inspections', '/platform/canned-jobs', '/platform/check-in', '/platform/schedule', '/platform/customers', '/platform/vehicles', '/platform/approvals', '/platform/receivables', '/platform/day-close', '/platform/shops', '/platform/policies', '/platform/audit', '/platform/agents', '/platform/proposals', '/platform/diagnosis'])
 
 const shipped = platformNavItems.filter(item => SHIPPED_ROUTES.has(item.href))
 

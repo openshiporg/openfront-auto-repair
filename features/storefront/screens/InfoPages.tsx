@@ -46,7 +46,7 @@ export async function ServicePage({ slug }: { slug: string }) {
   const shop = s.shops.find(x => x.id === service.shopId) ?? s.shop
   return (
     <Page title={service.name} narrow>
-      <p className="sf-num text-[26px]">{service.price || (service.bookable ? 'Request an estimate' : 'Call for a price')}</p>
+      <p className="sf-num text-[26px]">{service.price ? (service.priceMinor === '0' ? 'Free' : `From ${service.price}`) : service.bookable ? 'Request an estimate' : 'Call for a price'}</p>
       {service.time ? <p className="text-[17px]">Takes about {service.time}.</p> : null}
       {service.description ? <p className="mt-4 max-w-[62ch] text-[18px]">{service.description}</p> : null}
       <dl className="sf-rows-soft mt-6 text-[17px]">

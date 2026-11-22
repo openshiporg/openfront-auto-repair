@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { q, orgTimeZone, holds } from '../../lib/server';
 import { when, label, money } from '../../lib/format';
 import { Page, Row, Empty, Status, Meta, Section, Tabs, Stat } from '../../components/ui';
-import { NewCustomerForm } from './NewCustomerForm';
+import { NewCustomerForm, PortalLinkButton } from './NewCustomerForm';
 import { RevokeConsent } from '../../messages/screens/Actions';
 
 type Contact = { id: string; kind: string; label: string; isPrimary: boolean; status: string; consents: { channel: string; purpose: string; action: string; method: string; writtenConsent: boolean; at: string }[] };
@@ -38,7 +38,9 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
   const view = params.view === 'fleet' ? 'fleet' : 'people';
   const search = (params.q ?? '').trim().slice(0, 80);
   const where = search ? `{ status: { equals: "active" }, OR: [{ displayName: { contains: $q, mode: insensitive } }, { companyName: { contains: $q, mode: insensitive } }] }` : '{ status: { equals: "active" } }';
-  const mayRevoke = await holds(['canMessageCustomers', 'canManageCustomers']).then(h => h.canMessageCustomers || h.canManageCustomers);
+  const held = await holds(['canMessageCustomers', 'canManageCustomers']);
+  const mayRevoke = held.canMessageCustomers || held.canManageCustomers;
+  const mayLink = held.canManageCustomers;
   const [data, tz] = await Promise.all([
     q<{ customers: Customer[]; customersCount: number; businessAccounts: Account[]; shops: { id: string; code: string; name: string }[]; stopped: number }>(`query${search ? '($q: String!)' : ''} {
       customers(where: ${where}, orderBy: { displayName: asc }, take: 60) { ${CUSTOMER} }
@@ -121,12 +123,13 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
                     {c.appointments[0] ? ` · last booking ${c.appointments[0].reference} ${when(c.appointments[0].startsAt, tz, 'day')} (${label(c.appointments[0].status)})` : ''}
                   </Meta>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex max-w-full flex-wrap items-center gap-3">
+                  {mayLink ? <PortalLinkButton customerId={c.id} /> : null}
                   {c.ownerships[0]?.vehicle ? <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/platform/vehicles?id=${c.ownerships[0].vehicle.id}`}>Vehicle</Link> : null}
                   <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/customers/${c.id}`}>Record</Link>
                 </div>
               </Row>
-            )) : <Empty>{search ? 'Nobody matches that name.' : 'No customers yet. Use “Set up your shop” to load Northgate Auto Group.'}</Empty>}
+            )) : <Empty>{search ? 'Nobody matches that name.' : 'No customers yet. Add the first one above.'}</Empty>}
           </Section>
         </>
       )}

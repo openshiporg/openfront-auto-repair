@@ -83,7 +83,8 @@ const slugOf = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-'
 function priceLine(priceMinor: bigint | null, time: string, bookable: boolean) {
   if (priceMinor === null) return bookable ? 'Request an estimate' : 'Call for a price'
   if (priceMinor === 0n) return time ? `Free (${time})` : 'Free'
-  return time ? `${money(priceMinor)} (${time})` : money(priceMinor)
+  // The published figure is where the job starts; the estimate for the customer's own car is the price.
+  return time ? `From ${money(priceMinor)} (${time})` : `From ${money(priceMinor)}`
 }
 
 export const getStorefront = cache(async (): Promise<Storefront | null> => {

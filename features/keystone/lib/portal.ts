@@ -19,7 +19,7 @@ export async function createPortalLink(uow: UnitOfWork, actor: Actor, input: { c
   await revokeTokensFor(tx, 'Customer', customer.id, uow.now)
   const made = await createAccessToken(uow, { purpose: 'portal_magic_link', subjectType: 'Customer', subjectId: customer.id, shopId: null, ttlHours: 720, maxUses: 2000 })
   auditCreate(uow, actor, 'Customer', customer.id, 'portal_link.created', { expiresAt: made.expiresAt.toISOString() })
-  return { apiPath: `/api/public/portal/${made.token}`, expiresAt: made.expiresAt.toISOString() }
+  return { path: `/portal/${made.token}`, apiPath: `/api/public/portal/${made.token}`, expiresAt: made.expiresAt.toISOString() }
 }
 
 export async function portalCustomer(tx: Tx, token: string, now: Date, consume: boolean) {

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 export const ACCOUNT_PATHS = ['/dashboard/platform/accounts', '/dashboard/platform/statements', '/dashboard/platform/receivables', '/dashboard/platform/approvals'];
 const primary = cn(pillClass, 'bg-primary text-primary-foreground');
-type Result = { approvalRequired?: boolean; approvalRequestId?: string; csv?: string; filename?: string; apiPath?: string; expiresAt?: string; message?: string; status?: string; id?: string };
+type Result = { approvalRequired?: boolean; approvalRequestId?: string; csv?: string; filename?: string; path?: string; apiPath?: string; expiresAt?: string; message?: string; status?: string; id?: string };
 
 function Waits({ result }: { result: Result | null }) {
   if (result?.approvalRequired) return <p role="status" className="text-sm">A manager with credit approval has to approve this. <Link className="underline" href="/dashboard/platform/approvals">Open approvals</Link>, then press it again.</p>;
@@ -180,7 +180,8 @@ export function TermsForm({ a }: { a: { id: string; termsDays: number; poRequire
 export function LinkButton({ contactId }: { contactId: string }) {
   const cmd = useCommand<Result>('createAccountLink', ACCOUNT_PATHS);
   const [copied, setCopied] = React.useState(false);
-  const full = cmd.result?.apiPath ? `${window.location.origin}${cmd.result.apiPath}` : '';
+  // The page the contact opens, not the data address behind it.
+  const full = cmd.result?.path ? `${window.location.origin}${cmd.result.path}` : '';
   return (
     <span className="inline-flex max-w-full flex-col items-start gap-1">
       <button type="button" disabled={cmd.pending} className={pillClass} onClick={() => cmd.run({ contactId })}>{cmd.pending ? 'Working' : 'Make a link'}</button>

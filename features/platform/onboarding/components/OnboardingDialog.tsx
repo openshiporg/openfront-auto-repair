@@ -54,7 +54,7 @@ const OnboardingDialog: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
         <DialogHeader className="shrink-0 border-b px-4 py-4 sm:px-6">
           <DialogTitle>Shop setup</DialogTitle>
-          <DialogDescription>Loads Northgate Auto Group, a fictitious two-shop group in California, so you can explore every screen with real-looking records. Existing records are kept; loading again changes nothing.</DialogDescription>
+          <DialogDescription>Loads a starting setup: two example shops in California with bays, hours, roles, policies, a job catalog and example customers. Then put in your own shop name, address, phone and hours under Shops, and your prices under Website. Records you already have are kept; loading again changes nothing.</DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
           {SETUP_SECTIONS.map(section => (
@@ -78,6 +78,7 @@ const OnboardingDialog: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
           {step === 'done' ? (
             <div className="flex flex-wrap gap-4 text-sm">
               <Link href="/dashboard/platform/shops" className="font-medium underline underline-offset-4" onClick={onClose}>Shops</Link>
+              <Link href="/dashboard/platform/website" className="font-medium underline underline-offset-4" onClick={onClose}>Website</Link>
               <Link href="/dashboard/platform/approvals" className="font-medium underline underline-offset-4" onClick={onClose}>Approvals</Link>
               <Link href="/dashboard/AuditEvents" className="font-medium underline underline-offset-4" onClick={onClose}>Audit log</Link>
             </div>
@@ -90,7 +91,7 @@ const OnboardingDialog: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
           ) : (
             <>
               <DialogClose asChild><Button variant="ghost" disabled={step === 'running'} className="flex-1">Cancel</Button></DialogClose>
-              {step === 'running' ? <Button disabled className="flex-1"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading</Button> : <Button onClick={run} className="flex-1">{error ? 'Retry setup' : 'Load Northgate Auto Group'}</Button>}
+              {step === 'running' ? <Button disabled className="flex-1"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading</Button> : <Button onClick={run} className="flex-1">{error ? 'Retry setup' : 'Load the starting setup'}</Button>}
             </>
           )}
         </div>

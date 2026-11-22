@@ -372,7 +372,7 @@ export function Sidebar({ adminMeta, user, onOpenDialog }: SidebarProps) {
             steps={[{
               href: '#onboarding',
               title: 'Set up your shop',
-              description: 'Load Northgate Auto Group: two shops, bays, hours, roles, staff and approval policies.',
+              description: 'Load a starting setup (shops, bays, hours, roles and policies), then make it yours.',
             }]}
             onboardingStatus={user?.onboardingStatus}
             menuItemsCount={user?.menuItemsCount}

@@ -57,3 +57,23 @@ export function NewCustomerForm({ shops }: { shops: { id: string; code: string; 
     </form>
   );
 }
+
+/** The customer's own page (their vehicles and repairs) as a link to text or email. Making a new one replaces the last. */
+export function PortalLinkButton({ customerId }: { customerId: string }) {
+  const cmd = useCommand<{ path?: string; expiresAt?: string }>('createCustomerPortalLink', ['/dashboard/platform/customers']);
+  const [copied, setCopied] = React.useState(false);
+  const full = cmd.result?.path ? `${window.location.origin}${cmd.result.path}` : '';
+  return (
+    <span className="inline-flex max-w-full flex-col items-start gap-1">
+      <button type="button" disabled={cmd.pending} className={pillClass} onClick={() => { setCopied(false); cmd.run({ customerId }); }}>{cmd.pending ? 'Working' : 'Customer page link'}</button>
+      {full ? (
+        <span className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+          <input readOnly aria-label="Link to the customer's page" className={inputClass} value={full} onFocus={e => e.currentTarget.select()} />
+          <button type="button" className={pillClass} onClick={() => { void navigator.clipboard?.writeText(full); setCopied(true); }}>{copied ? 'Copied' : 'Copy'}</button>
+          <span className="text-xs text-muted-foreground">Works for 30 days. Replaces any earlier link.</span>
+        </span>
+      ) : null}
+      <FormError error={cmd.error} />
+    </span>
+  );
+}
