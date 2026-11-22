@@ -69,7 +69,9 @@ export async function saveShopDetails(input: ShopDetailsInput): Promise<Done> {
     `query($id: ID!) { shop(where: { id: $id }) { registrations publicProfile } }`, { id: input.shopId },
   );
   if (!now.success || !now.data?.shop) return { ok: false, error: now.error || 'Shop not found.' };
-  const registrations = { ...(now.data.shop.registrations ?? {}), barArd: clean(input.barArd, 40) };
+  const barArd = clean(input.barArd, 40);
+  // The public site shows the number only once someone saved it here, so a starting placeholder never reaches customers.
+  const registrations = { ...(now.data.shop.registrations ?? {}), barArd, barArdSavedAt: barArd ? new Date().toISOString() : null };
   const publicProfile = { ...(now.data.shop.publicProfile ?? {}), tagline: clean(input.tagline, 140), about: clean(input.about, 1200) };
   const res = await keystoneClient(
     `mutation($id: ID!, $data: ShopUpdateInput!) { updateShop(where: { id: $id }, data: $data) { id } }`,

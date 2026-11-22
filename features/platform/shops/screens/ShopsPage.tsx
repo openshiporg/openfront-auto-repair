@@ -60,7 +60,7 @@ export default async function ShopsPage() {
             {shop.registrations ? (
               <Row>
                 <Meta>Registrations printed on estimates and invoices</Meta>
-                <Meta>{Object.entries(shop.registrations).map(([k, v]) => `${REGISTRATION_LABELS[k] ?? k} ${v}`).join(' · ')}</Meta>
+                <Meta>{Object.entries(shop.registrations).filter(([k, v]) => !k.endsWith("SavedAt") && v).map(([k, v]) => `${REGISTRATION_LABELS[k] ?? k} ${v}`).join(' · ')}</Meta>
               </Row>
             ) : null}
             <Row>

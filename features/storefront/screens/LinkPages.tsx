@@ -48,7 +48,7 @@ export async function EstimatePage({ token }: { token: string }) {
     lines: (j.lines ?? []).map((l: Any) => ({ description: String(l.description ?? ''), extendedMinor: String(l.extendedMinor ?? '0') })),
     teardownText: j.teardown?.text ? String(j.teardown.text) : '',
   }))
-  const bar = v.shop?.registrations?.barArd
+  const bar = v.shop?.registrations?.barArdSavedAt ? v.shop.registrations.barArd : ''
 
   return (
     <Page title="Your estimate" lead={[v.vehicle?.label, v.estimate].filter(Boolean).join(' · ')} narrow>

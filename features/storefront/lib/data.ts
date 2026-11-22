@@ -106,7 +106,7 @@ export const getStorefront = cache(async (): Promise<Storefront | null> => {
       cityLine: [r.city, [r.region, r.postalCode].filter(Boolean).join(' ')].filter(Boolean).join(', '), city: r.city,
       phone: phone(r.phone), phoneHref: r.phone ? `tel:${r.phone.replace(/[^\d+]/g, '')}` : '',
       timeZone: r.timeZone, zone, hours: hoursLines(r.calendar?.weeklyHours, zone),
-      barRegistration: realNumber(text(registrations.barArd)), tagline: text(profile.tagline), about: text(profile.about),
+      barRegistration: registrations.barArdSavedAt ? realNumber(text(registrations.barArd)) : '', tagline: text(profile.tagline), about: text(profile.about),
     }
   })
   const shop = shops[0]
