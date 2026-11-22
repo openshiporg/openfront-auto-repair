@@ -47,7 +47,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
         <label className="space-y-1 text-xs font-medium text-muted-foreground">Shop<select name="shop" defaultValue={shop.id} className="block h-9 rounded-md border bg-background px-2 text-sm">{shops.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
         <label className="space-y-1 text-xs font-medium text-muted-foreground">From<input type="date" name="from" defaultValue={from} className="block h-9 rounded-md border bg-background px-2 text-sm" /></label>
         <label className="space-y-1 text-xs font-medium text-muted-foreground">To<input type="date" name="to" defaultValue={to} className="block h-9 rounded-md border bg-background px-2 text-sm" /></label>
-        <button className="h-9 rounded-md border px-3">Show</button>
+        <button className="h-9 rounded-md border px-3 max-md:h-11">Show</button>
       </form>
       {'error' in report ? <Empty>{report.error}</Empty> : (
         <>

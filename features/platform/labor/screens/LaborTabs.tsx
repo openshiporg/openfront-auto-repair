@@ -24,7 +24,7 @@ export function ShopSwitch({ shops, current, path }: { shops: ShopLite[]; curren
   return (
     <div className="flex flex-wrap gap-2 text-sm">
       {shops.map(s => (
-        <Link key={s.id} href={`${path}?shop=${s.code}`} className={s.id === current.id ? 'font-semibold underline' : 'text-muted-foreground underline'}>{s.name}</Link>
+        <Link key={s.id} href={`${path}?shop=${s.code}`} className={`inline-flex min-h-11 items-center md:min-h-0 ${s.id === current.id ? 'font-semibold underline' : 'text-muted-foreground underline'}`}>{s.name}</Link>
       ))}
     </div>
   );

@@ -53,7 +53,7 @@ export default async function SchedulePage({ searchParams }: { searchParams?: Pr
           <Link className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 py-1 md:min-h-0 md:min-w-0" href={href(addDays(date, -1))} aria-label="Previous day">←</Link>
           <span className="font-mono">{new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
           <Link className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-2 py-1 md:min-h-0 md:min-w-0" href={href(addDays(date, 1))} aria-label="Next day">→</Link>
-          <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={href(today(shop.timeZone))}>Today</Link>
+          <Link className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs underline md:min-h-0 md:min-w-0" href={href(today(shop.timeZone))}>Today</Link>
         </div>
       </div>
 

@@ -85,7 +85,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
           }>
             {data.customers.length ? data.customers.map(c => (
               <Row key={c.id}>
-                <div className="min-w-0 flex-1 space-y-1">
+                <div className="w-full min-w-0 space-y-1 md:w-auto md:flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{c.displayName}</span>
                     {c.kind === 'business' ? <span className="text-xs text-muted-foreground">Business</span> : null}

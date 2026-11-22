@@ -132,7 +132,7 @@ export function LinkProblem({ store, message }: { store: Storefront; message?: s
     <Page title="This link does not work" narrow>
       <p className="text-[17px]">{message && message !== 'This link is not valid.' ? message : 'It may be mistyped, expired, or replaced by a newer one.'}</p>
       <p className="mt-3 text-[17px]">
-        Call {store.shop.name}{store.shop.phone ? <> on <a href={store.shop.phoneHref} className="sf-num sf-accent">{store.shop.phone}</a></> : null} and we will send you a new one.
+        Call {store.shop.name}{store.shop.phone ? <> on <a href={store.shop.phoneHref} className="sf-num sf-accent inline-flex min-h-11 items-center whitespace-nowrap">{store.shop.phone}</a></> : null} and we will send you a new one.
       </p>
       <p className="mt-6"><Link href="/check" className="sf-btn-line">Check my repair</Link></p>
     </Page>
