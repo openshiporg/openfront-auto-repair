@@ -119,9 +119,9 @@ export function BookForm({ shops, services, initial, initialDays }: {
         <legend className="sf-label mb-1 text-[16px]">Appointment time</legend>
         {days.length ? (
           <div className={loading ? 'opacity-60' : ''}>
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Day">
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Day">
               {days.map(d => (
-                <button key={d.date} type="button" role="tab" aria-selected={d.date === day?.date} onClick={() => setAt(d.times[0].iso)} className="sf-btn-line !px-3 text-[16px]">{d.label}</button>
+                <button key={d.date} type="button" role="tab" aria-selected={d.date === day?.date} onClick={() => setAt(d.times[0].iso)} className="sf-btn-line whitespace-nowrap !px-2 text-[16px] sm:!px-3">{d.label}</button>
               ))}
             </div>
             {day ? (

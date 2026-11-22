@@ -22,16 +22,26 @@ export default async function HomePage() {
 
   return (
     <main>
+      {/* Phone: the bay photograph and the shop's line first, then the two tasks. */}
+      <section className="relative h-[190px] overflow-hidden lg:hidden">
+        {bay ? <Image src={bay} alt="" fill sizes="(min-width: 1024px) 1px, 100vw" className="object-cover object-[70%_center]" /> : <div className="sf-bay absolute inset-0" aria-hidden="true" />}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" aria-hidden="true" />
+        <div className="relative flex h-full flex-col justify-center px-5">
+          <h1 className="sf-display text-[28px] uppercase leading-[1.1]">Expert auto repair<br />in {shop.city}</h1>
+          <p className="sf-note mt-3 max-w-[20rem] text-[16px] leading-snug">{tagline}</p>
+        </div>
+      </section>
+
       {/* First paint: book a repair and check a repair, over the bay photograph on a wide screen. */}
       <section className="relative overflow-hidden">
         {bay ? <Image src={bay} alt="" fill priority sizes="(min-width: 1024px) 100vw, 1px" className="hidden object-cover object-center lg:block" /> : <div className="sf-bay absolute inset-0 hidden lg:block" aria-hidden="true" />}
         <div className="absolute inset-0 hidden bg-gradient-to-r from-black/45 via-transparent to-black/45 lg:block" aria-hidden="true" />
-        <div className="sf-wrap relative grid gap-0 py-3 lg:grid-cols-[minmax(0,495px)_1fr_minmax(0,495px)] lg:items-start lg:py-6">
-          <div className="pb-4 lg:pb-0">
+        <div className="sf-wrap relative grid gap-0 py-5 lg:grid-cols-[minmax(0,495px)_1fr_minmax(0,495px)] lg:items-start lg:py-6">
+          <div className="pb-5 lg:pb-0">
             <BookPanel shopName={shop.name} shopPhone={shop.phone} services={bookable} times={times} />
           </div>
           <div className="hidden lg:block" />
-          <div className="border-t sf-hair pt-4 lg:border-0 lg:pt-0">
+          <div className="border-t sf-hair pt-5 lg:border-0 lg:pt-0">
             <div className="sf-panel-lg lg:px-7 lg:pb-6 lg:pt-3">
               <h2 className="sf-display text-[30px] lg:text-[38px]">Check my repair</h2>
               <p className="mb-3 hidden text-[18px] lg:block">Repair status, inspection results, and estimate.</p>
@@ -41,17 +51,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Phone: the bay photograph as a band under the two tasks. */}
-      <section className="relative mt-5 h-[250px] overflow-hidden lg:hidden">
-        {bay ? <Image src={bay} alt="" fill sizes="(min-width: 1024px) 1px, 100vw" className="object-cover object-[70%_center]" /> : <div className="sf-bay absolute inset-0" aria-hidden="true" />}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" aria-hidden="true" />
-        <div className="relative flex h-full flex-col justify-center px-7">
-          <p className="sf-display text-[32px] uppercase leading-[1.1]">Expert<br />auto repair<br />in {shop.city}</p>
-          <p className="sf-note mt-3 max-w-[20rem] text-[16px] leading-snug">{tagline}</p>
-        </div>
-      </section>
-
-      <section className="sf-wrap mt-3 grid gap-x-14 gap-y-6 lg:mt-10 lg:grid-cols-[minmax(0,636px)_minmax(0,1fr)]">
+      <section className="sf-wrap mt-8 grid gap-x-14 gap-y-8 lg:mt-10 lg:grid-cols-[minmax(0,636px)_minmax(0,1fr)]">
         <div>
           <h2 className="sf-display text-[26px] lg:text-[44px]">Services and prices</h2>
           <div className="mt-1 lg:mt-3"><ServiceRows services={store.services} compact /></div>
@@ -60,14 +60,13 @@ export default async function HomePage() {
         {hasTeam ? (
           <div>
             <h2 className="sf-display mb-2 text-[26px] lg:hidden">Our team</h2>
-            <div className={team ? 'grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-x-4 lg:block' : ''}>
+            <div>
               {team ? (
-                <div className="relative aspect-[400/150] overflow-hidden lg:aspect-[712/236]">
-                  <Image src={team} alt={`The ${shop.name} team in the shop: ${[...store.technicians, ...store.advisors].map(p => p.name).join(', ')}`} fill sizes="(min-width: 1024px) 712px, 55vw" className="object-cover object-[center_30%]" />
+                <div className="relative aspect-[712/300] overflow-hidden lg:aspect-[712/236]">
+                  <Image src={team} alt={`The ${shop.name} team in the shop: ${[...store.technicians, ...store.advisors].map(p => p.name).join(', ')}`} fill sizes="(min-width: 1024px) 712px, 100vw" className="object-cover object-[center_30%]" />
                 </div>
               ) : null}
-              <div className="lg:hidden"><TeamLists technicians={store.technicians} advisors={store.advisors} /></div>
-              <div className={`hidden pt-2 lg:block lg:pl-4 ${team ? 'sf-rule-top mt-1' : 'lg:mt-[52px] sf-rule-top'}`}><TeamLists technicians={store.technicians} advisors={store.advisors} split /></div>
+              <div className={`pt-3 lg:pt-2 lg:pl-4 ${team ? 'sf-rule-top mt-1' : 'lg:mt-[52px] sf-rule-top'}`}><TeamLists technicians={store.technicians} advisors={store.advisors} split /></div>
             </div>
           </div>
         ) : null}

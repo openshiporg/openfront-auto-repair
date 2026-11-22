@@ -20,9 +20,9 @@ export async function ServicesPage() {
       {s.services.length ? (
         <ul className="sf-rows max-w-[980px]">
           {s.services.map(service => (
-            <li key={service.slug} className="grid gap-x-8 gap-y-1 py-4 lg:grid-cols-[minmax(0,1fr)_240px_auto] lg:items-baseline">
+            <li key={service.slug} className="grid gap-x-8 gap-y-1 pb-4 pt-2 lg:py-4 lg:grid-cols-[minmax(0,1fr)_240px_auto] lg:items-baseline">
               <div className="min-w-0">
-                <h2 className="sf-label text-[20px]"><Link href={`/services/${service.slug}`} className="no-underline hover:underline">{service.name}</Link></h2>
+                <h2 className="sf-label text-[20px]"><Link href={`/services/${service.slug}`} className="inline-flex min-h-11 items-center no-underline hover:underline">{service.name}</Link></h2>
                 {service.description ? <p className="mt-1 max-w-[60ch] text-[16px]">{service.description}</p> : null}
                 {service.shopName && s.shops.length > 1 && service.shopId ? <p className="sf-dim mt-1 text-[15px]">At {service.shopName}</p> : null}
               </div>
@@ -77,7 +77,7 @@ function ShopBlock({ shop }: { shop: StoreShop }) {
     <div className="py-4">
       <h3 className="sf-label text-[20px]">{shop.name}</h3>
       <p className="text-[17px]">{[shop.addressLine1, shop.cityLine].filter(Boolean).join(', ')}</p>
-      {shop.phone ? <p><a href={shop.phoneHref} className="sf-num text-[18px] no-underline hover:underline">{shop.phone}</a></p> : null}
+      {shop.phone ? <p><a href={shop.phoneHref} className="sf-num inline-flex min-h-11 items-center text-[18px] no-underline hover:underline">{shop.phone}</a></p> : null}
       {shop.hours.map(h => <p key={h.days} className="text-[16px]">{h.days}&nbsp; {h.time}</p>)}
       {shop.barRegistration ? <p className="sf-dim text-[15px]">BAR registration {shop.barRegistration}</p> : null}
     </div>

@@ -78,7 +78,7 @@ export function BookPanel({ shopName, shopPhone, services, times }: {
         </div>
 
         <button type="submit" className="sf-btn sf-btn-wide !text-[20px]">Book</button>
-        <p className="!mt-2 text-center text-[15px]"><Link href="/book" className="hover:underline">See all open times</Link></p>
+        <p className="!mt-0 text-center text-[15px]"><Link href="/book" className="inline-flex min-h-11 items-center hover:underline">See all open times</Link></p>
       </div>
     </form>
   )

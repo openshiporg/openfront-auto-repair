@@ -13,7 +13,7 @@ export default async function BookPage({ query }: { query: { vehicle?: string; s
   const days = await openDays({ shopId: shop.id, kind, centiHours: service?.centiHours ?? 100, days: 6 })
 
   return (
-    <Page title="Book a repair" lead={`Schedule service at ${store.shop.name}. Pick an open time and it is yours.`} narrow>
+    <Page title="Book a repair" lead={`Schedule service at ${store.shop.name}. Pick an open time and we hold it for you.`} narrow>
       <BookForm
         shops={store.shops.map(s => ({ id: s.id, name: s.name, city: s.city, phone: s.phone }))}
         services={store.services.filter(s => s.bookable).map(s => ({ slug: s.slug, name: s.name, priceLine: s.priceLine, description: s.description, shopId: s.shopId }))}

@@ -159,7 +159,7 @@ export async function InvoicePage({ token, returned }: { token: string; returned
   const v = got.view
   const owed = BigInt(v.totals.balanceMinor)
   return (
-    <Page title={`Invoice ${v.invoiceNumber}`} lead={[v.vehicle, v.roNumber ? `Repair order ${v.roNumber}` : '', v.invoiceDate ? `Invoiced ${dayOfDate(v.invoiceDate)}` : ''].filter(Boolean).join(' · ')} narrow>
+    <Page title={<>Invoice <span className="whitespace-nowrap">{v.invoiceNumber}</span></>} lead={[v.vehicle, v.roNumber ? `Repair order ${v.roNumber}` : '', v.invoiceDate ? `Invoiced ${dayOfDate(v.invoiceDate)}` : ''].filter(Boolean).join(' · ')} narrow>
       <div className="sf-panel px-5 py-5 lg:px-7">
         <p className="sf-dim text-[15px]">{v.shop?.legalName || v.shop?.name}</p>
         <ul className="sf-rows-soft mt-2">
@@ -203,7 +203,7 @@ export async function PortalPage({ token, repairOrderId, vehicleId }: { token: s
   if (repairOrderId) {
     const ro = v.repairOrder
     return (
-      <Page title={`Repair order ${ro.number}`} lead={[vehicleName(ro.vehicle), ro.shop, `Opened ${dayAt(ro.openedAt, tz)}`].filter(Boolean).join(' · ')} narrow>
+      <Page title={<>Repair order <span className="whitespace-nowrap">{ro.number}</span></>} lead={[vehicleName(ro.vehicle), ro.shop, `Opened ${dayAt(ro.openedAt, tz)}`].filter(Boolean).join(' · ')} narrow>
         <p className="mb-4"><Link href={base} className="text-[16px] hover:underline">All my vehicles and repairs</Link></p>
         <div className="sf-panel px-5 py-5 lg:px-7">
           <p className="text-[18px]">{repairStatus(ro.status)}</p>
