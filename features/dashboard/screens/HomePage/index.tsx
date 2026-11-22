@@ -10,9 +10,10 @@ import { PlusIcon, Database, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PageContainer } from '../../components/PageContainer'
-import { getAdminMetaAction, getListCounts } from '../../actions'
+import { getAdminMetaAction, getAuthenticatedUser, getListCounts } from '../../actions'
 import { cn } from '@/lib/utils'
 import { Today } from '@/features/platform/today/Today'
+import { canSeeModels } from '../../lib/sidebarAccess'
 
 interface ListCardProps {
   list: any
@@ -102,7 +103,10 @@ export async function HomePage() {
   const adminMeta = adminMetaResponse.data
   const lists = adminMeta?.lists || []
   // Lists are already enhanced with gqlNames from getAdminMetaAction
-  const enhancedLists = lists.filter((list: any) => !(list.hideNavigation ?? list.isHidden))
+  const me = await getAuthenticatedUser().catch(() => null)
+  const admin = canSeeModels((me as any)?.data?.authenticatedItem ?? null)
+  // Every record type is for administrators, the same rule as "Models" in the sidebar.
+  const enhancedLists = admin ? lists.filter((list: any) => !(list.hideNavigation ?? list.isHidden)) : []
 
   // Fetch list counts server-side
   let countData: Record<string, any> = {}
@@ -123,7 +127,7 @@ export async function HomePage() {
     { type: 'page' as const, label: 'Dashboard' }
   ]
 
-  if (enhancedLists.length === 0) {
+  if (enhancedLists.length === 0 && admin) {
     return (
       <PageContainer title="Dashboard" header={header} breadcrumbs={breadcrumbs}>
         <EmptyState />
@@ -136,7 +140,7 @@ export async function HomePage() {
       <div className="w-full max-w-4xl p-4 md:p-6 flex flex-col gap-4">
         <Today />
         {/* Every record type, for the rare edit the screens above do not cover. Closed until asked for. */}
-        <details className="group mb-4">
+        {enhancedLists.length ? <details className="group mb-4">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground [&::-webkit-details-marker]:hidden">
             <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
             All records ({enhancedLists.length} lists)
@@ -153,7 +157,7 @@ export async function HomePage() {
               />
             ))}
           </div>
-        </details>
+        </details> : null}
       </div>
     </PageContainer>
   )
