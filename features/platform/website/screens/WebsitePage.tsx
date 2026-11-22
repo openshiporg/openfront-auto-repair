@@ -14,7 +14,7 @@ const text = (v: unknown) => (typeof v === 'string' ? v : '');
 /** The customer website: which shops it shows, what it says about them, and the price list. */
 export default async function WebsitePage() {
   const held = await holds(['canManagePolicies', 'canManageShops']);
-  if (!held.canManagePolicies && !held.canManageShops) return <Page title="Website"><Empty>Your role is not allowed to change the website. Ask a manager.</Empty></Page>;
+  if (!held.canManagePolicies && !held.canManageShops) return <Page title="Price list & website"><Empty>Your role is not allowed to change the website. Ask a manager.</Empty></Page>;
   const [d] = await Promise.all([
     q<{ shops: Shop[]; publishedServices: Service[]; cannedJobs: { name: string; currentVersion: { customerDescription: string } | null }[] }>(`{
       shops(where: { status: { equals: "active" } }, orderBy: { code: asc }) { id name isPublished registrations publicProfile }
@@ -26,7 +26,7 @@ export default async function WebsitePage() {
   const anyPublished = d.shops.some(s => s.isPublished);
 
   return (
-    <Page title="Website">
+    <Page title="Price list & website">
       <p className="max-w-2xl text-sm text-muted-foreground">
         What customers see at <Link className="underline" href="/" target="_blank">your website</Link>: your shops, your services and their prices. Changes show there as soon as you save.
         {anyPublished ? '' : ' No shop is marked to show yet, so the website shows every active shop.'}

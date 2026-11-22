@@ -50,7 +50,7 @@ export const platformNavItems: PlatformNavItem[] = [
   { title: 'Imports', href: '/platform/imports', color: 'slate', description: 'Bring customers and vehicles in from Tekmetric, Shopmonkey or any CSV, with a preview first.', icon: Upload, group: 'settings' },
   { title: 'Integrations', href: '/platform/integrations', color: 'slate', description: 'Provider connections and what they told us.', icon: Plug, group: 'settings' },
   { title: 'Shops', href: '/platform/shops', color: 'slate', description: 'Shops, bays, hours and staff memberships.', icon: Store, group: 'settings' },
-  { title: 'Website', href: '/platform/website', color: 'slate', description: 'What customers see: your shops, your services and their prices.', icon: Globe, group: 'settings' },
+  { title: 'Price list & website', href: '/platform/website', color: 'slate', description: 'Your services and prices, and what customers see about your shops.', icon: Globe, group: 'settings' },
   { title: 'Canned jobs', href: '/platform/canned-jobs', color: 'slate', description: 'Job templates: lines, labor-guide codes and wording, drafted then published.', icon: BookTemplate, group: 'settings' },
   { title: 'Policies', href: '/platform/policies', color: 'slate', description: 'Jurisdiction rules, labor rates, matrices, fees, tax and warranty: draft and publish.', icon: Scale, group: 'settings' },
   { title: 'Assistants', href: '/platform/agents', color: 'slate', description: 'Assistants, what each may do, the AI provider and pausing.', icon: Bot, group: 'settings' },

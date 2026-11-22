@@ -123,7 +123,7 @@ const OnboardingDialog: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
               {mode === 'own' ? <Link href="/dashboard/platform/website" className="font-medium underline underline-offset-4" onClick={onClose}>Next: add your prices</Link> : null}
               {mode === 'own' ? <Link href="/dashboard/platform/customers" className="font-medium underline underline-offset-4" onClick={onClose}>Add a customer</Link> : null}
               <Link href="/dashboard/platform/shops" className="font-medium underline underline-offset-4" onClick={onClose}>Shops</Link>
-              <Link href="/dashboard/platform/website" className="font-medium underline underline-offset-4" onClick={onClose}>Website</Link>
+              <Link href="/dashboard/platform/website" className="font-medium underline underline-offset-4" onClick={onClose}>Price list &amp; website</Link>
               <Link href="/dashboard/platform/approvals" className="font-medium underline underline-offset-4" onClick={onClose}>Approvals</Link>
               <Link href="/dashboard/AuditEvents" className="font-medium underline underline-offset-4" onClick={onClose}>Audit log</Link>
             </div>
