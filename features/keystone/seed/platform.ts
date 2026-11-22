@@ -19,7 +19,7 @@ const day = (date: string) => new Date(`${date}T00:00:00Z`)
  */
 export async function seedOrgPlatform(uow: UnitOfWork, actor: Actor) {
   const { tx, now } = uow
-  const created: Record<string, number> = { organization: 0, shops: 0, bays: 0, calendarExceptions: 0, roles: 0, staff: 0, memberships: 0, agents: 0, approvalPolicies: 0 }
+  const created: Record<string, number> = { organization: 0, shops: 0, bays: 0, calendarExceptions: 0, staff: 0, memberships: 0, agents: 0 }
 
   if (!(await tx.organizationSettings.findUnique({ where: { id: 1 } }))) {
     await tx.organizationSettings.create({ data: { id: 1, ...ORG } })
@@ -42,13 +42,7 @@ export async function seedOrgPlatform(uow: UnitOfWork, actor: Actor) {
     created.calendarExceptions += SHOP_CLOSURES.length
   }
 
-  const haveRoles = new Set((await tx.role.findMany({ where: { id: { in: ROLES.map(r => r.id) } }, select: { id: true } })).map(r => r.id))
-  const newRoles = ROLES.filter(role => !haveRoles.has(role.id))
-  if (newRoles.length) {
-    await tx.role.createMany({ data: newRoles.map(role => ({ id: role.id, name: role.name, description: role.description, ...Object.fromEntries(permissionNames.map(name => [name, role.permissions.includes(name)])) })) })
-    for (const role of newRoles) auditCreate(uow, actor, 'Role', role.id, 'role.created', { name: role.name, permissions: role.permissions }, { metadata: { seed: true } })
-    created.roles = newRoles.length
-  }
+  Object.assign(created, await seedRolesAndRules(uow, actor))
 
   const haveUsers = await tx.user.findMany({ where: { OR: [{ id: { in: STAFF.map(p => p.id) } }, { email: { in: STAFF.map(p => p.email) } }] }, select: { id: true, email: true } })
   const newStaff = STAFF.filter(person => !haveUsers.some(u => u.id === person.id || u.email === person.email))
@@ -80,6 +74,21 @@ export async function seedOrgPlatform(uow: UnitOfWork, actor: Actor) {
     await tx.agentIdentity.create({ data: { id: agent.id, name: agent.name, kind: agent.kind, ownerId: agent.ownerId, status: 'active', shops: { connect: agent.shops.map(id => ({ id })) } } })
     auditCreate(uow, actor, 'AgentIdentity', agent.id, 'agent.created', { name: agent.name, owner: agent.ownerId, autonomy: 'propose_only' }, { metadata: { seed: true } })
     created.agents += 1
+  }
+
+  return created
+}
+
+/** The 11 roles and the maker-checker approval rules. Shared by both setups; create-only, so a second run changes nothing. */
+export async function seedRolesAndRules(uow: UnitOfWork, actor: Actor) {
+  const { tx } = uow
+  const created: Record<string, number> = { roles: 0, approvalPolicies: 0 }
+  const haveRoles = new Set((await tx.role.findMany({ where: { id: { in: ROLES.map(r => r.id) } }, select: { id: true } })).map(r => r.id))
+  const newRoles = ROLES.filter(role => !haveRoles.has(role.id))
+  if (newRoles.length) {
+    await tx.role.createMany({ data: newRoles.map(role => ({ id: role.id, name: role.name, description: role.description, ...Object.fromEntries(permissionNames.map(name => [name, role.permissions.includes(name)])) })) })
+    for (const role of newRoles) auditCreate(uow, actor, 'Role', role.id, 'role.created', { name: role.name, permissions: role.permissions }, { metadata: { seed: true } })
+    created.roles = newRoles.length
   }
 
   const havePolicies = new Set((await tx.approvalPolicy.findMany({ select: { action: true } })).map(p => p.action))

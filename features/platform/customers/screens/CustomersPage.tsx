@@ -124,7 +124,7 @@ export default async function CustomersPage({ searchParams }: { searchParams?: P
                   </Meta>
                 </div>
                 <div className="flex max-w-full flex-wrap items-center gap-3">
-                  {mayLink ? <PortalLinkButton customerId={c.id} /> : null}
+                  {mayLink ? <PortalLinkButton customerId={c.id} name={c.displayName} shopName={c.homeShop?.name ?? data.shops[0]?.name ?? ''} /> : null}
                   {c.ownerships[0]?.vehicle ? <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/platform/vehicles?id=${c.ownerships[0].vehicle.id}`}>Vehicle</Link> : null}
                   <Link className="inline-flex min-h-11 items-center text-xs underline md:min-h-0" href={`/dashboard/customers/${c.id}`}>Record</Link>
                 </div>

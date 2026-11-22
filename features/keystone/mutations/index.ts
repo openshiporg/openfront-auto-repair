@@ -67,6 +67,7 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
         logVoiceCall(input: JSON!, idempotencyKey: String!): JSON
         updateActiveUser(data: UserUpdateProfileInput!): User
         loadNorthgateSetup(idempotencyKey: String!, scope: String): JSON
+        startOwnShop(input: JSON!, idempotencyKey: String!): JSON
         decideApprovalRequest(requestId: ID!, decision: String!, reason: String, expectedVersion: Int!, idempotencyKey: String!): JSON
         cancelApprovalRequest(requestId: ID!, expectedVersion: Int!, reason: String, idempotencyKey: String!): JSON
         requestOrgControls(changes: JSON!, reason: String!, idempotencyKey: String!): JSON
@@ -229,6 +230,7 @@ export function extendGraphqlSchema(baseSchema: GraphQLSchema) {
       Mutation: {
         updateActiveUser,
         loadNorthgateSetup: op(setup.loadNorthgateSetup),
+        startOwnShop: op(setup.startOwnShop),
         decideApprovalRequest: op(approvals.decideApprovalRequest),
         cancelApprovalRequest: op(approvals.cancelApprovalRequest),
         requestOrgControls: op(approvals.requestOrgControls),

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { FormError, inputClass, labelClass, useCommand } from '../../components/useCommand';
 import { pillClass } from '../../components/ActionButton';
+import { contactFor } from '../actions/contactFor';
 
 /**
  * A new customer at the counter or on the phone. The server normalises the phone and email, checks
@@ -59,18 +60,29 @@ export function NewCustomerForm({ shops }: { shops: { id: string; code: string; 
 }
 
 /** The customer's own page (their vehicles and repairs) as a link to text or email. Making a new one replaces the last. */
-export function PortalLinkButton({ customerId }: { customerId: string }) {
+export function PortalLinkButton({ customerId, name, shopName }: { customerId: string; name: string; shopName: string }) {
   const cmd = useCommand<{ path?: string; expiresAt?: string }>('createCustomerPortalLink', ['/dashboard/platform/customers']);
   const [copied, setCopied] = React.useState(false);
+  const [to, setTo] = React.useState<{ email: string | null; mobile: string | null }>({ email: null, mobile: null });
   const full = cmd.result?.path ? `${window.location.origin}${cmd.result.path}` : '';
+  const first = name.split(' ')[0] || name;
+  const message = `Hi ${first}, here is your page at ${shopName}: your vehicles, repairs and invoices. ${full}`;
+  const subject = `Your vehicles and repairs at ${shopName}`;
+  const linkClass = `${pillClass} no-underline`;
   return (
     <span className="inline-flex max-w-full flex-col items-start gap-1">
-      <button type="button" disabled={cmd.pending} className={pillClass} onClick={() => { setCopied(false); cmd.run({ customerId }); }}>{cmd.pending ? 'Working' : 'Customer page link'}</button>
+      <button type="button" disabled={cmd.pending} className={pillClass} onClick={() => {
+        setCopied(false);
+        cmd.run({ customerId });
+        void contactFor(customerId).then(setTo, () => undefined);
+      }}>{cmd.pending ? 'Working' : 'Send customer page link'}</button>
       {full ? (
         <span className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           <input readOnly aria-label="Link to the customer's page" className={inputClass} value={full} onFocus={e => e.currentTarget.select()} />
           <button type="button" className={pillClass} onClick={() => { void navigator.clipboard?.writeText(full); setCopied(true); }}>{copied ? 'Copied' : 'Copy'}</button>
-          <span className="text-xs text-muted-foreground">Works for 30 days. Replaces any earlier link.</span>
+          <a className={linkClass} href={`mailto:${to.email ?? ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`}>Email it</a>
+          <a className={linkClass} href={`sms:${to.mobile ?? ''}?&body=${encodeURIComponent(message)}`}>Text it</a>
+          <span className="text-xs text-muted-foreground">Opens your own mail or messages app. Works for 30 days and replaces any earlier link.</span>
         </span>
       ) : null}
       <FormError error={cmd.error} />

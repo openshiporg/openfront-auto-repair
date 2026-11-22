@@ -81,7 +81,7 @@ export default async function ShopsPage() {
             </Row>
           </Section>
         );
-      }) : <Empty>No shops yet. Use “Set up your shop” in the sidebar to load a starting setup, then put in your own details.</Empty>}
+      }) : <Empty>No shops yet. Use “Set up your shop” in the sidebar to add yours.</Empty>}
     </Page>
   );
 }

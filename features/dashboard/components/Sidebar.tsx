@@ -378,7 +378,7 @@ export function Sidebar({ adminMeta, user, onOpenDialog }: SidebarProps) {
             steps={[{
               href: '#onboarding',
               title: 'Set up your shop',
-              description: 'Load a starting setup (shops, bays, hours, roles and policies), then make it yours.',
+              description: 'Put in your shop, hours and labor rate. Takes two minutes.',
             }]}
             onboardingStatus={user?.onboardingStatus}
             menuItemsCount={user?.menuItemsCount}

@@ -102,7 +102,7 @@ export const TAX_CATEGORIES = [
 
 const TAXABLE: Record<string, boolean> = { labor_repair: false, labor_fabrication: true, parts: true, tires: true, fee_tire: false, fee_battery: false, battery_deposit: true, sublet_labor: false, diagnostic: false }
 
-type ShopSeed = { id: string; code: string; taxRate: string; rates: { code: string; name: string; rateMinor: bigint; isDefault?: boolean }[] }
+export type ShopSeed = { id: string; code: string; taxRate: string; rates: { code: string; name: string; rateMinor: bigint; isDefault?: boolean }[] }
 
 export const SHOP_POLICY: ShopSeed[] = [
   {
@@ -183,11 +183,12 @@ export async function seedJurisdictions(uow: UnitOfWork, actor: Actor) {
 }
 
 /** One shop's policy versions: shop policy, labor rates and matrix, parts matrix, fees, tax and warranty. */
-export async function seedShopPolicy(uow: UnitOfWork, actor: Actor, shopId: string) {
+export async function seedShopPolicy(uow: UnitOfWork, actor: Actor, shopId: string, own?: ShopSeed & { region: string }) {
   const { tx } = uow
   const created: Record<string, number> = { versions: 0 }
-  const shop = SHOP_POLICY.find(s => s.id === shopId)
+  const shop = own ?? SHOP_POLICY.find(s => s.id === shopId)
   if (!shop || !(await tx.shop.findUnique({ where: { id: shop.id }, select: { id: true } }))) return created
+  const california = !own || own.region === 'CA'
   const categories = Object.fromEntries((await tx.taxCategory.findMany({ select: { id: true, code: true } })).map(c => [c.code, c.id]))
   {
     const v = (kind: string) => `${shop.id}_${kind}_v1`
@@ -200,12 +201,12 @@ export async function seedShopPolicy(uow: UnitOfWork, actor: Actor, shopId: stri
         shop.rates.map(r => ({ code: r.code, name: r.name, rateMinor: r.rateMinor, isDefault: Boolean(r.isDefault), taxCategoryId: categories[r.code === 'diagnostic' ? 'diagnostic' : 'labor_repair'] }))),
       await seedVersion(uow, actor, 'labor_matrix', shop.id, v('labor_matrix'), { notes: 'No labor matrix: book hours at the class rate.', bands: [], appliesToClasses: [] }),
       await seedVersion(uow, actor, 'parts_matrix', shop.id, v('parts'), { notes: 'Five-tier cost-plus matrix; 30% margin floor.', tiers: PARTS_TIERS, categoryOverrides: { tires: '1.250000' }, supplierOverrides: {}, marginFloorPct: '0.300000' }),
-      await seedVersion(uow, actor, 'fees', shop.id, v('fees'), { notes: 'California tire and battery fees (CDTFA).' }, [
+      await seedVersion(uow, actor, 'fees', shop.id, v('fees'), { notes: california ? 'California tire and battery fees (CDTFA).' : 'No state fees yet: add yours under Policies.' }, !california ? [] : [
         { code: 'ca_tire_fee', kind: 'per_unit', base: 'units_of_item_category', perUnitMinor: 175n, itemCategory: 'tire_new', taxTreatment: 'non_taxable', separatelyStated: true, refundable: false, invoiceText: 'California tire fee' },
         { code: 'ca_battery_fee', kind: 'per_unit', base: 'units_of_item_category', perUnitMinor: 200n, itemCategory: 'battery_lead_acid', taxTreatment: 'non_taxable', separatelyStated: true, refundable: false, invoiceText: 'California battery fee' },
         { code: 'battery_deposit', kind: 'per_unit', base: 'units_of_item_category', perUnitMinor: BATTERY_DEPOSIT_PLACEHOLDER_MINOR, itemCategory: 'battery_lead_acid', taxTreatment: 'taxable', separatelyStated: true, refundable: true, refundWindowDays: 45, invoiceText: 'Battery deposit (refunded when a used battery is returned within 45 days)' },
       ]),
-      await seedVersion(uow, actor, 'tax', shop.id, v('tax'), { notes: `CDTFA combined rate for ${shop.code === 'NGA' ? 'Sacramento' : 'Roseville'}, effective 2026-10-01.`, rounding: 'per_line' },
+      await seedVersion(uow, actor, 'tax', shop.id, v('tax'), { notes: own ? 'Sales tax rate entered at setup.' : `CDTFA combined rate for ${shop.code === 'NGA' ? 'Sacramento' : 'Roseville'}, effective 2026-10-01.`, rounding: 'per_line' },
         Object.entries(TAXABLE).map(([code, taxable]) => ({ categoryId: categories[code], taxable, rate: taxable ? shop.taxRate : '0.000000', coreChargeRule: 'refund_refunds_tax', warrantyDeductibleRule: code === 'parts' ? 'parts_share' : 'none' }))),
       await seedVersion(uow, actor, 'warranty', shop.id, v('warranty'), { notes: 'Nationwide 24 months / 24,000 miles on parts and labor.' }, [
         { code: 'standard', name: '24 months / 24,000 miles', months: 24, miles: 24000, appliesTo: ['parts', 'labor'], invoiceText: 'Parts and labor are warranted for 24 months or 24,000 miles, whichever comes first.' },
