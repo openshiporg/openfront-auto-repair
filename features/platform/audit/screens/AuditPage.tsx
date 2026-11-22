@@ -26,6 +26,13 @@ export default async function AuditPage({ searchParams }: { searchParams?: Promi
     }`, { where, take: PAGE }),
     orgTimeZone(),
   ]);
+  // Records read by name ("Northgate Auto Care", "Andrew Takahashi") with the id kept for tracing. Names the reader may not see stay ids.
+  const idsOf = (type: string) => [...new Set(data.auditEvents.filter(e => e.entityType === type).map(e => e.entityId))];
+  const [shopIds, customerIds, userIds] = [idsOf('Shop'), idsOf('Customer'), idsOf('User')];
+  const look = async (ids: string[], list: string, field: string): Promise<[string, string][]> => ids.length
+    ? ((await q<Record<string, Record<string, string>[]>>(`query($ids: [ID!]) { ${list}(where: { id: { in: $ids } }) { id ${field} } }`, { ids }).catch(() => ({} as Record<string, Record<string, string>[]>)))[list] ?? []).map((r): [string, string] => [r.id, r[field]])
+    : [];
+  const names = new Map<string, string>((await Promise.all([look(shopIds, 'shops', 'name'), look(customerIds, 'customers', 'displayName'), look(userIds, 'users', 'name')])).flat().filter(([, n]) => n));
   const v = data.verifyAuditChain;
   const last = data.auditEvents.at(-1);
   return (
@@ -44,7 +51,7 @@ export default async function AuditPage({ searchParams }: { searchParams?: Promi
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-baseline gap-x-2"><span className="font-mono text-xs text-muted-foreground">#{e.seq}</span><span className="font-medium">{eventText(e.eventType)}</span></div>
               <Meta>
-                <Link className="inline-flex min-h-11 items-center break-all underline underline-offset-2 md:min-h-0" href={`/dashboard/platform/audit?entity=${encodeURIComponent(e.entityId)}`}>{e.entityType.replace(/([a-z])([A-Z])/g, '$1 $2')} {e.entityId}</Link>
+                <Link className="inline-flex min-h-11 items-center break-all underline underline-offset-2 md:min-h-0" href={`/dashboard/platform/audit?entity=${encodeURIComponent(e.entityId)}`}>{names.get(e.entityId) ? <>{names.get(e.entityId)} <span className="text-muted-foreground">({e.entityId})</span></> : <>{e.entityType.replace(/([a-z])([A-Z])/g, '$1 $2')} {e.entityId}</>}</Link>
                 {' · '}{e.actorUser?.name ?? (e.actorAgent ? `agent ${e.actorAgent.name}` : 'system')}{e.approver ? ` · approved by ${e.approver.name}` : ''}{e.reason ? ` · ${e.reason}` : ''}
               </Meta>
             </div>

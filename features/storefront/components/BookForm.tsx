@@ -76,6 +76,7 @@ export function BookForm({ shops, services, initial, initialDays }: {
 
   // The day whose times are shown: the day of the chosen time.
   const day = days.find(d => d.times.some(t => t.iso === at)) ?? days[0]
+  const zone = days[0]?.times[0]?.time.match(/[AP]M ([A-Z]{1,5})$/)?.[1] ?? ''
   const bad = (field: string) => (state.field === field ? { 'aria-invalid': true as const } : {})
 
   return (
@@ -115,8 +116,9 @@ export function BookForm({ shops, services, initial, initialDays }: {
         </div>
       </fieldset>
 
+      {/* The shop's zone is said once in the legend instead of on every time button. */}
       <fieldset aria-busy={loading}>
-        <legend className="sf-label mb-1 text-[16px]">Appointment time</legend>
+        <legend className="sf-label mb-1 text-[16px]">Appointment time{zone ? <span className="sf-dim font-normal"> ({zone}, the shop's time)</span> : null}</legend>
         {days.length ? (
           <div className={loading ? 'opacity-60' : ''}>
             <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Day">
@@ -127,7 +129,7 @@ export function BookForm({ shops, services, initial, initialDays }: {
             {day ? (
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={`Times on ${day.label}`}>
                 {day.times.map(t => (
-                  <button key={t.iso} type="button" role="radio" aria-checked={at === t.iso} onClick={() => setAt(t.iso)} className="sf-btn-line sf-num whitespace-nowrap !px-2">{t.time}</button>
+                  <button key={t.iso} type="button" role="radio" aria-checked={at === t.iso} onClick={() => setAt(t.iso)} className="sf-btn-line sf-num whitespace-nowrap !px-2" aria-label={t.time}>{zone ? t.time.replace(` ${zone}`, '') : t.time}</button>
                 ))}
               </div>
             ) : null}
