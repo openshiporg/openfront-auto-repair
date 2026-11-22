@@ -171,6 +171,8 @@ export async function getAuthenticatedUser() {
             canReadRepairOrders
             canManagePolicies
             canManageShops
+            canManageRoles
+            canManageOrganization
           }
         }
       }

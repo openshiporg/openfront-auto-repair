@@ -40,7 +40,7 @@ import { Home, ChevronRight, Package } from 'lucide-react'
 import { Logo, LogoIcon } from '@/features/dashboard/components/Logo'
 import { UserProfileClient } from './UserProfileClient'
 import { useDashboard } from '../context/DashboardProvider'
-import { visiblePlatformItems, visibleSidebarLists } from '../lib/sidebarAccess'
+import { canSeeModels, visiblePlatformItems, visibleSidebarLists } from '../lib/sidebarAccess'
 import { OnboardingCards } from '@/features/platform/onboarding/components/OnboardingCards'
 import { dismissOnboarding } from '@/features/platform/onboarding/actions/onboarding'
 import {
@@ -70,6 +70,8 @@ interface User {
     canReadRepairOrders?: boolean;
     canManagePolicies?: boolean;
     canManageShops?: boolean;
+    canManageRoles?: boolean;
+    canManageOrganization?: boolean;
   };
 }
 
@@ -113,7 +115,7 @@ export function Sidebar({ adminMeta, user, onOpenDialog }: SidebarProps) {
   const listsArray = Object.values(lists)
 
   // Convert lists to sidebar links format
-  const modelLinks = visibleSidebarLists(listsArray as any[], user).map((list: any) => ({
+  const modelLinks = (canSeeModels(user) ? visibleSidebarLists(listsArray as any[], user) : []).map((list: any) => ({
     title: list.label,
     href: `/dashboard/${list.path}`
   }))
@@ -294,7 +296,8 @@ export function Sidebar({ adminMeta, user, onOpenDialog }: SidebarProps) {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Models */}
+        {/* Models: administrators only (canSeeModels) */}
+        {modelLinks.length ? (
         <SidebarGroup>
           <SidebarGroupLabel>Models</SidebarGroupLabel>
           <SidebarMenu className="group-has-[[data-collapsible=icon]]/sidebar-wrapper:hidden">
@@ -369,6 +372,7 @@ export function Sidebar({ adminMeta, user, onOpenDialog }: SidebarProps) {
             </DropdownMenu>
           </SidebarMenu>
         </SidebarGroup>
+        ) : null}
       </SidebarContent>
       
       <SidebarFooter>

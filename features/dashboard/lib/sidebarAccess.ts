@@ -6,7 +6,7 @@
 
 type SidebarList = { path: string; isHidden?: boolean | null }
 type PagePermission = 'canReadAudit' | 'canCloseDay' | 'canReadFinancials' | 'canReadReports' | 'canManageIntegrations' | 'canMessageCustomers' | 'canManageCustomers' | 'canManageCampaigns' | 'canReadRepairOrders' | 'canManagePolicies' | 'canManageShops'
-type SidebarUser = { role?: ({ canAccessDashboard?: boolean | null } & Partial<Record<PagePermission, boolean | null>>) | null } | null | undefined
+type SidebarUser = { role?: ({ canAccessDashboard?: boolean | null; canManageRoles?: boolean | null; canManageOrganization?: boolean | null } & Partial<Record<PagePermission, boolean | null>>) | null } | null | undefined
 
 /** Pages that need a permission the role may lack: the link is shown only when the role holds one of them. */
 const PLATFORM_PAGE_PERMISSIONS: Record<string, PagePermission[]> = {
@@ -26,6 +26,14 @@ const PLATFORM_PAGE_PERMISSIONS: Record<string, PagePermission[]> = {
 /** Only an explicit false hides navigation; an unknown user is left to the middleware. */
 export function canUseDashboardNav(user: SidebarUser) {
   return user?.role?.canAccessDashboard !== false
+}
+
+/**
+ * The raw record lists ("Models") are for whoever administers the system: a role that manages roles or the
+ * organisation (the owner, the first account). Everyone else works from the shop pages above them.
+ */
+export function canSeeModels(user: SidebarUser) {
+  return canUseDashboardNav(user) && Boolean(user?.role?.canManageRoles || user?.role?.canManageOrganization)
 }
 
 export function visibleSidebarLists<T extends SidebarList>(lists: T[], user: SidebarUser): T[] {

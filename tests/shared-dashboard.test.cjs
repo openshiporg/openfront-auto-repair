@@ -165,6 +165,11 @@ test('sidebar shows only lists and platform pages the session can see', () => {
   assert.equal(access.visibleSidebarLists(lists, customer).length, 0);
   assert.equal(access.visiblePlatformItems(items, lists, customer).length, 0);
   assert.equal(access.visibleSidebarLists(lists, null).length, 1);
+  // The raw record lists are for administrators only.
+  assert.equal(access.canSeeModels(staff), false);
+  assert.equal(access.canSeeModels({ role: { canAccessDashboard: true, canManageRoles: true } }), true);
+  assert.equal(access.canSeeModels({ role: { canAccessDashboard: true, canManageOrganization: true } }), true);
+  assert.equal(access.canSeeModels({ role: { canAccessDashboard: false, canManageRoles: true } }), false);
 });
 
 test('timestamps render the same text on the server and during hydration', () => {
