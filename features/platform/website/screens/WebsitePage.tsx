@@ -13,13 +13,14 @@ const text = (v: unknown) => (typeof v === 'string' ? v : '');
 
 /** The customer website: which shops it shows, what it says about them, and the price list. */
 export default async function WebsitePage() {
-  const [d, held] = await Promise.all([
+  const held = await holds(['canManagePolicies', 'canManageShops']);
+  if (!held.canManagePolicies && !held.canManageShops) return <Page title="Website"><Empty>Your role is not allowed to change the website. Ask a manager.</Empty></Page>;
+  const [d] = await Promise.all([
     q<{ shops: Shop[]; publishedServices: Service[]; cannedJobs: { name: string; currentVersion: { customerDescription: string } | null }[] }>(`{
       shops(where: { status: { equals: "active" } }, orderBy: { code: asc }) { id name isPublished registrations publicProfile }
       publishedServices(orderBy: [{ sortOrder: asc }, { name: asc }], take: 200) { id name slug description fromPriceMinor estimatedCentiHours bookable isPublished shop { id } }
       cannedJobs(where: { active: { equals: true } }, orderBy: { name: asc }, take: 200) { name currentVersion { customerDescription } }
     }`),
-    holds(['canManagePolicies', 'canManageShops']),
   ]);
   const templates = d.cannedJobs.filter(j => j.currentVersion).map(j => ({ name: j.name, description: j.currentVersion?.customerDescription ?? '' }));
   const anyPublished = d.shops.some(s => s.isPublished);

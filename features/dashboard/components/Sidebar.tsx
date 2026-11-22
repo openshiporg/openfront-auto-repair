@@ -64,6 +64,12 @@ interface User {
     canReadFinancials?: boolean;
     canReadReports?: boolean;
     canManageIntegrations?: boolean;
+    canMessageCustomers?: boolean;
+    canManageCustomers?: boolean;
+    canManageCampaigns?: boolean;
+    canReadRepairOrders?: boolean;
+    canManagePolicies?: boolean;
+    canManageShops?: boolean;
   };
 }
 

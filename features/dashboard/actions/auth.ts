@@ -165,6 +165,12 @@ export async function getAuthenticatedUser() {
             canReadFinancials
             canReadReports
             canManageIntegrations
+            canMessageCustomers
+            canManageCustomers
+            canManageCampaigns
+            canReadRepairOrders
+            canManagePolicies
+            canManageShops
           }
         }
       }
