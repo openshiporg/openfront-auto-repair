@@ -19,7 +19,7 @@ export default async function AccountingPage({ searchParams }: { searchParams?: 
   return (
     <Page title="Accounting export">
       <Meta>{shop.name}. Files are staged for your bookkeeper. Nothing here posts to a ledger.</Meta>
-      {can.canCloseDay ? <Section title="Stage a day"><StageDay shopId={shop.id} />{preview?.unmapped.length ? <Meta>Not yet mapped to an account: {preview.unmapped.join(', ')}</Meta> : null}</Section> : null}
+      {can.canCloseDay ? <Section title="Stage a day"><StageDay shopId={shop.id} />{preview?.unmapped.length ? <Meta>Not yet mapped to an account: {preview.unmapped.map((k) => k.replaceAll('_', ' ')).join(', ')}</Meta> : null}</Section> : null}
       <Section title="Staged days">
         {batches.length ? batches.map((b) => (
           <Row key={b.id}>

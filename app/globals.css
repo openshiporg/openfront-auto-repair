@@ -120,3 +120,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Phones: a form control under 16px makes iOS zoom the page on focus, and under 44px it is hard to hit.
+   Unlayered and zero specificity, so it beats the utility size classes but any plain class can still override it. */
+@media (max-width: 767px) {
+  :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]), select, textarea) {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  :where(input[type="checkbox"], input[type="radio"]) {
+    min-width: 20px;
+    min-height: 20px;
+  }
+}

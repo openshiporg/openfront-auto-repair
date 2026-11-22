@@ -79,8 +79,8 @@ export function MappingForm({ shopId, sourceKeys, current }: { shopId: string; s
   return (
     <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); cmd.run({ shopId, mappings: Object.entries(rows).filter(([, v]) => v.accountCode.trim()).map(([sourceKey, v]) => ({ sourceKey, ...v })) }); }}>
       {sourceKeys.map((k) => (
-        <div key={k} className="grid grid-cols-[1fr_7rem_1fr] items-center gap-2 text-sm">
-          <span className="break-words font-mono text-xs">{k}</span>
+        <div key={k} className="grid grid-cols-[7rem_1fr] items-center gap-2 text-sm md:grid-cols-[1fr_7rem_1fr]">
+          <span className="col-span-2 break-words font-medium first-letter:uppercase md:col-span-1">{k.replaceAll('_', ' ').replaceAll(':', ': ')}</span>
           <input aria-label={`${k} account code`} className={inputClass} placeholder="Code" value={rows[k].accountCode} onChange={(e) => setRows({ ...rows, [k]: { ...rows[k], accountCode: e.target.value } })} />
           <input aria-label={`${k} account name`} className={inputClass} placeholder="Account name" value={rows[k].accountName} onChange={(e) => setRows({ ...rows, [k]: { ...rows[k], accountName: e.target.value } })} />
         </div>
