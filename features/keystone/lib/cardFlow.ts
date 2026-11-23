@@ -35,6 +35,8 @@ export async function openCardPage(db: Db, paymentId: string, input: { descripti
     await runInTransaction(db, async uow => {
       await uow.tx.payment.update({ where: { id: payment.id }, data: { providerSessionId: session.id, status: 'pending', version: { increment: 1 } } })
     })
+    // Keep the card sweep (lib/cardSweep.ts) running for the next 30 minutes.
+    ;(globalThis as { __cardSweepArm?: () => void }).__cardSweepArm?.()
     return { url: session.url!, sessionId: session.id }
   } catch (error) {
     if (error instanceof StripeRejected) {
